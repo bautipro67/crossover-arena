@@ -1,0 +1,39 @@
+# Servidor gratis en Render, igual que el de Ajedrez Maestro.
+#
+# Diferencia con aquel: Ajedrez es Node y usa "runtime: node". Este servidor es Godot,
+# asi que va por Docker. Render construye el Dockerfile del repo y listo; el plan sigue
+# siendo el gratuito.
+#
+# Lo que Render regala y nos ahorra la mitad de la guia vieja del VPS:
+#   - un subdominio https://loquesea.onrender.com
+#   - el certificado TLS, renovado solo
+# Como la pagina de itch.io es HTTPS, el navegador exige wss://. Sin TLS el juego web
+# no se conecta a nada, y ese certificado es justo lo que antes obligaba a comprar un
+# dominio y configurar Caddy a mano.
+#
+# AVISO DEL PLAN GRATUITO: la instancia se apaga tras un rato sin nadie conectado, y el
+# primero que entra despues espera a que despierte (puede pasar el minuto). El juego lo
+# contempla: reintenta la conexion y muestra "despertando el servidor". Lo que no se
+# salva es una partida en curso, porque el estado vive en memoria.
+
+services:
+  - type: web
+    name: crossover-arena
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+
+    # Ohio es la region de Render mas cerca de Argentina; frankfurt (la que usa Ajedrez)
+    # agrega bastante ping. En un ajedrez da igual, en un juego de pelea no.
+    region: ohio
+
+    # SIN healthCheckPath a proposito. Render lo usa mandando un GET normal y esperando
+    # un 200; el servidor de Godot habla WebSocket, no HTTP, asi que ese GET no se
+    # responde y Render marcaria el deploy como caido estando sano. Sin health check
+    # alcanza con que algo escuche en $PORT, que es lo que hace.
+
+    envVars:
+      # Render define PORT sola con un valor distinto en cada deploy. No la fijes aca:
+      # si el servidor escucha en otro puerto, Render no encuentra nada y falla el deploy.
+      - key: GODOT_VERSION
+        value: "4.6.3-stable"

@@ -1,0 +1,11 @@
+# Cache del editor de Godot
+.godot/
+*.translation
+
+# Builds exportados: se regeneran con
+#   godot --headless --path . --export-release "Windows Desktop" build/windows/CrossoverArena.exe
+build/
+
+# Sistema
+Thumbs.db
+desktop.ini

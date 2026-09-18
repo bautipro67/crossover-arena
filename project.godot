@@ -1,0 +1,43 @@
+; Engine configuration file.
+; CrossoverArena — arena PvP 3D con personajes de distintos juegos.
+
+config_version=5
+
+[application]
+
+config/name="CrossoverArena"
+config/description="Arena PvP 3D donde peleas con habilidades de personajes de distintos juegos."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameConfig="*res://scripts/core/game_config.gd"
+CharacterDB="*res://scripts/core/character_db.gd"
+Net="*res://scripts/core/net.gd"
+FX="*res://scripts/fx/fx.gd"
+Sfx="*res://scripts/audio/sfx.gd"
+Music="*res://scripts/audio/music.gd"
+Settings="*res://scripts/core/settings.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="player"
+3d_physics/layer_3="projectile"
+
+[physics]
+
+3d/default_gravity=18.0
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
+environment/defaults/default_clear_color=Color(0.06, 0.08, 0.13, 1)

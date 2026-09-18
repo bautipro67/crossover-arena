@@ -1,0 +1,13 @@
+# Render clona y construye en Linux, esta maquina es Windows.
+#
+# Sin esto, git entrega el Dockerfile con finales de linea CRLF y el build falla de
+# maneras poco obvias (un RUN que "no existe", un script que no arranca). El repo guarda
+# y entrega LF siempre, que es lo que espera Linux.
+* text=auto eol=lf
+
+# Binarios: que git no les toque nada.
+*.png -text
+*.jpg -text
+*.ico -text
+*.wasm -text
+*.pck -text

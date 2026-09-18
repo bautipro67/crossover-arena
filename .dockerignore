@@ -1,0 +1,14 @@
+# Todo lo que no necesita el servidor. Cuanto menos entre al contexto de build, mas
+# rapido sube y menos pesa la imagen.
+.git
+.godot/
+build/
+docs/
+tests/
+tools/
+promo/
+*.md
+*.zip
+export_presets.cfg
+Thumbs.db
+desktop.ini
