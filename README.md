@@ -90,7 +90,9 @@ Lo que hacen y por qué:
 | Piensan cada **200 ms** | Es su tiempo de reacción. Más rápido no es difícil, es injusto |
 | **Corren** para cerrar distancia, caminan en corto | Sin correr nunca te alcanzarían: vos vas a 9.3 m/s con el auto-correr y ellos caminan a 6 |
 | Se acercan **en diagonal** y cambian de lado | De frente y en línea recta son un blanco trivial |
-| **Esquivan** lo que tengan adelante | Tres rayos cortos. Sin eso se clavaban contra la primera cobertura y empujaban la pared |
+| **Navegan** con un navmesh horneado en runtime | Rodean la plataforma central. Antes iban en línea recta y se empotraban: uno de los tres pasaba el **69 % del tiempo trabado** y ninguno llegaba nunca a distancia de pegar |
+| Se **separan** entre ellos | Sin eso convergían al mismo punto y terminaban a 70 cm: tres cuerpos que se leen como un enemigo |
+| Pegan al **50 %** del daño normal | Con los bots rotos el modo práctica hacía 2 de daño por segundo. Apenas navegaron bien pasó a 48: con 100 de vida eso es morirse en dos segundos |
 | Eligen la habilidad **según la distancia** | No tiran un cono de 3 m desde quince metros |
 | Esperan **0.55 s** entre habilidades | Sin esa pausa, tres bots te bajaban de 100 a 14 en dos segundos y medio. Medido |
 | **No usan el ultimate** | 260 de daño sin aviso no se practica, se sufre |
@@ -98,6 +100,17 @@ Lo que hacen y por qué:
 
 Se pueden apagar con `Arena.set_bots_active(false)`, que es lo que usa el chequeo visual
 para sacar capturas reproducibles.
+
+Para medirlos en vez de mirarlos:
+
+```bash
+godot --headless --path . res://tests/bot_diag.tscn
+```
+
+Los observa medio minuto y reporta, por bot: metros recorridos, **cuánto tiempo pasa
+trabado**, distancia mínima y máxima al jugador, tiempo a distancia de pegar, ataques
+tirados y cuánto se amontonan entre ellos. No afirma nada — mide. Existe porque "los bots
+están mal" puede ser diez cosas distintas y todas se ven igual desde afuera.
 
 ## Controles
 

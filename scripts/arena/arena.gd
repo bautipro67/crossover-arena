@@ -26,6 +26,9 @@ const PLAYER_SCENE: PackedScene = preload("res://scenes/player/player.tscn")
 ## al que tiene rango pegando gratis desde lejos y al de cuerpo a cuerpo cruzando
 ## veinte metros al descubierto. Por eso el mapa crecio ~50% y las coberturas pasaron
 ## de 8 a 18: la densidad quedo mas alta que antes, no mas baja.
+## Grupo con toda la geometria solida. El navmesh se hornea a partir de el.
+const NAV_GROUP: StringName = &"arena_solida"
+
 const ARENA_SIZE: float = 92.0
 const WALL_HEIGHT: float = 12.0
 
@@ -68,6 +71,7 @@ func _ready() -> void:
 	_build_walls()
 	_build_cover()
 	_build_spawn_points()
+	_build_navigation()
 
 	if Net.is_server():
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -387,6 +391,7 @@ func _build_cover() -> void:
 ## Cuerpo solido con su malla.
 func _add_box(pos: Vector3, size: Vector3, material: StandardMaterial3D, node_name: String) -> void:
 	var body := StaticBody3D.new()
+	body.add_to_group(NAV_GROUP)
 	body.name = node_name
 	body.collision_layer = GameConfig.LAYER_WORLD
 	body.collision_mask = 0
@@ -433,6 +438,7 @@ func _zone_material(pos: Vector3) -> StandardMaterial3D:
 ## el Z (rampas este/oeste): con cuatro accesos hacen falta las dos orientaciones.
 func _add_ramp(pos: Vector3, size: Vector3, angle_deg: float, angle_z_deg: float = 0.0) -> void:
 	var body := StaticBody3D.new()
+	body.add_to_group(NAV_GROUP)
 	body.collision_layer = GameConfig.LAYER_WORLD
 	body.collision_mask = 0
 	body.position = pos
@@ -449,6 +455,7 @@ func _add_ramp(pos: Vector3, size: Vector3, angle_deg: float, angle_z_deg: float
 
 func _add_pillar(base: Vector3, radius: float, height: float) -> void:
 	var body := StaticBody3D.new()
+	body.add_to_group(NAV_GROUP)
 	body.collision_layer = GameConfig.LAYER_WORLD
 	body.collision_mask = 0
 	body.position = base + Vector3(0.0, height * 0.5, 0.0)
@@ -464,6 +471,59 @@ func _add_pillar(base: Vector3, radius: float, height: float) -> void:
 	body.add_child(Art.cylinder(radius * 1.07, 0.3, _trim_material, Vector3(0.0, -height * 0.5 + 1.3, 0.0)))
 	body.add_child(Art.cylinder(radius * 1.07, 0.3, _trim_material, Vector3(0.0, height * 0.5 - 0.9, 0.0)))
 	add_child(body)
+
+
+# ------------------------------------------------------------------- Navegacion
+
+## Hornea el navmesh de la arena.
+##
+## POR QUE HACE FALTA: los bots iban derecho a donde estaba el jugador y se clavaban
+## contra la plataforma central. Medido con tests/bot_diag: uno de los tres pasaba el
+## 69% del tiempo trabado, ninguno llegaba nunca a distancia de pegar y los tres
+## terminaban amontonados a 10 cm contra la misma pared.
+##
+## Lo habia intentado con tres rayos de evasion. Alcanza para una cobertura suelta y NO
+## alcanza para una plataforma de 20 metros: el bot se abre 45 grados, sigue chocando,
+## se abre 80, sigue chocando, y termina empujando la pared. Rodear un obstaculo grande
+## es pathfinding, y pathfinding se hace con un navmesh.
+##
+## Se hornea en runtime porque el mapa se genera por codigo: no hay escena que hornear
+## en el editor.
+func _build_navigation() -> void:
+	var region := NavigationRegion3D.new()
+	region.name = "NavRegion"
+
+	var nav := NavigationMesh.new()
+	# Un poco mas ancho que el jugador (capsula de 0.4 de radio): asi el camino no pasa
+	# raspando las esquinas y el bot no se traba al doblar.
+	nav.agent_radius = 0.65
+	nav.agent_height = 1.8
+	# Los escalones de las coberturas son de 1.4 a 4.4 metros: no se suben. Lo unico
+	# escalable son las rampas, y para eso alcanza la pendiente.
+	nav.agent_max_climb = 0.4
+	nav.agent_max_slope = 48.0
+	# La altura de celda TIENE que coincidir con la del mapa de navegacion del proyecto
+	# (0.25 por defecto). Con 0.2 Godot avisa de errores de rasterizacion en los bordes
+	# y el navmesh sale inutilizable.
+	nav.cell_size = 0.25
+	nav.cell_height = 0.25
+
+	# De los cuerpos solidos, no de las mallas: las mallas incluyen adornos sin colision
+	# (trims, anillos del piso) que crearian caminos falsos por el aire.
+	nav.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
+	nav.geometry_collision_mask = GameConfig.LAYER_WORLD
+	nav.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
+	nav.geometry_source_group_name = NAV_GROUP
+
+	region.navigation_mesh = nav
+	add_child(region)
+	# Sincrono: los bots piden un camino apenas nacen y con horneado en hilo el primer
+	# pedido sale vacio y arrancan caminando a cualquier lado.
+	region.bake_navigation_mesh(false)
+	# Si sale vacio, los bots no se mueven y no hay ningun otro sintoma: conviene que
+	# grite aca en vez de que alguien lo descubra jugando.
+	if region.navigation_mesh.get_polygon_count() == 0:
+		push_warning("[arena] el navmesh salio VACIO: los bots no van a poder moverse")
 
 
 # ------------------------------------------------------------------- Spawn points
@@ -521,8 +581,14 @@ func find_clear_spot(alrededor: Vector3, radius: float = 0.75) -> Vector3:
 	return alrededor
 
 
-## Devuelve el spawn mas lejano de todos los jugadores vivos, para no aparecer en la
-## cara de alguien.
+## Devuelve el spawn mas lejano de los demas JUGADORES, para no aparecer en la cara de
+## alguien.
+##
+## LOS BOTS NO CUENTAN, y es deliberado. La regla de "aparecer lejos" existe para que
+## nadie te camperee el spawn, y un bot no campea: te viene a buscar. Contandolos, esta
+## funcion elegia el punto del mapa MAS ALEJADO de los bots, o sea que en modo practica
+## empezabas a cincuenta metros de los unicos rivales que hay. Combinado con el alcance
+## de deteccion viejo, los bots no te encontraban nunca.
 func get_free_spawn_point() -> Transform3D:
 	if _spawn_points.is_empty():
 		return Transform3D.IDENTITY
@@ -532,7 +598,16 @@ func get_free_spawn_point() -> Transform3D:
 	for t: Transform3D in _spawn_points:
 		var nearest := 9999.0
 		for player: Player in _living_players():
+			if player.is_dummy:
+				continue
 			nearest = minf(nearest, t.origin.distance_to(player.global_position))
+		# Pero tampoco aparecer ENCIMA de un bot: eso es un golpe gratis en la cara.
+		for player: Player in _living_players():
+			if not player.is_dummy:
+				continue
+			var d := t.origin.distance_to(player.global_position)
+			if d < 8.0:
+				nearest = minf(nearest, d)
 		if nearest > best_score:
 			best_score = nearest
 			best = t

@@ -128,46 +128,47 @@ func _test_bots_pelean(arena: Arena, player: Player, bots: Array[Player]) -> voi
 	_check(not brain._usable.has(3), "el bot NO usa el ultimate")
 	_check(brain._usable.size() >= 3, "pero si el resto del kit (%d)" % brain._usable.size())
 
-	# --- Persecucion ---
-	# El jugador tiene que AGUANTAR la medicion: con vida normal, los tres bots lo
-	# mataban a mitad de la prueba, respawneaba en el spawn mas lejano del mapa y la
-	# distancia al bot crecia en vez de bajar. No era que el bot huyera.
+	# --- LO QUE IMPORTA: que te encuentren SOLOS, desde donde nacen ---
+	#
+	# Este chequeo existe porque su ausencia dejo el modo practica roto sin que ningun
+	# test se quejara. La version anterior teletransportaba al bot al lado del jugador y
+	# medía si se acercaba: con eso pasaba en verde mientras, en una partida de verdad,
+	# los bots nacian a 50 metros, nunca detectaban al jugador y se quedaban parados los
+	# tres. Un test que le acomoda el escenario al codigo no prueba nada.
+	#
+	# Ahora no se mueve a nadie: se los deja donde el juego los pone y se mira si llegan.
+	var mapa := get_viewport().world_3d.navigation_map
+	_check(NavigationServer3D.map_get_regions(mapa).size() > 0,
+		"la arena horneo su malla de navegacion")
+
+	var distancia_inicial := 0.0
+	for b: Player in bots:
+		distancia_inicial = maxf(distancia_inicial,
+			b.global_position.distance_to(player.global_position))
+	_check(distancia_inicial > 20.0,
+		"los bots arrancan lejos de verdad (%.0f m), no al lado" % distancia_inicial)
+
+	# Aguanta la medicion: con vida normal lo matan y respawnea, y la distancia salta.
 	var vida_normal := player.health.max_health
-	player.health.set_max(5000.0)
+	player.health.set_max(20000.0)
 
-	var puesto := arena.find_clear_spot(Vector3(0.0, 0.6, -30.0), 1.2)
-	bot.global_position = puesto
-	bot.velocity = Vector3.ZERO
-	player.respawn_at(arena.find_clear_spot(puesto + Vector3(0.0, 0.0, 22.0), 1.2), 0.0)
-	await get_tree().process_frame
-	var lejos := bot.global_position.distance_to(player.global_position)
-	for _i: int in range(120):
-		await get_tree().physics_frame
-	var cerca := bot.global_position.distance_to(player.global_position)
-	_check(cerca < lejos - 3.0,
-		"el bot persigue al jugador (%.1f m -> %.1f m)" % [lejos, cerca])
-
-	# --- Ataque: que le saque vida al jugador solo ---
-	player.health.set_max(vida_normal)
+	var mas_cerca := 9999.0
+	var golpeado := false
 	var vida_antes := player.health.current
-	for _i: int in range(400):
+	for _i: int in range(1500):  # ~25 s
 		await get_tree().physics_frame
+		for b: Player in bots:
+			if is_instance_valid(b):
+				mas_cerca = minf(mas_cerca, b.global_position.distance_to(player.global_position))
 		if player.health.current < vida_antes:
+			golpeado = true
+		if golpeado and mas_cerca <= BotBrain.MELEE_RANGE:
 			break
-	_check(player.health.current < vida_antes,
-		"el bot ataca de verdad (vida %.0f -> %.0f)" % [vida_antes, player.health.current])
 
-	# --- Volver a su puesto cuando no hay a quien pegarle ---
-	# Mandamos al jugador al otro extremo, fuera del rango de deteccion.
-	player.respawn_at(arena.find_clear_spot(Vector3(38.0, 0.6, 38.0), 1.2), 0.0)
-	var desde := bot.global_position.distance_to(bot.home_position)
-	for _i: int in range(420):
-		await get_tree().physics_frame
-		if bot.global_position.distance_to(bot.home_position) < 1.5:
-			break
-	var hasta := bot.global_position.distance_to(bot.home_position)
-	_check(hasta < maxf(1.5, desde),
-		"sin nadie cerca vuelve a su puesto (%.1f m -> %.1f m)" % [desde, hasta])
+	_check(mas_cerca <= BotBrain.MELEE_RANGE + 1.0,
+		"cruzan el mapa y llegan hasta vos (quedaron a %.1f m)" % mas_cerca)
+	_check(golpeado, "y te pegan sin que nadie los acomode")
+	player.health.set_max(vida_normal)
 
 	# --- Y se puede apagar, que es lo que necesita el chequeo visual ---
 	Arena.set_bots_active(false)

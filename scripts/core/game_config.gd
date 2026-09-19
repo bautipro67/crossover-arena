@@ -17,6 +17,18 @@ const DEFAULT_PORT: int = 27015
 const OFFICIAL_SERVER_URL: String = "wss://crossover-arena.onrender.com"
 const MAX_PLAYERS: int = 8
 
+## Cuanto del daño normal hacen los bots de practica.
+##
+## Con los bots rotos (se trababan y no llegaban) el modo practica hacia 2 de daño por
+## segundo y parecia equilibrado. Apenas empezaron a navegar de verdad, los tres juntos
+## pasaron a 48 por segundo: con 100 de vida eso es morirse en dos segundos, que no es
+## dificultad, es no poder jugar.
+##
+## Se aplica en CombatUtils.deal_damage a todo atacante con peer negativo, que es como
+## se identifican los bots. Las animaciones y los tiempos quedan iguales: lo unico que
+## cambia son los numeros, asi que lo que practicas sigue siendo valido.
+const BOT_DAMAGE_SCALE: float = 0.5
+
 ## Cada cuanto el cliente le manda su transform al servidor.
 const NET_TICK_HZ: float = 20.0
 

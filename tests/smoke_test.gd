@@ -495,9 +495,15 @@ func _test_defensa_de_hielo(player: Player, arena: Arena) -> void:
 		"la rafaga de frio escarcha a los que estan cerca (%d)" % enemy.status.chill_stacks)
 
 	# El escudo se come el golpe ANTES que la vida.
+	#
+	# OJO CON LA FUENTE DEL DAÑO: un peer NEGATIVO es un bot, y a los bots se les aplica
+	# GameConfig.BOT_DAMAGE_SCALE. Usando enemy.peer_id (-77) estos numeros salian a la
+	# mitad y el "golpe grande" ya no reventaba el escudo. Aca se prueba la mecanica del
+	# escudo, no el balance de los bots, asi que el golpe viene de un peer neutro.
+	const FUENTE_NEUTRA := 99
 	var hp_before := player.health.current
 	var shield_before := player.health.shield
-	CombatUtils.deal_damage(player, 20.0, enemy.peer_id)
+	CombatUtils.deal_damage(player, 20.0, FUENTE_NEUTRA)
 	await get_tree().process_frame
 	_check(is_equal_approx(player.health.current, hp_before),
 		"con escudo, un golpe chico no toca la vida (%.0f)" % player.health.current)
@@ -508,7 +514,7 @@ func _test_defensa_de_hielo(player: Player, arena: Arena) -> void:
 	# anular un Snowgrave de 260.
 	var resto := player.health.shield + 30.0
 	var hp_antes := player.health.current
-	CombatUtils.deal_damage(player, resto, enemy.peer_id)
+	CombatUtils.deal_damage(player, resto, FUENTE_NEUTRA)
 	await get_tree().process_frame
 	_check(is_zero_approx(player.health.shield), "un golpe grande revienta el escudo")
 	_check(player.health.current < hp_antes,

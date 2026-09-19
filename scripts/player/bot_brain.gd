@@ -17,7 +17,17 @@ extends Node
 ## sobrehumano, subirlo lo vuelve tonto de una forma que se nota fea.
 const THINK_INTERVAL: float = 0.2
 ## A partir de aca deja de perseguir y vuelve a su puesto.
-const DETECT_RANGE: float = 34.0
+##
+## SE DERIVA DEL MAPA, no es un numero suelto. Estuvo fijo en 34 metros y cuando la
+## arena paso de 60 a 92 quedo mas corto que media diagonal: los bots nacian a 50
+## metros del jugador, nunca lo detectaban y se quedaban parados toda la partida. El
+## modo practica estuvo roto hasta que lo medi.
+##
+## La diagonal de un cuadrado de lado L es L * 1.415. Con eso, un bot ve cualquier
+## punto del mapa desde cualquier otro, que es lo que tiene que pasar en una arena de
+## tres bots contra uno: si no te encuentran, no hay practica.
+static func detect_range() -> float:
+	return Arena.ARENA_SIZE * 1.5
 ## Distancia a la que se planta a pelear cuerpo a cuerpo.
 const MELEE_RANGE: float = 2.7
 ## Mas cerca que esto, retrocede.
@@ -27,17 +37,24 @@ const MELEE_RANGE: float = 2.7
 ## es injugable — no ves lo que te esta por pegar.
 const TOO_CLOSE: float = 2.4
 ## Cuanto se puede alejar de su puesto antes de volver.
-const LEASH: float = 46.0
+##
+## Tambien derivada del mapa. Existe para que un bot no se vaya al infinito si algo sale
+## mal, NO para limitar la persecucion: con la correa vieja de 46 metros, un jugador
+## parado en una esquina quedaba fuera de alcance y los bots se daban media vuelta.
+static func leash() -> float:
+	return Arena.ARENA_SIZE * 1.5
 ## Pausa propia entre habilidad y habilidad, aparte de los cooldowns del juego.
 ##
 ## Sin esto el bot encadena todo lo que tiene disponible en el mismo instante y tres
 ## bots bajan al jugador de 100 a 14 en dos segundos y medio. Medido, no estimado.
 ## No es dificultad: es que no da tiempo a reaccionar, que es lo contrario de lo que
 ## tiene que enseñar el modo practica.
-const ATTACK_COOLDOWN: float = 0.55
-## Cuanto mira hacia adelante para esquivar. Poco mas que un par de pasos: mas lejos y
-## empieza a rodear coberturas que todavia no le estorban.
-const AVOID_DISTANCE: float = 2.8
+const ATTACK_COOLDOWN: float = 0.9
+## A que distancia empiezan a separarse entre ellos.
+##
+## Sin esto los tres convergen al mismo punto y terminan a 70 cm uno de otro: se tapan,
+## se leen como un solo enemigo con tres cuerpos y no podes elegir a cual pegarle.
+const SEPARACION: float = 3.2
 
 ## Apagable para el chequeo visual, que necesita capturas quietas y reproducibles.
 static var globally_enabled: bool = true
@@ -45,6 +62,9 @@ static var globally_enabled: bool = true
 var home: Vector3 = Vector3.ZERO
 
 var _body: Player = null
+## Navegacion real. Reemplaza a la evasion por rayos, que no sabia rodear nada mas
+## grande que un bloque suelto.
+var _agent: NavigationAgent3D = null
 var _think_left: float = 0.0
 var _strafe_dir: float = 1.0
 var _strafe_left: float = 0.0
@@ -64,6 +84,30 @@ func setup(body: Player, home_position: Vector3) -> void:
 
 func _ready() -> void:
 	set_process(false)
+
+	_agent = NavigationAgent3D.new()
+	_agent.name = "NavAgent"
+	_agent.radius = 0.55
+	_agent.height = 1.8
+	# Cada cuanto da por alcanzado un punto del camino. Muy chico y el bot se queda
+	# orbitando el punto sin llegar; muy grande y corta las esquinas por adentro de las
+	# coberturas.
+	_agent.path_desired_distance = 0.9
+	_agent.target_desired_distance = 1.2
+	# Sin evasion entre agentes: los bots no colisionan entre si (solo con el mundo), y
+	# prenderla los hacia orbitarse en vez de ir al jugador.
+	_agent.avoidance_enabled = false
+	# CUELGA DEL PLAYER, no de este nodo.
+	#
+	# NavigationAgent3D saca su posicion del PADRE. BotBrain es un Node pelado, sin
+	# transform, asi que colgado de aca el agente no sabia donde estaba: pedia caminos
+	# desde el origen del mundo, is_target_reachable() daba siempre false y el bot caia
+	# al rumbo recto y se empotraba contra la plataforma central.
+	#
+	# Sintoma que lo delato: el servidor de navegacion devolvia un camino de 30 puntos
+	# para el mismo par de posiciones que el agente daba por inalcanzable.
+	_body.add_child(_agent)
+
 	# Esperamos un frame: el kit lo carga setup_character y puede no estar todavia.
 	await get_tree().process_frame
 	if not is_instance_valid(_body):
@@ -94,7 +138,9 @@ func _process(delta: float) -> void:
 	if _strafe_left <= 0.0:
 		# Cambiar de lado cada tanto hace que no sea un blanco que se acerca en linea
 		# recta, que es trivial de castigar.
-		_strafe_left = 1.1 + randf() * 1.4
+		# Mas lento que antes (1.1-2.5s): con el cambio rapido, el bot invertia el rumbo
+		# una vez por segundo y se veia indeciso en vez de esquivo.
+		_strafe_left = 1.9 + randf() * 1.8
 		_strafe_dir = -_strafe_dir
 
 	_think_left -= delta
@@ -115,7 +161,7 @@ func _process(delta: float) -> void:
 ## gracioso una vez y despues dejaria al jugador mirando.
 func _pick_target() -> Player:
 	var best: Player = null
-	var best_dist := DETECT_RANGE
+	var best_dist := detect_range()
 	for node: Node in get_tree().get_nodes_in_group("players"):
 		var other := node as Player
 		if other == null or other == _body or other.is_dummy:
@@ -143,7 +189,7 @@ func _fight(target: Player) -> void:
 
 	# Si se alejo demasiado de su puesto, vuelve aunque tenga a quien pegarle. Sin esto
 	# los tres bots terminan arrinconando al jugador contra una pared del mapa.
-	if _body.global_position.distance_to(home) > LEASH:
+	if _body.global_position.distance_to(home) > leash():
 		_go_home()
 		return
 
@@ -151,15 +197,26 @@ func _fight(target: Player) -> void:
 	# Corre solo para cerrar distancia. Pegado al rival camina, que es lo que deja leer
 	# sus movimientos y poder esquivarlos.
 	_body.bot_wants_run = dist > MELEE_RANGE + 2.5
-	var deseada: Vector3
+
 	if dist > MELEE_RANGE:
-		# Se acerca, pero en diagonal: de frente es un blanco perfecto.
-		deseada = (plano + lateral * 0.35).normalized()
+		# LEJOS: va por el camino del navmesh, que rodea las coberturas.
+		#
+		# El strafe lateral se suma SOLO un poco y solo en los ultimos metros. Mezclarlo
+		# durante todo el trayecto desviaba al bot del camino calculado y volvia a
+		# meterlo contra las paredes, que es justo lo que el navmesh viene a resolver.
+		var camino := _rumbo_navegado(target.global_position)
+		if dist < MELEE_RANGE + 6.0:
+			# Solo en los ultimos metros se le suma strafe y separacion. Durante el
+			# trayecto largo manda el camino y nada mas: cualquier cosa que se le sume
+			# ahi lo desvia de la ruta y lo vuelve a meter contra una pared.
+			camino = (camino + lateral * 0.35 + _separacion()).normalized()
+		_body.bot_move_dir = camino
 	elif dist < TOO_CLOSE:
-		deseada = (-plano + lateral * 0.5).normalized()
+		# PEGADO: ya no hace falta camino, y a un metro el navmesh devuelve rumbos
+		# erraticos porque el objetivo esta dentro del radio del punto actual.
+		_body.bot_move_dir = (-plano + lateral * 0.5 + _separacion()).normalized()
 	else:
-		deseada = lateral
-	_body.bot_move_dir = _esquivar(deseada)
+		_body.bot_move_dir = (lateral + _separacion()).normalized()
 
 	_try_attack(dist)
 
@@ -217,42 +274,63 @@ func _go_home() -> void:
 		_body.bot_wants_run = false
 		return
 	_body.bot_wants_run = hacia.length() > 8.0
-	_body.bot_move_dir = _esquivar(hacia.normalized())
+	_body.bot_move_dir = _rumbo_navegado(home)
 	_body.bot_look_yaw = atan2(-hacia.x, -hacia.z)
 
 
-## Esquiva lo que tenga adelante desviando la direccion, sin navmesh.
+## Empujon lateral para no encimarse con los otros bots.
 ##
-## POR QUE HACE FALTA: el mapa tiene 18 coberturas y el bot va derecho a donde esta el
-## jugador. Sin esto se clava contra el primer bloque que se le cruza y se queda
-## empujando la pared, que es la forma mas rapida de que un bot se vea roto. Medido
-## antes de agregarlo: cerraba 4 metros en dos segundos corriendo a 9.
-##
-## No es pathfinding: no rodea un laberinto. Alcanza para coberturas sueltas, que es lo
-## que hay, y cuesta tres rayos cortos cada 200 ms.
-func _esquivar(deseada: Vector3) -> Vector3:
-	if deseada.is_zero_approx():
-		return deseada
-	if _libre(deseada):
-		return deseada
-	# Bloqueado de frente: probamos abrirnos, primero poco y despues mucho, y hacia el
-	# lado al que ya venia haciendo strafe para no dudar y quedarse temblando.
-	for grados: float in [45.0, -45.0, 80.0, -80.0]:
-		var giro := deseada.rotated(Vector3.UP, deg_to_rad(grados * _strafe_dir))
-		if _libre(giro):
-			return giro
-	return deseada
+## Los bots no colisionan entre si (su mascara es solo el mundo), asi que sin esto
+## terminan literalmente adentro del mismo espacio. Medido: 0.7 metros entre los tres.
+func _separacion() -> Vector3:
+	var empuje := Vector3.ZERO
+	for node: Node in get_tree().get_nodes_in_group("players"):
+		var otro := node as Player
+		if otro == null or otro == _body or not otro.is_dummy:
+			continue
+		if not is_instance_valid(otro) or otro.health.is_dead:
+			continue
+		var d := _body.global_position - otro.global_position
+		d.y = 0.0
+		var dist := d.length()
+		if dist > SEPARACION or dist < 0.01:
+			continue
+		# Cuanto mas cerca, mas fuerte. Al borde del radio no aporta nada, asi que no
+		# desvia a un bot que ya estaba lo bastante lejos.
+		empuje += d.normalized() * (1.0 - dist / SEPARACION)
+	# Flojo a proposito: es un empujon que corrige, no un rumbo que manda. Con 0.9
+	# competia con el camino del navmesh, sacaba a los bots de la ruta y uno de los
+	# tres volvia a quedarse trabado el 29% del tiempo.
+	return empuje * 0.4
 
 
-func _libre(dir: Vector3) -> bool:
-	var space := _body.get_world_3d().direct_space_state
-	if space == null:
-		return true
-	# A la altura del pecho: a la altura de los pies pegaria contra cualquier rampa.
-	var desde := _body.global_position + Vector3.UP * 1.0
-	var query := PhysicsRayQueryParameters3D.create(desde, desde + dir.normalized() * AVOID_DISTANCE)
-	query.collision_mask = GameConfig.LAYER_WORLD
-	return space.intersect_ray(query).is_empty()
+## Rumbo hacia `destino` segun el camino del navmesh.
+##
+## Devuelve la direccion al PROXIMO punto del camino, no al destino final: eso es lo que
+## hace que el bot rodee la plataforma central en vez de empotrarse contra ella.
+##
+## Si la navegacion todavia no esta lista (el primer frame, antes de que el mapa termine
+## de hornearse) cae a la linea recta, que es peor pero no es nada.
+func _rumbo_navegado(destino: Vector3) -> Vector3:
+	if _agent == null or not _agent.is_inside_tree():
+		return _recto_hacia(destino)
+	_agent.target_position = destino
+	if not _agent.is_target_reachable():
+		return _recto_hacia(destino)
+	var siguiente := _agent.get_next_path_position()
+	var dir := siguiente - _body.global_position
+	dir.y = 0.0
+	if dir.length() < 0.05:
+		return _recto_hacia(destino)
+	return dir.normalized()
+
+
+func _recto_hacia(destino: Vector3) -> Vector3:
+	var dir := destino - _body.global_position
+	dir.y = 0.0
+	if dir.is_zero_approx():
+		return Vector3.ZERO
+	return dir.normalized()
 
 
 func _is_server() -> bool:

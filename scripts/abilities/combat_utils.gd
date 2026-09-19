@@ -75,6 +75,9 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 	var status := target.get_node_or_null("StatusEffects") as StatusEffects
 	if status != null:
 		mult = status.get_damage_taken_multiplier()
+	# Los bots de practica pegan mas flojo. Se los reconoce por el peer negativo.
+	if source_id < 0:
+		mult *= GameConfig.BOT_DAMAGE_SCALE
 	var final_amount := amount * mult
 	var was_alive := not health.is_dead
 	health.apply_damage(final_amount, source_id)
