@@ -9,6 +9,13 @@ extends Node
 ##   godot --headless --path . -- --server 27098          <- el juego de verdad, modo servidor
 ##   godot --headless --path . res://tests/server_test.tscn -- 27098
 ##
+## O contra el servidor DE VERDAD, el que esta publicado:
+##   godot --headless --path . res://tests/server_test.tscn -- wss://crossover-arena.onrender.com
+##
+## Eso ultimo es lo unico que prueba el sistema entero de punta a punta: el Dockerfile,
+## el proxy del hosting, el TLS y el juego. Un servidor que contesta el apreton de manos
+## todavia puede estar sin arrancar la partida o spawneandose a si mismo.
+##
 ## Verifica lo que romperia la version online:
 ##   - que el servidor NO se spawnee a si mismo (si no, hay un jugador fantasma)
 ##   - que arranque la partida solo cuando entra alguien
@@ -19,6 +26,7 @@ const TIMEOUT: float = 90.0
 ## Puerto donde no escucha nadie, para probar el arranque en frio.
 const DEAD_PORT: int = 27011
 
+var _host: String = "127.0.0.1"
 var _port: int = 27098
 var _main: Node = null
 var _failures: Array[String] = []
@@ -28,10 +36,18 @@ var _finished: bool = false
 
 
 func _ready() -> void:
+	# Acepta "PUERTO" (local, como siempre) o "HOST [PUERTO]" para un servidor remoto.
 	var args := OS.get_cmdline_user_args()
-	if args.size() > 0 and String(args[0]).is_valid_int():
-		_port = String(args[0]).to_int()
-	print("[cliente] conectando al servidor dedicado en el puerto %d" % _port)
+	if args.size() > 0:
+		if String(args[0]).is_valid_int():
+			_port = String(args[0]).to_int()
+		else:
+			_host = String(args[0])
+			if args.size() > 1 and String(args[1]).is_valid_int():
+				_port = String(args[1]).to_int()
+			else:
+				_port = 443  # wss:// por defecto; build_url lo ignora si la URL trae esquema
+	print("[cliente] conectando al servidor dedicado en %s:%d" % [_host, _port])
 
 	# OJO: Main va colgado de /root, NO de este nodo.
 	#
@@ -56,7 +72,7 @@ func _run() -> void:
 	# Le damos al servidor tiempo de levantarse y a Main de entrar al arbol.
 	await _wait(2.0)
 
-	var err := Net.join_game("127.0.0.1", _port, "Cliente")
+	var err := Net.join_game(_host, _port, "Cliente")
 	_check(err == OK, "el cliente inicio la conexion al servidor dedicado")
 	if err != OK:
 		_finish()
@@ -64,7 +80,7 @@ func _run() -> void:
 
 	# El servidor arranca la partida SOLO, sin que nadie toque un boton.
 	var waited := 0.0
-	while not Net.in_match and waited < 12.0:
+	while not Net.in_match and waited < 25.0:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 	_check(Net.is_connected_to_game(), "el cliente quedo conectado")

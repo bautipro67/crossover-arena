@@ -14,7 +14,7 @@ const DEFAULT_PORT: int = 27015
 ## Poné la URL COMPLETA con wss://, por ejemplo "wss://juego.midominio.com".
 ## Tiene que ser wss:// y no ws://: itch.io sirve la pagina por HTTPS y el navegador
 ## bloquea un WebSocket inseguro desde una pagina segura. Ver docs/SERVIDOR.md.
-const OFFICIAL_SERVER_URL: String = ""
+const OFFICIAL_SERVER_URL: String = "wss://crossover-arena.onrender.com"
 const MAX_PLAYERS: int = 8
 
 ## Cada cuanto el cliente le manda su transform al servidor.
