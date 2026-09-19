@@ -116,8 +116,69 @@ func _run() -> void:
 	_check(player.stamina.current < before,
 		"el servidor autorizo la habilidad y cobro la stamina (%.0f -> %.0f)" % [before, player.stamina.current])
 
+	# La habilidad 2 recien spawneado, SIN tocarle nada al estado local. Es exactamente
+	# lo que hace un jugador que entra y aprieta E, y es donde aparecio el problema.
+	var motivo := {"txt": ""}
+	var escucha := func(_i: int, reason: String) -> void: motivo["txt"] = reason
+	player.caster.ability_failed.connect(escucha)
+	player.caster.request_use(2)
+	await _wait(2.0)
+	player.caster.ability_failed.disconnect(escucha)
+	_check(String(motivo["txt"]).is_empty(),
+		"la habilidad 2 sale recien spawneado (motivo: '%s')" % String(motivo["txt"]))
+	_check(player.health.shield > 0.0,
+		"el servidor mando el escudo al cliente (%.0f)" % player.health.shield)
+
+	await _test_kit_completo(player)
 	await _test_servidor_dormido()
 	_finish()
+
+
+## Que el servidor CONOZCA todas las habilidades del kit, no solo las primeras.
+##
+## POR QUE: cliente y servidor construyen el kit cada uno con su propia copia del
+## codigo. Si el servidor quedo en una version vieja con menos habilidades, el indice 2
+## significa cosas distintas en cada lado: el cliente pide su tercera habilidad y el
+## servidor evalua el ultimate, lo rechaza por falta de carga, y el jugador ve que la
+## tecla "no hace nada" sin ningun mensaje que lo explique.
+##
+## OJO CON QUE SE AFIRMA: "en cooldown" o "sin stamina" son respuestas LEGITIMAS. El
+## servidor lleva su propia stamina y sus propios cooldowns, y restaurarlos en el
+## cliente (restore_full, reset_state) no lo toca. Dar esos rechazos por error hacia
+## fallar el test por algo que funciona bien.
+##
+## Lo que SI es sintoma de desincronizacion:
+##   - "habilidad invalida"  -> el servidor tiene un kit mas corto
+##   - "sin carga" en algo que no es el ultimate -> los indices no coinciden
+func _test_kit_completo(player: Player) -> void:
+	var total := player.caster.abilities.size()
+	var capturado := {"motivo": ""}
+	var on_fail := func(_i: int, reason: String) -> void: capturado["motivo"] = reason
+	player.caster.ability_failed.connect(on_fail)
+
+	for i: int in range(total):
+		var ability := player.caster.abilities[i]
+		if ability.requires_charge:
+			# El ultimate necesita stamina y medidor llenos EN EL SERVIDOR, y eso no se
+			# puede forzar desde aca. Probarlo daria un rechazo legitimo y ruidoso.
+			continue
+
+		# Esperamos el cooldown de verdad, el del servidor, no el que reseteamos local.
+		await _wait(ability.cooldown + 0.6)
+		capturado["motivo"] = ""
+		player.caster.reset_state()
+		player.caster.request_use(i)
+		await _wait(1.0)
+
+		var motivo := String(capturado["motivo"])
+		var desincronizado := motivo.contains("invalida") or motivo.contains("carga")
+		_check(not desincronizado, "el servidor conoce [%d] %s%s" % [
+			i, ability.display_name, "" if not desincronizado else "  <- " + motivo])
+		if desincronizado:
+			print("  AVISO: el servidor tiene un kit distinto al del cliente.")
+			print("         Redesplegalo: esta corriendo una version vieja del juego.")
+
+	player.caster.ability_failed.disconnect(on_fail)
 
 
 ## Lo que pasa SIEMPRE en un hosting gratuito: la instancia esta apagada y el primer

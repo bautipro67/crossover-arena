@@ -333,62 +333,10 @@ func spawn_muda_flurry(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	Sfx.play_3d(caster, &"hit_punch", origin, -3.0)
 
 
-## Barrera de hielo de Noelle. Cupula facetada que la sigue y se rompe cuando
-## se acaba el escudo.
-##
-## A proposito NO se parece al hielo de un congelado: aquel es una capsula lisa que te
-## deja indefenso, esta es una cascara con aristas que te protege. Si se vieran igual,
-## el rival no sabria si conviene entrar a pegar o alejarse.
+## Barrera de hielo de Noelle. La logica vive en IceBarrier, que se autodestruye sola
+## cuando se acaba el escudo o el tiempo.
 func spawn_ice_barrier(target: Node3D, duration: float) -> Node3D:
-	if not is_instance_valid(target):
-		return null
-	var dome := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.95
-	sphere.height = 2.3
-	# Pocos segmentos = caras planas grandes, o sea cristal y no pelota.
-	sphere.radial_segments = 7
-	sphere.rings = 4
-	dome.mesh = sphere
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.62, 0.88, 1.0, 0.30)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.emission_enabled = true
-	mat.emission = Color(0.55, 0.85, 1.0)
-	mat.emission_energy_multiplier = 1.5
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
-	dome.material_override = mat
-	target.add_child(dome)
-	dome.position = Vector3(0.0, 1.0, 0.0)
-
-	# Placas girando alrededor: dan la lectura de "esto esta activo" sin tener que
-	# mirar el HUD, que en pelea nadie mira.
-	var ring := Node3D.new()
-	dome.add_child(ring)
-	for i: int in range(5):
-		var shard := MeshInstance3D.new()
-		var prism := PrismMesh.new()
-		prism.size = Vector3(0.26, 0.5, 0.1)
-		shard.mesh = prism
-		shard.material_override = mat
-		ring.add_child(shard)
-		var ang := TAU * float(i) / 5.0
-		shard.position = Vector3(cos(ang) * 1.05, 0.0, sin(ang) * 1.05)
-		shard.rotation.y = -ang
-	var spin := ring.create_tween().set_loops()
-	spin.tween_property(ring, "rotation:y", TAU, 3.2).from(0.0)
-
-	# Se va sola cuando el escudo llega a cero, aunque falte tiempo.
-	var health := target.get_node_or_null("Health") as Health
-	if health != null:
-		health.shield_changed.connect(func(value: float) -> void:
-			if value <= 0.0 and is_instance_valid(dome):
-				dome.queue_free()
-		)
-	_auto_free(dome, duration)
-	Sfx.play_3d(target, &"freeze", target.global_position + Vector3.UP, -6.0)
-	return dome
+	return IceBarrier.create(target, duration)
 
 
 ## Chispazo cuando el escudo se come un golpe.
