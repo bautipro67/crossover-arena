@@ -117,6 +117,9 @@ func _ready() -> void:
 		_caster.channel_cancelled.connect(_on_channel_cancelled)
 	if _health != null:
 		_health.changed.connect(_on_health_changed)
+		# `damaged` trae el autor del golpe; `changed` no. Hace falta para que el que
+		# pego sienta el impacto y no solo lo vea el que lo recibe.
+		_health.damaged.connect(_on_damaged)
 		_last_health = _health.current
 
 
@@ -255,8 +258,16 @@ func _pose_targets() -> Dictionary:
 func _punch_curve() -> float:
 	if _attack_t <= 0.0:
 		return 0.0
-	var p := 1.0 - _attack_t
-	return sin(PI * pow(clampf(p, 0.0, 1.0), 0.55))
+	var p := clampf(1.0 - _attack_t, 0.0, 1.0)
+	# ANTICIPACION: el primer 18% del movimiento va hacia ATRAS, no hacia adelante.
+	#
+	# Es el truco mas viejo de la animacion y el que mas cambia acá: un brazo que sale
+	# disparado sin cargar se lee como un teletransporte. Con el tironcito previo, el
+	# ojo ve la intencion y el golpe pega mas fuerte sin cambiarle un punto de daño.
+	if p < 0.18:
+		return -0.32 * sin(PI * (p / 0.18))
+	var q := (p - 0.18) / 0.82
+	return sin(PI * pow(q, 0.55))
 
 
 func play_attack() -> void:
@@ -310,11 +321,33 @@ func _clear_channel_fx() -> void:
 
 
 func _on_health_changed(current: float, _max_value: float) -> void:
-	if _last_health >= 0.0 and current < _last_health - 0.01:
-		var amount := _last_health - current
-		_hit_t = 1.0
-		FX.spawn_damage_number(self, global_position + Vector3.UP * 1.9, amount, amount >= 90.0)
 	_last_health = current
+
+
+## Un golpe que conecto. Tres cosas distintas para tres publicos:
+##   - el numero y el respingo los ve TODO el mundo (pasa algo, y a quien);
+##   - el anillo de impacto marca el punto exacto;
+##   - el temblor lo siente SOLO el que pego.
+func _on_damaged(amount: float, source_id: int) -> void:
+	if amount <= 0.01:
+		return
+	_hit_t = 1.0
+	var punto := global_position + Vector3.UP * 1.25
+	FX.spawn_damage_number(self, global_position + Vector3.UP * 1.9, amount, amount >= 90.0)
+
+	var color := Color(1.0, 0.62, 0.45) if amount < 90.0 else Color(1.0, 0.85, 0.4)
+	FX.spawn_hit_impact(self, punto, amount, color)
+
+	if source_id == Net.local_id() and source_id != _peer_id_del_cuerpo():
+		FX.hit_feedback_for_attacker(amount)
+
+
+## El peer del jugador al que pertenece este visual. Sirve para no temblar cuando el
+## golpe te lo pegaste a vos mismo (dummies, daño de entorno).
+func _peer_id_del_cuerpo() -> int:
+	if is_instance_valid(_body):
+		return int(_body.get("peer_id"))
+	return 0
 
 
 # --------------------------------------------------------------- Construccion

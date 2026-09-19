@@ -156,9 +156,17 @@ func _is_server() -> bool:
 @rpc("authority", "call_remote", "reliable")
 func _push_state(value: float, max_value: float, dead: bool, killer_id: int) -> void:
 	var was_dead := is_dead
+	var antes := current
 	current = value
 	max_health = max_value
 	is_dead = dead
+	# Los clientes tambien emiten `damaged`, no solo `changed`.
+	#
+	# POR QUE IMPORTA: `changed` no dice QUIEN pego. Sin el autor, el que dio el golpe
+	# no puede sentirlo — ni temblor de camara ni impacto — y pegar se siente como
+	# apretar un boton que cambia un numero en la pantalla del otro.
+	if current < antes - 0.01:
+		damaged.emit(antes - current, killer_id)
 	changed.emit(current, max_health)
 	if is_dead and not was_dead:
 		died.emit(killer_id)

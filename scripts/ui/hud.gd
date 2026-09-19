@@ -20,6 +20,15 @@ var _player: Player = null
 var _health_fill: Panel = null
 var _health_label: Label = null
 var _shield_fill: Panel = null
+var _chip_fill: Panel = null
+## Hacia donde tiene que ir la barra fantasma, y donde esta ahora.
+var _chip_ratio: float = 1.0
+var _pulse_t: float = 0.0
+var _chip_delay: float = 0.0
+
+## Rojo apagado: tiene que leerse como "esto lo perdiste recien", no competir con la
+## barra verde ni con el rojo de peligro.
+const CHIP_COLOR: Color = Color(0.72, 0.24, 0.26)
 
 ## Celeste claro, distinto del azul de la stamina: son dos recursos y confundirlos
 ## en pelea te hace tomar la decision equivocada.
@@ -128,6 +137,21 @@ func _build_bars(root: Control) -> void:
 	# El escudo se dibuja ENCIMA de la barra de vida, no al lado. Asi se lee de un
 	# vistazo cuanto aguantas en total, que es la pregunta que te haces en pelea;
 	# una segunda barra aparte te obliga a sumar mentalmente.
+	# Barra fantasma DETRAS de la vida: se queda donde estabas y baja despacio.
+	#
+	# POR QUE: la barra normal salta al valor nuevo al instante, asi que un golpe de 22
+	# y uno de 65 se ven igual de rapido — solo cambia donde queda. La fantasma muestra
+	# CUANTO te acaban de sacar, que es la informacion que te hace decidir si seguis
+	# peleando o te tapas. Es el mismo truco de los juegos de pelea.
+	_chip_fill = Panel.new()
+	_chip_fill.add_theme_stylebox_override("panel", UITheme.bar_style(CHIP_COLOR, 7))
+	_chip_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_chip_fill.anchor_right = 1.0
+	_chip_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	health_bar[0].add_child(_chip_fill)
+	# La vida va ENCIMA de la fantasma, si no la tapa.
+	health_bar[0].move_child(_health_fill, -1)
+
 	_shield_fill = Panel.new()
 	_shield_fill.add_theme_stylebox_override("panel", UITheme.bar_style(SHIELD_COLOR, 7))
 	_shield_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -299,6 +323,7 @@ func bind_player(player: Player) -> void:
 	_unbind_player()
 	_player = player
 	_player.health.changed.connect(_on_health_changed)
+	_player.health.damaged.connect(_on_player_damaged)
 	_player.health.shield_changed.connect(_on_shield_changed)
 	_player.health.died.connect(_on_local_died)
 	_player.respawned.connect(_on_local_respawned)
@@ -325,6 +350,7 @@ func _unbind_player() -> void:
 		return
 	var pairs: Array = [
 		[_player.health.changed, _on_health_changed],
+		[_player.health.damaged, _on_player_damaged],
 		[_player.health.shield_changed, _on_shield_changed],
 		[_player.health.died, _on_local_died],
 		[_player.respawned, _on_local_respawned],
@@ -465,6 +491,9 @@ func _build_stamina_markers() -> void:
 # ----------------------------------------------------------------------- Update
 
 func _process(delta: float) -> void:
+	_update_chip(delta)
+	_update_stamina_pulse(delta)
+
 	if _flash_time > 0.0:
 		_flash_time = maxf(0.0, _flash_time - delta * 3.0)
 		_stamina_flash.color = Color(1.0, 0.3, 0.3, _flash_time * 0.6)
@@ -484,6 +513,46 @@ func _process(delta: float) -> void:
 	_update_dash()
 	_update_channel()
 	_update_target_info()
+
+
+## La barra de stamina late cuando queda poca.
+##
+## POR QUE: la stamina es el recurso que decide si podes tirar la habilidad, y en
+## pelea nadie mira la esquina inferior izquierda. El latido lo hace notar con la
+## vision periferica, que es la unica disponible mientras esquivas.
+func _update_stamina_pulse(delta: float) -> void:
+	if _stamina_fill == null or not is_instance_valid(_player):
+		return
+	var ratio := _player.stamina.get_ratio()
+	_pulse_t += delta
+	if ratio > 0.3:
+		_stamina_fill.modulate = Color.WHITE
+		return
+	# Cuanto menos queda, mas rapido y mas marcado.
+	var vel := lerpf(3.0, 7.5, 1.0 - ratio / 0.3)
+	var onda := 0.5 + 0.5 * sin(_pulse_t * vel)
+	_stamina_fill.modulate = Color.WHITE.lerp(Color(1.0, 0.55, 0.5), onda * 0.75)
+
+
+## La barra fantasma: espera un momento y despues baja hasta la vida real.
+##
+## La pausa antes de empezar a bajar es lo que la hace legible. Sin ella baja junto con
+## la vida y no se ve nada.
+func _update_chip(delta: float) -> void:
+	if _chip_fill == null or not is_instance_valid(_player):
+		return
+	var objetivo := _health_fill.anchor_right
+	if _chip_ratio <= objetivo:
+		# Curaste o respawneaste: la fantasma alcanza a la vida sin demora.
+		_chip_ratio = objetivo
+		_chip_delay = 0.0
+	elif _chip_delay > 0.0:
+		_chip_delay = maxf(0.0, _chip_delay - delta)
+	else:
+		_chip_ratio = maxf(objetivo, _chip_ratio - delta * 0.55)
+	_chip_fill.anchor_left = 0.0
+	_chip_fill.anchor_right = _chip_ratio
+	_chip_fill.visible = _chip_ratio > objetivo + 0.001
 
 
 func _update_abilities() -> void:
@@ -618,6 +687,11 @@ func _on_health_changed(current: float, max_value: float) -> void:
 ## escudo no le quedaba barra, justo en el caso mas comun (te escudas antes de que te
 ## peguen). Reescalar hace que el verde encoja y el celeste aparezca; la barra sigue
 ## llena, que es la lectura correcta: estas al maximo efectivo.
+## Medio segundo quieta antes de bajar: es lo que la hace ver.
+func _on_player_damaged(_amount: float, _source_id: int) -> void:
+	_chip_delay = 0.5
+
+
 func _on_shield_changed(value: float) -> void:
 	if _shield_fill == null or not is_instance_valid(_player):
 		return

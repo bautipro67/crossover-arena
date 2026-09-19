@@ -117,7 +117,31 @@ static func make_button(text: String, accent: bool = false) -> Button:
 	b.add_theme_color_override("font_hover_color", TEXT)
 	b.add_theme_color_override("font_pressed_color", TEXT)
 	b.pressed.connect(func() -> void: Sfx.play_2d(&"ui_click", -8.0))
+
+	# --- Reaccion al mouse ---
+	#
+	# Los estilos de hover/pressed ya cambiaban el color, pero un cambio de color solo
+	# no se siente: el boton no ACUSA el toque. Un crecimiento del 2.5% al pasar por
+	# encima y un hundimiento al apretar hacen que responda como un boton fisico, y
+	# cuestan dos tweens.
+	#
+	# El pivote se recalcula en cada resize porque un Control escala desde su esquina
+	# superior izquierda: sin centrarlo, el boton crece hacia abajo y a la derecha y se
+	# ve como si se desalineara.
+	b.resized.connect(func() -> void: b.pivot_offset = b.size * 0.5)
+	b.mouse_entered.connect(func() -> void: _escalar(b, 1.025, 0.10))
+	b.mouse_exited.connect(func() -> void: _escalar(b, 1.0, 0.10))
+	b.button_down.connect(func() -> void: _escalar(b, 0.975, 0.06))
+	b.button_up.connect(func() -> void: _escalar(b, 1.0, 0.09))
 	return b
+
+
+static func _escalar(control: Control, destino: float, tiempo: float) -> void:
+	if not is_instance_valid(control):
+		return
+	var tw := control.create_tween()
+	tw.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(control, "scale", Vector2(destino, destino), tiempo)
 
 
 static func _button_style(bg: Color, accent: bool) -> StyleBoxFlat:

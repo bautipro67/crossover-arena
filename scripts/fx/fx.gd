@@ -116,7 +116,127 @@ func spawn_melee_arc(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	world.add_child(slash)
 	slash.global_position = origin + dir.normalized() * 1.2
 	_auto_free(slash, 0.9)
+	spawn_slash_arc(caster, origin, dir, Color(0.80, 0.94, 1.0))
 	Sfx.play_3d(caster, &"hit_ice", origin, -4.0)
+
+
+## Impacto de un golpe que CONECTO. Es lo que hace que pegar se sienta.
+##
+## Antes, acertar un golpe basico producia un puñado de particulas y un numero. Se veia
+## que pasaba algo, pero no se SENTIA: el mismo efecto que tiene errar, mas un numero.
+## Lo que da peso es la combinacion de tres cosas baratas:
+##
+##   1. un anillo que se expande en el punto exacto del impacto, que marca DONDE;
+##   2. un destello corto, que marca CUANDO;
+##   3. temblor de camara proporcional al daño, SOLO para el que pego.
+##
+## El punto 3 es el importante y el que faltaba. El temblor estaba solo en los
+## ultimates, asi que el 90% de los golpes del juego no movian nada.
+func spawn_hit_impact(context: Node, position: Vector3, amount: float, color: Color) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+
+	# Anillo que se abre. Un toro plano escalado por un tween: se lee como una onda.
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.34
+	torus.outer_radius = 0.46
+	ring.mesh = torus
+	var mat := Art.glow(color, 2.4)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ring.material_override = mat
+	world.add_child(ring)
+	ring.global_position = position
+	# De canto hacia la camara: un anillo horizontal casi no se ve desde atras del hombro.
+	ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	if _camera != null and is_instance_valid(_camera):
+		ring.look_at(_camera.global_position, Vector3.UP)
+
+	var escala := 1.0 + clampf(amount / 40.0, 0.2, 2.2)
+	var tw := ring.create_tween().set_parallel()
+	tw.tween_property(ring, "scale", Vector3.ONE * escala, 0.26).from(Vector3.ONE * 0.25)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.26).from(0.95)
+	tw.chain().tween_callback(ring.queue_free)
+
+	# Destello.
+	var luz := OmniLight3D.new()
+	luz.light_color = color
+	luz.light_energy = 2.0 + clampf(amount / 25.0, 0.0, 3.0)
+	luz.omni_range = 4.5
+	luz.shadow_enabled = false
+	world.add_child(luz)
+	luz.global_position = position
+	_fade_light(luz, 0.22)
+
+
+## Temblor para EL QUE PEGO, escalado al daño.
+##
+## Va aparte de spawn_hit_impact porque el impacto lo ve todo el mundo y el temblor
+## solo lo siente el autor: si temblara la camara de todos, cada golpe en la otra punta
+## del mapa te sacudiria la pantalla.
+func hit_feedback_for_attacker(amount: float) -> void:
+	camera_shake(clampf(0.18 + amount * 0.012, 0.18, 1.1))
+
+
+## Arco de un golpe cuerpo a cuerpo: una media luna que barre y se desvanece.
+##
+## Reemplaza a las particulas sueltas del zarpazo: un puñado de puntos no dice en que
+## DIRECCION fue el golpe, y la direccion es justo lo que el rival necesita leer.
+##
+## Se construye con ImmediateMesh y no con un puñado de quads. El primer intento eran
+## seis cuadrados repartidos en abanico y se veian exactamente como lo que eran: seis
+## cuadrados, como postes de una cerca. Una tira de triangulos da una hoja continua,
+## que es lo que el ojo lee como "un tajo".
+func spawn_slash_arc(caster: Node, origin: Vector3, dir: Vector3, color: Color) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var plano := Vector3(dir.x, 0.0, dir.z).normalized()
+	if plano.is_zero_approx():
+		plano = Vector3.FORWARD
+
+	var mat := Art.glow(color, 2.8)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# Sin escritura de profundidad: es una hoja de luz, no un objeto solido, y si
+	# escribe profundidad se recorta contra el cuerpo del que pega.
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+
+	var mesh := ImmediateMesh.new()
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP, mat)
+	var pasos := 16
+	for i: int in range(pasos + 1):
+		var t := float(i) / float(pasos)
+		var ang := deg_to_rad(-46.0 + 92.0 * t)
+		# El grosor se afina en las dos puntas: una media luna, no una banana.
+		var grosor := 1.05 * sin(PI * t)
+		var r_int := 0.95
+		var r_ext := r_int + grosor
+		mesh.surface_add_vertex(Vector3(sin(ang) * r_int, 0.0, -cos(ang) * r_int))
+		mesh.surface_add_vertex(Vector3(sin(ang) * r_ext, 0.0, -cos(ang) * r_ext))
+	mesh.surface_end()
+
+	var hoja := MeshInstance3D.new()
+	hoja.mesh = mesh
+	hoja.material_override = mat
+	world.add_child(hoja)
+	# Adelantada medio metro: centrada en el cuerpo, la mitad del arco queda detras del
+	# personaje y el golpe parece salir de la espalda.
+	var centro := origin + plano * 0.45
+	hoja.global_position = centro
+	hoja.look_at(centro + plano, Vector3.UP)
+	# Inclinada: una media luna horizontal, vista desde atras del hombro, se ve de
+	# canto y practicamente desaparece.
+	hoja.rotate_object_local(Vector3.RIGHT, deg_to_rad(-28.0))
+
+	# Barre de un lado al otro mientras se apaga.
+	var tw := hoja.create_tween().set_parallel()
+	var giro_final := hoja.rotation.y + deg_to_rad(34.0)
+	var giro_inicial := hoja.rotation.y - deg_to_rad(26.0)
+	tw.tween_property(hoja, "rotation:y", giro_final, 0.28).from(giro_inicial)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.28).from(1.0)
+	tw.chain().tween_callback(hoja.queue_free)
 
 
 ## Snowgrave. Tiene que ser el momento mas dramatico del juego:
@@ -330,6 +450,7 @@ func spawn_muda_flurry(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	world.add_child(flurry)
 	flurry.global_position = origin + dir.normalized() * 1.2
 	_auto_free(flurry, 1.0)
+	spawn_slash_arc(caster, origin, dir, Color(1.0, 0.86, 0.38))
 	Sfx.play_3d(caster, &"hit_punch", origin, -3.0)
 
 
