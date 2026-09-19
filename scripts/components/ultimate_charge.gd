@@ -18,10 +18,13 @@ signal became_ready()
 
 const MAX_CHARGE: float = 100.0
 
-## Carga por punto de daño infligido. Con 0.8, cien de daño te deja al 80%.
-@export var charge_per_damage: float = 0.8
-## Bonus al matar: redondea el ciclo en "una kill, un ultimate".
-@export var charge_on_kill: float = 25.0
+## Carga por punto de daño infligido. Con 0.45 hacen falta ~222 de daño para llenarlo.
+##
+## Antes era 0.8 (125 de daño) y el ultimate salia casi una vez por vida. A 0.45 hay que
+## ganarselo: son dos o tres intercambios completos, no uno.
+@export var charge_per_damage: float = 0.45
+## Bonus al matar: redondea el ciclo, pero ya no regala medio medidor.
+@export var charge_on_kill: float = 20.0
 
 var current: float = 0.0
 var owner_peer_id: int = 1

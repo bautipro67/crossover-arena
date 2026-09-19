@@ -18,7 +18,15 @@ Hay **tres builds**, todos en `build/`:
 | `CrossoverArena-windows.zip` (35 MB) | Descarga para Windows |
 | `server/crossover-server.x86_64` (68 MB) | Servidor dedicado, por si lo corrés en un VPS. Un solo archivo, `.pck` embebido |
 
-**Para dejar el juego online para todos, gratis: [docs/SERVIDOR.md](docs/SERVIDOR.md).**
+**Para dejar el juego online para todos, gratis: [docs/SERVIDOR.md](docs/SERVIDOR.md)**
+— la guía va paso a paso, desde `git init` hasta el botón de Render y la subida a itch.
+
+Para saber si un servidor está vivo sin reexportar nada:
+
+```bash
+python tools/probar_servidor.py https://crossover-arena.onrender.com
+```
+
 Va en [Render](https://render.com) en plan gratuito, que regala el subdominio y el
 certificado TLS — y sin TLS la versión de itch.io no se conecta a nada, porque el
 navegador bloquea un WebSocket inseguro abierto desde una página HTTPS.
@@ -78,7 +86,8 @@ y el host puede arrancar otra sin que nadie se reconecte.
 | Dash | `Shift` | **No** — cooldown de 1.4s, con i-frames |
 | Saltar | `Espacio` | **No** |
 | Golpe básico | Click izquierdo | **No** |
-| Habilidad | Click derecho | **Sí** |
+| Habilidad 1 | Click derecho | **Sí** |
+| Habilidad 2 | `E` | **Sí** |
 | Ultimate | `Q` | **Sí** |
 | Marcador | `Tab` | — |
 | Pausa / opciones | `Esc` | — |
@@ -90,6 +99,26 @@ En los dos casos correr es gratis.
 > **La regla de la stamina:** existe **solo** para las habilidades. Correr, golpear y
 > dashear son gratis, siempre, para todos los personajes. El dash se limita con
 > cooldown, no con stamina. Hay tests que fallan si alguien rompe esto.
+
+### La economía de stamina: se recupera pegando
+
+La regeneración pasiva es **lenta a propósito** (8 por segundo: doce segundos para llenar
+la barra parado). Esperar no es una estrategia.
+
+La vía rápida es **acertar golpes**: cada punto de daño que infligís te devuelve 0.35 de
+stamina. Un Icicle Strike de 11 te devuelve ~4, un Ice Shock de 22 te devuelve ~8. O sea
+que el que entra a pelear recupera y el que se esconde a esperar la barra, no.
+
+Dos detalles que hacen que funcione:
+
+- **El golpe paga también durante la pausa post-gasto.** Esa pausa existe para que no
+  spamees habilidades, no para castigarte por acertar; si no pagara durante esos 0.8s, el
+  recurso se sentiría roto justo cuando entrás a pelear.
+- **El daño de los ultimates no paga nada**, ni stamina ni medidor. Un Snowgrave de 260
+  te devolvería la barra entera y se pagaría el siguiente solo.
+
+El golpe básico es gratis, así que **siempre** hay una forma de volver a tener stamina,
+incluso a cero. Lo que no hay es forma de tenerla sin arriesgar.
 
 Para rebindear, editá la tabla `BINDINGS` en
 [`scripts/core/game_config.gd`](scripts/core/game_config.gd). El InputMap se registra
@@ -170,6 +199,10 @@ Dos reglas que sostienen el sistema:
   que va perdiendo. Dejarla es lo que le da al que pierde una herramienta para dar vuelta
   la pelea, que es para lo que sirve un ultimate.
 
+El medidor sube **0.45 por punto de daño**, o sea que hacen falta unos **222 de daño**
+para llenarlo: dos o tres intercambios completos, no uno. Antes era 0.8 (125 de daño) y
+el ultimate salía casi una vez por vida.
+
 El HUD tiene una tercera barra dorada abajo de la stamina, y la carta del ultimate muestra
 el porcentaje mientras no esté listo.
 
@@ -179,11 +212,12 @@ el porcentaje mientras no esté listo.
 
 Control a distancia. No mata sola: prepara la matada.
 
-| Habilidad | Costo | CD | Qué hace |
-|---|---|---|---|
-| **Icicle Strike** | 0 | 0.5s | 11 de daño, cono 3.2m, **+1 escarcha** |
-| **Ice Shock** | 28 | 3.5s | Proyectil, 22 de daño, **+2 escarcha**, ralentiza 25% |
-| **Snowgrave** | **100 + medidor** | 10s | Canaliza 1.5s, cono 20m. **65 normal — 260 si está CONGELADO** |
+| Habilidad | Tecla | Costo | CD | Qué hace |
+|---|---|---|---|---|
+| **Icicle Strike** | Click izq | 0 | 0.5s | 11 de daño, cono 3.2m, **+1 escarcha** |
+| **Ice Shock** | Click der | 28 | 3.5s | Proyectil, 22 de daño, **+2 escarcha**, ralentiza 25% |
+| **Defensa de Hielo** | E | 30 | 9s | **Escudo de 55 por 5s** y +1 escarcha a todo el que tengas cerca |
+| **Snowgrave** | Q | **100 + medidor** | 10s | Canaliza 1.5s, cono 20m. **65 normal — 260 si está CONGELADO** |
 
 **El sistema de escarcha** es el corazón del kit, y es fiel a la ruta Weird: en Deltarune
 Snowgrave no es un hechizo de daño, es lo que remata a los enemigos ya congelados.
@@ -200,15 +234,26 @@ El canalizado de 1.5s te deja clavado en el piso y se ve de lejos: el rival pued
 la línea de visión detrás de una cobertura. Si te congelan **a vos** durante el
 canalizado, se cancela y recuperás la mitad de la stamina.
 
+**La Defensa de Hielo** es lo que le permite sobrevivir a que le cierren la distancia,
+que es exactamente como se la mata. No cura: levanta un escudo con tiempo limitado, y esa
+diferencia importa — una curación premia esconderse a esperar, un escudo premia apretarlo
+**justo** cuando te entran. Y no es un botón de "no me pegues": la ráfaga de frío que
+suelta al levantarlo deja al que te acorraló un stack más cerca de congelarse, o sea más
+cerca de comerse un Snowgrave.
+
+El escudo se come el daño antes que la vida, y el **sobrante pasa igual**: un escudo de 5
+no anula un Snowgrave de 260.
+
 ### Dio Brando — JoJo's Bizarre Adventure
 
 Corta distancia. El ultimate le abre la ventana; el daño lo mete a mano.
 
-| Habilidad | Costo | CD | Qué hace |
-|---|---|---|---|
-| **MUDA MUDA** | 0 | 0.4s | 13 de daño, cono corto de 3m |
-| **Knife Throw** | 26 | 4s | Tres cuchillos en abanico, 12 cada uno |
-| **ZA WARUDO** | **100 + medidor** | 10s | Canaliza 0.9s, **detiene el tiempo 2.2s** en 20m. Al reanudarse, la andanada de cuchillos impacta junta por **65** |
+| Habilidad | Tecla | Costo | CD | Qué hace |
+|---|---|---|---|---|
+| **MUDA MUDA** | Click izq | 0 | 0.4s | 13 de daño, cono corto de 3m |
+| **Knife Throw** | Click der | 26 | 4s | Tres cuchillos en abanico, 12 cada uno |
+| **Ráfaga del Stand** | E | 32 | 8s | **6 golpes de 13 en 0.9s**. Rebusca objetivo en cada golpe: hay que seguir encima del rival |
+| **ZA WARUDO** | Q | **100 + medidor** | 10s | Canaliza 0.9s, **detiene el tiempo 2.2s** en 20m. Al reanudarse, la andanada de cuchillos impacta junta por **65** |
 
 Con el tiempo detenido los demás no se pueden mover ni actuar, y Dio sí. Tres decisiones
 de balance que importan:
@@ -233,7 +278,7 @@ Tres tests headless. Si tocás la economía de stamina, la escarcha o la red, co
 ```bash
 godot --headless --path . res://tests/smoke_test.tscn
 ```
-86 verificaciones: los dos kits, las reglas de stamina (con y sin auto-correr),
+108 verificaciones: los dos kits, las reglas de stamina (con y sin auto-correr),
 escarcha/congelación, la invariante de aturdido-≠-congelado, proyectiles, retroceso
 (dirección, despegue del piso y vuelta del maniquí a su marca), la carga de
 ultimates (que sube pegando, que no sube al recibir, que no se autocarga y que sobrevive

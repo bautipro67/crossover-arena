@@ -75,6 +75,7 @@ func _ready() -> void:
 
 	health.died.connect(_on_died)
 	health.changed.connect(_on_health_changed)
+	health.shield_absorbed.connect(_on_shield_absorbed)
 
 	name_label.text = player_name
 	# Al propio jugador no le mostramos su cartel en la cara.
@@ -254,8 +255,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		caster.request_use(0)
 	elif event.is_action_pressed("ability_1"):
 		caster.request_use(1)
-	elif event.is_action_pressed("ability_ultimate"):
+	elif event.is_action_pressed("ability_2"):
 		caster.request_use(2)
+	elif event.is_action_pressed("ability_ultimate"):
+		# El ultimate es el ULTIMO del kit, no el tercero. El orden del array es el
+		# mismo que el del HUD a proposito: si no coincidieran, cada vez que alguien
+		# agregue una habilidad tendria que acordarse de la excepcion.
+		caster.request_use(3)
 
 
 func _try_dash() -> void:
@@ -326,6 +332,12 @@ func _on_died(killer_id: int) -> void:
 	collision.disabled = true
 	name_label.visible = false
 	died.emit(killer_id)
+
+
+## Chispazo cuando el escudo para un golpe. Sin esto el golpe no se siente: el numero
+## de daño no aparece y parece que la habilidad del rival fallo, no que la frenaste.
+func _on_shield_absorbed(amount: float, _remaining: float) -> void:
+	FX.spawn_shield_hit(self, amount)
 
 
 func _on_health_changed(_current: float, _max_value: float) -> void:

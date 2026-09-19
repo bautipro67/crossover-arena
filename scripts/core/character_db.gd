@@ -82,14 +82,19 @@ func has_character(id: StringName) -> bool:
 ## en el AbilityCaster, pero compartir Resources entre jugadores pide problemas.
 func build_abilities_for(id: StringName) -> Array[Ability]:
 	var list: Array[Ability] = []
+	# EL ORDEN ES EL DEL HUD Y EL DE LAS TECLAS:
+	#   0 = click izquierdo   1 = click derecho   2 = E   3 = Q (ultimate)
+	# El ultimate va siempre ultimo.
 	match id:
 		&"noelle":
 			list.append(NoelleBasicAttack.new())
 			list.append(IceShock.new())
+			list.append(IceDefense.new())
 			list.append(Snowgrave.new())
 		&"dio":
 			list.append(MudaRush.new())
 			list.append(KnifeThrow.new())
+			list.append(StandBarrage.new())
 			list.append(ZaWarudo.new())
 		_:
 			list.append(NoelleBasicAttack.new())

@@ -46,70 +46,183 @@ mismo código que probás local.
 
 ---
 
+## El recorrido completo, de un vistazo
+
+```
+   tu PC                GitHub                 Render              itch.io
+  ┌──────┐   push     ┌────────┐   build     ┌────────┐         ┌────────┐
+  │codigo│ ─────────> │  repo  │ ──────────> │servidor│ <═══════│ juego  │
+  └──────┘            └────────┘             └────────┘  wss:// └────────┘
+                                                  │                  ▲
+                                                  │ te da la URL     │ subis el zip
+                                                  └──────────────────┘
+                                                    publicar.py la escribe
+                                                    adentro del juego
+```
+
+Render **no** lee tu carpeta: lee un repo de GitHub. Por eso el primer paso es empujar el
+código, aunque el servidor no lo vayas a tocar nunca mas.
+
+Y el orden importa: la URL no existe hasta que Render crea el servicio, y el juego la
+necesita adentro. Por eso **el servidor va primero y el juego después**.
+
+---
+
 ## Paso 1: subir el proyecto a GitHub
 
-Render construye desde un repositorio. Desde la carpeta del juego:
+### 1.1 — El repositorio local
+
+Si nunca hiciste `git init` en esta carpeta:
 
 ```bash
-git init && git add -A && git commit -m "CrossoverArena" && git branch -M main
+git init -b main && git add -A && git commit -m "CrossoverArena"
 ```
 
-Creá el repo en GitHub y empujalo:
+`build/` esta en `.gitignore` a proposito: son 44 MB de artefactos que se regeneran, y el
+servidor no los necesita porque corre desde el codigo fuente.
+
+### 1.2 — Crear el repo vacio en GitHub
+
+Entra a **[github.com/new](https://github.com/new)** y:
+
+| Campo | Que poner |
+|---|---|
+| Repository name | `crossover-arena` |
+| Public / Private | Cualquiera. Render funciona con los dos |
+| Add a README file | **DESMARCADO** |
+| Add .gitignore | **None** |
+| Choose a license | **None** |
+
+> **Lo importante son esas tres ultimas.** Si le agregas un README, GitHub crea un commit
+> que tu repo local no tiene, el primer `push` se rechaza con *"failed to push some refs"*
+> y hay que resolverlo a mano. Un repo vacio evita todo eso.
+
+### 1.3 — Empujar
 
 ```bash
-git remote add origin https://github.com/TU_USUARIO/crossover-arena.git && git push -u origin main
+git remote add origin https://github.com/TU_USUARIO/crossover-arena.git
 ```
 
-`build/` está en `.gitignore` a propósito: son 44 MB de artefactos que se regeneran, y el
-servidor no los necesita porque corre desde el código.
+```bash
+git push -u origin main
+```
+
+Si te pide credenciales, Windows abre una ventana de GitHub para que entres. Tiene que
+terminar con algo como `main -> main`.
 
 ---
 
 ## Paso 2: crear el servicio en Render
 
-1. Entrá a [dashboard.render.com](https://dashboard.render.com) → **New** → **Blueprint**
-2. Elegí el repo. Render lee [`render.yaml`](../render.yaml) y arma el servicio solo
-3. **Apply**. El primer build tarda unos minutos (baja Godot y arma la imagen)
+### 2.1 — Blueprint
 
-Cuando termina, Render te muestra la URL del servicio, algo como:
+1. Entra a **[dashboard.render.com](https://dashboard.render.com)**
+2. Arriba a la derecha: **New +** → **Blueprint**
+3. Si es tu primera vez, te va a pedir conectar GitHub: **Connect GitHub** y le das
+   acceso al repo (podes darle solo a `crossover-arena`, no hace falta a todos)
+4. Elegi `crossover-arena` de la lista → **Connect**
+
+Render lee [`render.yaml`](../render.yaml) y te muestra lo que va a crear: **un** servicio
+web llamado `crossover-arena`, plan **Free**, runtime **Docker**.
+
+5. **Apply**
+
+> **Si no aparece el repo en la lista:** es permiso de GitHub, no de Render. Andá a
+> GitHub → Settings → Applications → Render → Configure y agregá el repositorio.
+
+### 2.2 — Esperar el build
+
+El primer build tarda **entre 4 y 8 minutos**. En la pestaña **Logs** vas a ver, en orden:
+
+```
+==> Cloning from https://github.com/TU_USUARIO/crossover-arena
+==> Building Docker image...
+Step 3/12 : RUN curl -fsSL -o /tmp/godot.zip ...      <- baja Godot, 69 MB
+Step 6/12 : RUN godot --headless --path /app --import
+==> Uploading build...
+==> Deploying...
+```
+
+Y al final, lo unico que te importa:
+
+```
+[servidor] CrossoverArena escuchando WebSocket en el puerto 10000
+==> Your service is live 🎉
+```
+
+Ese numero de puerto **no es 27015 y va a cambiar en cada deploy**: lo elige Render y lo
+pasa por la variable de entorno `PORT`. El juego la lee solo. No la fijes a mano ni le
+pases `--server`: si el servidor escucha en un puerto distinto al que Render espera, el
+deploy queda marcado como caido estando sano.
+
+### 2.3 — La URL
+
+Arriba de todo en la pagina del servicio, debajo del nombre, Render muestra:
 
 ```
 https://crossover-arena.onrender.com
 ```
 
-**Esa URL es la que necesitás.** Si el nombre `crossover-arena` ya estaba tomado por otra
-persona, Render le agrega un sufijo — copiá la que te muestre a vos, no la de este
-ejemplo.
+**Copiá esa, no la de este ejemplo.** Si el nombre `crossover-arena` ya estaba tomado por
+otra persona en Render, la tuya va a tener un sufijo (`crossover-arena-a1b2`).
 
-En los logs del servicio tiene que aparecer:
+### 2.4 — Comprobar que esta vivo ANTES de tocar el juego
+
+```bash
+python tools/probar_servidor.py https://crossover-arena.onrender.com
+```
+
+Esto hace el apretón de manos de WebSocket a mano y te dice donde falla si falla: DNS,
+TCP, TLS o el protocolo. Tiene que terminar en:
 
 ```
-[servidor] CrossoverArena escuchando WebSocket en el puerto 10000
+  [ok]  DNS resuelve a 216.24.57.x
+  [ok]  TCP conectado (0.4s)
+  [ok]  TLS negociado (TLSv1.3)
+  [ok]  apreton de manos WebSocket completo
+
+SERVIDOR VIVO. Tardo 0.6 segundos en contestar.
 ```
 
-El puerto sale de la variable `PORT`, que Render define sola y **cambia en cada deploy**.
-El juego la lee en `Main._server_port_from_args()`; no la fijes a mano ni le pases
-`--server`, porque si el servidor escucha en un puerto distinto al que Render espera, el
-deploy se marca como caído estando sano.
+Hacer esto primero te ahorra muchisimo tiempo: si el servidor esta mal, lo sabes en dos
+segundos en vez de reexportar el juego entero, subirlo a itch y descubrir alla que no
+conecta sin saber de que lado esta el problema.
+
+Si te dice **404**, eso es el proxy de Render y no tu juego: el servicio no esta
+corriendo. Si te dice **502** o **503**, la instancia esta despertando o el deploy se
+cayo. En los dos casos, a los logs.
 
 ---
 
 ## Paso 3: apuntar el juego al servidor
 
-Con la URL que te dio Render:
+Con la URL confirmada:
 
 ```bash
 python tools/publicar.py https://crossover-arena.onrender.com
 ```
 
-Eso hace tres cosas: escribe la URL en `GameConfig.OFFICIAL_SERVER_URL` (pasándola de
-`https://` a `wss://`, que es lo que necesita el WebSocket), reexporta el web y el
-Windows, y rearma los dos `.zip`.
+Eso hace tres cosas de una:
 
-A partir de ahí el menú muestra un botón **JUGAR ONLINE** que entra directo, sin que el
-jugador escriba ninguna dirección.
+1. Escribe la URL en `GameConfig.OFFICIAL_SERVER_URL`, **pasandola de `https://` a
+   `wss://`** — que es lo que necesita el WebSocket, y el error mas facil de cometer a
+   mano porque solo falla en la version web.
+2. Reexporta el build web y el de Windows.
+3. Rearma los dos `.zip`.
 
-Para volver atrás y dejarlo sin servidor oficial: `python tools/publicar.py --sin-servidor`.
+Termina diciendote:
+
+```
+servidor oficial -> wss://crossover-arena.onrender.com
+   zip -> build/CrossoverArena-web.zip (9.2 MB)
+   zip -> build/CrossoverArena-windows.zip (34.4 MB)
+```
+
+A partir de ahi el menu principal muestra un boton **JUGAR ONLINE** que entra directo, sin
+que el jugador escriba ninguna direccion.
+
+Para volver atras y dejarlo sin servidor oficial:
+`python tools/publicar.py --sin-servidor`.
 
 ---
 
@@ -180,6 +293,15 @@ hasta `GameConfig.MAX_PLAYERS`. No hay salas separadas.
 ---
 
 ## Si algo no arranca
+
+**Lo primero, siempre:**
+
+```bash
+python tools/probar_servidor.py https://TU-SERVICIO.onrender.com
+```
+
+Eso separa "el servidor esta mal" de "el juego esta mal", que es la pregunta que hace
+perder mas tiempo. Te dice en que capa se rompe: DNS, TCP, TLS o el protocolo.
 
 **Render dice "no open ports detected".** El servidor no llegó a escuchar. Mirá los logs:
 si no aparece la línea `[servidor] ... escuchando WebSocket en el puerto N`, el proceso

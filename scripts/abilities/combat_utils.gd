@@ -58,10 +58,14 @@ static func has_line_of_sight(from_node: Node3D, origin: Vector3, target: Node3D
 ## Aplica daño pasando por los multiplicadores de status del objetivo.
 ## Es el unico camino que deberian usar las habilidades para dañar.
 ##
-## grants_charge = false para el daño DE LOS ULTIMATES. Sin eso, un Snowgrave de 260
-## carga 208 del medidor y el ultimate se paga el siguiente solo, que es justo lo que
-## el sistema de carga existe para evitar.
-static func deal_damage(target: Node, amount: float, source_id: int, grants_charge: bool = true) -> float:
+## PEGAR PAGA DOS RECURSOS: carga de ultimate y stamina. Los dos salen de aca, y por eso
+## toda habilidad que dañe TIENE que pasar por esta funcion: la que dañe por otro camino
+## no recompensa nada y el jugador no entiende por que.
+##
+## feeds_resources = false para el daño DE LOS ULTIMATES. Sin eso un Snowgrave de 260
+## carga el medidor entero Y devuelve la barra de stamina completa, o sea que el ultimate
+## se paga el siguiente solo: justo lo que estos dos recursos existen para evitar.
+static func deal_damage(target: Node, amount: float, source_id: int, feeds_resources: bool = true) -> float:
 	if not is_instance_valid(target) or amount <= 0.0:
 		return 0.0
 	var health := target.get_node_or_null("Health") as Health
@@ -75,10 +79,7 @@ static func deal_damage(target: Node, amount: float, source_id: int, grants_char
 	var was_alive := not health.is_dead
 	health.apply_damage(final_amount, source_id)
 
-	# Pegar carga el ultimate del atacante. Es la unica via de cargarlo, asi que tiene
-	# que pasar por aca si o si: cualquier habilidad que dañe por otro camino se queda
-	# sin cargar y el jugador no entiende por que.
-	if grants_charge:
+	if feeds_resources:
 		var attacker := find_player_by_peer(target, source_id)
 		if attacker != null:
 			var charge := attacker.get_node_or_null("UltimateCharge") as UltimateCharge
@@ -86,6 +87,11 @@ static func deal_damage(target: Node, amount: float, source_id: int, grants_char
 				charge.add_from_damage(final_amount)
 				if was_alive and health.is_dead:
 					charge.add_kill_bonus()
+			# Y le devuelve stamina. La regeneracion pasiva es lenta a proposito: esta
+			# es la via rapida, y solo la cobra el que se anima a entrar a pegar.
+			var stam := attacker.get_node_or_null("Stamina") as Stamina
+			if stam != null:
+				stam.restore_from_damage(final_amount)
 
 	return final_amount
 

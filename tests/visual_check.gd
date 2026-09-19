@@ -106,6 +106,18 @@ func _run() -> void:
 		# lavado y no se puede juzgar nada.
 		await _face_closeup(player, dummy, "05b_cara_de_cerca")
 
+		# Defensa de Hielo: la barrera encima de Noelle y la barra de escudo del HUD.
+		player.stamina.restore_full()
+		player.caster.reset_state()
+		player.caster.request_use(2)
+		await _wait(0.5)
+		await _shot("05c_defensa_de_hielo")
+		# Y como se ve cuando le pegan con el escudo puesto.
+		CombatUtils.deal_damage(player, 18.0, dummy.peer_id)
+		await _wait(0.3)
+		await _shot("05d_escudo_aguantando")
+
+		player.stamina.restore_full()
 		player.caster.reset_state()
 		player.caster.request_use(1)  # Ice Shock
 		await _wait(0.25)
@@ -122,7 +134,7 @@ func _run() -> void:
 		# no se lo seteamos a mano, asi el disparo demuestra que el sistema funciona.
 		player.stamina.restore_full()
 		player.caster.reset_state()
-		player.caster.request_use(2)
+		player.caster.request_use(3)
 		await _wait(0.9)
 		await _shot("08_canalizando_snowgrave")
 		await _wait(1.2)
@@ -146,11 +158,24 @@ func _run() -> void:
 	await _wait(0.25)
 	await _shot("11_cuchillos")
 
+	# Rafaga del Stand: seis golpes encadenados. Capturamos a mitad de rafaga, que es
+	# donde se ve que son muchos y no uno.
+	await _wait(1.0)
+	var victima := _find_dummy(_main.get_node_or_null("Arena") as Arena)
+	if victima != null:
+		_place(player, victima.global_position + Vector3(0.0, 0.0, 2.2), 0.0)
+		await _wait(0.4)
+		player.stamina.restore_full()
+		player.caster.reset_state()
+		player.caster.request_use(2)
+		await _wait(StandBarrage.TICKS * StandBarrage.TICK_INTERVAL * 0.5)
+		await _shot("11b_rafaga_del_stand")
+
 	await _wait(1.0)
 	player.stamina.restore_full()
 	player.ultimate.current = UltimateCharge.MAX_CHARGE
 	player.caster.reset_state()
-	player.caster.request_use(2)  # ZA WARUDO
+	player.caster.request_use(3)  # ZA WARUDO
 	# Canaliza 0.9s: capturamos la pose de carga antes de que se suelte.
 	await _wait(0.55)
 	await _shot("12_canalizando_zawarudo")

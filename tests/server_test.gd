@@ -82,7 +82,7 @@ func _run() -> void:
 		_finish()
 		return
 
-	_check(player.caster.abilities.size() == 3, "el cliente tiene su kit cargado")
+	_check(player.caster.abilities.size() == 4, "el cliente tiene su kit cargado")
 	_check(player.peer_id == Net.local_id(), "el peer id del jugador es el del cliente")
 
 	# EL CHEQUEO CLAVE: el servidor dedicado NO juega. Si se spawneara a si mismo,

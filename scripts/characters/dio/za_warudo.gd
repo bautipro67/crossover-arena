@@ -76,6 +76,6 @@ func _schedule_burst(caster: Node, targets: Array[Node3D], origin: Vector3) -> v
 		var health := target.get_node_or_null("Health") as Health
 		if health == null or health.is_dead:
 			continue
-		# El daño del ultimate NO carga el medidor: ver deal_damage.
+		# El daño del ultimate NO paga recursos (ni medidor ni stamina): ver deal_damage.
 		CombatUtils.deal_damage(target, BURST_DAMAGE, source_id, false)
 		CombatUtils.apply_knockback(target, target.global_position - origin, BURST_KNOCKBACK, 3.0)

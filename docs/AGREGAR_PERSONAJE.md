@@ -126,9 +126,10 @@ Y el kit en `build_abilities_for()`:
 
 ```gdscript
         &"mi_pj":
-            list.append(MiGolpeBasico.new())
-            list.append(MiHabilidad.new())
-            list.append(MiUltimate.new())
+            list.append(MiGolpeBasico.new())   # 0 -> click izquierdo
+            list.append(MiHabilidad.new())     # 1 -> click derecho
+            list.append(MiSegunda.new())       # 2 -> E
+            list.append(MiUltimate.new())      # 3 -> Q, SIEMPRE ultimo
 ```
 
 El orden del array es el que mandan las teclas:
@@ -214,5 +215,8 @@ godot --headless --path . res://tests/solo_test.tscn
 ```
 
 Conviene agregarle al `smoke_test.gd` un bloque como `_test_dio()` para tu personaje:
-que tenga 3 habilidades, que el slot 0 sea gratis y que los costos sean los que creés.
+que tenga 4 habilidades, que el slot 0 sea gratis y que los costos sean los que creés.
+
+El **orden del array es el de las teclas y el del HUD**, y el ultimate va siempre último.
+Si los desordenás, la Q deja de tirar el ultimate y no hay ningún error que te avise.
 Son diez líneas y te avisa cuando lo rompas dentro de seis meses.

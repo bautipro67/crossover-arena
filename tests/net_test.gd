@@ -77,7 +77,7 @@ func _run_host() -> void:
 		var local := arena.get_local_player()
 		_check(local != null, "[host] el jugador local existe")
 		if local != null:
-			_check(local.caster.abilities.size() == 3, "[host] el jugador local tiene su kit cargado")
+			_check(local.caster.abilities.size() == 4, "[host] el jugador local tiene su kit cargado")
 
 	# Le damos tiempo al cliente a terminar sus chequeos antes de cortar.
 	await _wait(3.0)
@@ -113,7 +113,7 @@ func _run_client() -> void:
 		_check(local != null, "[cliente] su propio jugador existe")
 		if local != null:
 			_check(local.peer_id == Net.local_id(), "[cliente] su jugador tiene el peer id correcto")
-			_check(local.caster.abilities.size() == 3, "[cliente] tiene su kit cargado")
+			_check(local.caster.abilities.size() == 4, "[cliente] tiene su kit cargado")
 
 	_finish()
 

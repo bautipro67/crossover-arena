@@ -151,7 +151,7 @@ func _build_kit() -> void:
 	_kit_box.add_child(UITheme.make_label("De: %s" % data.origin_game, 13, UITheme.TEXT_DIM))
 	_kit_box.add_child(UITheme.make_spacer(4))
 
-	var keys: Array[String] = ["Click izq", "Click der", "Q"]
+	var keys: Array[String] = ["Click izq", "Click der", "E", "Q"]
 	var abilities := CharacterDB.build_abilities_for(_selected_id)
 	for i: int in range(abilities.size()):
 		var ability := abilities[i]

@@ -42,6 +42,8 @@ const BINDINGS: Dictionary = {
 	# Sprint manual. Solo hace falta si apagas "correr automaticamente" en Opciones;
 	# con el auto-correr prendido (por defecto) ya corres sin apretar nada.
 	"sprint": [KEY_CTRL],
+	# Segunda habilidad en E: al lado de WASD, se llega sin soltar el movimiento.
+	"ability_2": [KEY_E],
 	"ability_ultimate": [KEY_Q],
 	"scoreboard": [KEY_TAB],
 }

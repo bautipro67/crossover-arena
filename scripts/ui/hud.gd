@@ -13,12 +13,17 @@ extends CanvasLayer
 ## El dash y el sprint NO aparecen en la barra de stamina porque no la consumen:
 ## el dash tiene su propio indicador de cooldown aparte, para que quede claro.
 
-const KEY_HINTS: Array[String] = ["Click izq", "Click der", "Q"]
+const KEY_HINTS: Array[String] = ["Click izq", "Click der", "E", "Q"]
 
 var _player: Player = null
 
 var _health_fill: Panel = null
 var _health_label: Label = null
+var _shield_fill: Panel = null
+
+## Celeste claro, distinto del azul de la stamina: son dos recursos y confundirlos
+## en pelea te hace tomar la decision equivocada.
+const SHIELD_COLOR: Color = Color(0.66, 0.92, 1.0)
 var _stamina_fill: Panel = null
 var _stamina_label: Label = null
 var _stamina_markers: Control = null
@@ -120,6 +125,18 @@ func _build_bars(root: Control) -> void:
 	holder.add_child(health_bar[0])
 	_health_fill = health_bar[1]
 
+	# El escudo se dibuja ENCIMA de la barra de vida, no al lado. Asi se lee de un
+	# vistazo cuanto aguantas en total, que es la pregunta que te haces en pelea;
+	# una segunda barra aparte te obliga a sumar mentalmente.
+	_shield_fill = Panel.new()
+	_shield_fill.add_theme_stylebox_override("panel", UITheme.bar_style(SHIELD_COLOR, 7))
+	_shield_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_shield_fill.anchor_left = 1.0
+	_shield_fill.anchor_right = 1.0
+	_shield_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_shield_fill.visible = false
+	health_bar[0].add_child(_shield_fill)
+
 	holder.add_child(UITheme.make_spacer(5))
 
 	# --- Stamina: mas alta que la de vida, a proposito. Es el recurso que decide
@@ -159,12 +176,14 @@ func _build_bars(root: Control) -> void:
 
 func _build_abilities(root: Control) -> void:
 	_ability_row = HBoxContainer.new()
+	# Medidas para CUATRO cartas: 4 x 96 + 3 x 8 de separacion = 408, mas 28 de margen.
+	# Con las medidas viejas (3 x 104) la cuarta carta se salia de la pantalla.
 	_ability_row.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_ability_row.offset_left = -360
-	_ability_row.offset_top = -120
+	_ability_row.offset_left = -436
+	_ability_row.offset_top = -128
 	_ability_row.offset_right = -28
 	_ability_row.offset_bottom = -28
-	_ability_row.add_theme_constant_override("separation", 10)
+	_ability_row.add_theme_constant_override("separation", 8)
 	_ability_row.alignment = BoxContainer.ALIGNMENT_END
 	_ability_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_ability_row)
@@ -280,6 +299,7 @@ func bind_player(player: Player) -> void:
 	_unbind_player()
 	_player = player
 	_player.health.changed.connect(_on_health_changed)
+	_player.health.shield_changed.connect(_on_shield_changed)
 	_player.health.died.connect(_on_local_died)
 	_player.respawned.connect(_on_local_respawned)
 	_player.stamina.changed.connect(_on_stamina_changed)
@@ -293,6 +313,7 @@ func bind_player(player: Player) -> void:
 	_build_ability_widgets()
 	_build_stamina_markers()
 	_on_health_changed(_player.health.current, _player.health.max_health)
+	_on_shield_changed(_player.health.shield)
 	_on_stamina_changed(_player.stamina.current, _player.stamina.max_stamina)
 	_on_charge_changed(_player.ultimate.current, UltimateCharge.MAX_CHARGE)
 
@@ -304,6 +325,7 @@ func _unbind_player() -> void:
 		return
 	var pairs: Array = [
 		[_player.health.changed, _on_health_changed],
+		[_player.health.shield_changed, _on_shield_changed],
 		[_player.health.died, _on_local_died],
 		[_player.respawned, _on_local_respawned],
 		[_player.stamina.changed, _on_stamina_changed],
@@ -334,7 +356,7 @@ func _build_ability_widgets() -> void:
 		# sobre fondo oscuro: se lee mucho mejor que texto oscuro sobre color saturado,
 		# y deja que el color identifique la habilidad sin pelear con la legibilidad.
 		var card := Panel.new()
-		card.custom_minimum_size = Vector2(104, 100)
+		card.custom_minimum_size = Vector2(96, 100)
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var style := UITheme.bar_style(_card_color(ability.icon_color, true), 9)
 		card.add_theme_stylebox_override("panel", style)
@@ -585,6 +607,38 @@ func _refresh_scoreboard() -> void:
 func _on_health_changed(current: float, max_value: float) -> void:
 	_health_fill.anchor_right = clampf(current / max_value, 0.0, 1.0) if max_value > 0.0 else 0.0
 	_health_label.text = "VIDA  %d / %d" % [int(ceil(current)), int(max_value)]
+	if is_instance_valid(_player):
+		_on_shield_changed(_player.health.shield)
+
+
+## Con escudo, la barra entera pasa a representar VIDA + ESCUDO.
+##
+## El primer intento apoyaba el celeste sobre el tramo de vida y lo dejaba crecer hacia
+## la derecha. Con la vida llena eso no dibujaba NADA: el verde ya ocupaba el 100% y al
+## escudo no le quedaba barra, justo en el caso mas comun (te escudas antes de que te
+## peguen). Reescalar hace que el verde encoja y el celeste aparezca; la barra sigue
+## llena, que es la lectura correcta: estas al maximo efectivo.
+func _on_shield_changed(value: float) -> void:
+	if _shield_fill == null or not is_instance_valid(_player):
+		return
+	var max_hp := _player.health.max_health
+	if max_hp <= 0.0:
+		return
+	var hp := _player.health.current
+
+	if value <= 0.0:
+		_shield_fill.visible = false
+		_health_fill.anchor_right = clampf(hp / max_hp, 0.0, 1.0)
+		_health_label.text = "VIDA  %d / %d" % [int(ceil(hp)), int(max_hp)]
+		return
+
+	var total := max_hp + value
+	var hp_ratio := clampf(hp / total, 0.0, 1.0)
+	_health_fill.anchor_right = hp_ratio
+	_shield_fill.visible = true
+	_shield_fill.anchor_left = hp_ratio
+	_shield_fill.anchor_right = clampf((hp + value) / total, 0.0, 1.0)
+	_health_label.text = "VIDA  %d / %d   +%d ESCUDO" % [int(ceil(hp)), int(max_hp), int(ceil(value))]
 
 
 func _on_stamina_changed(current: float, max_value: float) -> void:

@@ -51,7 +51,7 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 		var push := target.global_position - origin
 		if CombatUtils.is_frozen(target):
 			# Ejecucion. Esto es Snowgrave haciendo lo que hace en Deltarune.
-			# El daño del ultimate NO carga el medidor: ver deal_damage.
+			# El daño del ultimate NO paga recursos (ni medidor ni stamina): ver deal_damage.
 			CombatUtils.deal_damage(target, DAMAGE_FROZEN, source_id, false)
 			CombatUtils.apply_knockback(target, push, KNOCKBACK_EXECUTE, 3.5)
 		else:

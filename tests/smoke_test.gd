@@ -52,6 +52,9 @@ func _run() -> void:
 	await _test_projectiles(player, arena)
 	await _test_knockback(player, arena)
 	await _test_ultimate_charge(player, arena)
+	await _test_economia_stamina(player, arena)
+	await _test_defensa_de_hielo(player, arena)
+	await _test_rafaga_del_stand(player, arena)
 	_test_arena(arena)
 
 	_finish()
@@ -61,19 +64,23 @@ func _run() -> void:
 
 func _test_kit(player: Player) -> void:
 	var abilities := player.caster.abilities
-	_check(abilities.size() == 3, "Noelle tiene 3 habilidades (tiene %d)" % abilities.size())
-	if abilities.size() < 3:
+	_check(abilities.size() == 4, "Noelle tiene 4 habilidades (tiene %d)" % abilities.size())
+	if abilities.size() < 4:
 		return
 
+	# El orden del array ES el de las teclas y el del HUD. El ultimate va ultimo.
 	_check(abilities[0].display_name == "Icicle Strike", "slot 0 es Icicle Strike")
 	_check(abilities[1].display_name == "Ice Shock", "slot 1 es Ice Shock")
-	_check(abilities[2].display_name == "Snowgrave", "slot 2 es Snowgrave")
+	_check(abilities[2].display_name == "Defensa de Hielo", "slot 2 es Defensa de Hielo")
+	_check(abilities[3].display_name == "Snowgrave", "slot 3 es Snowgrave")
+	_check(abilities[3].requires_charge, "el ultimate es el ultimo del kit")
 
 	_check(is_zero_approx(abilities[0].stamina_cost), "el golpe basico NO cuesta stamina")
 	_check(abilities[1].stamina_cost == 28.0, "Ice Shock cuesta 28 de stamina")
-	_check(abilities[2].stamina_cost == 100.0, "Snowgrave cuesta la barra entera (100)")
-	_check(abilities[2].requires_charge, "Snowgrave necesita el medidor de ultimate cargado")
-	_check(abilities[2].channel_time > 0.0, "Snowgrave canaliza antes de dispararse")
+	_check(abilities[2].stamina_cost == 30.0, "la Defensa de Hielo cuesta 30")
+	_check(abilities[3].stamina_cost == 100.0, "Snowgrave cuesta la barra entera (100)")
+	_check(abilities[3].requires_charge, "Snowgrave necesita el medidor de ultimate cargado")
+	_check(abilities[3].channel_time > 0.0, "Snowgrave canaliza antes de dispararse")
 	await get_tree().process_frame
 
 
@@ -120,7 +127,7 @@ func _test_stamina_rules(player: Player) -> void:
 	player.stamina.restore_full()
 	player.ultimate.current = UltimateCharge.MAX_CHARGE
 	player.caster.reset_state()
-	player.caster.request_use(2)  # Snowgrave
+	player.caster.request_use(3)  # Snowgrave, ahora en el slot 3
 	await get_tree().process_frame
 	_check(is_zero_approx(player.stamina.current),
 		"Snowgrave dejo la stamina en cero (quedo en %.0f)" % player.stamina.current)
@@ -196,29 +203,30 @@ func _test_dio(player: Player) -> void:
 	_check(data != null and data.silhouette == &"shoulders", "Dio tiene silueta propia (no las astas de Noelle)")
 
 	var kit := CharacterDB.build_abilities_for(&"dio")
-	_check(kit.size() == 3, "Dio tiene 3 habilidades (tiene %d)" % kit.size())
-	if kit.size() < 3:
+	_check(kit.size() == 4, "Dio tiene 4 habilidades (tiene %d)" % kit.size())
+	if kit.size() < 4:
 		return
 	_check(kit[0] is MudaRush, "slot 0 de Dio es MUDA MUDA")
 	_check(kit[1] is KnifeThrow, "slot 1 de Dio es Knife Throw")
-	_check(kit[2] is ZaWarudo, "slot 2 de Dio es ZA WARUDO")
+	_check(kit[2] is StandBarrage, "slot 2 de Dio es la Rafaga del Stand")
+	_check(kit[3] is ZaWarudo, "slot 3 de Dio es ZA WARUDO")
 
 	# La regla de stamina vale para TODOS los personajes, no solo para Noelle.
 	_check(is_zero_approx(kit[0].stamina_cost), "el golpe basico de Dio NO cuesta stamina")
 	_check(kit[1].stamina_cost == 26.0, "Knife Throw cuesta 26")
-	_check(kit[2].stamina_cost == 100.0, "ZA WARUDO cuesta la barra entera (100)")
-	_check(kit[2].requires_charge, "ZA WARUDO necesita el medidor de ultimate cargado")
+	_check(kit[3].stamina_cost == 100.0, "ZA WARUDO cuesta la barra entera (100)")
+	_check(kit[3].requires_charge, "ZA WARUDO necesita el medidor de ultimate cargado")
 
 	# Los ultimates cuestan la barra ENTERA: tirarlos te deja sin nada. Ya no existe el
 	# combo de ultimate + habilidad seguidos, y es a proposito.
-	_check(kit[2].stamina_cost >= 100.0, "el ultimate se come toda la stamina")
-	_check(kit[2].stamina_cost + kit[1].stamina_cost > 100.0,
+	_check(kit[3].stamina_cost >= 100.0, "el ultimate se come toda la stamina")
+	_check(kit[3].stamina_cost + kit[1].stamina_cost > 100.0,
 		"no alcanza para ultimate y habilidad seguidos")
 
 	# Cambiar de personaje en caliente tiene que reconfigurar todo.
 	player.setup_character(data)
 	await get_tree().process_frame
-	_check(player.caster.abilities.size() == 3, "al cambiar a Dio se recargo el kit")
+	_check(player.caster.abilities.size() == 4, "al cambiar a Dio se recargo el kit")
 	_check(player.caster.abilities[0] is MudaRush, "el jugador quedo con el kit de Dio")
 	_check(player.character_id == &"dio", "el character_id se actualizo")
 
@@ -321,7 +329,7 @@ func _test_ultimate_charge(player: Player, arena: Arena) -> void:
 	player.caster.ability_failed.connect(func(_i: int, reason: String) -> void:
 		box["reason"] = reason
 	, CONNECT_ONE_SHOT)
-	player.caster.request_use(2)
+	player.caster.request_use(3)
 	await get_tree().process_frame
 	_check(String(box["reason"]).contains("carga"),
 		"sin carga el ultimate se rechaza (motivo: '%s')" % String(box["reason"]))
@@ -366,7 +374,7 @@ func _test_ultimate_charge(player: Player, arena: Arena) -> void:
 	player.ultimate.current = UltimateCharge.MAX_CHARGE
 	player.caster.reset_state()
 	_check(player.ultimate.is_ready(), "el medidor llega a listo")
-	player.caster.request_use(2)
+	player.caster.request_use(3)
 	await get_tree().process_frame
 	_check(is_zero_approx(player.stamina.current), "el ultimate vacio la stamina")
 	_check(is_zero_approx(player.ultimate.current), "el ultimate vacio el medidor")
@@ -409,6 +417,178 @@ func _test_ultimate_charge(player: Player, arena: Arena) -> void:
 	player.stamina.restore_full()
 	target.queue_free()
 	await get_tree().process_frame
+
+
+# ------------------------------------------------------- Economia de stamina
+
+## La regla nueva: la stamina se regenera despacio, pero PEGAR la devuelve.
+func _test_economia_stamina(player: Player, arena: Arena) -> void:
+	var target := _spawn_dummy(arena, Vector3(24.0, 0.6, 24.0))
+	await get_tree().process_frame
+
+	_check(player.stamina.regen_per_second <= 10.0,
+		"la regeneracion pasiva es lenta (%.0f/s)" % player.stamina.regen_per_second)
+
+	# Gastamos y medimos cuanto devuelve un golpe.
+	player.stamina.restore_full()
+	player.stamina.predict_spend(60.0)
+	var before := player.stamina.current
+	CombatUtils.deal_damage(target, 40.0, player.peer_id)
+	await get_tree().process_frame
+	var gained := player.stamina.current - before
+	_check(gained > 0.0, "pegar devuelve stamina (subio %.1f)" % gained)
+	_check(absf(gained - 40.0 * player.stamina.restore_per_damage) < 1.5,
+		"lo que devuelve es proporcional al daño (%.1f por 40)" % gained)
+
+	# Y tiene que pagar TAMBIEN durante la pausa post-gasto: si no, castearia y
+	# quedarias sin recurso justo cuando entras a pelear.
+	player.stamina.current = 10.0
+	player.stamina.try_spend(5.0)  # arranca el bloqueo de regeneracion
+	var blocked_before := player.stamina.current
+	CombatUtils.deal_damage(target, 30.0, player.peer_id)
+	await get_tree().process_frame
+	_check(player.stamina.current > blocked_before,
+		"el golpe paga aunque la regeneracion este en pausa")
+
+	# El daño de un ULTIMATE no paga: ni stamina ni medidor.
+	player.stamina.current = 20.0
+	var ult_before := player.stamina.current
+	CombatUtils.deal_damage(target, 200.0, player.peer_id, false)
+	await get_tree().process_frame
+	_check(absf(player.stamina.current - ult_before) < 0.5,
+		"el daño de un ultimate NO devuelve stamina (quedo en %.0f)" % player.stamina.current)
+
+	# Al que le pegan no le devuelve nada.
+	var victim_before := target.stamina.current
+	CombatUtils.deal_damage(target, 25.0, player.peer_id)
+	await get_tree().process_frame
+	_check(target.stamina.current <= victim_before + 0.5,
+		"recibir golpes no devuelve stamina")
+
+	target.queue_free()
+	await get_tree().process_frame
+
+
+# ------------------------------------------------------- Defensa de Hielo
+
+func _test_defensa_de_hielo(player: Player, arena: Arena) -> void:
+	player.setup_character(CharacterDB.get_character(&"noelle"))
+	# Lo revivimos de verdad: un test anterior lo mata y queda sin collider.
+	player.respawn_at(Vector3(-20.0, 0.6, -20.0), 0.0)
+	for _i: int in range(4):
+		await get_tree().physics_frame
+
+	var shield_ability := player.caster.abilities[2]
+	_check(shield_ability is IceDefense, "el slot 2 de Noelle es la Defensa de Hielo")
+
+	var enemy := _spawn_dummy(arena, player.global_position + Vector3(2.0, 0.0, 0.0))
+	await get_tree().process_frame
+
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	await get_tree().process_frame
+
+	_check(player.health.shield > 0.0,
+		"levantar la defensa da escudo (%.0f)" % player.health.shield)
+	_check(enemy.status.chill_stacks > 0,
+		"la rafaga de frio escarcha a los que estan cerca (%d)" % enemy.status.chill_stacks)
+
+	# El escudo se come el golpe ANTES que la vida.
+	var hp_before := player.health.current
+	var shield_before := player.health.shield
+	CombatUtils.deal_damage(player, 20.0, enemy.peer_id)
+	await get_tree().process_frame
+	_check(is_equal_approx(player.health.current, hp_before),
+		"con escudo, un golpe chico no toca la vida (%.0f)" % player.health.current)
+	_check(player.health.shield < shield_before,
+		"el escudo bajo en vez de la vida (%.0f -> %.0f)" % [shield_before, player.health.shield])
+
+	# Y el sobrante de un golpe grande SI pasa a la vida: un escudo de 5 no puede
+	# anular un Snowgrave de 260.
+	var resto := player.health.shield + 30.0
+	var hp_antes := player.health.current
+	CombatUtils.deal_damage(player, resto, enemy.peer_id)
+	await get_tree().process_frame
+	_check(is_zero_approx(player.health.shield), "un golpe grande revienta el escudo")
+	_check(player.health.current < hp_antes,
+		"el sobrante pasa a la vida (%.0f -> %.0f)" % [hp_antes, player.health.current])
+
+	# Respawnear lo limpia.
+	player.health.revive_full()
+	await get_tree().process_frame
+	_check(is_zero_approx(player.health.shield), "revivir limpia el escudo")
+
+	enemy.queue_free()
+	await get_tree().process_frame
+
+
+# ------------------------------------------------------- Rafaga del Stand
+
+func _test_rafaga_del_stand(player: Player, arena: Arena) -> void:
+	player.setup_character(CharacterDB.get_character(&"dio"))
+	await get_tree().process_frame
+
+	var barrage := player.caster.abilities[2]
+	_check(barrage is StandBarrage, "el slot 2 de Dio es la Rafaga del Stand")
+
+	# Posiciones FIJAS y despejadas, no relativas a donde quedo el jugador. Despues de
+	# los tests anteriores puede estar en cualquier lado (arriba de la plataforma, contra
+	# una cobertura) y el blanco terminaba fuera del cono o detras de un bloque.
+	#
+	# SIEMPRE respawn_at() para reubicar al jugador en un test, nunca global_position.
+	#
+	# Dos razones, las dos aprendidas rompiendo este test:
+	#   - morir DESACTIVA el collider, y solo respawn_at lo vuelve a activar. Un test
+	#     anterior mata al jugador, asi que teletransportarlo a mano lo dejaba cayendo
+	#     por el piso: la rafaga tiraba los seis golpes desde -6 metros de altura.
+	#   - el cuerpo copia el yaw de la CAMARA en cada frame de fisica, asi que tocar
+	#     rotation.y solo dura un frame. respawn_at fija los dos.
+	player.respawn_at(Vector3(20.0, 0.6, 22.0), 0.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var enemy := _spawn_dummy(arena, Vector3(20.0, 0.6, 20.0))
+	for _i: int in range(4):
+		await get_tree().physics_frame
+
+	var hp_before := enemy.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+
+	# Un solo frame: todavia no puede haber pegado los seis golpes.
+	await get_tree().process_frame
+	var tras_primero := hp_before - enemy.health.current
+
+	# Esperamos a que termine la rafaga entera.
+	await get_tree().create_timer(StandBarrage.TICKS * StandBarrage.TICK_INTERVAL + 0.4).timeout
+	var total := hp_before - enemy.health.current
+
+	_check(tras_primero > 0.0, "el primer golpe pega al instante (%.0f)" % tras_primero)
+	_check(total > tras_primero * 2.0,
+		"la rafaga sigue pegando en el tiempo (%.0f al final vs %.0f al principio)" % [total, tras_primero])
+	# Contra un blanco quieto tienen que entrar CASI TODOS. Este numero es el que
+	# detecta la regresion que ya tuvimos: si el empujon por golpe crece, la rafaga se
+	# saca al rival de encima sola y la mitad pega al aire.
+	_check(total >= StandBarrage.DAMAGE_PER_TICK * (StandBarrage.TICKS - 1),
+		"contra un blanco quieto entran casi todos los golpes (%.0f de %.0f)" % [
+			total, StandBarrage.DAMAGE_PER_TICK * StandBarrage.TICKS])
+
+	enemy.queue_free()
+	await get_tree().process_frame
+
+
+## Maniqui en una posicion despejada, listo para recibir.
+func _spawn_dummy(arena: Arena, at: Vector3) -> Player:
+	var dummy: Player = Arena.PLAYER_SCENE.instantiate()
+	dummy.peer_id = -77
+	dummy.is_dummy = true
+	dummy.player_name = "Blanco"
+	arena.add_child(dummy)
+	dummy.global_position = at
+	dummy.home_position = Vector3(at.x, 0.0, at.z)
+	dummy.setup_character(CharacterDB.get_character(&"noelle"))
+	return dummy
 
 
 # ---------------------------------------------------------------- Retroceso

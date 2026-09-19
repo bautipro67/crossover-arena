@@ -16,10 +16,23 @@ signal changed(current: float, max_value: float)
 signal depleted()
 
 @export var max_stamina: float = 100.0
-## Cuanta stamina se regenera por segundo.
-@export var regen_per_second: float = 14.0
+## Cuanta stamina se regenera sola por segundo.
+##
+## Deliberadamente baja: a 8/s tardas 12 segundos en llenar la barra parado. Esperar
+## no es una estrategia. La via rapida es la de abajo.
+@export var regen_per_second: float = 8.0
 ## Pausa de regeneracion despues de gastar, para que no sea gratis spamear.
 @export var regen_delay: float = 0.8
+
+## Stamina que devuelve cada punto de daño que INFLIGIS.
+##
+## Este es el corazon de la economia: la regeneracion pasiva es lenta, pero pegar te
+## paga. Un Icicle Strike de 11 te devuelve ~4, un Ice Shock de 22 te devuelve ~8. O sea
+## que el que pelea recupera y el que se esconde a esperar la barra, no.
+##
+## Los ultimates NO pagan (ver CombatUtils.deal_damage): un Snowgrave de 260 te
+## devolveria la barra entera y se pagaria el siguiente solo.
+@export var restore_per_damage: float = 0.35
 
 var current: float = 0.0
 
@@ -75,6 +88,23 @@ func predict_spend(amount: float) -> void:
 	current = maxf(0.0, current - amount)
 	_regen_block_timer = regen_delay
 	changed.emit(current, max_stamina)
+
+
+## SOLO SERVIDOR. Recompensa por pegar. Lo llama CombatUtils cuando este jugador daña.
+##
+## OJO: NO toca _regen_block_timer a proposito. La pausa post-gasto existe para que no
+## spamees habilidades, no para castigarte por acertar; si el golpe no pagara durante
+## esos 0.8s, el recurso se sentiria roto justo despues de castear, que es exactamente
+## cuando lo necesitas.
+func restore_from_damage(damage: float) -> void:
+	if damage <= 0.0 or restore_per_damage <= 0.0:
+		return
+	var amount := damage * restore_per_damage
+	if current >= max_stamina:
+		return
+	current = minf(max_stamina, current + amount)
+	changed.emit(current, max_stamina)
+	_push_owner()
 
 
 ## SOLO SERVIDOR. Devuelve stamina (por ejemplo al cancelarse un canalizado).
