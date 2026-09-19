@@ -25,11 +25,7 @@ func _ready() -> void:
 	UITheme.fill_viewport(self)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var bg := ColorRect.new()
-	bg.color = UITheme.BG
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+	UITheme.build_background(self)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -74,7 +70,7 @@ func _ready() -> void:
 	practice_button.pressed.connect(func() -> void: practice_requested.emit(_name_field.text))
 	box.add_child(practice_button)
 
-	var practice_hint := UITheme.make_label("Arena con maniquies. No necesitas a nadie mas.", 11, UITheme.TEXT_DIM)
+	var practice_hint := UITheme.make_label("Tres bots que pelean de verdad. No necesitas a nadie mas.", 11, UITheme.TEXT_DIM)
 	practice_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(practice_hint)
 

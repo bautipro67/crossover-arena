@@ -188,6 +188,111 @@ static func make_spacer(height: int) -> Control:
 	return c
 
 
+## Tamaño de diseño de la UI. Con stretch_mode = canvas_items, las pantallas SIEMPRE
+## trabajan en este espacio sin importar el tamaño real de la ventana, asi que se puede
+## posicionar contra estos numeros sin preguntarle nada al viewport.
+const DESIGN_SIZE := Vector2(1280.0, 720.0)
+
+
+## Fondo animado de las pantallas de menu.
+##
+## POR QUE: antes era un ColorRect de un solo color. Funcionaba, pero la primera
+## pantalla del juego es la que decide si alguien le da una oportunidad, y un
+## rectangulo liso dice "esto es un prototipo". Son tres capas baratas:
+##
+##   1. un degrade vertical, que da profundidad;
+##   2. un resplandor detras del contenido, que dirige la mirada al centro;
+##   3. nieve cayendo, que ata la pantalla al tema helado del juego y —lo importante—
+##      MUEVE algo: una pantalla quieta se lee como una imagen, una con movimiento se
+##      lee como un juego encendido.
+##
+## Todo generado por codigo, como el resto: el proyecto no tiene un solo archivo de arte.
+static func build_background(parent: Control) -> void:
+	# --- 1. Degrade vertical ---
+	var grad := Gradient.new()
+	grad.set_color(0, BG_DEEP)
+	grad.set_color(1, Color(0.12, 0.11, 0.21))
+	var grad_tex := GradientTexture2D.new()
+	grad_tex.gradient = grad
+	grad_tex.fill_from = Vector2(0.5, 0.0)
+	grad_tex.fill_to = Vector2(0.5, 1.0)
+	grad_tex.width = 8
+	grad_tex.height = 256
+	parent.add_child(_stretched(grad_tex))
+
+	# --- 2. Resplandor radial en el centro ---
+	var halo := Gradient.new()
+	halo.set_color(0, Color(0.30, 0.52, 0.95, 0.34))
+	halo.set_color(1, Color(0.30, 0.52, 0.95, 0.0))
+	var halo_tex := GradientTexture2D.new()
+	halo_tex.gradient = halo
+	halo_tex.fill = GradientTexture2D.FILL_RADIAL
+	halo_tex.fill_from = Vector2(0.5, 0.5)
+	halo_tex.fill_to = Vector2(1.0, 0.5)
+	halo_tex.width = 256
+	halo_tex.height = 256
+	parent.add_child(_stretched(halo_tex))
+
+	# --- 3. Nieve ---
+	var nieve := CPUParticles2D.new()
+	nieve.amount = 110
+	nieve.lifetime = 11.0
+	# Arranca con la vida ya corrida: si no, la pantalla aparece vacia y la nieve entra
+	# de a poco desde arriba durante los primeros diez segundos.
+	nieve.preprocess = 11.0
+	nieve.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	nieve.emission_rect_extents = Vector2(DESIGN_SIZE.x * 0.6, 8.0)
+	nieve.position = Vector2(DESIGN_SIZE.x * 0.5, -12.0)
+	nieve.direction = Vector2(0.0, 1.0)
+	nieve.spread = 12.0
+	nieve.gravity = Vector2(0.0, 6.0)
+	nieve.initial_velocity_min = 16.0
+	nieve.initial_velocity_max = 44.0
+	# Vaiven lateral: sin esto caen en lineas rectas y parece lluvia, no nieve.
+	nieve.tangential_accel_min = -7.0
+	nieve.tangential_accel_max = 7.0
+	# CON TEXTURA, si o si. Un CPUParticles2D sin textura dibuja un punto de un pixel:
+	# la primera version tenia la nieve funcionando perfecto y era literalmente
+	# invisible en la captura.
+	nieve.texture = _copo_textura()
+	# Chicos y tenues. Con 0.22-0.75 y alfa 0.65 parecian bokeh de foto, no nieve:
+	# competian con el panel en vez de acompañarlo.
+	nieve.scale_amount_min = 0.07
+	nieve.scale_amount_max = 0.30
+	nieve.color = Color(0.82, 0.92, 1.0, 0.42)
+	# NADA de mouse_filter aca: CPUParticles2D es un Node2D y no lo tiene. Asignarlo
+	# aborta la funcion en ese renglon, antes del add_child, y la nieve no llegaba a
+	# existir — el fondo se veia "bien" y faltaba una capa entera sin ningun sintoma.
+	parent.add_child(nieve)
+
+
+## Copo: un circulo suave de 32 px, generado igual que todo lo demas.
+static func _copo_textura() -> GradientTexture2D:
+	var g := Gradient.new()
+	g.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	g.set_color(1, Color(1.0, 1.0, 1.0, 0.0))
+	# Un punto intermedio hace el borde mas suave; sin el, el copo tiene un anillo duro.
+	g.add_point(0.45, Color(1.0, 1.0, 1.0, 0.85))
+	var t := GradientTexture2D.new()
+	t.gradient = g
+	t.fill = GradientTexture2D.FILL_RADIAL
+	t.fill_from = Vector2(0.5, 0.5)
+	t.fill_to = Vector2(1.0, 0.5)
+	t.width = 32
+	t.height = 32
+	return t
+
+
+static func _stretched(texture: Texture2D) -> TextureRect:
+	var rect := TextureRect.new()
+	rect.texture = texture
+	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rect
+
+
 ## Estira un Control a toda la pantalla.
 ##
 ## POR QUE HACE FALTA: estas pantallas cuelgan de Main, que es un Node pelado y no un

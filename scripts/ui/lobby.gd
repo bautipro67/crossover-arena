@@ -22,11 +22,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_selected_id = StringName(Net.local_character_id)
 
-	var bg := ColorRect.new()
-	bg.color = UITheme.BG
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+	UITheme.build_background(self)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -76,16 +72,28 @@ func _ready() -> void:
 	chars_box.add_child(_character_list)
 
 	# --- Columna 3: kit del personaje ---
+	#
+	# CON SCROLL, y no es opcional: al pasar de 3 a 4 habilidades esta columna crecio
+	# mas alto que la pantalla y empujo los botones "VOLVER AL MENU" y "EMPEZAR" fuera
+	# de los 720px. El scroll hace que la sala aguante los kits que vengan sin que haya
+	# que acordarse de revisar el alto cada vez.
 	var kit_panel := UITheme.make_panel()
 	kit_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_child(kit_panel)
+	var kit_scroll := ScrollContainer.new()
+	kit_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	kit_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	kit_panel.add_child(kit_scroll)
 	_kit_box = VBoxContainer.new()
 	_kit_box.add_theme_constant_override("separation", 8)
-	kit_panel.add_child(_kit_box)
+	# Sin esto el VBox toma su ancho minimo y el texto se apretuja en una columna fina.
+	_kit_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	kit_scroll.add_child(_kit_box)
 
 	# --- Botones ---
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
+	buttons.custom_minimum_size = Vector2(0, 44)
 	root.add_child(buttons)
 
 	var leave_button := UITheme.make_button("VOLVER AL MENU")
@@ -197,7 +205,7 @@ func _refresh() -> void:
 	_start_button.visible = Net.is_server()
 	if Net.solo_mode:
 		_start_button.text = "EMPEZAR PRACTICA"
-		_status_label.text = "Modo practica: arena con maniquies, sin red. Elegi personaje y arranca."
+		_status_label.text = "Modo practica: tres bots que te devuelven los golpes, sin red. Elegi personaje y arranca."
 	elif Net.is_server():
 		_start_button.text = "EMPEZAR PARTIDA"
 		_status_label.text = "Sos el host. Compartí tu IP para que se unan. Jugadores: %d/%d" % [Net.players.size(), GameConfig.MAX_PLAYERS]

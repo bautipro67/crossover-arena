@@ -55,7 +55,7 @@ func _run() -> void:
 	_finish()
 
 
-# ------------------------------------------------------------------ Maniquies
+# ---------------------------------------------------------------------- Bots
 
 func _test_dummies(arena: Arena, player: Player) -> void:
 	var dummies: Array[Player] = []
@@ -65,38 +65,117 @@ func _test_dummies(arena: Arena, player: Player) -> void:
 			dummies.append(p)
 
 	_check(dummies.size() == Arena.DUMMY_COUNT,
-		"se spawnearon %d maniquies (hay %d)" % [Arena.DUMMY_COUNT, dummies.size()])
+		"se spawnearon %d bots (hay %d)" % [Arena.DUMMY_COUNT, dummies.size()])
 	if dummies.is_empty():
 		return
 
 	var dummy := dummies[0]
-	_check(dummy.is_in_group("players"), "los maniquies son objetivos validos de las habilidades")
+	_check(dummy.is_in_group("players"), "los bots son objetivos validos de las habilidades")
 	_check(dummy.health.max_health == Arena.DUMMY_HEALTH,
-		"los maniquies aguantan %d de vida" % int(Arena.DUMMY_HEALTH))
-	_check(not dummy.is_local_player(), "los maniquies no le roban la camara al jugador")
+		"los bots aguantan %d de vida" % int(Arena.DUMMY_HEALTH))
+	_check(not dummy.is_local_player(), "los bots no le roban la camara al jugador")
 
 	# Las habilidades tienen que poder encontrarlos.
 	var targets := CombatUtils.get_players_in_sphere(player, player.global_position, 100.0)
-	_check(targets.size() >= dummies.size(), "las habilidades encuentran a los maniquies")
+	_check(targets.size() >= dummies.size(), "las habilidades encuentran a los bots")
 
 	# Se les puede apilar escarcha y congelarlos: el combo completo de Noelle es
 	# practicable contra ellos, que es todo el punto del modo.
 	dummy.status.clear_all()
 	for _i: int in range(StatusEffects.MAX_CHILL):
 		dummy.status.add_chill(1)
-	_check(dummy.status.is_frozen(), "a un maniqui se lo puede congelar")
-	_check(CombatUtils.is_frozen(dummy), "un maniqui congelado es ejecutable por Snowgrave")
+	_check(dummy.status.is_frozen(), "a un bot se lo puede congelar")
+	_check(CombatUtils.is_frozen(dummy), "un bot congelado es ejecutable por Snowgrave")
 	dummy.status.clear_all()
 
 	# Y matarlos NO tiene que sumar al marcador: esto es practica, no una partida.
 	var kills_before := int(Net.get_player_info(1).get("kills", 0))
 	CombatUtils.deal_damage(dummy, Arena.DUMMY_HEALTH * 2.0, 1)
 	await get_tree().process_frame
-	_check(dummy.health.is_dead, "se puede matar a un maniqui")
+	_check(dummy.health.is_dead, "se puede matar a un bot")
 	var kills_after := int(Net.get_player_info(1).get("kills", 0))
 	_check(kills_after == kills_before,
-		"matar maniquies NO suma al marcador (%d -> %d)" % [kills_before, kills_after])
-	_check(not Net.in_match or true, "la partida de practica no termina por matar maniquies")
+		"matar bots NO suma al marcador (%d -> %d)" % [kills_before, kills_after])
+	_check(not Net.in_match or true, "la partida de practica no termina por matar bots")
+
+	await _test_bots_pelean(arena, player, dummies)
+
+
+## Lo que hace que el modo practica sirva: que los bots PELEEN.
+##
+## Un maniqui quieto te deja ensayar la animacion de un combo, pero no te enseña lo
+## unico que importa en esta arena — medir distancia y elegir cuando gastar stamina.
+func _test_bots_pelean(arena: Arena, player: Player, bots: Array[Player]) -> void:
+	# Revivimos al que matamos arriba y dejamos a todos en su puesto.
+	for b: Player in bots:
+		b.health.revive_full()
+		b.status.clear_all()
+	await get_tree().process_frame
+
+	var bot := bots[0]
+	_check(bot.get_node_or_null("BotBrain") != null, "cada bot tiene su cerebro")
+	_check(not bot.character_id.is_empty() and CharacterDB.has_character(bot.character_id),
+		"los bots usan un personaje real del juego (%s)" % bot.character_id)
+	_check(bot.caster.abilities.size() >= 4,
+		"los bots tienen el kit completo (%d habilidades)" % bot.caster.abilities.size())
+
+	# El servidor tiene que ser el dueño de sus habilidades. Con el peer negativo que
+	# les toca, AbilityCaster les rechazaba TODO en silencio y se quedaban mirando.
+	_check(bot.caster.owner_peer_id == Net.local_id(),
+		"el servidor es dueño de las habilidades del bot (owner=%d)" % bot.caster.owner_peer_id)
+
+	var brain: BotBrain = bot.get_node("BotBrain")
+	_check(not brain._usable.has(3), "el bot NO usa el ultimate")
+	_check(brain._usable.size() >= 3, "pero si el resto del kit (%d)" % brain._usable.size())
+
+	# --- Persecucion ---
+	# El jugador tiene que AGUANTAR la medicion: con vida normal, los tres bots lo
+	# mataban a mitad de la prueba, respawneaba en el spawn mas lejano del mapa y la
+	# distancia al bot crecia en vez de bajar. No era que el bot huyera.
+	var vida_normal := player.health.max_health
+	player.health.set_max(5000.0)
+
+	var puesto := arena.find_clear_spot(Vector3(0.0, 0.6, -30.0), 1.2)
+	bot.global_position = puesto
+	bot.velocity = Vector3.ZERO
+	player.respawn_at(arena.find_clear_spot(puesto + Vector3(0.0, 0.0, 22.0), 1.2), 0.0)
+	await get_tree().process_frame
+	var lejos := bot.global_position.distance_to(player.global_position)
+	for _i: int in range(120):
+		await get_tree().physics_frame
+	var cerca := bot.global_position.distance_to(player.global_position)
+	_check(cerca < lejos - 3.0,
+		"el bot persigue al jugador (%.1f m -> %.1f m)" % [lejos, cerca])
+
+	# --- Ataque: que le saque vida al jugador solo ---
+	player.health.set_max(vida_normal)
+	var vida_antes := player.health.current
+	for _i: int in range(400):
+		await get_tree().physics_frame
+		if player.health.current < vida_antes:
+			break
+	_check(player.health.current < vida_antes,
+		"el bot ataca de verdad (vida %.0f -> %.0f)" % [vida_antes, player.health.current])
+
+	# --- Volver a su puesto cuando no hay a quien pegarle ---
+	# Mandamos al jugador al otro extremo, fuera del rango de deteccion.
+	player.respawn_at(arena.find_clear_spot(Vector3(38.0, 0.6, 38.0), 1.2), 0.0)
+	var desde := bot.global_position.distance_to(bot.home_position)
+	for _i: int in range(420):
+		await get_tree().physics_frame
+		if bot.global_position.distance_to(bot.home_position) < 1.5:
+			break
+	var hasta := bot.global_position.distance_to(bot.home_position)
+	_check(hasta < maxf(1.5, desde),
+		"sin nadie cerca vuelve a su puesto (%.1f m -> %.1f m)" % [desde, hasta])
+
+	# --- Y se puede apagar, que es lo que necesita el chequeo visual ---
+	Arena.set_bots_active(false)
+	await get_tree().process_frame
+	for _i: int in range(20):
+		await get_tree().physics_frame
+	_check(bot.bot_move_dir.is_zero_approx(), "se los puede dejar quietos para las capturas")
+	Arena.set_bots_active(true)
 
 
 # --------------------------------------------------------------------- Audio

@@ -18,21 +18,35 @@ extends Node3D
 
 const PLAYER_SCENE: PackedScene = preload("res://scenes/player/player.tscn")
 
-const ARENA_SIZE: float = 60.0
-const WALL_HEIGHT: float = 9.0
+## 92 x 92. Crecio desde 60 para que las habilidades de largo alcance (el cono de 20m
+## de Snowgrave, los 20m de ZA WARUDO) no cubran media arena y se pueda reposicionar
+## de verdad.
+##
+## OJO: agrandar el mapa SIN agregar cobertura lo empeora. Un descampado grande deja
+## al que tiene rango pegando gratis desde lejos y al de cuerpo a cuerpo cruzando
+## veinte metros al descubierto. Por eso el mapa crecio ~50% y las coberturas pasaron
+## de 8 a 18: la densidad quedo mas alta que antes, no mas baja.
+const ARENA_SIZE: float = 92.0
+const WALL_HEIGHT: float = 12.0
 
-## Maniquies del modo practica. Aguantan bastante para que puedas probar el combo
-## completo (apilar escarcha -> congelar -> Snowgrave) sin que se mueran antes.
+## Bots del modo practica. Ya no son maniquies quietos: usan personajes reales y te
+## devuelven los golpes (ver BotBrain).
+##
+## La vida bajo de 250 a 170. Con 250 y bots que no pegaban, el numero grande servia
+## para ensayar combos largos sin que se murieran; ahora que se defienden, 250 haria
+## que cada pelea fuera una eternidad. 170 alcanza para practicar el combo completo
+## (apilar escarcha -> congelar -> Snowgrave) y deja que matarlos se sienta como un
+## logro y no como un tramite.
 const DUMMY_COUNT: int = 3
-const DUMMY_HEALTH: float = 250.0
-const DUMMY_RESPAWN_DELAY: float = 3.0
+const DUMMY_HEALTH: float = 170.0
+const DUMMY_RESPAWN_DELAY: float = 4.0
 
 signal player_spawned(player: Player)
 signal local_player_spawned(player: Player)
 
 var _spawn_points: Array[Transform3D] = []
 var _players: Dictionary = {}
-## Donde vuelve cada maniqui cuando lo matas.
+## Donde reaparece cada bot cuando lo matas.
 var _dummy_spawns: Dictionary = {}
 
 var _floor_material: StandardMaterial3D = null
@@ -41,6 +55,10 @@ var _wall_material: StandardMaterial3D = null
 var _cover_material: StandardMaterial3D = null
 var _cover_top_material: StandardMaterial3D = null
 var _trim_material: StandardMaterial3D = null
+var _pillar_material: StandardMaterial3D = null
+var _cover_warm_material: StandardMaterial3D = null
+var _cover_cool_material: StandardMaterial3D = null
+var _marking_material: StandardMaterial3D = null
 
 
 func _ready() -> void:
@@ -75,34 +93,62 @@ func _make_materials() -> void:
 	_cover_material = Art.toon(Art.COVER, 0.03)
 	_cover_top_material = Art.toon(Art.COVER_TOP, 0.03)
 	_trim_material = Art.glow(Art.TRIM, 1.8)
+	# Los pilares NO pueden usar el material de pared: con el cielo nuevo, mas claro,
+	# ese azul casi negro los convertia en siluetas planas recortadas contra el fondo.
+	_pillar_material = Art.toon(Color(0.20, 0.25, 0.39), 0.03)
+	# Dos tintes de cobertura, uno por diagonal del mapa.
+	#
+	# Primero intente hacerlo con luces de color y NO funciono: el sol ya deja las
+	# superficies casi blancas y el toon shading cuantiza, asi que el dorado de una
+	# omni de energia 8 se perdia en el blanco. Teñir el material se ve siempre, a
+	# cualquier distancia y en cualquier renderer, y no cuesta un solo frame.
+	_cover_warm_material = Art.toon(Color(0.46, 0.38, 0.30), 0.03)
+	_cover_cool_material = Art.toon(Color(0.26, 0.36, 0.58), 0.03)
+	# Las marcas del piso van mucho mas apagadas que los trims verticales. Con la
+	# emision de 1.8 se quemaban en una mancha blanca que tapaba media pantalla.
+	_marking_material = Art.glow(Art.TRIM, 0.55)
 
 
 func _build_environment() -> void:
 	var env := Environment.new()
+	# Cielo de atardecer frio. El horizonte tira a violeta y el cenit a azul profundo:
+	# el degrade da una direccion de luz clara y hace que el mapa no se lea plano.
 	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color(0.07, 0.10, 0.22)
-	sky_material.sky_horizon_color = Color(0.42, 0.55, 0.74)
-	sky_material.sky_curve = 0.15
-	sky_material.ground_bottom_color = Color(0.05, 0.06, 0.11)
-	sky_material.ground_horizon_color = Color(0.26, 0.34, 0.48)
+	sky_material.sky_top_color = Color(0.04, 0.06, 0.18)
+	sky_material.sky_horizon_color = Color(0.55, 0.47, 0.72)
+	sky_material.sky_curve = 0.09
+	sky_material.sky_energy_multiplier = 1.15
+	sky_material.ground_bottom_color = Color(0.03, 0.04, 0.09)
+	sky_material.ground_horizon_color = Color(0.30, 0.30, 0.46)
+	# Sol visible, alineado con la luz direccional de abajo. Tener de donde viene la luz
+	# es la diferencia entre un escenario y una caja iluminada.
+	sky_material.sun_angle_max = 8.0
+	sky_material.sun_curve = 0.08
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.55
+	# Bajo a proposito. Con 0.55 la luz del cielo tapaba las luces de color del mapa y
+	# los 92 metros se veian de un solo azul plano de punta a punta.
+	env.ambient_light_energy = 0.34
 
 	# Niebla fria: da profundidad y separa las capas del mapa.
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.42, 0.55, 0.76)
-	env.fog_density = 0.010
-	env.fog_sky_affect = 0.3
+	env.fog_light_color = Color(0.46, 0.50, 0.78)
+	# Mas fina que antes (0.010): el mapa ahora mide 92 metros y con la densidad vieja
+	# el borde opuesto quedaba lavado y no se veia venir a nadie.
+	env.fog_density = 0.0038
+	env.fog_sky_affect = 0.25
+	env.fog_aerial_perspective = 0.35
 
 	# Glow: es lo que hace que los trims y los proyectiles se sientan luminosos en vez
 	# de ser simplemente celestes.
 	env.glow_enabled = true
-	env.glow_intensity = 0.42
-	env.glow_bloom = 0.15
+	# Medido en capturas: con 0.55/0.22 las rampas y las marcas del piso se fundian en
+	# una mancha blanca que tapaba un cuarto de la pantalla.
+	env.glow_intensity = 0.46
+	env.glow_bloom = 0.14
 	# Umbral alto: que brillen SOLO las cosas emisivas de verdad. Mas bajo, el dorado
 	# de Dio y los trims se queman y se pierde el detalle.
 	env.glow_hdr_threshold = 1.15
@@ -111,8 +157,8 @@ func _build_environment() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_white = 4.0
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.12
-	env.adjustment_contrast = 1.05
+	env.adjustment_saturation = 1.18
+	env.adjustment_contrast = 1.08
 
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
@@ -140,6 +186,46 @@ func _build_environment() -> void:
 	fill.rotation_degrees = Vector3(-28.0, -145.0, 0.0)
 	add_child(fill)
 
+	_build_accent_lights()
+
+
+## Luces de color en el mapa.
+##
+## POR QUE: con una sola direccional, 92 x 92 metros del mismo azul se leen como un
+## galpon. Unas pocas luces de color le dan identidad a cada zona y, sobre todo, te
+## dicen DONDE ESTAS sin mirar el minimapa (que no hay).
+##
+## Son OmniLight3D y no algo mas caro porque el build web corre en Compatibility, donde
+## no hay SSAO ni niebla volumetrica: lo que rinde ahi es luz y emision.
+func _build_accent_lights() -> void:
+	# DOS MITADES DE COLOR: la diagonal dorada y la diagonal helada. No es decoracion —
+	# en un mapa cuadrado y simetrico de 92 metros, sin color no sabes en que esquina
+	# estas, y el juego no tiene minimapa.
+	#
+	# Las energias son altas (8-9) porque el rango es grande: una omni reparte su
+	# energia en todo el radio, y con 2.4 a 24 metros no llegaba nada al piso.
+	var puntos: Array = [
+		# El centro, en hielo: es el punto al que todos miran.
+		{"pos": Vector3(0.0, 9.0, 0.0), "color": Art.ICE, "energia": 9.0, "radio": 30.0},
+		# Diagonal calida.
+		{"pos": Vector3(-32.0, 7.0, -32.0), "color": Art.GOLD, "energia": 8.0, "radio": 34.0},
+		{"pos": Vector3(32.0, 7.0, 32.0), "color": Art.GOLD, "energia": 8.0, "radio": 34.0},
+		# Diagonal fria.
+		{"pos": Vector3(32.0, 7.0, -32.0), "color": Color(0.35, 0.62, 1.0), "energia": 7.0, "radio": 34.0},
+		{"pos": Vector3(-32.0, 7.0, 32.0), "color": Color(0.35, 0.62, 1.0), "energia": 7.0, "radio": 34.0},
+	]
+	for punto: Dictionary in puntos:
+		var luz := OmniLight3D.new()
+		luz.position = punto["pos"]
+		luz.light_color = punto["color"]
+		luz.light_energy = punto["energia"]
+		luz.omni_range = punto["radio"]
+		luz.light_specular = 0.2
+		# Sin sombras: cinco luces con sombra no las banca el build web, y lo que
+		# aportan aca es color ambiente, no definicion.
+		luz.shadow_enabled = false
+		add_child(luz)
+
 
 ## Piso a cuadros. Es puramente visual pero cambia todo: sobre un plano liso no tenes
 ## referencia de velocidad ni de distancia y el mapa se siente vacio.
@@ -156,13 +242,40 @@ func _build_floor() -> void:
 			var pos := Vector3(-half + tile * (float(x) + 0.5), 0.006, -half + tile * (float(z) + 0.5))
 			_add_plane(pos, Vector2(tile, tile), _floor_alt_material)
 
-	# Circulo central marcado, como una arena de verdad.
+	# --- Marcas luminosas en el piso ---
+	#
+	# No son decoracion: en 92 x 92 metros de damero, sin referencias fijas no sabes
+	# hacia donde estas corriendo. Los anillos y las lineas dan un centro y cuatro
+	# direcciones, que es lo minimo para orientarse sin minimapa.
+	#
+	# Y en el build web rinden mas que cualquier otra cosa: Compatibility no tiene SSAO
+	# ni niebla volumetrica, pero la emision con glow se ve igual que en escritorio.
+	_add_ring(15.0, 15.7, Art.TRIM, 0.9)
+	_add_ring(30.0, 30.4, Color(0.30, 0.42, 0.68), 0.6)
+
+	# Cuatro lineas del centro a cada rampa: marcan los accesos a la plataforma.
+	for i: int in range(4):
+		var ang := TAU * float(i) / 4.0
+		var dir := Vector3(sin(ang), 0.0, cos(ang))
+		var largo := 13.0
+		var centro := dir * (15.0 + largo * 0.5)
+		var linea := MeshInstance3D.new()
+		var plano := PlaneMesh.new()
+		plano.size = Vector2(0.55, largo) if absf(dir.z) > 0.5 else Vector2(largo, 0.55)
+		linea.mesh = plano
+		linea.material_override = _marking_material
+		linea.position = Vector3(centro.x, 0.02, centro.z)
+		add_child(linea)
+
+
+## Anillo plano en el piso.
+func _add_ring(inner: float, outer: float, color: Color, energy: float = 0.9) -> void:
 	var ring := MeshInstance3D.new()
 	var ring_mesh := TorusMesh.new()
-	ring_mesh.inner_radius = 11.4
-	ring_mesh.outer_radius = 12.0
+	ring_mesh.inner_radius = inner
+	ring_mesh.outer_radius = outer
 	ring.mesh = ring_mesh
-	ring.material_override = _trim_material
+	ring.material_override = Art.glow(color, energy)
 	ring.position = Vector3(0.0, 0.03, 0.0)
 	add_child(ring)
 
@@ -181,6 +294,20 @@ func _build_walls() -> void:
 	_add_prop(Vector3(-half, h, 0.0), Vector3(1.35, 0.24, ARENA_SIZE), _trim_material)
 	_add_prop(Vector3(half, h, 0.0), Vector3(1.35, 0.24, ARENA_SIZE), _trim_material)
 
+	# Franjas verticales cada 11.5 metros. Con paredes de 12 metros de alto y lisas, el
+	# borde del mapa era un muro sin escala; las franjas dan altura y ritmo, y de paso
+	# sirven de referencia para medir distancias de un vistazo.
+	var paso := 11.5
+	var cuantas := int(ARENA_SIZE / paso)
+	for i: int in range(cuantas + 1):
+		var t := -half + paso * float(i)
+		if absf(t) > half - 1.0:
+			continue
+		_add_prop(Vector3(t, h * 0.5, -half + 0.6), Vector3(0.28, h * 0.72, 0.16), _trim_material)
+		_add_prop(Vector3(t, h * 0.5, half - 0.6), Vector3(0.28, h * 0.72, 0.16), _trim_material)
+		_add_prop(Vector3(-half + 0.6, h * 0.5, t), Vector3(0.16, h * 0.72, 0.28), _trim_material)
+		_add_prop(Vector3(half - 0.6, h * 0.5, t), Vector3(0.16, h * 0.72, 0.28), _trim_material)
+
 	# Torres en las esquinas, para que el perimetro no sea una caja pelada.
 	for sx: float in [-1.0, 1.0]:
 		for sz: float in [-1.0, 1.0]:
@@ -190,45 +317,69 @@ func _build_walls() -> void:
 func _build_cover() -> void:
 	var index := 0
 
-	# --- Plataforma central elevada, con rampas a dos lados ---
-	_add_box(Vector3(0.0, 1.0, 0.0), Vector3(14.0, 2.0, 14.0), _cover_material, "Cover%d" % index)
+	# --- Plataforma central elevada, con rampas en los CUATRO lados ---
+	# Cuatro accesos y no dos: en un mapa de 92 metros, dos rampas convierten la
+	# plataforma en una fortaleza a la que hay que dar media vuelta para subir.
+	_add_box(Vector3(0.0, 1.1, 0.0), Vector3(20.0, 2.2, 20.0), _cover_material, "Cover%d" % index)
 	index += 1
-	_add_prop(Vector3(0.0, 2.03, 0.0), Vector3(14.3, 0.12, 14.3), _cover_top_material)
-	_add_ramp(Vector3(0.0, 0.55, 11.2), Vector3(7.0, 0.5, 9.0), -13.0)
-	_add_ramp(Vector3(0.0, 0.55, -11.2), Vector3(7.0, 0.5, 9.0), 13.0)
+	_add_prop(Vector3(0.0, 2.24, 0.0), Vector3(20.4, 0.12, 20.4), _cover_top_material)
+	_add_ramp(Vector3(0.0, 0.6, 14.8), Vector3(8.0, 0.5, 10.0), -12.5)
+	_add_ramp(Vector3(0.0, 0.6, -14.8), Vector3(8.0, 0.5, 10.0), 12.5)
+	_add_ramp(Vector3(14.8, 0.6, 0.0), Vector3(10.0, 0.5, 8.0), 0.0, -12.5)
+	_add_ramp(Vector3(-14.8, 0.6, 0.0), Vector3(10.0, 0.5, 8.0), 0.0, 12.5)
 
-	# Torre en el centro de la plataforma.
-	_add_box(Vector3(0.0, 4.0, 0.0), Vector3(4.0, 4.0, 4.0), _cover_material, "Cover%d" % index)
+	# Torre en el centro de la plataforma: corta el duelo de punta a punta.
+	_add_box(Vector3(0.0, 4.6, 0.0), Vector3(5.0, 5.0, 5.0), _cover_material, "Cover%d" % index)
 	index += 1
-	_add_prop(Vector3(0.0, 6.06, 0.0), Vector3(4.5, 0.22, 4.5), _trim_material)
+	_add_prop(Vector3(0.0, 7.14, 0.0), Vector3(5.6, 0.16, 5.6), _marking_material)
 
-	# --- Coberturas de flanco, todas distintas ---
+	# --- Anillo interior: coberturas bajas y medias alrededor de la plataforma ---
 	var blocks: Array = [
-		{"pos": Vector3(-15.0, 1.3, -10.0), "size": Vector3(8.0, 2.6, 3.2)},
-		{"pos": Vector3(14.0, 1.7, 12.0), "size": Vector3(3.2, 3.4, 9.0)},
-		{"pos": Vector3(-18.0, 1.0, 15.0), "size": Vector3(5.5, 2.0, 5.5)},
-		{"pos": Vector3(19.0, 2.1, -14.0), "size": Vector3(4.5, 4.2, 4.5)},
-		{"pos": Vector3(-7.0, 0.7, 20.0), "size": Vector3(10.0, 1.4, 2.6)},
-		{"pos": Vector3(9.0, 0.7, -21.0), "size": Vector3(2.6, 1.4, 10.0)},
-		{"pos": Vector3(-22.0, 1.5, -2.0), "size": Vector3(3.0, 3.0, 7.0)},
-		{"pos": Vector3(22.0, 1.2, 4.0), "size": Vector3(3.0, 2.4, 6.0)},
+		{"pos": Vector3(-21.0, 1.3, -15.0), "size": Vector3(9.0, 2.6, 3.4)},
+		{"pos": Vector3(20.0, 1.8, 17.0), "size": Vector3(3.4, 3.6, 10.0)},
+		{"pos": Vector3(-25.0, 1.0, 21.0), "size": Vector3(6.5, 2.0, 6.5)},
+		{"pos": Vector3(26.0, 2.2, -19.0), "size": Vector3(5.0, 4.4, 5.0)},
+		{"pos": Vector3(-10.0, 0.7, 27.0), "size": Vector3(12.0, 1.4, 2.8)},
+		{"pos": Vector3(13.0, 0.7, -28.0), "size": Vector3(2.8, 1.4, 12.0)},
+		{"pos": Vector3(-30.0, 1.5, -3.0), "size": Vector3(3.2, 3.0, 8.0)},
+		{"pos": Vector3(30.0, 1.2, 5.0), "size": Vector3(3.2, 2.4, 7.0)},
+
+		# --- Anillo exterior: el que evita que las esquinas sean un descampado ---
+		{"pos": Vector3(-36.0, 1.6, -30.0), "size": Vector3(7.0, 3.2, 3.2)},
+		{"pos": Vector3(36.0, 1.6, 30.0), "size": Vector3(7.0, 3.2, 3.2)},
+		{"pos": Vector3(-35.0, 1.1, 33.0), "size": Vector3(3.2, 2.2, 8.0)},
+		{"pos": Vector3(35.0, 1.1, -33.0), "size": Vector3(3.2, 2.2, 8.0)},
+		{"pos": Vector3(0.0, 1.4, 36.0), "size": Vector3(10.0, 2.8, 3.0)},
+		{"pos": Vector3(0.0, 1.4, -36.0), "size": Vector3(10.0, 2.8, 3.0)},
+		{"pos": Vector3(-38.0, 1.4, 8.0), "size": Vector3(3.0, 2.8, 10.0)},
+		{"pos": Vector3(38.0, 1.4, -8.0), "size": Vector3(3.0, 2.8, 10.0)},
 	]
 	for block: Dictionary in blocks:
 		var pos: Vector3 = block["pos"]
 		var size: Vector3 = block["size"]
-		_add_box(pos, size, _cover_material, "Cover%d" % index)
+		_add_box(pos, size, _zone_material(pos), "Cover%d" % index)
 		index += 1
 		# Borde claro arriba: hace que la silueta de la cobertura se lea de lejos.
 		_add_prop(pos + Vector3(0.0, size.y * 0.5 + 0.07, 0.0),
 			Vector3(size.x * 1.03, 0.14, size.z * 1.03), _cover_top_material)
 
+	# --- Dos plataformas laterales elevadas, para que la altura no sea solo el centro ---
+	for side: float in [-1.0, 1.0]:
+		var base := Vector3(side * 28.0, 0.75, side * -27.0)
+		_add_box(base, Vector3(11.0, 1.5, 11.0), _zone_material(base), "Cover%d" % index)
+		index += 1
+		_add_prop(base + Vector3(0.0, 0.83, 0.0), Vector3(11.3, 0.12, 11.3), _cover_top_material)
+		_add_ramp(base + Vector3(side * -8.5, -0.28, 0.0), Vector3(8.0, 0.4, 6.0), 0.0, side * 10.0)
+
 	# Pilares sueltos, para romper las lineas rectas.
 	var spots: Array[Vector3] = [
-		Vector3(-11.0, 0.0, 22.0), Vector3(12.0, 0.0, -18.0),
-		Vector3(-24.0, 0.0, 9.0), Vector3(24.0, 0.0, -8.0),
+		Vector3(-16.0, 0.0, 30.0), Vector3(17.0, 0.0, -26.0),
+		Vector3(-33.0, 0.0, 13.0), Vector3(33.0, 0.0, -12.0),
+		Vector3(-12.0, 0.0, -22.0), Vector3(11.0, 0.0, 23.0),
+		Vector3(-42.0, 0.0, -14.0), Vector3(42.0, 0.0, 14.0),
 	]
 	for spot: Vector3 in spots:
-		_add_pillar(spot, 0.9, 5.5)
+		_add_pillar(spot, 0.95, 6.5)
 
 
 # ---------------------------------------------------------- Piezas del escenario
@@ -268,12 +419,24 @@ func _add_plane(pos: Vector3, size: Vector2, material: Material) -> void:
 
 ## Rampa: una caja rotada. El angulo se mantiene bajo para que se pueda subir corriendo
 ## (el floor_max_angle por defecto de CharacterBody3D son 45 grados).
-func _add_ramp(pos: Vector3, size: Vector3, angle_deg: float) -> void:
+## Tinte segun en que diagonal del mapa cae la cobertura.
+##
+## El mapa es un cuadrado simetrico de 92 metros: sin una señal de color, las cuatro
+## esquinas son indistinguibles y te perdes. Dos diagonales, dos temperaturas.
+func _zone_material(pos: Vector3) -> StandardMaterial3D:
+	if pos.x * pos.z > 0.0:
+		return _cover_warm_material
+	return _cover_cool_material
+
+
+## Rampa inclinada. angle_x inclina sobre el eje X (rampas norte/sur) y angle_z sobre
+## el Z (rampas este/oeste): con cuatro accesos hacen falta las dos orientaciones.
+func _add_ramp(pos: Vector3, size: Vector3, angle_deg: float, angle_z_deg: float = 0.0) -> void:
 	var body := StaticBody3D.new()
 	body.collision_layer = GameConfig.LAYER_WORLD
 	body.collision_mask = 0
 	body.position = pos
-	body.rotation_degrees = Vector3(angle_deg, 0.0, 0.0)
+	body.rotation_degrees = Vector3(angle_deg, 0.0, angle_z_deg)
 
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
@@ -297,7 +460,7 @@ func _add_pillar(base: Vector3, radius: float, height: float) -> void:
 	shape.shape = cyl
 	body.add_child(shape)
 
-	body.add_child(Art.cylinder(radius, height, _wall_material))
+	body.add_child(Art.cylinder(radius, height, _pillar_material))
 	body.add_child(Art.cylinder(radius * 1.07, 0.3, _trim_material, Vector3(0.0, -height * 0.5 + 1.3, 0.0)))
 	body.add_child(Art.cylinder(radius * 1.07, 0.3, _trim_material, Vector3(0.0, height * 0.5 - 0.9, 0.0)))
 	add_child(body)
@@ -306,15 +469,17 @@ func _add_pillar(base: Vector3, radius: float, height: float) -> void:
 # ------------------------------------------------------------------- Spawn points
 
 func _build_spawn_points() -> void:
+	# Pegados al borde del mapa nuevo (medio lado = 46) pero adentro de las paredes, y
+	# lejos de las coberturas para no aparecer encajado en una.
 	var positions: Array[Vector3] = [
-		Vector3(-24.0, 0.0, -24.0),
-		Vector3(24.0, 0.0, -24.0),
-		Vector3(-24.0, 0.0, 24.0),
-		Vector3(24.0, 0.0, 24.0),
-		Vector3(0.0, 0.0, -25.0),
-		Vector3(0.0, 0.0, 25.0),
-		Vector3(-25.0, 0.0, 0.0),
-		Vector3(25.0, 0.0, 0.0),
+		Vector3(-40.0, 0.0, -40.0),
+		Vector3(40.0, 0.0, -40.0),
+		Vector3(-40.0, 0.0, 40.0),
+		Vector3(40.0, 0.0, 40.0),
+		Vector3(-6.0, 0.0, -41.0),
+		Vector3(6.0, 0.0, 41.0),
+		Vector3(-41.0, 0.0, 24.0),
+		Vector3(41.0, 0.0, -24.0),
 	]
 	_spawn_points.clear()
 	for pos: Vector3 in positions:
@@ -322,6 +487,38 @@ func _build_spawn_points() -> void:
 		var to_center := (Vector3.ZERO - pos)
 		var yaw := atan2(-to_center.x, -to_center.z)
 		_spawn_points.append(Transform3D(Basis(Vector3.UP, yaw), pos))
+
+
+## Busca un punto despejado cerca de `alrededor`, probando en espiral hacia afuera.
+##
+## POR QUE EXISTE: cualquier coordenada escrita a mano deja de ser valida en cuanto
+## alguien mueve una cobertura. Paso de verdad: al agrandar el mapa, dos tests que
+## ponian un maniqui en (20, 20) empezaron a meterlo adentro de un bloque y sus golpes
+## pegaban contra la pared. Con esto, el que necesita un lugar libre lo pide.
+func find_clear_spot(alrededor: Vector3, radius: float = 0.75) -> Vector3:
+	var space := get_world_3d().direct_space_state
+	if space == null:
+		return alrededor
+
+	var shape := SphereShape3D.new()
+	shape.radius = radius
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = shape
+	query.collision_mask = GameConfig.LAYER_WORLD
+
+	var limite := ARENA_SIZE * 0.5 - 3.0
+	for intento: int in range(28):
+		# Espiral: el primer intento es el punto pedido, los siguientes se abren en
+		# circulos cada vez mas grandes.
+		var radio := float(intento) * 0.9
+		var ang := float(intento) * 2.399  # angulo aureo, reparte sin repetir direccion
+		var probe := alrededor + Vector3(cos(ang) * radio, 0.0, sin(ang) * radio)
+		probe.x = clampf(probe.x, -limite, limite)
+		probe.z = clampf(probe.z, -limite, limite)
+		query.transform = Transform3D(Basis.IDENTITY, probe + Vector3.UP * 1.0)
+		if space.intersect_shape(query, 1).is_empty():
+			return probe
+	return alrededor
 
 
 ## Devuelve el spawn mas lejano de todos los jugadores vivos, para no aparecer en la
@@ -398,48 +595,73 @@ func _remove_player(id: int) -> void:
 	_players.erase(id)
 
 
-# ------------------------------------------------------- Maniquies (modo practica)
+# ------------------------------------------------------------ Bots (modo practica)
 
-## Tres maniquies parados en linea. No se mueven ni devuelven golpes: estan para medir
-## daño, ver como suben los stacks de escarcha y practicar el timing del canalizado.
+## Tres bots que persiguen, esquivan y te devuelven los golpes. Lo que deciden esta en
+## BotBrain; aca solo se los arma.
 func _spawn_dummies() -> void:
-	var data := _make_dummy_data()
+	# Personajes REALES y alternados, no un maniqui generico. Dos razones: practicas
+	# contra los kits con los que despues vas a pelear de verdad, y ves de afuera lo
+	# que hacen tus propias habilidades, que jugandolas en primera persona no se ve.
+	var ids := CharacterDB.get_all_ids()
+	if ids.is_empty():
+		return
+
+	# En arco al otro lado del mapa: entran juntos pero no en fila india.
+	var puestos: Array[Vector3] = [
+		Vector3(-14.0, 0.0, -30.0),
+		Vector3(0.0, 0.0, -34.0),
+		Vector3(14.0, 0.0, -30.0),
+	]
+
 	for i: int in range(DUMMY_COUNT):
-		var pos := Vector3(-8.0 + float(i) * 8.0, 0.0, -20.0)
-		var dummy: Player = PLAYER_SCENE.instantiate()
+		var base: Vector3 = puestos[i] if i < puestos.size() else Vector3(float(i) * 8.0, 0.0, -30.0)
+		var pos := find_clear_spot(base, 1.0)
+		var data := CharacterDB.get_character(ids[i % ids.size()])
+		if data == null:
+			continue
+
+		var bot: Player = PLAYER_SCENE.instantiate()
 		var id := -(i + 1)
-		dummy.name = "Dummy_%d" % (i + 1)
-		dummy.peer_id = id
-		dummy.is_dummy = true
-		dummy.player_name = "Maniqui %d" % (i + 1)
-		add_child(dummy)
-		dummy.global_position = pos
-		dummy.home_position = pos
-		dummy.rotation.y = PI
-		dummy.setup_character(data)
-		dummy.health.set_max(DUMMY_HEALTH)
-		dummy.name_label.text = dummy.player_name
-		dummy.name_label.visible = true
-		_players[id] = dummy
+		bot.name = "Bot_%d" % (i + 1)
+		bot.peer_id = id
+		bot.is_dummy = true
+		bot.player_name = "Bot %s" % data.display_name.split(" ")[0]
+		add_child(bot)
+		bot.global_position = pos
+		bot.home_position = pos
+		bot.rotation.y = 0.0
+		bot.bot_look_yaw = 0.0
+		bot.setup_character(data)
+		bot.health.set_max(DUMMY_HEALTH)
+
+		# El servidor es el dueño de las habilidades del bot.
+		#
+		# HACE FALTA: setup_character deja owner_peer_id en el peer del bot (-1, -2...),
+		# y AbilityCaster rechaza cualquier pedido cuyo emisor no sea el dueño. Con el
+		# id negativo, el bot no podia tirar ni una habilidad y el rechazo era mudo.
+		bot.caster.owner_peer_id = Net.local_id()
+
+		bot.name_label.text = bot.player_name
+		bot.name_label.visible = true
+
+		var brain := BotBrain.new()
+		brain.name = "BotBrain"
+		brain.setup(bot, pos)
+		bot.add_child(brain)
+
+		_players[id] = bot
 		_dummy_spawns[id] = pos
-		dummy.died.connect(_on_player_died.bind(id))
+		bot.died.connect(_on_player_died.bind(id))
 
 
-## Personaje solo para los maniquies. No se registra en CharacterDB a proposito: no
-## queremos que aparezca como opcion en la sala de espera.
-func _make_dummy_data() -> CharacterData:
-	var data := CharacterData.new()
-	data.id = &"dummy"
-	data.display_name = "Maniqui"
-	data.origin_game = "Practica"
-	data.body_color = Color(0.40, 0.42, 0.50)
-	data.accent_color = Color(0.88, 0.42, 0.36)
-	data.skin_color = Color(0.58, 0.60, 0.66)
-	data.max_health = DUMMY_HEALTH
-	data.max_stamina = 100.0
-	data.move_speed = 0.0
-	data.silhouette = &"none"
-	return data
+## Prende o apaga a todos los bots.
+##
+## Lo usa el chequeo visual: necesita capturas quietas y reproducibles, y con los bots
+## persiguiendo al jugador cada corrida salia distinta y la mitad de las fotos tenian
+## un bot cruzado delante de la camara.
+static func set_bots_active(active: bool) -> void:
+	BotBrain.globally_enabled = active
 
 
 # ------------------------------------------------------------------ Muerte / respawn
@@ -448,7 +670,7 @@ func _on_player_died(killer_id: int, victim_id: int) -> void:
 	if not Net.is_server():
 		return
 	var victim := get_player(victim_id)
-	# Las muertes de maniqui no suman al marcador: es practica, no una partida.
+	# Las muertes de bot no suman al marcador: es practica, no una partida.
 	if victim != null and victim.is_dummy:
 		_respawn_dummy_after_delay(victim_id)
 		return
@@ -474,8 +696,12 @@ func _respawn_dummy_after_delay(dummy_id: int) -> void:
 		return
 	var pos: Vector3 = _dummy_spawns.get(dummy_id, Vector3.ZERO)
 	dummy.health.revive_full()
+	dummy.stamina.restore_full()
 	dummy.status.clear_all()
-	dummy._apply_respawn(pos, PI)
+	dummy.caster.reset_state()
+	dummy.bot_move_dir = Vector3.ZERO
+	dummy.aim_override = Vector3.ZERO
+	dummy._apply_respawn(find_clear_spot(pos, 1.0), 0.0)
 
 
 func _on_peer_disconnected(id: int) -> void:

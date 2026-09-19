@@ -423,7 +423,7 @@ func _test_ultimate_charge(player: Player, arena: Arena) -> void:
 
 ## La regla nueva: la stamina se regenera despacio, pero PEGAR la devuelve.
 func _test_economia_stamina(player: Player, arena: Arena) -> void:
-	var target := _spawn_dummy(arena, Vector3(24.0, 0.6, 24.0))
+	var target := _spawn_dummy(arena, arena.find_clear_spot(Vector3(30.0, 0.6, 30.0)))
 	await get_tree().process_frame
 
 	_check(player.stamina.regen_per_second <= 10.0,
@@ -474,7 +474,7 @@ func _test_economia_stamina(player: Player, arena: Arena) -> void:
 func _test_defensa_de_hielo(player: Player, arena: Arena) -> void:
 	player.setup_character(CharacterDB.get_character(&"noelle"))
 	# Lo revivimos de verdad: un test anterior lo mata y queda sin collider.
-	player.respawn_at(Vector3(-20.0, 0.6, -20.0), 0.0)
+	player.respawn_at(arena.find_clear_spot(Vector3(-30.0, 0.6, -30.0)), 0.0)
 	for _i: int in range(4):
 		await get_tree().physics_frame
 
@@ -544,10 +544,12 @@ func _test_rafaga_del_stand(player: Player, arena: Arena) -> void:
 	#     por el piso: la rafaga tiraba los seis golpes desde -6 metros de altura.
 	#   - el cuerpo copia el yaw de la CAMARA en cada frame de fisica, asi que tocar
 	#     rotation.y solo dura un frame. respawn_at fija los dos.
-	player.respawn_at(Vector3(20.0, 0.6, 22.0), 0.0)
+	# Un hueco libre con dos metros de margen para los dos cuerpos, pedido a la arena.
+	var libre := arena.find_clear_spot(Vector3(22.0, 0.6, 26.0), 2.2)
+	player.respawn_at(Vector3(libre.x, 0.6, libre.z + 2.0), 0.0)
 	for _i: int in range(6):
 		await get_tree().physics_frame
-	var enemy := _spawn_dummy(arena, Vector3(20.0, 0.6, 20.0))
+	var enemy := _spawn_dummy(arena, Vector3(libre.x, 0.6, libre.z))
 	for _i: int in range(4):
 		await get_tree().physics_frame
 
@@ -604,9 +606,13 @@ func _test_knockback(player: Player, arena: Arena) -> void:
 	# Posicion fija y despejada de coberturas, no relativa al jugador: despues de los
 	# tests anteriores el jugador puede estar en cualquier lado, incluso arriba de la
 	# plataforma central, y el blanco terminaba spawneando dentro de un bloque.
-	var spot := Vector3(20.0, 0.6, 20.0)
+	# Le PEDIMOS a la arena un lugar libre en vez de escribir coordenadas: al agrandar
+	# el mapa, el (20, 20) que estaba aca quedo adentro de una cobertura nueva y los
+	# golpes pegaban contra el bloque.
+	var spot := arena.find_clear_spot(Vector3(20.0, 0.6, 20.0))
+	spot.y = 0.6
 	target.global_position = spot
-	target.home_position = Vector3(20.0, 0.0, 20.0)
+	target.home_position = Vector3(spot.x, 0.0, spot.z)
 	target.setup_character(CharacterDB.get_character(&"noelle"))
 	await get_tree().process_frame
 
@@ -631,11 +637,10 @@ func _test_knockback(player: Player, arena: Arena) -> void:
 	var moved := before.distance_to(target.global_position)
 	_check(moved > 0.3, "el blanco se movio por el empujon (%.2f m)" % moved)
 
-	# Y despues tiene que volver solo a su marca, o el modo practica se desarma.
-	for _i: int in range(150):
-		await get_tree().physics_frame
-	var back := target.global_position.distance_to(target.home_position)
-	_check(back < 0.6, "el maniqui volvio a su lugar (quedo a %.2f m)" % back)
+	# Que vuelva solo a su marca se prueba en solo_test, con un bot de verdad: volver
+	# a casa dejo de ser algo que hace el cuerpo y paso a ser una decision del
+	# BotBrain, y este blanco es a proposito un cuerpo sin cerebro para poder medir el
+	# empujon sin que se mueva por su cuenta.
 
 	# Un empujon de fuerza cero no tiene que hacer nada.
 	target.velocity = Vector3.ZERO

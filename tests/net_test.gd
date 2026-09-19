@@ -11,7 +11,11 @@ extends Node
 
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
 const PORT: int = 27099
-const TIMEOUT: float = 18.0
+## Subio de 18 a 34 segundos. Dos motivos concretos: la arena paso de 60 a 92 metros
+## con 18 coberturas y tarda mas en construirse de los dos lados, y arrancar los dos
+## procesos a mano deja un desfase que se come el presupuesto. Con 18 el host se
+## quedaba sin tiempo justo mientras esperaba al segundo jugador.
+const TIMEOUT: float = 34.0
 
 var _role: String = "host"
 var _main: Node = null
@@ -55,7 +59,7 @@ func _run_host() -> void:
 
 	# Esperamos a que se conecte el cliente.
 	var waited := 0.0
-	while Net.players.size() < 2 and waited < 10.0:
+	while Net.players.size() < 2 and waited < 18.0:
 		await get_tree().process_frame
 		waited += get_process_delta_time()
 	_check(Net.players.size() == 2, "el cliente se registro en el servidor (hay %d jugadores)" % Net.players.size())

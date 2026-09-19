@@ -37,10 +37,25 @@ const KNOCKBACK_CONTROL_TIME: float = 0.28
 
 var peer_id: int = 1
 var player_name: String = "Jugador"
-## Maniqui de entrenamiento: no lo controla nadie y sus muertes no suman al marcador.
+## Bot de entrenamiento: lo maneja un BotBrain y sus muertes no suman al marcador.
 var is_dummy: bool = false
-## Donde se planta un maniqui. Despues de un empujon vuelve caminando solo.
+## Donde se planta un bot. Si no tiene a quien pegarle, vuelve caminando solo.
 var home_position: Vector3 = Vector3.ZERO
+
+## --- Lo que escribe el BotBrain, leido por _process_bot ---
+## Direccion horizontal en la que quiere moverse, normalizada. Cero = quieto.
+var bot_move_dir: Vector3 = Vector3.ZERO
+## Hacia donde quiere mirar.
+var bot_look_yaw: float = 0.0
+## Si el bot quiere correr. Sin esto camina a 6 m/s mientras el jugador con auto-correr
+## va a 9.3, o sea que no lo alcanza NUNCA: perseguir seria puro adorno.
+var bot_wants_run: bool = false
+## Direccion de apuntado que pisa a la de la camara.
+##
+## HACE FALTA porque un bot no tiene camara activa, y get_aim_direction() sale del
+## CameraPivot: apagado, devolveria una direccion sin sentido y las habilidades del bot
+## saldrian para cualquier lado.
+var aim_override: Vector3 = Vector3.ZERO
 var character_id: StringName = &"noelle"
 
 @onready var health: Health = $Health
@@ -118,6 +133,8 @@ func get_aim_origin() -> Vector3:
 ## apuntar paralelo a ella hace que las habilidades pasen al costado de lo que estas
 ## mirando. Esto corrige esa paralaje.
 func get_aim_direction() -> Vector3:
+	if not aim_override.is_zero_approx():
+		return aim_override.normalized()
 	if not is_instance_valid(camera_pivot):
 		return -global_transform.basis.z
 	var target := camera_pivot.get_aim_point()
@@ -166,7 +183,7 @@ func _physics_process(delta: float) -> void:
 	# Los maniquies no los controla nadie, pero si los empujan tienen que moverse y
 	# despues volver a su lugar. Si no, el modo practica se desarma a los diez golpes.
 	if is_dummy:
-		_process_dummy(delta)
+		_process_bot(delta)
 		return
 
 	if not is_local_player():
@@ -286,28 +303,48 @@ func _try_dash() -> void:
 
 
 ## Maniqui: recibe el empujon, se frena solo y despues vuelve caminando a su marca.
-func _process_dummy(delta: float) -> void:
+## Fisica de un bot. Lo QUE hace lo decide BotBrain; aca solo se ejecuta, para que la
+## gravedad, la friccion y el empujon se comporten igual que con un jugador de verdad.
+func _process_bot(delta: float) -> void:
 	# Red de seguridad: si por lo que sea se cayo del mundo, vuelve a su marca en vez
 	# de seguir cayendo para siempre.
 	if global_position.y < -5.0:
-		global_position = home_position
+		global_position = home_position + Vector3.UP * 0.5
 		velocity = Vector3.ZERO
 		return
 
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 
+	var frozen := not status.can_act()
+	var wish := Vector3.ZERO if frozen else bot_move_dir
+	wish.y = 0.0
+	if wish.length() > 1.0:
+		wish = wish.normalized()
+
+	var speed := walk_speed
+	if bot_wants_run and not frozen:
+		speed *= sprint_multiplier
+	speed *= status.get_move_speed_multiplier()
+	var accel := acceleration * delta * walk_speed
+	var brake := friction * delta * walk_speed
+	if _knock_t > 0.0:
+		# Mismo criterio que con un jugador: durante el empujon la friccion no puede
+		# matar el impulso antes de que se vea.
+		accel *= 0.22
+		brake *= 0.10
+
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
-	horizontal = horizontal.move_toward(Vector3.ZERO, 22.0 * delta)
-
-	# Una vez frenado, camina de vuelta a su posicion original.
-	var to_home := home_position - global_position
-	to_home.y = 0.0
-	if horizontal.length() < 1.2 and to_home.length() > 0.3:
-		horizontal = to_home.normalized() * minf(2.6, to_home.length() * 2.5)
-
+	if wish.is_zero_approx():
+		horizontal = horizontal.move_toward(Vector3.ZERO, brake)
+	else:
+		horizontal = horizontal.move_toward(wish * speed, accel)
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
+
+	if not frozen:
+		rotation.y = lerp_angle(rotation.y, bot_look_yaw, minf(1.0, delta * 9.0))
+
 	move_and_slide()
 
 

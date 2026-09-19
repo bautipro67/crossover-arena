@@ -22,6 +22,10 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	_out_dir = String(args[0]) if args.size() > 0 else OS.get_user_data_dir()
 	print("[visual] guardando capturas en: ", _out_dir)
+	# Bots quietos: con ellos persiguiendo, cada corrida sale distinta y la mitad de
+	# las capturas tienen un bot cruzado delante de la camara. Se prenden a proposito
+	# para la captura de combate del final.
+	Arena.set_bots_active(false)
 	_main = MAIN_SCENE.instantiate()
 	add_child(_main)
 	_run.call_deferred()
@@ -184,6 +188,12 @@ func _run() -> void:
 	await _wait(0.6)
 	await _shot("14_tiempo_detenido")
 
+	# --- Los bots peleando, que es lo que cambia el modo practica ---
+	await _bots_en_combate()
+
+	# --- Vista aerea del mapa entero ---
+	await _vista_aerea()
+
 	# --- Marcador ---
 	await _wait(0.8)
 	await _shot("15_final")
@@ -293,6 +303,57 @@ func _face_closeup(player: Player, target: Player, shot_name: String) -> void:
 	if is_instance_valid(player) and is_instance_valid(player.camera_pivot):
 		player.camera_pivot.camera.current = true
 	await _wait(0.3)
+
+
+## Camara alta mirando al centro, para juzgar el MAPA y no la partida.
+##
+## Desde la camara del jugador no se puede evaluar un mapa de 92 metros: ves cinco
+## metros de piso y una cobertura. Esta vista es la unica forma de ver si el reparto
+## de coberturas tiene huecos o si una zona quedo vacia.
+func _vista_aerea() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	if arena == null:
+		return
+	var cam := Camera3D.new()
+	cam.fov = 62.0
+	arena.add_child(cam)
+	cam.global_position = Vector3(0.0, 62.0, 66.0)
+	cam.look_at(Vector3(0.0, 2.0, 0.0), Vector3.UP)
+	cam.make_current()
+	await _wait(0.6)
+	await _shot("18_mapa_desde_arriba")
+
+	# Y una segunda, mas baja y de costado, que muestra la silueta del mapa.
+	cam.global_position = Vector3(48.0, 22.0, 48.0)
+	cam.look_at(Vector3(0.0, 3.0, 0.0), Vector3.UP)
+	await _wait(0.5)
+	await _shot("19_mapa_de_costado")
+	cam.queue_free()
+
+
+## Prende los bots y los deja acercarse, para ver como se ve el modo practica ahora.
+func _bots_en_combate() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+
+	# Vida alta: la captura tiene que mostrar la pelea, no la pantalla de muerte.
+	player.health.set_max(3000.0)
+	player.status.clear_all()
+	_place(player, arena.find_clear_spot(Vector3(0.0, 0.6, -14.0), 1.5), PI)
+	for child: Node in arena.get_children():
+		var bot := child as Player
+		if bot != null and bot.is_dummy:
+			bot.health.revive_full()
+			bot.status.clear_all()
+	Arena.set_bots_active(true)
+
+	await _wait(2.6)
+	await _shot("16_bots_acercandose")
+	await _wait(2.2)
+	await _shot("17_bots_peleando")
+	Arena.set_bots_active(false)
 
 
 func _place(player: Player, pos: Vector3, yaw: float) -> void:

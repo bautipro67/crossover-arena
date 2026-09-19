@@ -18,8 +18,11 @@ const OUTLINE := Color(0.03, 0.04, 0.08)
 const FLOOR_DARK := Color(0.13, 0.16, 0.26)
 const FLOOR_LIGHT := Color(0.17, 0.21, 0.33)
 const WALL := Color(0.09, 0.11, 0.19)
-const COVER := Color(0.22, 0.28, 0.42)
-const COVER_TOP := Color(0.32, 0.40, 0.58)
+# Las coberturas tienen que separarse del piso de un vistazo: desde arriba, con los
+# valores viejos (0.22 contra un piso de 0.13-0.17) se confundian con el damero y el
+# mapa parecia vacio.
+const COVER := Color(0.30, 0.37, 0.54)
+const COVER_TOP := Color(0.44, 0.54, 0.74)
 const TRIM := Color(0.35, 0.75, 1.0)
 
 ## Acentos de personaje.

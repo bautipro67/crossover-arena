@@ -56,7 +56,7 @@ python tools/serve_web.py 8060
 
 | | Para qué |
 |---|---|
-| **Practicar solo** | Arena con maniquíes. Sin red, sin necesitar a nadie. Es por donde arranca cualquiera que baje el juego. |
+| **Practicar solo** | Arena con **tres bots que pelean**: persiguen, esquivan coberturas, usan sus habilidades y te devuelven los golpes. Sin red, sin necesitar a nadie. Es por donde arranca cualquiera que baje el juego. |
 | **Hostear partida** | Abrís una partida, hasta 8 jugadores. Sos el peer 1 y además jugás. |
 | **Unirse** | Te conectás por IP a alguien que esté hosteando. |
 
@@ -76,6 +76,28 @@ Gana el primero que llegue a 15 kills. Al terminar, todos vuelven a la sala de e
 y el host puede arrancar otra sin que nadie se reconecte.
 
 ---
+
+### Los bots del modo práctica
+
+Usan **personajes reales** del juego (Noelle y Dio alternados), no un maniquí genérico:
+practicás contra los kits con los que después vas a pelear, y ves desde afuera lo que
+hacen tus propias habilidades, que jugándolas en primera persona no se ve.
+
+Lo que hacen y por qué:
+
+| | |
+|---|---|
+| Piensan cada **200 ms** | Es su tiempo de reacción. Más rápido no es difícil, es injusto |
+| **Corren** para cerrar distancia, caminan en corto | Sin correr nunca te alcanzarían: vos vas a 9.3 m/s con el auto-correr y ellos caminan a 6 |
+| Se acercan **en diagonal** y cambian de lado | De frente y en línea recta son un blanco trivial |
+| **Esquivan** lo que tengan adelante | Tres rayos cortos. Sin eso se clavaban contra la primera cobertura y empujaban la pared |
+| Eligen la habilidad **según la distancia** | No tiran un cono de 3 m desde quince metros |
+| Esperan **0.55 s** entre habilidades | Sin esa pausa, tres bots te bajaban de 100 a 14 en dos segundos y medio. Medido |
+| **No usan el ultimate** | 260 de daño sin aviso no se practica, se sufre |
+| Vuelven a su puesto si te alejás | Si no, los tres terminan arrinconándote contra una pared |
+
+Se pueden apagar con `Arena.set_bots_active(false)`, que es lo que usa el chequeo visual
+para sacar capturas reproducibles.
 
 ## Controles
 
@@ -386,7 +408,7 @@ scripts/
   abilities/   Ability (base), AbilityCaster (el motor), Projectile, CombatUtils
   characters/  Un subdirectorio por personaje: noelle/ y dio/
   player/      Player, cámara en tercera persona, cuerpo visual
-  arena/       La arena y los maniquíes, generados por código
+  arena/       La arena (92 × 92 m) y los bots, generados por código
   ui/          Menú, sala de espera, HUD, pausa, opciones
   fx/          Efectos visuales (100% cosméticos)
   audio/       Sfx: sintetiza todos los sonidos por código al arrancar
