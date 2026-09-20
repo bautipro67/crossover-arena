@@ -36,6 +36,16 @@ var _slow_left: float = 0.0
 ## de un solo boton que mata a todo el mundo.
 var _stun_left: float = 0.0
 
+## VULNERABLE: recibe mas daño por un rato.
+##
+## Lo deja "Here I Come, San Francisco" al terminar la carga. Es el precio de tirarse de
+## cabeza: sin el, la carga seria un dash con daño y ninguna contra.
+##
+## Va aparte del multiplicador de congelado y se MULTIPLICAN entre si: congelar a
+## alguien que acaba de cargar tiene que ser el castigo que es.
+var _vuln_mult: float = 1.0
+var _vuln_left: float = 0.0
+
 
 func _process(delta: float) -> void:
 	if _freeze_left > 0.0:
@@ -52,6 +62,11 @@ func _process(delta: float) -> void:
 		_slow_left = maxf(0.0, _slow_left - delta)
 		if is_zero_approx(_slow_left):
 			_slow_percent = 0.0
+
+	if _vuln_left > 0.0:
+		_vuln_left = maxf(0.0, _vuln_left - delta)
+		if is_zero_approx(_vuln_left):
+			_vuln_mult = 1.0
 
 	if chill_stacks > 0:
 		_decay_left -= delta
@@ -109,6 +124,19 @@ func apply_slow(percent: float, duration: float) -> void:
 	_broadcast()
 
 
+## SOLO SERVIDOR. Deja al objetivo recibiendo mas daño por un rato.
+func apply_vulnerable(mult: float, duration: float) -> void:
+	if not _is_server() or mult <= 1.0 or duration <= 0.0:
+		return
+	_vuln_mult = maxf(_vuln_mult, mult)
+	_vuln_left = maxf(_vuln_left, duration)
+	_broadcast()
+
+
+func is_vulnerable() -> bool:
+	return _vuln_left > 0.0
+
+
 func is_frozen() -> bool:
 	return _freeze_left > 0.0
 
@@ -129,7 +157,8 @@ func get_move_speed_multiplier() -> float:
 
 
 func get_damage_taken_multiplier() -> float:
-	return FROZEN_DAMAGE_TAKEN_MULT if is_frozen() else 1.0
+	var mult := FROZEN_DAMAGE_TAKEN_MULT if is_frozen() else 1.0
+	return mult * _vuln_mult
 
 
 func get_freeze_remaining() -> float:
@@ -149,6 +178,8 @@ func clear_all() -> void:
 	_slow_percent = 0.0
 	_slow_left = 0.0
 	_stun_left = 0.0
+	_vuln_mult = 1.0
+	_vuln_left = 0.0
 	chill_changed.emit(0)
 	if was_frozen:
 		unfroze.emit()
@@ -162,11 +193,12 @@ func _is_server() -> bool:
 
 
 func _broadcast() -> void:
-	Net.rpc_ready(self, &"_push_state", [chill_stacks, _freeze_left, _slow_percent, _slow_left, _stun_left])
+	Net.rpc_ready(self, &"_push_state",
+		[chill_stacks, _freeze_left, _slow_percent, _slow_left, _stun_left, _vuln_mult, _vuln_left])
 
 
 @rpc("authority", "call_remote", "reliable")
-func _push_state(stacks: int, freeze_left: float, slow_percent: float, slow_left: float, stun_left: float) -> void:
+func _push_state(stacks: int, freeze_left: float, slow_percent: float, slow_left: float, stun_left: float, vuln_mult: float, vuln_left: float) -> void:
 	var was_frozen := is_frozen()
 	var was_stunned := is_stunned()
 	var old_stacks := chill_stacks
@@ -175,6 +207,8 @@ func _push_state(stacks: int, freeze_left: float, slow_percent: float, slow_left
 	_slow_percent = slow_percent
 	_slow_left = slow_left
 	_stun_left = stun_left
+	_vuln_mult = vuln_mult
+	_vuln_left = vuln_left
 	if old_stacks != chill_stacks:
 		chill_changed.emit(chill_stacks)
 	if is_frozen() and not was_frozen:

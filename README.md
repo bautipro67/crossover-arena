@@ -112,6 +112,41 @@ trabado**, distancia mínima y máxima al jugador, tiempo a distancia de pegar, 
 tirados y cuánto se amontonan entre ellos. No afirma nada — mide. Existe porque "los bots
 están mal" puede ser diez cosas distintas y todas se ven igual desde afuera.
 
+### Flowery — Deltarune
+
+Media distancia. Ni prepara como Noelle ni revienta como Dio: molesta, y **arruina los
+planes ajenos**.
+
+| Habilidad | Tecla | Costo | CD | Qué hace |
+|---|---|---|---|---|
+| **Pétalos** | Click izq | 0 | 0.75s | 3 pétalos al frente, 5 de daño cada uno. **El único básico a distancia del juego** |
+| **JARONA** | Click der | 28 | 5.5s | Grito en 7.5m a la redonda. 24 de daño, empuja fuerte y **CORTA cualquier canalizado** |
+| **Here I Come, San Francisco** | E | 30 | 8s | Carga 13m de frente, 26 de daño a lo que atropelle. **No se puede frenar** y quedás expuesta 1s |
+| **LAST JARONA** | Q | **100 + medidor** | 10s | Canaliza 1.2s y revienta en 22m. **110 de daño en el centro, 34 en el borde** |
+
+**Por qué existe en el roster.** Hasta que llegó, un Snowgrave o un ZA WARUDO empezado
+solo se podía frenar congelando al que lo tiraba o rompiéndole la línea de visión: o sea
+que solo Noelle podía frenar a Noelle. **JARONA es lo único del juego que interrumpe un
+canalizado**, y eso le da al roster una forma de piedra-papel-tijera en vez de tres
+personajes que hacen daño de maneras distintas.
+
+Las tres cosas que la equilibran:
+
+- **Es la más frágil** (88 de vida). Tiene el único básico a distancia y una carga para
+  entrar y salir; si además aguantara como los otros, no habría forma de castigarla.
+- **Su básico reparte el daño en tres pétalos**, así que a distancia entra uno o dos, no
+  los tres. El alcance se paga con que casi nunca entra completo.
+- **La carga la deja expuesta**: al frenar recibe 30% más de daño por un segundo.
+  Tirarse de cabeza tiene que costar algo, si no es un dash con daño.
+
+El daño de LAST JARONA **cae con la distancia**, y eso es lo que le da contrajuego a un
+radio de 22 metros: con daño plano sería "aprieto Q y gana el que tenga más rango".
+
+Sobre los nombres: **Flowery** es de Deltarune Capítulo 5, y *"Jarona"* y
+*"Here I come, San Francisco"* son líneas suyas vueltas meme. La primera es de su pelea
+de jefe; la segunda, del momento en que se lanza contra el Roaring Knight — de ahí que
+la carga sea irreversible y te deje vendida.
+
 ## Controles
 
 | Acción | Tecla | ¿Cuesta stamina? |
@@ -242,6 +277,14 @@ El HUD tiene una tercera barra dorada abajo de la stamina, y la carta del ultima
 el porcentaje mientras no esté listo.
 
 ## Los personajes
+
+Tres, y cada uno resuelve la pelea de una forma que los otros no pueden:
+
+| | Cómo gana | Su pieza única |
+|---|---|---|
+| **Noelle** | Prepara desde lejos: escarcha hasta congelar y remata | El único **ejecutor** |
+| **Dio** | Entra, abre una ventana y mete el daño a mano | La única **parada de tiempo** |
+| **Flowery** | Hostiga a media distancia y entra y sale | El único que **corta canalizados** |
 
 ### Noelle Holiday — Deltarune
 

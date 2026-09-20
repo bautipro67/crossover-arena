@@ -589,8 +589,55 @@ func _build_costume(kind: StringName) -> void:
 			_build_noelle()
 		&"shoulders":
 			_build_dio()
+		&"petals":
+			_build_flowery()
 		_:
 			pass
+
+
+## Flowery: flor. La silueta mas distinta de las tres, y a proposito.
+##
+## Noelle es alta y angosta (astas), Dio es ancho arriba (hombreras). A veinte metros
+## las dos se leen como "persona". Flowery tiene una CORONA REDONDA alrededor de la
+## cara: a la misma distancia se lee como un circulo, que no se parece a ninguna de las
+## otras dos. En una pelea no ves colores, ves siluetas.
+func _build_flowery() -> void:
+	# Cejas caidas hacia afuera y boca ancha: la sonrisa que no llega a los ojos.
+	_apply_expression(-0.34, 0.006, 0.078)
+
+	var petal_mat := Art.toon(accent_color, OUTLINE_WIDTH)
+	var leaf_mat := Art.toon(body_color.lightened(0.08), OUTLINE_WIDTH)
+
+	# --- Corona de petalos alrededor de la cara ---
+	var petalos := 8
+	for i: int in range(petalos):
+		var ang := TAU * float(i) / float(petalos)
+		var pivot := Node3D.new()
+		pivot.position = Vector3(0.0, 0.10, 0.0)
+		pivot.rotation.z = ang
+		_head_pivot.add_child(pivot)
+		_costume.append(pivot)
+		# Cada petalo es una esfera achatada empujada hacia afuera y algo hacia atras:
+		# hacia atras para que la corona enmarque la cara en vez de taparla.
+		var petalo := Art.sphere(0.145, petal_mat, Vector3(0.0, 0.30, -0.03))
+		petalo.scale = Vector3(0.72, 1.35, 0.42)
+		pivot.add_child(petalo)
+
+	# Centro de la flor, detras de la cara.
+	var centro := Art.sphere(0.20, Art.toon(accent_color.darkened(0.30), OUTLINE_WIDTH),
+		Vector3(0.0, 0.10, -0.09))
+	centro.scale = Vector3(1.0, 1.0, 0.45)
+	_costume_add(_head_pivot, centro)
+
+	# --- Cuello de tallo ---
+	_costume_add(_torso, Art.capsule(0.075, 0.30, leaf_mat, Vector3(0.0, 0.80, 0.0)))
+
+	# --- Hojas en lugar de hombreras ---
+	for side: float in [-1.0, 1.0]:
+		var hoja := Art.sphere(0.17, leaf_mat, Vector3(0.28 * side, 0.60, 0.0))
+		hoja.scale = Vector3(1.5, 0.45, 0.95)
+		hoja.rotation_degrees = Vector3(0.0, 0.0, 28.0 * side)
+		_costume_add(_torso, hoja)
 
 
 ## Noelle: chica reno. Silueta alta y angosta, con el peso arriba.

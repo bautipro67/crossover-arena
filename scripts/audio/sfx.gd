@@ -112,6 +112,9 @@ func _build_bank() -> void:
 	_bank[&"ice_shock"] = _make(_synth_ice_shock())
 	_bank[&"snowgrave"] = _make(_synth_snowgrave())
 	_bank[&"za_warudo"] = _make(_synth_za_warudo())
+	_bank[&"petals"] = _make(_synth_petals())
+	_bank[&"jarona"] = _make(_synth_jarona())
+	_bank[&"last_jarona"] = _make(_synth_last_jarona())
 	_bank[&"freeze"] = _make(_synth_freeze())
 	_bank[&"dash"] = _make(_synth_dash())
 	_bank[&"death"] = _make(_synth_death())
@@ -120,6 +123,69 @@ func _build_bank() -> void:
 	_bank[&"ui_click"] = _make(_synth_ui_click())
 	_bank[&"no_stamina"] = _make(_synth_no_stamina())
 	_bank[&"respawn"] = _make(_synth_respawn())
+
+
+## Petalos: tres chasquidos suaves y agudos, uno por petalo.
+func _synth_petals() -> PackedFloat32Array:
+	var n := int(MIX_RATE * 0.22)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var v := 0.0
+		# Tres disparos desfasados 45 ms: se oye la rafaga, no un golpe solo.
+		for k: int in range(3):
+			var dt := t - float(k) * 0.045
+			if dt < 0.0:
+				continue
+			var env := exp(-dt * 40.0)
+			v += (sin(TAU * (900.0 + 120.0 * float(k)) * dt) * 0.4
+				+ randf_range(-1.0, 1.0) * 0.22) * env
+		out[i] = v * 0.55
+	return out
+
+
+## JARONA: un grito. Tono que sube rapido y despues cae, con cuerpo ancho.
+##
+## Se construye con dos armonicos y ruido encima en vez de una sinusoide sola: una
+## sinusoide limpia suena a pitido de electrodomestico, no a alguien gritando.
+func _synth_jarona() -> PackedFloat32Array:
+	var n := int(MIX_RATE * 0.55)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / 0.55
+		# Sube en el primer 20% y despues baja: la curva de un grito.
+		var freq := 320.0 + 520.0 * (1.0 - exp(-p * 9.0)) - 260.0 * p
+		var env := minf(1.0, p * 14.0) * exp(-p * 3.4)
+		var v := sin(TAU * freq * t) * 0.5
+		v += sin(TAU * freq * 2.0 * t) * 0.22
+		v += sin(TAU * freq * 3.0 * t) * 0.1
+		v += randf_range(-1.0, 1.0) * 0.14
+		out[i] = v * env
+	return out
+
+
+## LAST JARONA: el mismo grito pero mas grave, mas largo y con un golpe abajo.
+func _synth_last_jarona() -> PackedFloat32Array:
+	var n := int(MIX_RATE * 1.4)
+	var out := PackedFloat32Array()
+	out.resize(n)
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / 1.4
+		var freq := 190.0 + 420.0 * (1.0 - exp(-p * 7.0)) - 230.0 * p
+		var env := minf(1.0, p * 9.0) * exp(-p * 2.1)
+		var v := sin(TAU * freq * t) * 0.5
+		v += sin(TAU * freq * 2.0 * t) * 0.26
+		v += sin(TAU * freq * 3.0 * t) * 0.14
+		v += randf_range(-1.0, 1.0) * 0.18
+		# Golpe grave debajo: es lo que lo separa de Jarona a secas y lo hace sonar a
+		# algo que revienta y no a un grito mas fuerte.
+		v += sin(TAU * (58.0 - 18.0 * p) * t) * 0.55 * exp(-p * 3.2)
+		out[i] = clampf(v * env, -1.0, 1.0)
+	return out
 
 
 ## Golpe de hielo: ruido filtrado con caida rapida y un tono agudo encima.

@@ -55,6 +55,7 @@ func _run() -> void:
 	await _test_economia_stamina(player, arena)
 	await _test_defensa_de_hielo(player, arena)
 	await _test_rafaga_del_stand(player, arena)
+	await _test_flowery(player, arena)
 	_test_arena(arena)
 
 	_finish()
@@ -586,6 +587,31 @@ func _test_rafaga_del_stand(player: Player, arena: Arena) -> void:
 	await get_tree().process_frame
 
 
+## Devuelve una direccion horizontal con `largo` metros despejados desde `desde`.
+##
+## Existe por la misma razon que Arena.find_clear_spot: cualquier direccion escrita a
+## mano deja de estar libre en cuanto alguien mueve una cobertura.
+func _carril_libre(contexto: Node3D, desde: Vector3, largo: float) -> Vector3:
+	var space := contexto.get_world_3d().direct_space_state
+	var mejor := Vector3.FORWARD
+	var mejor_dist := -1.0
+	for i: int in range(12):
+		var ang := TAU * float(i) / 12.0
+		var dir := Vector3(sin(ang), 0.0, cos(ang))
+		var origen := desde + Vector3.UP * 1.0
+		var query := PhysicsRayQueryParameters3D.create(origen, origen + dir * largo)
+		query.collision_mask = GameConfig.LAYER_WORLD
+		var hit := space.intersect_ray(query)
+		if hit.is_empty():
+			return dir
+		# Ninguna totalmente libre: nos quedamos con la mas despejada.
+		var d: float = origen.distance_to(hit["position"])
+		if d > mejor_dist:
+			mejor_dist = d
+			mejor = dir
+	return mejor
+
+
 ## Maniqui en una posicion despejada, listo para recibir.
 func _spawn_dummy(arena: Arena, at: Vector3) -> Player:
 	var dummy: Player = Arena.PLAYER_SCENE.instantiate()
@@ -597,6 +623,118 @@ func _spawn_dummy(arena: Arena, at: Vector3) -> Player:
 	dummy.home_position = Vector3(at.x, 0.0, at.z)
 	dummy.setup_character(CharacterDB.get_character(&"noelle"))
 	return dummy
+
+
+# ----------------------------------------------------------------- Flowery
+
+func _test_flowery(player: Player, arena: Arena) -> void:
+	_check(CharacterDB.has_character(&"flowery"), "Flowery esta registrada")
+	var data := CharacterDB.get_character(&"flowery")
+	_check(data != null and data.origin_game == "Deltarune", "Flowery viene de Deltarune")
+	_check(data != null and data.silhouette == &"petals",
+		"Flowery tiene silueta propia (no las astas ni las hombreras)")
+
+	var kit := CharacterDB.build_abilities_for(&"flowery")
+	_check(kit.size() == 4, "Flowery tiene 4 habilidades (tiene %d)" % kit.size())
+	if kit.size() < 4:
+		return
+	_check(kit[0] is PetalShot, "slot 0 es Petalos")
+	_check(kit[1] is Jarona, "slot 1 es JARONA")
+	_check(kit[2] is HereICome, "slot 2 es Here I Come, San Francisco")
+	_check(kit[3] is LastJarona, "slot 3 es LAST JARONA")
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+	_check(kit[3].stamina_cost == 100.0 and kit[3].requires_charge,
+		"el ultimate cuesta la barra entera Y el medidor")
+
+	player.setup_character(data)
+	# La carga necesita PISTA: un punto libre no alcanza si la pared esta a dos metros.
+	# La primera version la puso pegada a una cobertura, cargaba 2.6 de los 13 metros y
+	# el test fallaba por la colocacion, no por la habilidad.
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, 30.0), 1.5)
+	var rumbo := _carril_libre(player, puesto, 16.0)
+	player.respawn_at(puesto, atan2(-rumbo.x, -rumbo.z))
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(atan2(-rumbo.x, -rumbo.z))
+	# ESPERA LARGA, y hace falta.
+	#
+	# La direccion de la carga sale de get_aim_direction(), que lanza un rayo DESDE LA
+	# CAMARA. Despues de un respawn el brazo de la camara tarda varios frames en
+	# acomodarse, y si se pregunta antes el rayo sale de una posicion vieja: el test
+	# alternaba entre cargar 15 metros y cargar 1.7 segun cuando cayera la medicion.
+	for _i: int in range(24):
+		await get_tree().physics_frame
+
+	# --- LO QUE LA HACE DISTINTA: Jarona corta canalizados ---
+	#
+	# Es la unica del juego que puede. Hasta ahora un Snowgrave empezado solo se frenaba
+	# congelando al que lo tiraba o rompiendole la linea de vision, o sea que solo Noelle
+	# podia frenar a Noelle.
+	var victima := _spawn_dummy(arena, player.global_position + rumbo * 4.0)
+	victima.setup_character(CharacterDB.get_character(&"noelle"))
+	victima.caster.owner_peer_id = Net.local_id()
+	await get_tree().process_frame
+
+	victima.stamina.restore_full()
+	victima.ultimate.current = UltimateCharge.MAX_CHARGE
+	victima.caster.reset_state()
+	victima.caster.request_use(3)  # Snowgrave, que canaliza 1.5s
+	await get_tree().process_frame
+	_check(victima.caster.is_channeling, "la victima esta canalizando Snowgrave")
+
+	var stamina_antes := victima.stamina.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)  # JARONA
+	await get_tree().process_frame
+	_check(not victima.caster.is_channeling, "JARONA le corta el canalizado")
+	_check(victima.stamina.current > stamina_antes,
+		"y le devuelve parte de la stamina al interrumpido (%.0f -> %.0f)" % [
+			stamina_antes, victima.stamina.current])
+
+	# --- La carga mueve de verdad y deja expuesta ---
+	victima.health.revive_full()
+	victima.status.clear_all()
+	player.status.clear_all()
+	var desde := player.global_position
+	var vida_victima := victima.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)  # Here I Come, San Francisco
+	for _i: int in range(40):
+		await get_tree().physics_frame
+	var recorrido := desde.distance_to(player.global_position)
+	_check(recorrido > 5.0, "la carga la desplaza de verdad (%.1f m)" % recorrido)
+	_check(victima.health.current < vida_victima,
+		"y atropella a lo que se cruza (%.0f -> %.0f)" % [vida_victima, victima.health.current])
+
+	await get_tree().create_timer(0.3).timeout
+	_check(player.status.is_vulnerable(), "al frenar queda EXPUESTA, que es el precio")
+	var normal := 1.0
+	_check(player.status.get_damage_taken_multiplier() > normal,
+		"expuesta recibe mas daño (x%.2f)" % player.status.get_damage_taken_multiplier())
+
+	# --- El ultimate pega mas fuerte cuanto mas cerca ---
+	#
+	# Es lo que le da contrajuego a un radio de 22 metros: sin caida, seria "aprieto Q
+	# y gana el que tenga mas rango".
+	var cerca := _spawn_dummy(arena, player.global_position + Vector3(3.0, 0.0, 0.0))
+	var lejos := _spawn_dummy(arena, player.global_position + Vector3(17.0, 0.0, 0.0))
+	await get_tree().process_frame
+	var vida_cerca := cerca.health.current
+	var vida_lejos := lejos.health.current
+	LastJarona.new().execute(player, player.global_position + Vector3.UP, Vector3.FORWARD)
+	await get_tree().process_frame
+	var daño_cerca := vida_cerca - cerca.health.current
+	var daño_lejos := vida_lejos - lejos.health.current
+	_check(daño_cerca > daño_lejos + 10.0,
+		"LAST JARONA pega mas cerca que lejos (%.0f a 3m contra %.0f a 17m)" % [
+			daño_cerca, daño_lejos])
+	_check(daño_lejos > 0.0, "pero el que esta lejos igual se lo come (%.0f)" % daño_lejos)
+
+	victima.queue_free()
+	cerca.queue_free()
+	lejos.queue_free()
+	await get_tree().process_frame
 
 
 # ---------------------------------------------------------------- Retroceso

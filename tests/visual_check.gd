@@ -188,6 +188,9 @@ func _run() -> void:
 	await _wait(0.6)
 	await _shot("14_tiempo_detenido")
 
+	# --- Flowery ---
+	await _flowery()
+
 	# --- Los bots peleando, que es lo que cambia el modo practica ---
 	await _bots_en_combate()
 
@@ -303,6 +306,63 @@ func _face_closeup(player: Player, target: Player, shot_name: String) -> void:
 	if is_instance_valid(player) and is_instance_valid(player.camera_pivot):
 		player.camera_pivot.camera.current = true
 	await _wait(0.3)
+
+
+## El kit de Flowery, que es el mas visual de los tres.
+func _flowery() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+
+	player.setup_character(CharacterDB.get_character(&"flowery"))
+	var hud := _find_hud()
+	if hud != null:
+		hud.bind_player(player)
+	_place(player, arena.find_clear_spot(Vector3(-6.0, 0.0, 26.0), 1.5), PI)
+	player.health.set_max(3000.0)
+	player.status.clear_all()
+	await _wait(1.2)
+	await _shot("20_flowery_hud")
+
+	# Un blanco al frente para que los efectos tengan contra que pegar.
+	var blanco := _find_dummy(arena)
+	if blanco != null:
+		_place(blanco, player.global_position - player.global_transform.basis.z * 5.0, 0.0)
+		blanco.health.revive_full()
+	await _wait(0.4)
+
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(0)  # Petalos
+	await _wait(0.18)
+	await _shot("21_petalos")
+
+	await _wait(0.9)
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)  # JARONA
+	await _wait(0.14)
+	await _shot("22_jarona")
+
+	await _wait(1.2)
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)  # Here I Come, San Francisco
+	await _wait(0.22)
+	await _shot("23_here_i_come")
+
+	await _wait(1.6)
+	player.stamina.restore_full()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.reset_state()
+	player.caster.request_use(3)  # LAST JARONA
+	await _wait(0.9)
+	await _shot("24_canalizando_last_jarona")
+	await _wait(0.55)
+	await _shot("25_last_jarona")
+	await _wait(0.9)
+	player.health.set_max(100.0)
 
 
 ## Camara alta mirando al centro, para juzgar el MAPA y no la partida.

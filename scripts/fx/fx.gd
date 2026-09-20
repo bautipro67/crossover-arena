@@ -239,6 +239,117 @@ func spawn_slash_arc(caster: Node, origin: Vector3, dir: Vector3, color: Color) 
 	tw.chain().tween_callback(hoja.queue_free)
 
 
+## JARONA: onda circular que se abre desde Flowery.
+##
+## Un anillo que crece, y no una explosion de particulas, porque lo que el rival tiene
+## que leer es HASTA DONDE llega. Con particulas no sabes si te alcanzo o no; con un
+## borde que se expande, ves el limite.
+func spawn_jarona_wave(caster: Node, origin: Vector3, radius: float, color: Color = Color(1.0, 0.78, 0.30)) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.88
+	torus.outer_radius = 1.0
+	ring.mesh = torus
+	var mat := Art.glow(color, 3.0)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	ring.material_override = mat
+	world.add_child(ring)
+	ring.global_position = origin + Vector3.UP * 0.25
+
+	var tw := ring.create_tween().set_parallel()
+	tw.tween_property(ring, "scale", Vector3(radius, 3.0, radius), 0.34).from(Vector3(0.6, 1.0, 0.6))
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.34).from(0.95)
+	tw.chain().tween_callback(ring.queue_free)
+
+	# Petalos saliendo disparados con la onda.
+	var petals := CPUParticles3D.new()
+	petals.emitting = true
+	petals.one_shot = true
+	petals.amount = 40
+	petals.lifetime = 0.5
+	petals.explosiveness = 1.0
+	petals.direction = Vector3.ZERO
+	petals.spread = 180.0
+	petals.initial_velocity_min = radius * 1.2
+	petals.initial_velocity_max = radius * 2.0
+	petals.gravity = Vector3(0.0, -3.0, 0.0)
+	petals.scale_amount_min = 0.12
+	petals.scale_amount_max = 0.3
+	petals.color = color
+	world.add_child(petals)
+	petals.global_position = origin + Vector3.UP * 0.8
+	_auto_free(petals, 1.2)
+
+	camera_shake(0.7)
+	Sfx.play_3d(caster, &"jarona", origin, 0.0)
+
+
+## Arranque de la carga: estela hacia adelante.
+func spawn_charge_burst(caster: Node, origin: Vector3, dir: Vector3) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var trail := CPUParticles3D.new()
+	trail.emitting = true
+	trail.one_shot = true
+	trail.amount = 30
+	trail.lifetime = 0.45
+	trail.explosiveness = 0.75
+	trail.direction = -dir.normalized()
+	trail.spread = 22.0
+	trail.initial_velocity_min = 3.0
+	trail.initial_velocity_max = 9.0
+	trail.gravity = Vector3.ZERO
+	trail.scale_amount_min = 0.1
+	trail.scale_amount_max = 0.28
+	trail.color = Color(1.0, 0.62, 0.30, 0.9)
+	world.add_child(trail)
+	trail.global_position = origin + Vector3.UP * 0.9
+	_auto_free(trail, 1.0)
+	camera_shake(0.4)
+
+
+## Frenada de la carga. Marca el momento en que Flowery queda expuesta.
+func spawn_charge_landing(caster: Node, origin: Vector3) -> void:
+	spawn_jarona_wave(caster, origin, 3.2, Color(1.0, 0.55, 0.28))
+
+
+## LAST JARONA. El momento mas ruidoso del kit de Flowery: tres ondas encadenadas,
+## destello y un temblor que se siente.
+func spawn_last_jarona(caster: Node, origin: Vector3, radius: float) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+
+	# Tres anillos desfasados: uno solo, por grande que sea, se lee como el de Jarona
+	# con otro tamaño. Encadenados se leen como algo de otra categoria.
+	for i: int in range(3):
+		var retardo := float(i) * 0.11
+		var timer := get_tree().create_timer(retardo)
+		timer.timeout.connect(func() -> void:
+			if is_instance_valid(caster):
+				spawn_jarona_wave(caster, origin, radius * (0.55 + 0.25 * float(i)),
+					Color(1.0, 0.50 - 0.08 * float(i), 0.22))
+		)
+
+	var flash := OmniLight3D.new()
+	flash.light_color = Color(1.0, 0.72, 0.38)
+	flash.light_energy = 12.0
+	flash.omni_range = radius
+	flash.shadow_enabled = false
+	world.add_child(flash)
+	flash.global_position = origin + Vector3.UP * 1.5
+	_fade_light(flash, 0.7)
+
+	camera_shake(2.6)
+	Sfx.play_3d(caster, &"last_jarona", origin, 3.0)
+
+
 ## Snowgrave. Tiene que ser el momento mas dramatico del juego:
 ## destello blanco-azulado, ola de escarcha barriendo el cono, y temblor de camara.
 func spawn_snowgrave(caster: Node, origin: Vector3, dir: Vector3, cone_range: float, cone_angle: float) -> void:
@@ -664,6 +775,14 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 				spawn_ice_barrier(caster as Node3D, IceDefense.DURATION)
 		&"stand_barrage":
 			spawn_stand_barrage(caster, origin, dir, StandBarrage.TICKS, StandBarrage.TICK_INTERVAL)
+		&"petal_shot":
+			PetalShot.spawn_cosmetic(caster, origin, dir)
+		&"jarona":
+			spawn_jarona_wave(caster, origin, Jarona.RADIUS)
+		&"here_i_come":
+			spawn_charge_burst(caster, origin, dir)
+		&"last_jarona":
+			spawn_last_jarona(caster, origin, LastJarona.RADIUS)
 		_:
 			pass
 

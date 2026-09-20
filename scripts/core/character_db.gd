@@ -49,6 +49,29 @@ func _register_all() -> void:
 	dio.silhouette = &"shoulders"
 	_add(dio)
 
+	# ------------------------------------------------------------------- Flowery
+	# El tercer vertice del roster. Noelle controla de lejos y prepara; Dio entra y
+	# revienta de cerca; Flowery hostiga a media distancia y, sobre todo, ES LA UNICA
+	# QUE CORTA CANALIZADOS. Sin ella, un Snowgrave o un ZA WARUDO empezado solo se
+	# podia frenar congelando al que lo tiraba o rompiendo la linea de vision.
+	#
+	# Es la mas fragil (88 de vida) porque tiene el unico ataque basico a distancia del
+	# juego y una carga para entrar y salir: si ademas aguantara como los otros, no
+	# habria forma de castigarle el hostigamiento.
+	var flowery := CharacterData.new()
+	flowery.id = &"flowery"
+	flowery.display_name = "Flowery"
+	flowery.origin_game = "Deltarune"
+	# Tallo verde, petalos dorados, cara palida.
+	flowery.body_color = Color(0.32, 0.54, 0.30)
+	flowery.accent_color = Color(1.0, 0.82, 0.28)
+	flowery.skin_color = Color(0.97, 0.94, 0.86)
+	flowery.max_health = 88.0
+	flowery.max_stamina = 100.0
+	flowery.move_speed = 6.3
+	flowery.silhouette = &"petals"
+	_add(flowery)
+
 
 func _add(data: CharacterData) -> void:
 	_characters[data.id] = data
@@ -96,6 +119,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(KnifeThrow.new())
 			list.append(StandBarrage.new())
 			list.append(ZaWarudo.new())
+		&"flowery":
+			list.append(PetalShot.new())
+			list.append(Jarona.new())
+			list.append(HereICome.new())
+			list.append(LastJarona.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

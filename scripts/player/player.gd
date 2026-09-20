@@ -73,6 +73,8 @@ var _dash_left: float = 0.0
 var _dash_cd_left: float = 0.0
 var _iframe_left: float = 0.0
 var _dash_dir: Vector3 = Vector3.ZERO
+## Velocidad de dash que pisa a la normal mientras dura una carga. 0 = usar dash_speed.
+var dash_speed_override: float = 0.0
 var _knock_t: float = 0.0
 var _net_accum: float = 0.0
 var _target_pos: Vector3 = Vector3.ZERO
@@ -163,6 +165,41 @@ func _net_knockback(impulse: Vector3) -> void:
 	_apply_knockback_local(impulse)
 
 
+## SOLO SERVIDOR. Lanza al jugador en una direccion, como un dash largo.
+##
+## Lo usa "Here I Come San Francisco". Va por el mismo camino que el empujon y por la
+## misma razon: el movimiento es client-authoritative, asi que mover al jugador desde el
+## servidor no se ve — el dueño sigue mandando su propio transform y lo pisa.
+##
+## Reusa la maquinaria del dash (_dash_left / _dash_dir) en vez de inventar un estado
+## nuevo: asi la carga ignora el input direccional igual que un dash, que es
+## exactamente lo que tiene que pasar cuando te tiras de cabeza contra alguien.
+func launch_charge(dir: Vector3, speed: float, duration: float) -> void:
+	if not Net.is_server():
+		return
+	if is_dummy or is_local_player() or multiplayer.multiplayer_peer == null:
+		_apply_charge_local(dir, speed, duration)
+		return
+	Net.rpc_ready_id(self, peer_id, &"_net_charge", [dir, speed, duration])
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_charge(dir: Vector3, speed: float, duration: float) -> void:
+	_apply_charge_local(dir, speed, duration)
+
+
+func _apply_charge_local(dir: Vector3, speed: float, duration: float) -> void:
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	if flat.is_zero_approx():
+		flat = -global_transform.basis.z
+	_dash_dir = flat.normalized()
+	_dash_left = duration
+	# OJO: NO toca _dash_cd_left. La carga es una habilidad con su propio cooldown y su
+	# propio costo de stamina; gastarte ademas el dash seria cobrarte dos veces.
+	dash_speed_override = speed
+	visual.play_dash_trail()
+
+
 func _apply_knockback_local(impulse: Vector3) -> void:
 	velocity.x += impulse.x
 	velocity.z += impulse.z
@@ -209,9 +246,12 @@ func _handle_local_movement(delta: float) -> void:
 	# --- Dash en curso: ignora el input direccional hasta que termina ---
 	if _dash_left > 0.0:
 		_dash_left = maxf(0.0, _dash_left - delta)
-		velocity.x = _dash_dir.x * dash_speed
-		velocity.z = _dash_dir.z * dash_speed
+		var vel := dash_speed_override if dash_speed_override > 0.0 else dash_speed
+		velocity.x = _dash_dir.x * vel
+		velocity.z = _dash_dir.z * vel
 		move_and_slide()
+		if is_zero_approx(_dash_left):
+			dash_speed_override = 0.0
 		return
 
 	var input_dir := Vector2.ZERO
@@ -315,6 +355,18 @@ func _process_bot(delta: float) -> void:
 
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
+
+	# Los bots tambien pueden ser lanzados: si un bot Flowery usa su carga y esto no
+	# estuviera aca, la habilidad le cobraria stamina y no lo moveria un centimetro.
+	if _dash_left > 0.0:
+		_dash_left = maxf(0.0, _dash_left - delta)
+		var dv := dash_speed_override if dash_speed_override > 0.0 else dash_speed
+		velocity.x = _dash_dir.x * dv
+		velocity.z = _dash_dir.z * dv
+		move_and_slide()
+		if is_zero_approx(_dash_left):
+			dash_speed_override = 0.0
+		return
 
 	var frozen := not status.can_act()
 	var wish := Vector3.ZERO if frozen else bot_move_dir

@@ -186,6 +186,7 @@ func _test_audio() -> void:
 	var expected: Array[StringName] = [
 		&"hit_ice", &"hit_punch", &"knife", &"ice_shock", &"snowgrave",
 		&"za_warudo", &"freeze", &"dash", &"death", &"channel",
+		&"petals", &"jarona", &"last_jarona",
 		&"ui_click", &"no_stamina", &"respawn",
 	]
 	var missing: Array[String] = []
