@@ -114,6 +114,13 @@ func setup_character(data: CharacterData) -> void:
 	caster.setup(CharacterDB.build_abilities_for(data.id))
 	visual.apply_character(data)
 
+	# Efectos que pertenecen al personaje ANTERIOR. Sin esto, cambiar de Dio a otro
+	# personaje mientras The World estaba invocado dejaba al Stand dorado pegado al
+	# nuevo cuerpo hasta que se le acababa el tiempo.
+	var stand := get_node_or_null("TheWorld")
+	if stand != null:
+		stand.queue_free()
+
 
 func is_local_player() -> bool:
 	return peer_id == Net.local_id()

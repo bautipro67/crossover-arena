@@ -244,7 +244,8 @@ func spawn_slash_arc(caster: Node, origin: Vector3, dir: Vector3, color: Color) 
 ## Un anillo que crece, y no una explosion de particulas, porque lo que el rival tiene
 ## que leer es HASTA DONDE llega. Con particulas no sabes si te alcanzo o no; con un
 ## borde que se expande, ves el limite.
-func spawn_jarona_wave(caster: Node, origin: Vector3, radius: float, color: Color = Color(1.0, 0.78, 0.30)) -> void:
+func spawn_jarona_wave(caster: Node, origin: Vector3, radius: float,
+		color: Color = Color(1.0, 0.78, 0.30), con_sonido: bool = true) -> void:
 	var world := _world_of(caster)
 	if world == null:
 		return
@@ -285,8 +286,40 @@ func spawn_jarona_wave(caster: Node, origin: Vector3, radius: float, color: Colo
 	petals.global_position = origin + Vector3.UP * 0.8
 	_auto_free(petals, 1.2)
 
-	camera_shake(0.7)
-	Sfx.play_3d(caster, &"jarona", origin, 0.0)
+	# Solo el primero de una cadena suena y sacude: siete gritos superpuestos son ruido,
+	# y siete temblores encimados marean.
+	if con_sonido:
+		camera_shake(0.7)
+		Sfx.play_3d(caster, &"jarona", origin, 0.0)
+
+
+## Los siete colores de las flores del capitulo, en orden.
+const SOUL_COLORS: Array[Color] = [
+	Color(1.0, 0.24, 0.24), Color(1.0, 0.58, 0.18), Color(1.0, 0.92, 0.26),
+	Color(0.36, 0.90, 0.38), Color(0.30, 0.62, 1.0), Color(0.30, 0.92, 0.94),
+	Color(0.74, 0.40, 0.98),
+]
+
+
+## JARONA: siete anillos encadenados, uno por cada flor.
+##
+## La primera version era un anillo dorado. Funcionaba, pero podria haber sido de
+## cualquiera: la pelea de Flowery es LA DE LAS SIETE FLORES DE COLORES, y el ataque
+## tiene que leerse como eso.
+func spawn_soul_rings(caster: Node, origin: Vector3, radius: float) -> void:
+	for i: int in range(SOUL_COLORS.size()):
+		var color := SOUL_COLORS[i]
+		var retardo := float(i) * 0.035
+		if i == 0:
+			spawn_jarona_wave(caster, origin, radius, color)
+			continue
+		var timer := get_tree().create_timer(retardo)
+		timer.timeout.connect(func() -> void:
+			if is_instance_valid(caster):
+				# Cada anillo un poco mas chico: el conjunto se lee como una sola onda
+				# con espesor de colores, no como siete ataques.
+				spawn_jarona_wave(caster, origin, radius * (1.0 - 0.06 * float(i)), color, false)
+		)
 
 
 ## Arranque de la carga: estela hacia adelante.
@@ -328,13 +361,14 @@ func spawn_last_jarona(caster: Node, origin: Vector3, radius: float) -> void:
 
 	# Tres anillos desfasados: uno solo, por grande que sea, se lee como el de Jarona
 	# con otro tamaño. Encadenados se leen como algo de otra categoria.
-	for i: int in range(3):
-		var retardo := float(i) * 0.11
+	# Los SIETE colores, uno tras otro. Es la forma Omega: la suma de las siete flores.
+	for i: int in range(SOUL_COLORS.size()):
+		var retardo := float(i) * 0.075
 		var timer := get_tree().create_timer(retardo)
 		timer.timeout.connect(func() -> void:
 			if is_instance_valid(caster):
-				spawn_jarona_wave(caster, origin, radius * (0.55 + 0.25 * float(i)),
-					Color(1.0, 0.50 - 0.08 * float(i), 0.22))
+				spawn_jarona_wave(caster, origin,
+					radius * (0.45 + 0.09 * float(i)), SOUL_COLORS[i], false)
 		)
 
 	var flash := OmniLight3D.new()
@@ -539,6 +573,23 @@ func spawn_freeze_shell(target: Node3D) -> Node3D:
 	return shell
 
 
+## THE WORLD: invoca el Stand de Dio detras de el.
+##
+## `punch_hz` > 0 le hace tirar trompadas a esa frecuencia (para MUDA y la rafaga);
+## en 0 solo flota (para ZA WARUDO, donde el Stand esta parado y lo que actua es Dio).
+func summon_stand(caster: Node, duration: float, punch_hz: float = 0.0) -> void:
+	var cuerpo := caster as Node3D
+	if cuerpo == null:
+		return
+	# Uno solo por vez: encadenando MUDA se apilaban tres Stands superpuestos.
+	var previo := cuerpo.get_node_or_null("TheWorld")
+	if previo != null:
+		previo.queue_free()
+	var ghost := StandGhost.create(cuerpo, duration, punch_hz)
+	if ghost != null:
+		ghost.name = "TheWorld"
+
+
 ## Rafaga de golpes de Dio. Muchos destellos cortos y amarillos, rapido.
 func spawn_muda_flurry(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	var world := _world_of(caster)
@@ -562,6 +613,8 @@ func spawn_muda_flurry(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	flurry.global_position = origin + dir.normalized() * 1.2
 	_auto_free(flurry, 1.0)
 	spawn_slash_arc(caster, origin, dir, Color(1.0, 0.86, 0.38))
+	# El Stand es quien pega. Sin el se veia a Dio tirando trompadas al aire.
+	summon_stand(caster, 0.55, 7.0)
 	Sfx.play_3d(caster, &"hit_punch", origin, -3.0)
 
 
@@ -631,6 +684,9 @@ func spawn_time_stop(caster: Node, center: Vector3, radius: float) -> void:
 
 	Sfx.play_3d(caster, &"za_warudo", center, 3.0)
 	time_stop_grade(ZaWarudo.STOP_DURATION)
+	# En ZA WARUDO el Stand aparece y se QUEDA QUIETO: el que actua es Dio, el Stand
+	# esta ahi para que se vea quien paro el tiempo.
+	summon_stand(caster, ZaWarudo.STOP_DURATION + 1.0, 0.0)
 	camera_shake(2.2)
 
 

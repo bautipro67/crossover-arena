@@ -55,17 +55,18 @@ func _register_all() -> void:
 	# QUE CORTA CANALIZADOS. Sin ella, un Snowgrave o un ZA WARUDO empezado solo se
 	# podia frenar congelando al que lo tiraba o rompiendo la linea de vision.
 	#
-	# Es la mas fragil (88 de vida) porque tiene el unico ataque basico a distancia del
+	# Es el mas fragil (88 de vida) porque tiene el unico ataque basico a distancia del
 	# juego y una carga para entrar y salir: si ademas aguantara como los otros, no
 	# habria forma de castigarle el hostigamiento.
 	var flowery := CharacterData.new()
 	flowery.id = &"flowery"
 	flowery.display_name = "Flowery"
 	flowery.origin_game = "Deltarune"
-	# Tallo verde, petalos dorados, cara palida.
-	flowery.body_color = Color(0.32, 0.54, 0.30)
-	flowery.accent_color = Color(1.0, 0.82, 0.28)
-	flowery.skin_color = Color(0.97, 0.94, 0.86)
+	# Camisa BLANCA (el chaleco verde y marron lo pone la silueta encima), pelo rubio
+	# y piel amarillenta, como en el Dark World.
+	flowery.body_color = Color(0.94, 0.94, 0.92)
+	flowery.accent_color = Color(0.98, 0.86, 0.36)
+	flowery.skin_color = Color(0.99, 0.92, 0.76)
 	flowery.max_health = 88.0
 	flowery.max_stamina = 100.0
 	flowery.move_speed = 6.3

@@ -324,6 +324,8 @@ func _flowery() -> void:
 	player.status.clear_all()
 	await _wait(1.2)
 	await _shot("20_flowery_hud")
+	# De frente: es donde se ven el flequillo partido, el chaleco abierto y la cara.
+	await _face_closeup(player, player, "20b_flowery_de_frente")
 
 	# Un blanco al frente para que los efectos tengan contra que pegar.
 	var blanco := _find_dummy(arena)

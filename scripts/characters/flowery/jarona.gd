@@ -28,7 +28,7 @@ func _init() -> void:
 	stamina_cost = 28.0
 	cooldown = 5.5
 	channel_time = 0.0
-	icon_color = Color(1.0, 0.72, 0.26)
+	icon_color = Color(1.0, 0.36, 0.34)
 
 
 func execute(caster: Node, origin: Vector3, _dir: Vector3) -> void:
@@ -48,7 +48,9 @@ func execute(caster: Node, origin: Vector3, _dir: Vector3) -> void:
 		FX.spawn_hit_impact(caster, target.global_position + Vector3.UP, DAMAGE,
 			Color(1.0, 0.78, 0.3))
 
-	FX.spawn_jarona_wave(caster, origin, RADIUS)
+	# Siete anillos, uno por cada flor de colores del capitulo. En el original la pelea
+	# es de las siete flores y el ataque se lee como eso, no como un golpe monocromo.
+	FX.spawn_soul_rings(caster, origin, RADIUS)
 
 
 ## Le corta el canalizado al objetivo, si estaba canalizando.

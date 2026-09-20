@@ -49,6 +49,10 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	if tree == null:
 		return
 
+	# El Stand se queda TODA la rafaga, no un destello por golpe: es el que esta
+	# pegando los seis.
+	FX.summon_stand(caster, float(TICKS) * TICK_INTERVAL + 0.5, 9.0)
+
 	for i: int in range(TICKS):
 		if i > 0:
 			await tree.create_timer(TICK_INTERVAL).timeout

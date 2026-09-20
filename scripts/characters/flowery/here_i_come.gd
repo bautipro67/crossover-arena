@@ -9,13 +9,16 @@ extends Ability
 ##
 ##   - una vez que arranca NO SE PUEDE FRENAR. Ignora tu input mientras dura, igual que
 ##     un dash, asi que apuntas antes y despues te aguantas donde caiste;
-##   - te deja EXPUESTA al final: durante un segundo recibis 30% mas de daño. Tirarte de
+##   - lo deja EXPUESTO al final: durante un segundo recibe 30% mas de daño. Tirarse de
 ##     cabeza tiene que costar algo, si no es solo un dash con daño;
 ##   - pega a todo lo que atropella en el camino, una vez por objetivo.
 ##
 ## Mecanicamente es el unico desplazamiento largo del juego que ademas hace daño, y es
 ## lo que le permite a Flowery entrar y salir: dispara petalos de lejos, carga cuando
-## quiere presionar, y usa Jarona para sacarse de encima al que la alcanzo.
+## quiere presionar, y usa Jarona para sacarse de encima al que lo alcanzo.
+##
+## VA EN NARANJA a proposito: la pelea de Flowery es donde Deltarune introduce el dash
+## del ALMA NARANJA, y esta habilidad es ese dash.
 
 const DAMAGE: float = 26.0
 const SPEED: float = 26.0
@@ -36,12 +39,12 @@ const VULNERABLE_MULT: float = 1.3
 func _init() -> void:
 	id = &"here_i_come"
 	display_name = "Here I Come, San Francisco"
-	description = "Carga %.0fm de frente, %d de daño a lo que atropelles. No se puede frenar y quedas expuesta %.0fs." % [
+	description = "Carga %.0fm de frente, %d de daño a lo que atropelle. No se puede frenar y lo deja expuesto %.0fs." % [
 		SPEED * DURATION, int(DAMAGE), VULNERABLE_TIME]
 	stamina_cost = 30.0
 	cooldown = 8.0
 	channel_time = 0.0
-	icon_color = Color(1.0, 0.58, 0.30)
+	icon_color = Color(1.0, 0.58, 0.18)
 
 
 ## CORRE EN EL SERVIDOR. Es una corrutina: acompaña la carga mientras dura.

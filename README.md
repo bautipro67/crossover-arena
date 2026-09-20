@@ -117,6 +117,10 @@ están mal" puede ser diez cosas distintas y todas se ven igual desde afuera.
 Media distancia. Ni prepara como Noelle ni revienta como Dio: molesta, y **arruina los
 planes ajenos**.
 
+Es el jefe final del Capítulo 5: en el Dark World aparece como un **humanoide alto y
+rubio, con camisa blanca y chaleco verde y marrón** — la flor dorada de seis pétalos es
+su forma del Light World, y acá sale en sus ataques, no en su cuerpo.
+
 | Habilidad | Tecla | Costo | CD | Qué hace |
 |---|---|---|---|---|
 | **Pétalos** | Click izq | 0 | 0.75s | 3 pétalos al frente, 5 de daño cada uno. **El único básico a distancia del juego** |
@@ -132,20 +136,33 @@ personajes que hacen daño de maneras distintas.
 
 Las tres cosas que la equilibran:
 
-- **Es la más frágil** (88 de vida). Tiene el único básico a distancia y una carga para
-  entrar y salir; si además aguantara como los otros, no habría forma de castigarla.
+- **Es el más frágil** (88 de vida). Tiene el único básico a distancia y una carga para
+  entrar y salir; si además aguantara como los otros, no habría forma de castigarlo.
 - **Su básico reparte el daño en tres pétalos**, así que a distancia entra uno o dos, no
   los tres. El alcance se paga con que casi nunca entra completo.
-- **La carga la deja expuesta**: al frenar recibe 30% más de daño por un segundo.
+- **La carga lo deja expuesto**: al frenar recibe 30% más de daño por un segundo.
   Tirarse de cabeza tiene que costar algo, si no es un dash con daño.
 
 El daño de LAST JARONA **cae con la distancia**, y eso es lo que le da contrajuego a un
 radio de 22 metros: con daño plano sería "aprieto Q y gana el que tenga más rango".
 
-Sobre los nombres: **Flowery** es de Deltarune Capítulo 5, y *"Jarona"* y
-*"Here I come, San Francisco"* son líneas suyas vueltas meme. La primera es de su pelea
-de jefe; la segunda, del momento en que se lanza contra el Roaring Knight — de ahí que
-la carga sea irreversible y te deje vendida.
+Sobre los nombres: *"Jarona"* y *"Here I come, San Francisco"* son líneas suyas vueltas
+meme. La primera es de su pelea de jefe; la segunda, del momento en que se lanza contra
+el Roaring Knight — de ahí que la carga sea irreversible y lo deje vendido.
+
+**Fidelidad al original en los efectos**, que es donde estaba floja la primera versión:
+
+- **JARONA** son **siete anillos encadenados**, uno por cada flor de colores del
+  capítulo. Antes era un anillo dorado que podría haber sido de cualquiera.
+- **Here I Come** va en **naranja**: la pelea de Flowery es donde Deltarune introduce el
+  dash del ALMA NARANJA, y esta habilidad es ese dash.
+- **LAST JARONA** lo transforma en **Omega Flowery** mientras canaliza: luz que cicla
+  por los siete colores y pelo en puntas, como cuando llama a las otras seis flores.
+
+Y de paso, Dio: **The World ahora aparece**. Antes MUDA, la ráfaga y ZA WARUDO se veían
+como un tipo dorado tirando trompadas al aire — el Stand es literalmente lo que pega en
+el original. Sale al costado y no atrás, porque atrás queda entre la cámara y Dio y te
+tapa la pantalla.
 
 ## Controles
 
