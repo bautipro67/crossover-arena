@@ -17,6 +17,12 @@ extends Ability
 ## Eso es lo que lo hace distinto de cualquier otro golpe del juego: es el unico cuya
 ## duracion depende de que tan bien lo esquiven.
 ##
+## FRENA EN EL IMPACTO, no al terminar el recorrido. Antes la pasada corria sus tres
+## decimas enteras aunque hubiera tocado a alguien en la primera, y el empujon llegaba
+## recien despues: se veia al personaje atravesar al rival, seguir de largo, frenar, y
+## ahi recien salir despedido. El choque tiene que resolverse cuando los cuerpos se
+## tocan.
+##
 ## Cada pasada tiene su propio registro de golpeados, asi que volver a pasarte por
 ## encima SI vuelve a pegar. El registro por pasada existe para que un solo viaje no te
 ## cobre cuatro ticks mientras te atraviesa.
@@ -46,8 +52,8 @@ const PASS_TIME: float = 0.30
 const BOUNCE_SPEED: float = 17.0
 const BOUNCE_TIME: float = 0.16
 const HIT_RADIUS: float = 2.2
-const KNOCKBACK: float = 7.0
-const KNOCKBACK_LIFT: float = 1.5
+const KNOCKBACK: float = 13.0
+const KNOCKBACK_LIFT: float = 2.4
 ## EL RETROCESO DEL QUE EMBISTE. Cuando la embestida conecta salen los DOS despedidos,
 ## no solo el que la recibe.
 ##
@@ -55,8 +61,8 @@ const KNOCKBACK_LIFT: float = 1.5
 ## que la comia salia empujado por fisica. Se veian como dos cosas distintas porque lo
 ## eran. Ahora los dos reciben el mismo tipo de empujon en direcciones opuestas, que es
 ## lo que uno espera de un choque y lo que hace que se lea como choque.
-const RETROCESO: float = 3.5
-const RETROCESO_LIFT: float = 0.9
+const RETROCESO: float = 13.0
+const RETROCESO_LIFT: float = 2.4
 ## SE REPITE HASTA QUE UNA PASADA FALLE. Esto es un tope de seguridad, no la regla.
 ##
 ## Estuvo en 4 y eso estaba mal: convertia la habilidad en "cuatro embestidas" cuando lo
@@ -138,7 +144,7 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 
 		var golpeados: Dictionary = {}
 		var tocados := await FloweryDash.pasada(
-			caster3d, rumbo, SPEED, PASS_TIME, HIT_RADIUS, golpeados, false, estela)
+			caster3d, rumbo, SPEED, PASS_TIME, HIT_RADIUS, golpeados, true, estela)
 		if not is_instance_valid(caster3d):
 			return
 
@@ -161,6 +167,16 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 				rumbo = reapunte
 			continue
 
+		# EL CHOQUE, TODO EN EL MISMO INSTANTE: daño, los dos empujones y el aviso para que
+		# el visual reaccione. Antes el retroceso del que embestia estaba mas abajo,
+		# despues del frenado, y por eso se sentia despegado del golpe.
+		FloweryDash.frenar(caster3d)
+		CombatUtils.apply_knockback(caster3d, -rumbo, RETROCESO, RETROCESO_LIFT)
+		if caster.has_method("avisar_impacto_embestida"):
+			caster.call("avisar_impacto_embestida")
+		FX.spawn_jarona_wave(caster, caster3d.global_position, 3.0, Color(1.0, 0.45, 0.38))
+		FX.camera_shake(1.3)
+
 		for target: Node3D in tocados:
 			CombatUtils.deal_damage(target, golpe, source_id)
 			CombatUtils.apply_knockback(target, rumbo, KNOCKBACK, KNOCKBACK_LIFT)
@@ -179,9 +195,7 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 		# gasta el golpe fuerte, o esquivar la primera te dejaria peor que comerla.
 		golpe = maxf(DAMAGE_MINIMO, golpe * decaimiento)
 
-		# --- Rebote: LOS DOS PARA ATRAS ---
-		FloweryDash.frenar(caster3d)
-		CombatUtils.apply_knockback(caster3d, -rumbo, RETROCESO, RETROCESO_LIFT)
+		# --- Rebote ---
 		_dejar_estallido(estallido, caster, caster3d, rumbo)
 		# La ultima pasada no rebota: quedarse retrocediendo al final se lee como que
 		# el ataque fallo, cuando en realidad conecto.

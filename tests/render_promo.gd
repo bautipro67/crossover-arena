@@ -66,6 +66,7 @@ func _run() -> void:
 	await _retrato(arena, player, &"noelle", "retrato_noelle")
 	await _retrato(arena, player, &"dio", "retrato_dio")
 	await _retrato(arena, player, &"rick", "retrato_rick")
+	await _poses_de_embestida(arena, player)
 	await _panoramica(arena)
 
 	print("")
@@ -140,6 +141,50 @@ func _retrato(arena: Arena, player: Player, id: StringName, nombre: String) -> v
 	# borroso, porque queda a un octavo del alto original.
 	await _camara(punto + Vector3(-0.30, 1.79, -1.15), punto + Vector3(0.0, 1.74, 0.0),
 		40.0, nombre + "_cabeza")
+
+
+## Las dos poses de la embestida, forzadas.
+##
+## No se pueden cazar jugando: duran tres decimas y caen donde caigan. Forzandolas se
+## ven las dos una al lado de la otra, que es la unica forma de juzgar si la de impacto
+## es de verdad la opuesta a la de embestir —que es lo que la hace leerse como choque—.
+func _poses_de_embestida(arena: Arena, player: Player) -> void:
+	var punto := arena.find_clear_spot(Vector3(-18.0, 0.0, 12.0), 3.0)
+	player.setup_character(CharacterDB.get_character(&"flowery"))
+	_plantar(player, punto, -0.5)
+	for b: Player in _bots(arena):
+		_plantar(b, punto + Vector3(0.0, 0.0, 80.0), 0.0)
+
+	# LA CAMARA PRIMERO Y EL DISPARO DESPUES.
+	#
+	# _camara() espera medio segundo a que la escena se asiente antes de capturar, y las
+	# dos poses duran menos que eso: la de impacto son 0.29 segundos. Poniendo la camara
+	# despues de provocar la pose, para cuando saca la foto ya se apago, y las dos
+	# primeras capturas salieron con el personaje parado.
+	var cam := Camera3D.new()
+	cam.fov = 36.0
+	add_child(cam)
+	cam.global_position = punto + Vector3(-2.2, 1.35, -4.2)
+	cam.look_at(punto + Vector3(0.0, 1.05, 0.0), Vector3.UP)
+	cam.make_current()
+	await _wait(0.6)
+
+	# EMBISTIENDO. Se lanza una carga con velocidad casi cero: lo que enciende la pose es
+	# is_dashing(), no el desplazamiento, asi que el cuerpo se queda en cuadro y adopta
+	# la pose igual. Con un dash de verdad se iba de la toma antes de la captura.
+	player.launch_charge(-player.global_transform.basis.z, 0.01, 0.6)
+	await _wait(0.18)
+	await _shot("pose_embistiendo")
+	player.stop_charge()
+
+	await _wait(1.4)
+	_plantar(player, punto, -0.5)
+	await _wait(0.4)
+	# IMPACTO: se avisa al visual, que es lo mismo que hace la habilidad.
+	player.visual.golpe_de_embestida()
+	await _wait(0.13)
+	await _shot("pose_impacto")
+	cam.queue_free()
 
 
 ## El mapa entero desde arriba, para la cover ancha 21:9.

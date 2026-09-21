@@ -572,6 +572,29 @@ func _on_health_changed(_current: float, _max_value: float) -> void:
 	pass
 
 
+## SOLO SERVIDOR. Avisa a todos que una embestida acaba de conectar.
+##
+## El golpe lo decide el servidor, pero la ANIMACION tiene que verla todo el mundo. No
+## se puede deducir en el cliente: desde afuera, una embestida que conecta y una que
+## pasa al aire terminan igual —el cuerpo frena— asi que el unico que sabe cual fue es
+## el que resolvio el impacto.
+func avisar_impacto_embestida() -> void:
+	if not Net.is_server():
+		return
+	Net.rpc_ready(self, &"_net_impacto_embestida", [])
+	_impacto_embestida()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_impacto_embestida() -> void:
+	_impacto_embestida()
+
+
+func _impacto_embestida() -> void:
+	if is_instance_valid(visual):
+		visual.golpe_de_embestida()
+
+
 ## SOLO SERVIDOR. Teletransporta el cuerpo a un punto y avisa a todos.
 ##
 ## POR QUE NO ALCANZA CON PONER global_position EN EL SERVIDOR.

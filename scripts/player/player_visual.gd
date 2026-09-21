@@ -96,6 +96,8 @@ var _last_health: float = -1.0
 var _pose: StringName = &""
 var _pose_weight: float = 0.0
 var _release_t: float = 0.0
+## Cuenta atras del sacudon de impacto de una embestida. Ver golpe_de_embestida().
+var _impacto_t: float = 0.0
 
 
 func _ready() -> void:
@@ -134,6 +136,24 @@ func _process(delta: float) -> void:
 	_attack_t = maxf(0.0, _attack_t - delta * PUNCH_DECAY)
 	_hit_t = maxf(0.0, _hit_t - delta * 6.0)
 	_release_t = maxf(0.0, _release_t - delta * 2.2)
+
+	_impacto_t = maxf(0.0, _impacto_t - delta * 3.4)
+
+	# LA EMBESTIDA MANDA SOBRE CUALQUIER POSE.
+	#
+	# Se deduce del propio cuerpo —is_dashing()— y no de un aviso por red, porque el
+	# estado del dash ya se replica a todos: el que mira ve el cuerpo lanzado igual que
+	# el que lo lanzo. Un aviso aparte seria un mensaje de mas para decir algo que ya
+	# esta dicho.
+	#
+	# El impacto si necesita aviso, y por eso _impacto_t viene de afuera: desde el visual
+	# no hay forma de distinguir una embestida que conecto de una que paso al aire.
+	if _impacto_t > 0.0:
+		_pose = &"impacto"
+	elif _body.is_dashing():
+		_pose = &"embiste"
+	elif _pose == &"embiste" or _pose == &"impacto":
+		_pose = &""
 
 	# La pose entra y sale suave: sin esto los brazos se teletransportan.
 	var wants_pose := _pose != &""
@@ -237,6 +257,27 @@ func _pose_targets() -> Dictionary:
 				"spread_l": -0.75, "spread_r": -0.20,
 				"torso": 0.10,
 			}
+		&"embiste":
+			# EMBISTIENDO: torso volcado al frente y los dos brazos tirados hacia atras,
+			# como quien se lanza de cabeza. Es la silueta de alguien que dejo de
+			# caminar y se tiro, que es justo lo que no se veia: el cuerpo se movia a
+			# treinta metros por segundo con la pose de estar parado.
+			return {
+				"arm_l": -0.95, "arm_r": -0.95,
+				"elbow_l": -0.30, "elbow_r": -0.30,
+				"spread_l": -0.35, "spread_r": 0.35,
+				"torso": -0.55,
+			}
+		&"impacto":
+			# EL CHOQUE: torso arqueado hacia atras y brazos arriba y abiertos. Es la
+			# pose opuesta a la de embestir, y esa inversion es lo que hace que el golpe
+			# se lea como un choque y no como que el cuerpo se detuvo.
+			return {
+				"arm_l": 2.30, "arm_r": 2.30,
+				"elbow_l": -0.55, "elbow_r": -0.55,
+				"spread_l": 0.85, "spread_r": -0.85,
+				"torso": 0.62,
+			}
 		&"release":
 			# Al soltar: los dos brazos al frente, torso volcado hacia adelante.
 			return {
@@ -252,6 +293,18 @@ func _pose_targets() -> Dictionary:
 				"spread_l": 0.0, "spread_r": 0.0,
 				"torso": 0.0,
 			}
+
+
+## Una embestida acaba de conectar. Lo llama Player cuando el servidor lo avisa.
+func golpe_de_embestida() -> void:
+	_impacto_t = 1.0
+	# _hit_t SI —es el temblor del cuerpo— pero _attack_t NO.
+	#
+	# Probe sumarle tambien el sacudon de golpe y era contradictorio: ese sacudon lanza
+	# un brazo hacia ADELANTE, justo contra el retroceso que la pose esta haciendo, y las
+	# dos poses de la embestida terminaban pareciendose entre si. Un choque no es un
+	# puñetazo: el cuerpo no ataca, lo frenan.
+	_hit_t = 1.0
 
 
 ## Curva del golpe: 0 -> 1 -> 0, con la salida mucho mas rapida que la vuelta.

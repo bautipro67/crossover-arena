@@ -825,6 +825,33 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 		"y la cadena ENTERA no alcanza para matar: %.0f contra %.0f de vida" % [
 			daño, vida_de_un_jugador])
 
+	# --- EL EMPUJON ES EN EL IMPACTO, NO AL FINAL DEL RECORRIDO ---
+	#
+	# Reclamo: el empujon llegaba tarde. La causa era que la pasada corria sus tres
+	# decimas enteras aunque hubiera tocado a alguien al principio, asi que se veia al
+	# personaje atravesar al rival, seguir de largo, frenar, y recien ahi salir despedido.
+	#
+	# Se mide por lo que deja: con el rival a 3 metros, una pasada que frena al tocar no
+	# puede haber recorrido los 9 metros que cubre una pasada completa. Y el que embiste
+	# tiene que terminar con velocidad HACIA ATRAS, que es el empujon.
+	await _plantar_flowery(player, victima, puesto, rumbo, 3.0)
+	var antes_choque := player.global_position
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	var avanzo_max := 0.0
+	var retrocedio := false
+	for _i: int in range(26):
+		await get_tree().physics_frame
+		var delta_pos := player.global_position - antes_choque
+		avanzo_max = maxf(avanzo_max, Vector3(delta_pos.x, 0.0, delta_pos.z).dot(rumbo))
+		if Vector3(player.velocity.x, 0.0, player.velocity.z).dot(rumbo) < -2.0:
+			retrocedio = true
+	_check(avanzo_max < 7.0,
+		"la embestida FRENA al tocar, no sigue de largo (avanzo %.1f m con el rival a 3)" % avanzo_max)
+	_check(retrocedio, "y al que embiste lo tira para atras en el choque")
+	await _esperar_quieto(player, 400)
+
 	# Y si no toca a nadie, se corta en la primera pasada en vez de seguir rebotando.
 	victima.global_position = player.global_position + rumbo * 60.0
 	await get_tree().process_frame
