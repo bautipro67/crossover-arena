@@ -738,32 +738,90 @@ func _build_flowery() -> void:
 	_costume_add(_torso, pliegue)
 
 
+## Un corazon, con dos esferas y un rombo. Es el motivo que se repite por todo el diseño
+## de Dio en la Parte 3: la banda, las rodilleras, el pantalon.
+func _corazon(padre: Node3D, material: StandardMaterial3D, pos: Vector3, tam: float) -> void:
+	var raiz := Node3D.new()
+	raiz.position = pos
+	padre.add_child(raiz)
+	_costume.append(raiz)
+	# Los dos lobulos de arriba.
+	for side: float in [-1.0, 1.0]:
+		var lobulo := Art.sphere(tam * 0.52, material, Vector3(tam * 0.44 * side, tam * 0.36, 0.0))
+		lobulo.scale = Vector3(1.0, 1.0, 0.45)
+		raiz.add_child(lobulo)
+	# Y la punta de abajo: un cuadrado girado 45 grados.
+	var punta := Art.box(Vector3(tam * 1.25, tam * 1.25, tam * 0.45), material, Vector3.ZERO)
+	punta.rotation_degrees = Vector3(0.0, 0.0, 45.0)
+	raiz.add_child(punta)
+
+
 ## Noelle: chica reno. Silueta alta y angosta, con el peso arriba.
+##
+## REHECHA CONTRA LA REFERENCIA. La primera version la arme de memoria y le puse pelo
+## pelirrojo, un vestido verde liso y piel de persona. La referencia dice:
+##
+##   - Monstruo RENO de pelaje claro, NARIZ ROJA —el guiño a Rudolph, y el rasgo que
+##     mas la identifica—, pecas y astas chicas.
+##   - Pelo RUBIO DORADO y largo.
+##   - SUETER A CUADROS ROJO Y VERDE con escote en V y MANGAS NEGRAS, sobre una CAMISA
+##     BLANCA, y POLLERA NEGRA.
+##
+## Se eligio su ropa de siempre y no la capa blanca del Dark World por dos razones: el
+## cuadrille rojo y verde se reconoce a veinte metros y una capa blanca no, y ademas una
+## capa blanca se perderia entre sus propios efectos de hielo, que son todos blancos.
 func _build_noelle() -> void:
 	# Cejas altas y casi rectas, boca chica: lee como timida y preocupada, que es
 	# exactamente Noelle.
 	_apply_expression(-0.06, 0.012, 0.044)
-	var hair := Art.toon(accent_color.darkened(0.08), OUTLINE_WIDTH)
 
-	# Pelo: varias piezas redondeadas en vez de una tabla plana.
-	var cap := Art.sphere(0.212, hair, Vector3(0.0, 0.14, 0.015))
+	var pelo := Art.toon(Color(0.96, 0.84, 0.44), OUTLINE_WIDTH)
+	var rojo := Art.toon(Color(0.72, 0.17, 0.19), OUTLINE_WIDTH)
+	var verde := Art.toon(Color(0.16, 0.44, 0.25), OUTLINE_WIDTH)
+	var negro := Art.toon(Color(0.14, 0.14, 0.18), OUTLINE_WIDTH)
+
+	# --- Pelo rubio: casquete, melena y flequillo ---
+	var cap := Art.sphere(0.212, pelo, Vector3(0.0, 0.14, 0.015))
 	cap.scale = Vector3(1.02, 1.02, 1.02)
 	_costume_add(_head_pivot, cap)
-	# Melena: tres mechones que se angostan hacia abajo.
 	var strands: Array = [
 		{"pos": Vector3(0.0, -0.02, 0.15), "size": Vector3(0.26, 0.40, 0.16), "rot": -6.0},
 		{"pos": Vector3(-0.15, -0.06, 0.12), "size": Vector3(0.14, 0.34, 0.14), "rot": -10.0},
 		{"pos": Vector3(0.15, -0.06, 0.12), "size": Vector3(0.14, 0.34, 0.14), "rot": -10.0},
 	]
 	for strand: Dictionary in strands:
-		var piece := Art.capsule(float(strand["size"].x) * 0.5, float(strand["size"].y), hair, strand["pos"])
+		var piece := Art.capsule(float(strand["size"].x) * 0.5, float(strand["size"].y), pelo, strand["pos"])
 		piece.rotation_degrees = Vector3(float(strand["rot"]), 0.0, 0.0)
 		_costume_add(_head_pivot, piece)
-	# Flequillo.
-	var fringe := Art.box(Vector3(0.34, 0.09, 0.12), hair, Vector3(0.0, 0.21, -0.145))
-	_costume_add(_head_pivot, fringe)
+	# FLEQUILLO REDONDEADO Y POR ENCIMA DE LAS CEJAS.
+	#
+	# Era una caja plana a y=0.21 y le cruzaba la cara justo a la altura de los ojos:
+	# de frente se le veia una tabla amarilla y dos ojos asomando abajo. Es el mismo
+	# error que ya habia cometido con Flowery. Las cejas estan en y=0.196, asi que el
+	# pelo tiene que nacer por encima de eso, y una esfera achatada no tiene el canto
+	# recto que delataba a la caja.
+	var flequillo := Art.sphere(0.125, pelo, Vector3(0.0, 0.268, -0.118))
+	flequillo.scale = Vector3(1.58, 0.62, 0.78)
+	_costume_add(_head_pivot, flequillo)
 
-	# Astas: tres segmentos por lado, en angulos distintos.
+	# --- LA NARIZ ROJA ---
+	#
+	# Es lo que mas la identifica y no estaba. Va encima de la nariz de piel que dibuja
+	# _build_face, un poco mas grande, para taparla entera.
+	var nariz := Art.sphere(0.036, Art.toon(Color(0.86, 0.18, 0.16), OUTLINE_WIDTH),
+		Vector3(0.0, 0.078, -0.196))
+	nariz.scale = Vector3(1.15, 1.0, 1.1)
+	_costume_add(_head_pivot, nariz)
+
+	# Pecas: tres por mejilla. Chiquitas, pero en los primeros planos del lobby se ven.
+	var peca := Art.toon(Color(0.80, 0.60, 0.46), 0.0)
+	for side: float in [-1.0, 1.0]:
+		for i: int in range(3):
+			var f := float(i)
+			_costume_add(_head_pivot, Art.sphere(0.011, peca,
+				Vector3((0.115 + f * 0.030) * side, 0.072 - f * 0.014, -0.176)))
+
+	# --- Astas: tres segmentos por lado, en angulos distintos ---
 	var antler := Art.toon(Color(0.95, 0.92, 0.85), OUTLINE_WIDTH)
 	for side: float in [-1.0, 1.0]:
 		var base := Node3D.new()
@@ -782,24 +840,54 @@ func _build_noelle() -> void:
 		branch.rotation_degrees = Vector3(0.0, 0.0, -45.0 * side)
 		tip.add_child(branch)
 
-	# Vestido: cono invertido desde la cintura, con vivo claro abajo.
+	# --- EL SUETER A CUADROS ---
+	#
+	# Un cuadrille no se puede pintar con un material solo, asi que son baldosas: cuatro
+	# columnas por tres filas, alternando rojo y verde, adelante y atras.
+	#
+	# Van CURVADAS hacia atras en los extremos (la z crece con el cuadrado de x): puestas
+	# todas en el mismo plano, las columnas de los costados se hunden en el torso, que es
+	# una capsula, y el cuadrille se corta por la mitad.
+	for fila: int in range(3):
+		for col: int in range(4):
+			var x := -0.165 + float(col) * 0.110
+			var y := 0.285 + float(fila) * 0.112
+			var hundido := pow(absf(x) / 0.20, 2.0) * 0.060
+			var mat := rojo if (fila + col) % 2 == 0 else verde
+			# Escote en V: las dos baldosas de arriba al centro quedan afuera y dejan ver
+			# la camisa blanca, que es lo que hace que se lea como sueter y no como peto.
+			if fila == 2 and (col == 1 or col == 2):
+				continue
+			_costume_add(_torso, Art.box(Vector3(0.108, 0.110, 0.08), mat,
+				Vector3(x, y, -0.185 + hundido)))
+			_costume_add(_torso, Art.box(Vector3(0.108, 0.110, 0.08), mat,
+				Vector3(x, y, 0.185 - hundido)))
+
+	# --- Mangas negras sobre la camisa ---
+	for brazo: Node3D in [_shoulder_l, _shoulder_r]:
+		if is_instance_valid(brazo):
+			_costume_add(brazo, Art.capsule(0.080, 0.30, negro, Vector3(0.0, -0.15, 0.0)))
+
+	# --- Pollera negra ---
 	var skirt := MeshInstance3D.new()
 	var skirt_mesh := CylinderMesh.new()
 	skirt_mesh.top_radius = 0.25
 	skirt_mesh.bottom_radius = 0.43
 	skirt_mesh.height = 0.42
 	skirt.mesh = skirt_mesh
-	skirt.material_override = Art.toon(body_color.darkened(0.10), OUTLINE_WIDTH)
+	skirt.material_override = negro
 	skirt.position = Vector3(0.0, -0.08, 0.0)
 	_costume_add(_hips, skirt)
-	_costume_add(_hips, Art.cylinder(0.445, 0.06, Art.toon(body_color.lightened(0.35), 0.0), Vector3(0.0, -0.27, 0.0)))
+	# Vivo claro abajo: le despega el borde de las piernas, que tambien son oscuras.
+	_costume_add(_hips, Art.cylinder(0.445, 0.05, Art.toon(Color(0.86, 0.87, 0.92), 0.0),
+		Vector3(0.0, -0.27, 0.0)))
 
-	# Bufanda con las dos puntas colgando.
-	_costume_add(_torso, Art.capsule(0.21, 0.16, _mat_accent, Vector3(0.0, 0.66, 0.0)))
+	# Cuello de la camisa, asomando por el escote.
 	for side: float in [-1.0, 1.0]:
-		var tail := Art.box(Vector3(0.13, 0.38, 0.09), _mat_accent, Vector3(0.11 * side, 0.46, 0.16))
-		tail.rotation_degrees = Vector3(16.0, 0.0, 8.0 * side)
-		_costume_add(_torso, tail)
+		var collar := Art.box(Vector3(0.10, 0.055, 0.075), Art.toon(Color(0.97, 0.97, 0.95), OUTLINE_WIDTH),
+			Vector3(0.058 * side, 0.585, -0.12))
+		collar.rotation_degrees = Vector3(0.0, 0.0, -24.0 * side)
+		_costume_add(_torso, collar)
 
 
 ## Dio: silueta ancha y cuadrada, lo mas opuesto posible a Noelle.
@@ -827,17 +915,40 @@ func _build_dio() -> void:
 		_costume.append(pivot)
 		pivot.add_child(Art.capsule(0.042, float(spike["len"]), hair, Vector3(0.0, float(spike["len"]) * 0.4, 0.0)))
 
-	# Banda en la frente.
-	_costume_add(_head_pivot, Art.box(Vector3(0.43, 0.085, 0.43), _mat_accent, Vector3(0.0, 0.20, 0.0)))
+	# --- Banda VERDE en la frente, con su corazon ---
+	#
+	# La tenia dorada, del mismo color que el pelo y las hombreras, asi que desaparecia.
+	# En la Parte 3 la banda es verde y lleva un corazon: el corazon es EL motivo de su
+	# diseño —se repite en la banda, en las rodilleras y en el pantalon— y no estaba en
+	# ninguna parte. Es lo que lo separa de "un rubio de amarillo".
+	var verde_dio := Art.toon(Color(0.20, 0.52, 0.32), OUTLINE_WIDTH)
+	_costume_add(_head_pivot, Art.box(Vector3(0.43, 0.085, 0.43), verde_dio, Vector3(0.0, 0.20, 0.0)))
+	_corazon(_head_pivot, verde_dio, Vector3(0.0, 0.205, -0.216), 0.055)
 
-	# Hombreras: el rasgo mas fuerte de su silueta.
+	# Hombreras. ANCHAS PERO NO ENORMES.
+	#
+	# Estaban en radio 0.23 escaladas a 1.3, o sea mas anchas que su propia cabeza: en
+	# pantalla eran dos globos amarillos que le tapaban la cara y los brazos. La
+	# referencia habla de una CAMPERA, no de una armadura. Se achicaron a la mitad y la
+	# punta quedo corta: sigue leyendose ancho y cuadrado —que es lo que lo separa de
+	# Noelle a veinte metros— sin parecer un jugador de futbol americano.
 	for side: float in [-1.0, 1.0]:
-		var pad := Art.sphere(0.23, _mat_accent, Vector3(0.30 * side, 0.56, 0.0))
-		pad.scale = Vector3(1.3, 0.95, 1.15)
+		var pad := Art.sphere(0.145, _mat_accent, Vector3(0.245 * side, 0.545, 0.0))
+		pad.scale = Vector3(1.15, 0.85, 1.05)
 		_costume_add(_torso, pad)
-		var spike := Art.capsule(0.048, 0.22, _mat_accent, Vector3(0.44 * side, 0.62, 0.0))
-		spike.rotation_degrees = Vector3(0.0, 0.0, -50.0 * side)
+		var spike := Art.capsule(0.032, 0.13, _mat_accent, Vector3(0.335 * side, 0.575, 0.0))
+		spike.rotation_degrees = Vector3(0.0, 0.0, -52.0 * side)
 		_costume_add(_torso, spike)
+
+	# Musculosa negra debajo de la campera: la franja oscura en el medio del pecho es lo
+	# que le da el contraste que el amarillo entero no tiene.
+	var musculosa := Art.toon(Color(0.11, 0.11, 0.14), OUTLINE_WIDTH)
+	_costume_add(_torso, Art.box(Vector3(0.17, 0.44, 0.10), musculosa, Vector3(0.0, 0.40, -0.175)))
+
+	# Corazones en las rodilleras, el otro lugar donde el motivo se repite.
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if is_instance_valid(rodilla):
+			_corazon(rodilla, verde_dio, Vector3(0.0, -0.17, -0.082), 0.048)
 
 	# Capa: dos tramos que se angostan y se separan del cuerpo. Un solo bloque plano
 	# se lee como una tabla pegada a la espalda, no como tela.

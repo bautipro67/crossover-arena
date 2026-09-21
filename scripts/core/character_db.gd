@@ -21,10 +21,16 @@ func _register_all() -> void:
 	noelle.id = &"noelle"
 	noelle.display_name = "Noelle Holiday"
 	noelle.origin_game = "Deltarune"
-	# Verde navideño apagado para el vestido, pelo pelirrojo claro.
-	noelle.body_color = Color(0.36, 0.55, 0.47)
-	noelle.accent_color = Color(0.93, 0.62, 0.42)
-	noelle.skin_color = Color(0.99, 0.89, 0.80)
+	# LOS COLORES DE LA REFERENCIA. Los tenia casi todos mal: vestido verde liso en vez
+	# del sueter a cuadros rojo y verde, pelo PELIRROJO cuando es rubio dorado, y piel
+	# rosada de persona cuando Noelle es un monstruo reno con pelaje claro.
+	#
+	# body_color pasa a ser la CAMISA BLANCA que va debajo del sueter; el sueter se dibuja
+	# encima en _build_noelle, porque un cuadrille no se puede pintar con un color solo.
+	noelle.body_color = Color(0.96, 0.96, 0.94)
+	noelle.accent_color = Color(0.15, 0.15, 0.19)
+	noelle.skin_color = Color(0.95, 0.87, 0.76)
+	noelle.trouser_color = Color(0.13, 0.13, 0.17)
 	noelle.max_health = 100.0
 	noelle.max_stamina = 100.0
 	noelle.move_speed = 6.0
@@ -39,10 +45,12 @@ func _register_all() -> void:
 	dio.id = &"dio"
 	dio.display_name = "Dio Brando"
 	dio.origin_game = "JoJo's Bizarre Adventure"
-	# Amarillo tostado y dorado. Piel palida de vampiro.
-	dio.body_color = Color(0.86, 0.72, 0.36)
-	dio.accent_color = Color(0.88, 0.66, 0.16)
+	# Amarillo de la campera y dorado de los zapatos. Piel palida de vampiro.
+	# El pantalon tambien es amarillo en la Parte 3: lo tenia azul oscuro.
+	dio.body_color = Color(0.90, 0.76, 0.30)
+	dio.accent_color = Color(0.93, 0.74, 0.22)
 	dio.skin_color = Color(0.94, 0.86, 0.82)
+	dio.trouser_color = Color(0.82, 0.68, 0.26)
 	dio.max_health = 100.0
 	dio.max_stamina = 100.0
 	dio.move_speed = 6.6
