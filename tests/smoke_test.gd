@@ -64,7 +64,7 @@ func _run() -> void:
 	Arena.set_bots_active(true)
 	await _test_rick(player, arena)
 	await _test_practica(player, arena)
-	_test_arena(arena)
+	await _test_arena(arena)
 
 	_finish()
 
@@ -1050,6 +1050,42 @@ func _test_arena(arena: Arena) -> void:
 			covers += 1
 	_check(covers >= 5, "la arena tiene coberturas para cortar la linea de vision (%d)" % covers)
 
+	# --- EL CUERPO SE INCLINA AL GIRAR ---
+	#
+	# Una persona que dobla corriendo se inclina hacia adentro de la curva; sin eso el
+	# personaje gira como una torreta, perfectamente vertical mientras la direccion cambia
+	# debajo. Se mide porque a ojo son unos grados: se nota que algo esta mal antes de
+	# poder decir que, y una captura no lo prueba.
+	#
+	# SE PRUEBA SOBRE UN BOT Y NO SOBRE EL JUGADOR LOCAL. Al jugador local le pisan las
+	# dos entradas que esto necesita: la camara le reescribe rotation.y todos los ticks de
+	# fisica, y sin teclas apretadas la velocidad se frena sola. Medido: el yaw se quedaba
+	# clavado y la velocidad en cero, asi que el test daba casi nada y parecia un problema
+	# del codigo. Un bot se mueve y gira por codigo, que es justo lo que hace falta.
+	Arena.set_bots_active(false)
+	var girador := _spawn_dummy(arena, arena.find_clear_spot(Vector3(24.0, 0.6, 24.0), 1.5))
+	await get_tree().process_frame
+	girador.visual._root.rotation.z = 0.0
+	var recto := 0.0
+	for i: int in range(45):
+		await get_tree().physics_frame
+		# Corriendo y doblando: la inclinacion solo aplica en movimiento, porque girar
+		# parado es mirar alrededor y no doblar una curva.
+		girador.bot_move_dir = Vector3(1.0, 0.0, 0.0)
+		girador.bot_look_yaw += 0.10
+		await get_tree().process_frame
+		recto = maxf(recto, absf(girador.visual._root.rotation.z))
+	_check(recto > 0.04, "el cuerpo se inclina al doblar corriendo (%.3f rad)" % recto)
+
+	# Y al dejar de girar se endereza: si no, quedaria torcido el resto de la partida.
+	girador.bot_move_dir = Vector3.ZERO
+	for _i: int in range(50):
+		await get_tree().process_frame
+	_check(absf(girador.visual._root.rotation.z) < 0.02,
+		"y se endereza al parar (%.3f rad)" % girador.visual._root.rotation.z)
+	girador.queue_free()
+	await get_tree().process_frame
+
 	# --- TODO PUNTO DE APARICION TIENE QUE ESTAR LIBRE ---
 	#
 	# Bug reportado: la aparicion se bugueaba. Eran tres de los ocho puntos, que al
@@ -1430,7 +1466,21 @@ func _check(condition: bool, description: String) -> void:
 		_failures.append(description)
 
 
+## Minimo de chequeos que esta suite TIENE que correr.
+##
+## Ya paso tres veces, siempre igual y siempre en verde: una corrutina se corta a la
+## mitad y el resumen dice "TODO OK" con veinte pruebas menos. Las tres causas fueron
+## distintas —un error de tipo, un id que paso a ser archivo, y una funcion que se volvio
+## corrutina sin que su llamador la esperara— y las tres se vieron igual: nada.
+##
+## Subir este numero al agregar chequeos es el precio de que el verde signifique algo.
+const CHEQUEOS_MINIMOS: int = 170
+
+
 func _finish() -> void:
+	if _checks < CHEQUEOS_MINIMOS:
+		_failures.append("la suite corrio %d chequeos y tenia que correr al menos %d: se corto a la mitad" % [
+			_checks, CHEQUEOS_MINIMOS])
 	print("")
 	print("==========================================")
 	if _failures.is_empty():

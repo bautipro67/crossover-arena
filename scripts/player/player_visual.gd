@@ -106,6 +106,9 @@ var _aterrizaje_t: float = 0.0
 var _estaba_en_aire: bool = false
 ## Retroceso de recibir un golpe. Distinto de _hit_t, que es solo el temblor.
 var _dolor_t: float = 0.0
+## Para la inclinacion: cuanto giro el cuerpo desde el frame anterior.
+var _yaw_previo: float = 0.0
+var _giro_suave: float = 0.0
 ## Fase del ciclo de caminata en el frame anterior, para saber cuando cae un pie.
 var _paso_previo: float = 0.0
 
@@ -289,6 +292,33 @@ func _process(delta: float) -> void:
 		punch_scale + aterriza * 0.16,
 		1.0 + _hit_t * 0.05 - aterriza * 0.20,
 		punch_scale + aterriza * 0.16) * build_scale
+	# --- INCLINACION AL GIRAR Y AL CORRER ---
+	#
+	# Es lo que mas separa un cuerpo vivo de un maniqui que se desliza. Una persona que
+	# dobla corriendo se INCLINA HACIA ADENTRO de la curva —tiene que hacerlo, o se cae— y
+	# una que acelera se tira hacia adelante. Sin esto el personaje gira como una torreta:
+	# el cuerpo perfectamente vertical mientras la direccion cambia debajo.
+	#
+	# El giro se mide del cuerpo y no del mouse a proposito: asi vale igual para los bots
+	# y para los otros jugadores, cuya rotacion llega replicada. Si saliera del control
+	# local, el unico que se inclinaria seria el que esta jugando.
+	var yaw := _body.rotation.y
+	# wrapf y no una resta pelada: al cruzar de +PI a -PI la resta da un salto de 2PI y el
+	# cuerpo se tira de costado un frame, que se ve como un tiron.
+	var giro := wrapf(yaw - _yaw_previo, -PI, PI) / maxf(delta, 0.0001)
+	_yaw_previo = yaw
+	_giro_suave = lerpf(_giro_suave, clampf(giro, -7.0, 7.0), delta * 7.0)
+
+	# Y tambien inclina al moverse de costado, que es cuando el cuerpo no gira pero el
+	# peso igual se va para un lado.
+	var lateral := Vector3(_body.velocity.x, 0.0, _body.velocity.z).dot(
+		_body.global_transform.basis.x)
+	var banqueo := clampf(_giro_suave * 0.050 + lateral * 0.016, -0.26, 0.26)
+	# Solo si se esta moviendo: girar parado es mirar alrededor, no doblar una curva.
+	_root.rotation.z = lerpf(_root.rotation.z, banqueo * clampf(amount, 0.0, 1.0), delta * 9.0)
+	# Hacia adelante al correr. Poco: pasado de rosca el personaje parece que se cae.
+	_root.rotation.x = lerpf(_root.rotation.x, -0.085 * clampf(speed / 8.0, 0.0, 1.0), delta * 6.0)
+
 	_animate_face(delta)
 	# Y la cabeza mira levemente hacia donde va.
 	_head_pivot.rotation.x = lerpf(_head_pivot.rotation.x, 0.08 * amount, delta * 6.0)

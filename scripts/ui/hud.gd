@@ -53,6 +53,8 @@ var _dash_label: Label = null
 var _kill_feed: VBoxContainer = null
 var _center_label: Label = null
 var _target_label: Label = null
+var _premios: VBoxContainer = null
+var _monedas_previas: int = -1
 var _modo_panel: PanelContainer = null
 var _modo_label: Label = null
 var _scoreboard: Control = null
@@ -84,6 +86,77 @@ func _build() -> void:
 	_build_center_label(root)
 	_build_scoreboard(root)
 	_build_modo(root)
+	_build_progreso(root)
+
+
+## Los avisos de progreso: monedas ganadas y subidas de nivel.
+##
+## SIN ESTO LA PROGRESION NO EXISTE. Las monedas se suman en silencio y subir de nivel
+## pasa entre dos respawns sin que nadie se entere: el jugador se entera al volver al
+## menu, cuando ya no puede asociarlo con lo que hizo. Un sistema de recompensas que no
+## avisa en el momento en que recompensa no es un sistema de recompensas.
+##
+## Van arriba a la derecha, lejos de la vida y de las habilidades: es informacion buena,
+## nunca urgente, y no puede robarle un milimetro a lo que si lo es.
+func _build_progreso(root: Control) -> void:
+	_premios = VBoxContainer.new()
+	_premios.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_premios.position = Vector2(-230.0, 64.0)
+	_premios.custom_minimum_size = Vector2(210, 0)
+	_premios.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_premios.add_theme_constant_override("separation", 3)
+	_premios.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_premios)
+
+	_monedas_previas = Progreso.monedas
+	Progreso.monedas_cambiaron.connect(_on_monedas)
+	Progreso.subio_nivel.connect(_on_subio_nivel)
+
+
+func _exit_tree() -> void:
+	if Progreso.monedas_cambiaron.is_connected(_on_monedas):
+		Progreso.monedas_cambiaron.disconnect(_on_monedas)
+	if Progreso.subio_nivel.is_connected(_on_subio_nivel):
+		Progreso.subio_nivel.disconnect(_on_subio_nivel)
+
+
+func _on_monedas(total: int) -> void:
+	var ganado := total - _monedas_previas
+	_monedas_previas = total
+	if ganado > 0:
+		_premio("+%d ◆" % ganado, UITheme.GOLD, 16)
+
+
+func _on_subio_nivel(nivel: int) -> void:
+	_premio("NIVEL %d" % nivel, UITheme.ACCENT, 22)
+	Sfx.play_2d(&"respawn", -4.0)
+
+
+## Un aviso que sube y se desvanece. Se limita a cuatro a la vez: en una racha de bajas
+## seguidas, sin tope, la columna se come media pantalla.
+func _premio(texto: String, color: Color, tamaño: int) -> void:
+	if not is_instance_valid(_premios):
+		return
+	while _premios.get_child_count() >= 4:
+		var viejo := _premios.get_child(0)
+		_premios.remove_child(viejo)
+		viejo.queue_free()
+
+	var etiqueta := UITheme.make_label(texto, tamaño, color)
+	etiqueta.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	etiqueta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_premios.add_child(etiqueta)
+
+	etiqueta.modulate.a = 0.0
+	etiqueta.scale = Vector2(0.7, 0.7)
+	etiqueta.pivot_offset = Vector2(210.0, 10.0)
+	var tw := etiqueta.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(etiqueta, "modulate:a", 1.0, 0.12)
+	tw.tween_property(etiqueta, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(1.5)
+	tw.chain().tween_property(etiqueta, "modulate:a", 0.0, 0.5)
+	tw.chain().tween_callback(etiqueta.queue_free)
 
 
 ## El marcador del modo: oleada, reloj, cuantos faltan.
