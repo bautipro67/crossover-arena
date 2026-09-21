@@ -392,13 +392,22 @@ static func _resonar_movil(buf: PackedFloat32Array, fuente: PackedFloat32Array,
 ## que arranca la silaba, y es lo que hace que se oigan SEPARADAS: sin el, las vocales se
 ## funden en un solo sonido largo aunque los formantes se muevan bien.
 ##
-##   "golpe" -> oclusiva (t, k, d, z): silencio y despues un chasquido. El silencio es la
+##   "golpe" -> oclusiva sorda (t, k): silencio y despues un chasquido. El silencio es la
 ##              parte que importa; es lo que el oido lee como "empezo una silaba nueva".
+##   "suave" -> oclusiva sonora (d, b, g): el mismo gesto pero mucho mas corto y sin
+##              silencio del todo, porque la garganta no deja de vibrar. Tratar una "d"
+##              como una "t" le come 30 ms a la vocal que viene atras, y en una silaba de
+##              100 ms eso es un tercio.
 ##   "aire"  -> fricativa (j, s, h): soplido que se funde con la vocal.
 ##   "nasal" -> m, n: el primer formante se hunde y el volumen baja un momento.
 ##   ""      -> la vocal entra directo.
+## Los cuatro ultimos parametros son los que hacen que dos personajes no suenen igual.
+## Cambiar solo el tono no alcanza: dos voces al mismo tono siguen siendo la misma persona
+## cantando mas grave. Lo que separa a una de otra es el CUERPO (escala), la FORMA DE
+## DECIR (dramatismo), el BRILLO y la aspereza de las cuerdas (rasgado).
 static func _voz(silabas: Array, f0_pico: float, escala: float,
-		aspereza: float = 0.12) -> PackedFloat32Array:
+		aspereza: float = 0.12, dramatismo: float = 1.0,
+		brillo_alto: float = 1.0, rasgado: float = 0.0) -> PackedFloat32Array:
 	var dur := 0.08
 	for s: Array in silabas:
 		dur += s[1] as float
@@ -436,12 +445,21 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 		var pre := 0.0
 		if ataque == "golpe":
 			pre = 0.032
+		elif ataque == "suave":
+			pre = 0.018
 		elif ataque == "aire":
 			pre = 0.042
 		elif ataque == "nasal":
 			pre = 0.035
 
-		var desliz: float = minf(TRANSICION, (largo - pre) * 0.35)
+		# Y EN LAS CORTAS SE ACELERA BASTANTE MAS QUE PROPORCIONALMENTE.
+		#
+		# Al 35% la vocal llegaba a destino justo cuando la silaba ya se estaba apagando, y
+		# medido se reconocia como la vocal por la que venia pasando: las "a" cortas salian
+		# "o". Es un fenomeno real —en el habla rapida las vocales no llegan a su lugar— y
+		# es exactamente lo que uno NO hace cuando grita un nombre de ataque para que se
+		# entienda. Al 22% la boca llega y se queda.
+		var desliz: float = minf(TRANSICION, (largo - pre) * 0.22)
 		for i: int in range(desde, hasta):
 			var t: float = float(i) / MIX_RATE - t0
 			# La boca no salta de una vocal a la otra: se desliza. El deslizamiento
@@ -460,6 +478,11 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 					# marca la silaba; el chasquido solo la hace sonar dura.
 					a = 0.0 if q < 0.72 else 1.4
 					ruidoso[i] = 1.0 if q >= 0.72 else 0.0
+				elif ataque == "suave":
+					# Nunca llega a cero: una oclusiva sonora sigue sonando mientras la
+					# boca esta cerrada, y es eso lo que la hace sonar a "d" y no a "t".
+					a = 0.28 + q * 0.95
+					ruidoso[i] = 0.35 if q >= 0.6 else 0.0
 				elif ataque == "aire":
 					a = q * 0.55
 					ruidoso[i] = 1.0 - q * 0.5
@@ -493,11 +516,24 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 		var p: float = t / dur
 		# El tono de un grito: se dispara y despues se desinfla. Es lo que separa gritar
 		# de hablar, y sin la caida final suena a robot leyendo.
-		var f0: float = f0_pico * (0.72 + 0.28 * (1.0 - exp(-p * 14.0)) - 0.30 * p * p)
-		f0 *= 1.0 + sin(TAU * 5.2 * t) * 0.02
+		# El contorno de tono ES la actuacion. Un anuncio teatral se dispara hacia arriba
+		# y se desploma al final; una amenaza contenida se queda casi plana y grave. Con
+		# el mismo contorno, dos personajes suenan al mismo actor.
+		var sube: float = 0.30 * dramatismo
+		var cae: float = 0.34 * dramatismo
+		var f0: float = f0_pico * (1.0 - sube + sube * (1.0 - exp(-p * 14.0)) - cae * p * p)
+		f0 *= 1.0 + sin(TAU * 5.2 * t) * (0.016 * dramatismo)
 		fase += f0 / float(MIX_RATE)
 		var aire: float = _ruido() * (aspereza + ruidoso[i] * 0.85)
-		fuente[i] = (_sierra(fase) * 0.85 + aire) * env[i]
+		var pulso: float = _sierra(fase) * 0.85
+		# RASGADO: un subarmonico a la mitad del tono.
+		#
+		# Es lo que hace una garganta forzada —los ciclos dejan de ser todos iguales y
+		# aparece una periodicidad al doble— y es el ingrediente de un grito amenazante.
+		# Sin esto, gritar fuerte solo suena mas alto, nunca mas peligroso.
+		if rasgado > 0.0:
+			pulso *= 1.0 - rasgado * 0.5 * (1.0 + sin(PI * fase))
+		fuente[i] = (pulso + aire) * env[i]
 
 	# PREENFASIS PARA LOS FORMANTES DE ARRIBA, y sin esto no se entiende una palabra.
 	#
@@ -543,76 +579,124 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 	# de una persona.
 	_resonar_movil(out, brillo, p1, 0.9932, 1.0)
 	_resonar_movil(out, brillo, p2, 0.9882, 0.62)
-	_resonar_movil(out, brillo, p3, 0.9820, 0.26)
+	# El brillo: cuanta energia hay arriba. Una voz juvenil y declamada tiene los formantes
+	# altos presentes; una voz de pecho, oscura y amenazante, los tiene apagados.
+	_resonar_movil(out, brillo, p3, 0.9820, 0.26 * brillo_alto)
 	# Saturacion suave y no fuerte: el tanh distorsiona F1 —que es el mas potente— y esos
 	# armonicos nuevos caen justo encima de F2. Apretar de mas vuelve a tapar lo que el
 	# preenfasis acaba de destapar.
+	# INCLINACION ESPECTRAL: la otra mitad de "esta es otra persona".
+	#
+	# Subir la ganancia de F3 no alcanza —es un formante, mueve poco el balance general—
+	# y medido dejaba a los dos personajes con el centroide a un 19% de distancia, que es
+	# menos de lo que separa a dos grabaciones de la misma persona en dos dias distintos.
+	#
+	# Esto inclina el espectro ENTERO: una voz juvenil y declamada tiene presencia arriba,
+	# una voz de pecho amenazante la tiene apagada. Es lo que uno oye primero, antes que
+	# ningun formante.
+	if not is_equal_approx(brillo_alto, 1.0):
+		var lado := out.duplicate()
+		if brillo_alto > 1.0:
+			_pasaaltos(lado, 1700.0)
+			for i: int in range(out.size()):
+				out[i] += lado[i] * (brillo_alto - 1.0) * 1.6
+		else:
+			_pasabajos(lado, 1700.0)
+			for i: int in range(out.size()):
+				out[i] = lerpf(out[i], lado[i], (1.0 - brillo_alto) * 1.3)
+
 	_saturar(out, 1.45)
 	_normalizar(out, 0.85)
 	_bordes(out, 2.0, 30.0)
 	return out
 
 
-## "¡JARONA!" — ja-ro-na.
-##
-## Agudo y con los formantes estirados: Flowery es chico, y una garganta chica resuena
-## mas arriba. Es lo que lo separa de Dio sin cambiar una sola silaba.
-## NO TAN AGUDO COMO PARECERIA, y no es una decision de gusto.
-##
-## Estuvo en 248 Hz, que es lo que uno elige para "personaje chico", y a ese tono las
-## vocales dejaban de distinguirse: medido, la "a" le ganaba a la "o" en su propia banda
-## por 0.7 dB, o sea nada. La razon es que una voz aguda muestrea el espectro con los
-## armonicos muy separados —a 248 Hz uno cada 248 Hz— y los formantes que hay que separar
-## para oir "ja-ro-na" estan a 290 Hz uno del otro: no entran entre dos armonicos.
-##
-## Es el mismo motivo por el que a una soprano no se le entiende la letra. A 200 Hz la
-## rejilla se hace bastante mas fina, sigue sonando chico al lado de los 124 de Dio, y
-## ahi si se entiende que dice.
+# --- FLOWERY ---
+#
+# ERA AGUDO Y CHICO, Y ESTA MAL. Lo hice con la garganta corta —formantes estirados un
+# 16%— dando por sentado que "Flowery" era una florcita. No lo es: en Deltarune es un
+# humanoide RUBIO Y ALTO, adulto, que hace poses dramaticas y esta dibujado en estilo
+# anime. Una garganta corta es justo lo contrario de lo que corresponde.
+#
+# Y no es un personaje de blips: es el unico de Deltarune con lineas de voz actuadas
+# mientras habla. O sea que hay una voz de verdad que imitar, y es la de un fanfarron
+# teatral que anuncia sus golpes con nombres de ataque de anime inventados.
+#
+# De ahi salen sus cuatro numeros: garganta de adulto normal (1.00), tono de varon joven
+# y no de criatura (165 Hz), mucho dramatismo —el tono se dispara y se desploma, que es
+# como se declama un nombre de ataque— y brillo alto. Sin rasgado: no amenaza, presume.
+const F_TONO: float = 165.0
+const F_CUERPO: float = 1.00
+const F_DRAMA: float = 1.45
+const F_BRILLO: float = 1.40
+
+
+## "¡JARONA!" — ja-ro-na. Su grito, el que suelta antes de cada embestida.
 func _synth_voz_jarona() -> PackedFloat32Array:
-	return _voz([["a", 0.17, "aire"], ["o", 0.15, ""], ["a", 0.26, "nasal"]], 200.0, 1.14)
+	return _voz([["a", 0.17, "aire"], ["o", 0.15, ""], ["a", 0.26, "nasal"]],
+		F_TONO, F_CUERPO, 0.10, F_DRAMA, F_BRILLO)
 
 
-## "¡HERE I COME!"
-func _synth_voz_here_i_come() -> PackedFloat32Array:
-	return _voz([["i", 0.15, "aire"], ["a", 0.12, ""], ["i", 0.09, ""],
-		["a", 0.24, "golpe"]], 206.0, 1.14)
-
-
-## "¡LAST JARONA!" — el mismo grito pero mas grande.
+## "¡HERE I COME, SAN FRANCISCO!" — he-re-i-come-san-fran-cis-co.
 ##
-## Una octava abajo y los formantes encogidos: la garganta que lo dice es otra. Es el
-## ultimate, asi que tiene que sonar a que se solto algo que antes estaba guardado.
+## La frase entera, que es el nombre completo del ataque. Ocho silabas se dicen rapido o
+## no entran: el ataque dura lo que dura y un anuncio que termina despues del golpe deja
+## de ser un aviso.
+func _synth_voz_here_i_come() -> PackedFloat32Array:
+	return _voz([
+		["i", 0.13, "aire"], ["a", 0.09, ""], ["i", 0.07, ""], ["a", 0.15, "golpe"],
+		["a", 0.14, "aire"], ["a", 0.12, "aire"], ["i", 0.09, "aire"], ["o", 0.24, "golpe"],
+	], F_TONO + 6.0, F_CUERPO, 0.10, F_DRAMA, F_BRILLO)
+
+
+## "¡LAST JARONA!" — el mismo tipo, forzando la voz.
+##
+## No es otro personaje: es EL MISMO mas abajo y con las cuerdas raspando, que es lo que
+## le pasa a una garganta que grita al limite. Cambiarle el cuerpo lo volveria otro.
 func _synth_voz_last_jarona() -> PackedFloat32Array:
 	return _voz([["a", 0.20, ""], ["a", 0.15, "aire"], ["o", 0.15, ""],
-		["a", 0.34, "nasal"]], 176.0, 1.02, 0.18)
+		["a", 0.34, "nasal"]], F_TONO - 18.0, F_CUERPO - 0.02, 0.17, F_DRAMA + 0.2,
+		F_BRILLO - 0.15, 0.22)
 
 
-## "¡MUDA MUDA MUDA!" — mu-da, tres veces, una por cada tanda de puñetazos.
+# --- DIO ---
+#
+# Lo contrario de Flowery en las cuatro cosas: mas grave, mas cuerpo, contenido en vez de
+# declamado, y oscuro en vez de brillante. Un hombre grande que no necesita gritar para
+# que le tengan miedo.
+#
+# El rasgado es lo que lo vuelve amenazante y no solamente fuerte: un subarmonico a la
+# mitad del tono, que es lo que hace una garganta forzada de verdad.
+const D_TONO: float = 108.0
+const D_CUERPO: float = 0.95
+const D_DRAMA: float = 0.65
+const D_BRILLO: float = 0.78
+const D_RASGADO: float = 0.38
+
+
+## "¡MUDA MUDA MUDA!" — mu-da, tres veces, rapido y encima del golpe.
 func _synth_voz_muda() -> PackedFloat32Array:
 	var silabas: Array = []
 	for _i: int in range(3):
 		silabas.append(["u", 0.10, "nasal"])
-		silabas.append(["a", 0.13, "golpe"])
-	# LA ESCALA NO BAJA TANTO COMO PARECERIA. Una voz grave lo es por el TONO —Dio anda
-	# por los 130 Hz contra los 200 de Flowery— y no por los formantes, que dependen del
-	# largo de la garganta. Estuvo en 0.90 y comprimia tanto las vocales que la "a" y la
-	# "o" se superponian: medido, las tres "a" de MUDA se reconocian como "o".
-	return _voz(silabas, 132.0, 0.97, 0.16)
+		silabas.append(["a", 0.14, "suave"])
+	return _voz(silabas, D_TONO + 8.0, D_CUERPO, 0.16, D_DRAMA, D_BRILLO, D_RASGADO)
 
 
-## "¡ZA WARUDO!" — za-wa-ru-do.
+## "¡ZA WARUDO!" — za-wa-ru-do. Lento y abierto: es el anuncio, no el golpe.
 func _synth_voz_za_warudo() -> PackedFloat32Array:
 	return _voz([["a", 0.20, "golpe"], ["a", 0.15, ""], ["u", 0.13, ""],
-		["o", 0.32, "golpe"]], 124.0, 0.97, 0.14)
+		["o", 0.32, "golpe"]], D_TONO, D_CUERPO, 0.14, D_DRAMA, D_BRILLO, D_RASGADO)
 
 
 ## "¡TOKI YO TOMARE!" — to-ki-yo-to-ma-re. La orden, no el nombre.
 ##
 ## Mas rapida y mas plana que ZA WARUDO a proposito: la primera es el anuncio y esta es
-## la orden que lo ejecuta. Si las dos se gritaran igual, la segunda sonaria a eco.
+## la orden que lo ejecuta. Si las dos se dijeran igual, la segunda sonaria a eco.
 func _synth_voz_toki() -> PackedFloat32Array:
 	return _voz([["o", 0.12, "golpe"], ["i", 0.12, "golpe"], ["o", 0.14, ""],
-		["o", 0.12, "golpe"], ["a", 0.13, "nasal"], ["e", 0.26, ""]], 118.0, 0.97, 0.13)
+		["o", 0.12, "golpe"], ["a", 0.15, "nasal"], ["e", 0.26, ""]],
+		D_TONO - 6.0, D_CUERPO, 0.13, D_DRAMA - 0.15, D_BRILLO, D_RASGADO + 0.06)
 
 
 # ------------------------------------------------------------------- Deltarune

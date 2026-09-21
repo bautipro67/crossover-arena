@@ -26,7 +26,7 @@ const LINEAS: Dictionary = {
 	# Los nombres de sus movimientos son nombres de ataques de anime inventados, y los
 	# grita enteros. "Jarona" es el que repite antes de cada embestida.
 	&"jarona": [["¡JARONA!", 0.0, &"voz_jarona"]],
-	&"here_i_come": [["¡HERE I COME!", 0.0, &"voz_here_i_come"]],
+	&"here_i_come": [["¡HERE I COME, SAN FRANCISCO!", 0.0, &"voz_here_i_come"]],
 	&"last_jarona": [["¡LAST JARONA!", 0.0, &"voz_last_jarona"]],
 	# --- DIO (JoJo) ---
 	&"muda_rush": [["¡MUDA MUDA MUDA!", 0.0, &"voz_muda"]],
