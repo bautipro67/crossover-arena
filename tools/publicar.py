@@ -81,6 +81,16 @@ def normalizar(url):
 def exportar(godot, preset, salida):
     salida.parent.mkdir(parents=True, exist_ok=True)
     print("\nexportando %s ..." % preset)
+    # IMPORTAR ANTES DE EXPORTAR.
+    #
+    # Godot no mete en el .pck un archivo que todavia no importo, y no avisa: exporta
+    # contento y el juego sale sin el. Con todo sintetizado por codigo eso nunca pasaba
+    # —no habia archivos— pero desde que las voces pueden ser grabaciones, alguien puede
+    # dejar caer un .ogg en assets/voces/ y exportar. Sin esto, el juego publicado saldria
+    # con la voz sintetizada y sin ninguna pista de por que.
+    subprocess.run([godot, "--headless", "--path", str(RAIZ), "--import"],
+                   capture_output=True, text=True)
+
     r = subprocess.run(
         [godot, "--headless", "--path", str(RAIZ), "--export-release", preset, str(salida)],
         capture_output=True, text=True)

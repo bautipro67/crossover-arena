@@ -85,6 +85,25 @@ func _apply_volume() -> void:
 		AudioServer.set_bus_volume_db(bus, linear_to_db(master_volume))
 
 
+## Busca una grabacion para este sonido en assets/voces/.
+##
+## Acepta .ogg y .wav. El .ogg es el que conviene publicar —pesa una fraccion y la
+## version web se descarga entera antes de jugar— pero el .wav entra igual para poder
+## probar una toma sin convertirla primero.
+##
+## Devuelve null si no hay nada, y eso NO es un error: significa "esta la sintetiza el
+## codigo", que es el caso de casi todo el juego.
+func _voz_de_archivo(id: StringName) -> AudioStream:
+	for ext: String in ["ogg", "wav"]:
+		var ruta := "res://assets/voces/%s.%s" % [id, ext]
+		if ResourceLoader.exists(ruta):
+			var recurso := load(ruta)
+			if recurso is AudioStream:
+				return recurso as AudioStream
+			push_warning("[sfx] %s existe pero no es un audio" % ruta)
+	return null
+
+
 # ------------------------------------------------------------------ Reproduccion
 
 ## Sonido no posicional (UI, avisos).
@@ -332,7 +351,19 @@ func _build_combate() -> void:
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
 	for item: Array in receta:
 		var generador: Callable = item[1]
-		_bank[item[0]] = _make(generador.call())
+		# UN ARCHIVO GANA SIEMPRE, si existe.
+		#
+		# El juego se sintetiza entero por codigo, y eso es la regla general y lo que hace
+		# que pese 9 MB. Pero para la VOZ la sintesis tiene un techo duro: puede decir
+		# palabras entendibles y nunca va a sonar a una persona gritando. Asi que la voz es
+		# la excepcion: si hay una grabacion, se usa la grabacion.
+		#
+		# Es una comprobacion por sonido y no un modo aparte a proposito. Se pueden tener
+		# tres voces grabadas y tres sintetizadas sin configurar nada: cada una busca su
+		# archivo y, si no esta, se genera. Nada se rompe por faltar, que es lo que importa
+		# cuando los archivos los va poniendo alguien de a uno.
+		var grabada := _voz_de_archivo(item[0])
+		_bank[item[0]] = grabada if grabada != null else _make(generador.call())
 		if is_inside_tree():
 			await get_tree().process_frame
 	print("[sfx] banco completo en %d ms (%d sonidos a %d Hz)" % [
