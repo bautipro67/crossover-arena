@@ -1,0 +1,221 @@
+# Qué poner en la página de itch.io
+
+Todo el texto de acá se copia y se pega. Lo de la primera sección **no es opcional**:
+son los campos que, mal puestos, hacen que el juego no arranque en el navegador.
+
+---
+
+## 1. Configuración — los campos que pueden romper el juego
+
+| Campo de itch | Qué poner | Por qué |
+|---|---|---|
+| **Kind of project** | `HTML` | Si queda en "Downloadable", nadie lo juega en el navegador. |
+| **Uploads** → `CrossoverArena-web.zip` | Marcar ✅ **This file will be played in the browser** | Es el zip que tiene `index.html` en la raíz, que es lo que itch busca. |
+| **Uploads** → `CrossoverArena-windows.zip` | **NO** marcar esa casilla. Marcar plataforma 🪟 Windows | Es la descarga opcional. Si la marcás como jugable, itch se confunde sobre cuál servir. |
+| **Viewport dimensions** | `1280` × `720` | Es la resolución de diseño del juego. Con otra, la interfaz queda cortada o diminuta. |
+| **Fullscreen button** | ✅ Activado | Es un juego en tercera persona; a 1280×720 embebido se juega incómodo. |
+| **SharedArrayBuffer support** | ❌ **DEJAR DESMARCADO** | Ver abajo. Es el que más problemas da. |
+| **Mobile friendly** | ❌ Desactivado | Necesita mouse con captura de puntero y teclado. En celular no se puede jugar. |
+| **Pricing** | `No payments` | Ver la sección de aviso legal. |
+| **Release status** | `Released` | |
+
+### Sobre SharedArrayBuffer — dejalo desmarcado
+
+Es el error más común al subir un juego de Godot y vale la pena entenderlo una vez.
+
+Un export web **con hilos** necesita `SharedArrayBuffer`, que el navegador solo habilita
+si la página viene con cabeceras de aislamiento. Ese checkbox de itch las agrega. Si tu
+build usa hilos y no lo marcás, el juego muere al arrancar con un
+`Cross-Origin Isolation ... missing`.
+
+**Este build está compilado SIN hilos a propósito** (`thread_support=false`), justamente
+para no depender de ese checkbox. Ya lo probé servido en local sin las cabeceras —que es
+exactamente la configuración por defecto de itch— y arranca normal.
+
+Marcarlo igual no lo mejora y puede traer problemas con otros embebidos de la página. No
+lo toques.
+
+---
+
+## 2. Título y frase corta
+
+**Title**
+
+```
+CrossoverArena
+```
+
+**Short description / tagline** (aparece en las tarjetas y en el buscador)
+
+```
+Arena PvP 3D donde se cruzan personajes de juegos distintos. Gratis y en el navegador.
+```
+
+---
+
+## 3. Descripción (el cuadro de texto grande)
+
+```
+Una arena de peleas 3D en tercera persona donde se cruzan personajes que nunca se
+conocieron. Abrís el navegador, elegís personaje y peleás: contra bots o contra otra
+gente.
+
+═══ PERSONAJES ═══
+
+❄ NOELLE HOLIDAY — Deltarune
+   Control y hielo. Congela, se protege y, si la dejás cargar, borra del mapa.
+   Icicle Strike · Ice Shock · Defensa de Hielo · SNOWGRAVE
+
+⏳ DIO BRANDO — JoJo's Bizarre Adventure
+   Presión y castigo. Ráfagas del Stand, cuchillos a distancia y el tiempo detenido.
+   MUDA MUDA · Knife Throw · Ráfaga del Stand · ZA WARUDO
+
+🌼 FLOWERY — Deltarune
+   Embestidas. Todo su kit es tirarse encima tuyo, y no para hasta que lo esquives.
+   Pétalos · JARONA · Here I Come, San Francisco · LAST JARONA
+
+═══ CONTROLES ═══
+
+WASD ......... moverse          Click izq .... golpe básico
+Espacio ...... saltar           Click der .... habilidad 1
+Shift ........ dash             E ............ habilidad 2
+Ctrl ......... correr           Q ............ ultimate
+Tab .......... marcador         P ............ panel de práctica
+
+═══ MODOS ═══
+
+▸ PRACTICAR SOLO — Tres bots que pelean de verdad: te rodean, esquivan con dash, te
+  corren a cortarte el canalizado y usan su ultimate. No son maniquíes.
+
+▸ ONLINE — Servidor público, entrás directo desde el menú. Sin cuenta, sin descargar
+  nada.
+
+═══ SALA DE PRÁCTICA CONFIGURABLE ═══
+
+Adentro del modo práctica, la tecla P abre un panel para armar el entrenamiento que
+necesites sin volver al menú:
+
+  · Cuántos bots hay (de 0 a 5), en caliente
+  · Que se peleen entre ellos, para ver de afuera un kit que no jugás
+  · Cuánto pegan (x0, x0.5, x1, x2) — en x0 atacan igual pero no te sacan vida
+  · Stamina infinita, sin esperas entre habilidades, no poder morir
+  · Curar todo, para volver al estado inicial sin esperar
+
+═══ LA PRIMERA CONEXIÓN ONLINE TARDA ═══
+
+El servidor es gratuito y se duerme cuando no hay nadie jugando. La primera conexión
+después de un rato puede tardar hasta un minuto mientras despierta: el juego te avisa
+en pantalla y reintenta solo. A partir de ahí entra al instante.
+
+═══ HECHO ENTERAMENTE POR CÓDIGO ═══
+
+No hay ni un solo archivo de imagen, sonido o música en el proyecto. La geometría, los
+efectos, los sonidos y la banda sonora se generan por código al arrancar. Por eso el
+juego pesa lo que pesa y carga rápido.
+
+Hecho con Godot 4.
+
+═══ AVISO ═══
+
+Fangame gratuito y sin fines de lucro, sin relación con los autores originales.
+
+Noelle Holiday y Flowery son de Deltarune, creación de Toby Fox.
+Dio Brando es de JoJo's Bizarre Adventure, creación de Hirohiko Araki (Shueisha).
+
+Este juego no se vende, no acepta donaciones y no tiene publicidad. Si alguno de los
+titulares quiere que se baje, se baja.
+```
+
+---
+
+## 4. Metadatos
+
+| Campo | Valor |
+|---|---|
+| **Classification** | Games |
+| **Genre** | Action |
+| **Tags** | `3d`, `arena`, `fangame`, `fighting`, `multiplayer`, `pvp`, `singleplayer`, `third-person`, `deltarune`, `jojos-bizarre-adventure` |
+| **Made with** | Godot |
+| **Inputs** | Keyboard, Mouse |
+| **Average session** | A few minutes |
+| **Languages** | Spanish (español) |
+| **Accessibility** | Dejar vacío (el juego no tiene opciones de accesibilidad todavía) |
+
+No pongas tags de cosas que el juego no tiene. itch penaliza eso y además te trae gente
+que se va decepcionada, que es peor que no traer a nadie.
+
+---
+
+## 5. Imágenes — ya están hechas, en `build/itch/`
+
+Se generan con dos pasos, los dos por código como todo lo demás:
+
+```bash
+godot --path . res://tests/render_promo.tscn -- build/promo
+python tools/promo.py
+```
+
+El primero renderiza tomas **limpias, sin HUD**, con los tres personajes posados a mano
+(las capturas de `build/capturas/` no sirven: tienen barras de vida y nombres flotando,
+que es basura en una portada). El segundo las recorta a las proporciones exactas que
+pide itch y les pone el título.
+
+### Portada (cover image) — la que te falta
+
+⚠️ **No se sube desde "Promo images".** Está en **Editar proyecto**, más abajo, en
+`Cover image`. Es la que hace que en las listas aparezca una estrella gris en vez de tu
+juego.
+
+| Archivo | Dónde va |
+|---|---|
+| `cover_630x500.png` | Editar proyecto → **Cover image** |
+
+### Promo images — la pantalla donde estás
+
+Las cuatro son opcionales. Yo subiría las cuatro igual: la social es la que se ve cuando
+alguien comparte el link, y sin ella sale un recorte al azar.
+
+| Campo de itch | Archivo | Por qué esa medida |
+|---|---|---|
+| **Social media image** | `social_1200x630.png` | 1200×630 es la proporción que usan Twitter y Facebook al desplegar un enlace. |
+| **Favicon** | `favicon_256.png` | Tiene que ser **cuadrado**. Es la cabeza de Flowery, que es lo más reconocible a 16 px. |
+| **Wide cover** | `wide_1680x720.png` | itch exige **21:9 exacto**. Es la arena entera. |
+| **Logo** | `logo_1200x340.png` | PNG transparente y horizontal. Letras blancas con contorno oscuro grueso: así se lee sobre fondo claro **y** sobre oscuro, que es lo que itch pide y donde suele fallar un logo. |
+
+### Capturas de la galería — de `build/capturas/`
+
+Poné 5 o 6, y en este orden. La primera es la que más se mira:
+
+1. `13_za_warudo.png` — el momento más espectacular del juego
+2. `09_snowgrave.png` — el otro ultimate, y muestra a Noelle
+3. `17_bots_peleando.png` — muestra que hay pelea de verdad, no un maniquí
+4. `26_panel_de_practica.png` — la sala configurable, que es lo que lo diferencia
+5. `22_jarona.png` — Flowery embistiendo, con la estela
+6. `18_mapa_desde_arriba.png` — el mapa entero, para que se vea la escala
+
+Evitá las de diagnóstico (`06c_medidor_vacio`, `05b_cara_de_cerca`): son útiles para
+desarrollar y no dicen nada a alguien que pasa scrolleando.
+
+## 6. Sobre el precio — importante
+
+Ponelo en **No payments**. Ni "Donation", ni "Name your own price" con mínimo cero.
+
+Un fangame que usa personajes ajenos se sostiene sobre que no gana plata con ellos. En
+cuanto hay un botón de pago o de donación —aunque nadie done—, deja de ser eso. Es la
+razón por la que a muchos fangames los bajan y a la mayoría no.
+
+Por lo mismo: no le pongas publicidad, no lo enlaces a un Patreon y no pidas propinas en
+la descripción.
+
+---
+
+## 7. Lo que conviene saber, aunque no vaya en la página
+
+- **El movimiento lo decide el cliente.** El combate lo valida el servidor, pero la
+  posición no: alguien que modifique el juego puede moverse más rápido. Para partidas
+  entre conocidos no importa; si el online se llena de gente, va a aparecer.
+- **El servidor de Render se duerme** a los ~15 minutos sin nadie. Está contemplado en el
+  juego (reintenta hasta 75 segundos y avisa en pantalla), pero si alguien se queja de
+  que "no conecta", casi siempre es eso y es cuestión de esperar.
+- **Actualizar el juego** en itch es reemplazar el zip en la misma página, no crear una
+  nueva: así conservás las vistas, los comentarios y el link.
