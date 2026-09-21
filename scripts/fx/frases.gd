@@ -81,7 +81,11 @@ static func decir(caster: Node, ability_id: StringName) -> void:
 		# Despues de que la anterior termine de sonar, con un respiro.
 		if i > 0:
 			var previa := (lineas[i - 1] as Array)[2] as StringName
-			retardo = maxf(retardo, Sfx.duracion(previa) + 0.12)
+			# El respiro es CHICO a proposito. Solo tiene que evitar que se pisen, y las
+			# dos mitades de ZA WARUDO salen de una misma toma continua con musica
+			# debajo: cualquier hueco de mas se oye como un salto en la musica, no como
+			# una pausa dramatica.
+			retardo = maxf(retardo, Sfx.duracion(previa) + 0.05)
 		var tree := caster.get_tree()
 		if tree == null:
 			continue
