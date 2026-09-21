@@ -118,7 +118,7 @@ func execute(caster: Node, _origin: Vector3, dir: Vector3) -> void:
 ## ultimate); por debajo, cada rebote pega menos que el anterior.
 static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: float,
 		estallido: Callable, fallos_tolerados: int, estela: Color = ESTELA,
-		decaimiento: float = 1.0) -> void:
+		decaimiento: float = 1.0, frase: String = "¡JARONA!") -> void:
 	var caster3d := caster as Node3D
 	if caster3d == null:
 		return
@@ -141,6 +141,13 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 		# es el aviso que hace que la embestida se pueda esquivar.
 		FX.spawn_jarona_flash(caster3d)
 		Sfx.play_3d(caster, &"jarona", caster3d.global_position, -2.0)
+		# Y LO GRITA EN CADA PASADA, no una vez al principio.
+		#
+		# En Deltarune el destello blanco y el "¡Jarona!" son la misma señal y vienen
+		# juntos antes de cada embestida; el ataque es justamente eso repetido. Decirlo
+		# solo al empezar dejaria mudas las otras nueve, que son las que te van a pegar.
+		if caster.has_method("avisar_grito"):
+			caster.call("avisar_grito", frase)
 
 		var golpeados: Dictionary = {}
 		var tocados := await FloweryDash.pasada(

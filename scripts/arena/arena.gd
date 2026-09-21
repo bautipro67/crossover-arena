@@ -694,17 +694,21 @@ func _build_spawn_points() -> void:
 	# Estaban clavados en +-40 con el mapa en 92. Al agrandarlo quedaban a veinte metros
 	# de la pared, o sea ya no en el borde sino en tierra de nadie, y dos de ellos caian
 	# justo encima de las zonas nuevas.
-	var borde := ARENA_SIZE * 0.5 - 8.0
-	var medio := ARENA_SIZE * 0.5 - 7.0
+	# EN LOS CORREDORES ENTRE ZONAS, no en las esquinas.
+	#
+	# Las cuatro esquinas del mapa son ahora las cuatro zonas —bosque, trinchera,
+	# terrazas y plaza— asi que poner los spawns en las esquinas es ponerlos ADENTRO de
+	# ellas. Medido: 3 de 8 quedaban dentro de un bloque o de una columna, y aparecer
+	# incrustado es lo que se veia como "la aparicion se buguea".
+	#
+	# Los corredores son las cuatro franjas entre zona y zona, que son justamente las
+	# unicas partes despejadas del borde.
+	var borde := ARENA_SIZE * 0.5 - 6.0
 	var positions: Array[Vector3] = [
-		Vector3(-borde, 0.0, -borde),
-		Vector3(borde, 0.0, -borde),
-		Vector3(-borde, 0.0, borde),
-		Vector3(borde, 0.0, borde),
-		Vector3(-7.0, 0.0, -medio),
-		Vector3(7.0, 0.0, medio),
-		Vector3(-medio, 0.0, 18.0),
-		Vector3(medio, 0.0, -18.0),
+		Vector3(0.0, 0.0, -borde), Vector3(0.0, 0.0, borde),
+		Vector3(-borde, 0.0, 0.0), Vector3(borde, 0.0, 0.0),
+		Vector3(-14.0, 0.0, -borde), Vector3(14.0, 0.0, borde),
+		Vector3(-borde, 0.0, 14.0), Vector3(borde, 0.0, -14.0),
 	]
 	_spawn_points.clear()
 	for pos: Vector3 in positions:
@@ -786,7 +790,18 @@ func get_free_spawn_point() -> Transform3D:
 		if nearest > best_score:
 			best_score = nearest
 			best = t
-	return best
+
+	# Y SE VERIFICA QUE ESTE LIBRE, SIEMPRE.
+	#
+	# Los puntos estan escritos a mano, y el mapa cambia: cualquier bloque nuevo puede
+	# caer encima de uno sin que nada avise. Ya paso —tres de ocho quedaron adentro de
+	# una cobertura al rehacer el mapa— y el sintoma era aparecer incrustado y salir
+	# despedido, que desde afuera no se parece en nada a "el spawn esta mal puesto".
+	#
+	# No se puede hacer al construirlos: las coberturas se crean en el mismo frame y el
+	# servidor de fisica todavia no las conoce, asi que la consulta daria todo libre.
+	# Aca, en cambio, ya paso al menos un frame.
+	return Transform3D(best.basis, find_clear_spot(best.origin, 0.8))
 
 
 func _living_players() -> Array[Player]:

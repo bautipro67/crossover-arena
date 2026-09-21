@@ -68,7 +68,8 @@ func execute(caster: Node, _origin: Vector3, dir: Vector3) -> void:
 	# cosa que se arregle en una vale para las dos, y la relacion entre ellas queda dicha
 	# en los argumentos: mismo ataque, con estallido y con aguante.
 	await Jarona.correr_embestida(
-		caster, dir, PASSES, DAMAGE, _explotar, FALLOS_TOLERADOS, ESTELA)
+		caster, dir, PASSES, DAMAGE, _explotar, FALLOS_TOLERADOS, ESTELA, 1.0,
+		"¡LAST JARONA!")
 
 
 ## La explosion que deja atras. La llama el bucle de JARONA en cada rebote.

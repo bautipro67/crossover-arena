@@ -827,6 +827,54 @@ func spawn_meeseeks_box(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	_auto_free(humo, 1.5)
 
 
+## La frase que grita un personaje al usar una habilidad.
+##
+## VA COLGADA DEL CUERPO, no dejada en el mundo. Flowery grita "¡JARONA!" justo antes de
+## salir disparado a treinta metros por segundo: una burbuja plantada en el aire se
+## quedaria atras al instante y parecería que la dijo otro. Colgada de el, lo acompaña.
+##
+## Y REEMPLAZA A LA ANTERIOR. El JARONA son diez embestidas seguidas y cada una grita:
+## si se apilaran, a la tercera no se leeria ninguna. Reemplazandose se lee como lo que
+## es, un canto que se repite, que es exactamente como suena en el juego original.
+func spawn_grito(caster: Node, texto: String, color: Color) -> void:
+	var cuerpo := caster as Node3D
+	if not is_instance_valid(cuerpo):
+		return
+
+	var previo := cuerpo.get_node_or_null(^"GritoFrase")
+	if previo != null:
+		previo.name = &"GritoViejo"
+		previo.queue_free()
+
+	var label := Label3D.new()
+	label.name = &"GritoFrase"
+	label.text = texto
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.font_size = 52
+	# Contorno grueso y oscuro: es como se leen los carteles de los dos juegos de los que
+	# salen estos personajes, y ademas es lo unico que hace legible un texto blanco contra
+	# un mapa que tiene cielo claro arriba y piso claro abajo.
+	label.outline_size = 20
+	label.modulate = color
+	label.outline_modulate = Color(0.04, 0.03, 0.08)
+	label.pixel_size = 0.0055
+	cuerpo.add_child(label)
+	label.position = Vector3(0.0, 2.45, 0.0)
+
+	# Entra de golpe y grande, se asienta, y recien al final se va. El rebote inicial es
+	# lo que lo hace leer como un grito y no como un cartel que aparecio.
+	label.scale = Vector3.ONE * 0.45
+	var tw := label.create_tween()
+	tw.tween_property(label, "scale", Vector3.ONE * 1.12, 0.09).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(label, "scale", Vector3.ONE, 0.07)
+	tw.tween_interval(0.42)
+	tw.set_parallel(true)
+	tw.tween_property(label, "position:y", 3.05, 0.34)
+	tw.tween_property(label, "modulate:a", 0.0, 0.34)
+	tw.chain().tween_callback(label.queue_free)
+
+
 ## Numero de daño flotante.
 func spawn_damage_number(context: Node, position: Vector3, amount: float, is_execute: bool = false) -> void:
 	var world := _world_of(context)

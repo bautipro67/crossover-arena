@@ -578,6 +578,27 @@ func _on_health_changed(_current: float, _max_value: float) -> void:
 ## se puede deducir en el cliente: desde afuera, una embestida que conecta y una que
 ## pasa al aire terminan igual —el cuerpo frena— asi que el unico que sabe cual fue es
 ## el que resolvio el impacto.
+## Grita una frase, y la replica. La dice el servidor y la ven los dos.
+##
+## TIENE QUE VERSE EN LA PANTALLA DEL OTRO, sobre todo en la del otro. La frase es el
+## aviso de que viene el ataque; si solo la viera el que la dice, seria decoracion para
+## el que menos la necesita.
+func avisar_grito(texto: String) -> void:
+	if not Net.is_server():
+		return
+	Net.rpc_ready(self, &"_net_grito", [texto])
+	_grito(texto)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_grito(texto: String) -> void:
+	_grito(texto)
+
+
+func _grito(texto: String) -> void:
+	FX.spawn_grito(self, texto, Frases.color_de(character_id))
+
+
 func avisar_impacto_embestida() -> void:
 	if not Net.is_server():
 		return

@@ -230,6 +230,16 @@ func _fire(index: int, origin: Vector3, dir: Vector3) -> void:
 	var ability := get_ability(index)
 	if ability == null:
 		return
+	# LA FRASE ANTES QUE EL ATAQUE, no despues.
+	#
+	# En los dos originales el grito viene primero y el golpe atras: "¡JARONA!" y recien
+	# ahi la embestida, "ZA WARUDO" y recien ahi el tiempo parado. Ese orden es el que le
+	# da al rival el instante para reaccionar, asi que invertirlo no seria un detalle de
+	# presentacion sino sacarle al otro jugador su aviso.
+	#
+	# Se dispara solo desde aca —el servidor— porque avisar_grito ya replica sola; meterla
+	# tambien en el camino cosmetico la diria dos veces en los clientes.
+	Frases.decir(_caster, ability.id)
 	ability.execute(_caster, origin, dir)
 	ability_used.emit(index)
 	Net.rpc_ready(self, &"_net_played", [index, origin, dir])

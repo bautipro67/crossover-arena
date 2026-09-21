@@ -268,6 +268,31 @@ func _test_time_stop(player: Player) -> void:
 	_check(not status.is_stunned(), "clear_all saca el aturdimiento")
 	await get_tree().process_frame
 
+	# --- Y DIO LO ANUNCIA, EN DOS TIEMPOS ---
+	#
+	# "ZA WARUDO" y despues "toki yo tomare" (tiempo, detente) son dos frases separadas
+	# por una pausa, no una sola: en el original el tiempo se para ENTRE las dos. Aca eso
+	# calza con el canalizado de la habilidad, asi que la pausa no es un efecto agregado
+	# sino el segundo que el rival ya tenia para reaccionar.
+	player.setup_character(CharacterDB.get_character(&"dio"))
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.ultimate.add_from_damage(99999.0)  # ZA WARUDO es el ultimate: hay que cargarlo
+	player.caster.request_use(3)  # ZA WARUDO
+	var dichas: Dictionary = {}
+	for _i: int in range(150):
+		await get_tree().physics_frame
+		var burbuja := player.get_node_or_null(^"GritoFrase") as Label3D
+		if burbuja != null:
+			dichas[burbuja.get_instance_id()] = burbuja.text
+	var frases_dio: Array = dichas.values()
+	_check(frases_dio.size() >= 2,
+		"Dio dice sus dos frases al parar el tiempo (dijo %d)" % frases_dio.size())
+	_check(frases_dio.has("¡ZA WARUDO!") and frases_dio.has("¡TOKI YO TOMARE!"),
+		"y son las del original, en orden: %s" % str(frases_dio))
+	player.status.clear_all()
+	player.stamina.restore_full()
+
 
 # ---------------------------------------------------------------- Proyectiles
 
@@ -785,9 +810,15 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	# "se corto sola a las cuatro" de "se acabo el tiempo de mirar".
 	var recorrido := 0.0
 	var salto_max := 0.0
+	var gritos: Dictionary = {}
 	var previo := player.global_position
 	for _i: int in range(360):
 		await get_tree().physics_frame
+		# Cuantas veces grito. Se cuentan INSTANCIAS distintas y no apariciones, porque
+		# la burbuja se reemplaza a si misma: la misma que ya estaba no es un grito nuevo.
+		var burbuja := player.get_node_or_null(^"GritoFrase") as Label3D
+		if burbuja != null:
+			gritos[burbuja.get_instance_id()] = burbuja.text
 		# EL JUGADOR APUNTA AL RIVAL, porque ahora la cadena depende de eso.
 		#
 		# Cada rebote sale hacia donde mira el jugador, no hacia el rival mas cercano.
@@ -824,6 +855,18 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	_check(daño < vida_de_un_jugador,
 		"y la cadena ENTERA no alcanza para matar: %.0f contra %.0f de vida" % [
 			daño, vida_de_un_jugador])
+
+	# --- Y LO GRITA, UNA VEZ POR PASADA ---
+	#
+	# En Deltarune el "¡Jarona!" y el destello blanco son la misma señal y salen antes de
+	# cada embestida: son el aviso con el que el otro esquiva. Por eso se pide MAS DE UNO
+	# y no "al menos uno": gritarlo solo al empezar dejaria mudas las pasadas siguientes,
+	# que son justo las que todavia se pueden esquivar.
+	var textos: Array = gritos.values()
+	_check(gritos.size() >= 2,
+		"Flowery grita su frase en cada embestida, no solo en la primera (%d veces)" % gritos.size())
+	_check(not textos.is_empty() and textos[0] == "¡JARONA!",
+		"y lo que grita es el nombre del ataque: %s" % str(textos.slice(0, 1)))
 
 	# --- EL EMPUJON ES EN EL IMPACTO, NO AL FINAL DEL RECORRIDO ---
 	#
@@ -1000,6 +1043,35 @@ func _test_arena(arena: Arena) -> void:
 		if child.name.begins_with("Cover"):
 			covers += 1
 	_check(covers >= 5, "la arena tiene coberturas para cortar la linea de vision (%d)" % covers)
+
+	# --- TODO PUNTO DE APARICION TIENE QUE ESTAR LIBRE ---
+	#
+	# Bug reportado: la aparicion se bugueaba. Eran tres de los ocho puntos, que al
+	# rehacer el mapa quedaron adentro de un bloque o de una columna. Aparecer incrustado
+	# hace que la fisica te escupa, y desde afuera eso no se parece en nada a "el spawn
+	# esta mal puesto": se parece a que el juego se rompio.
+	#
+	# Se prueban los OCHO, no el que toque: get_free_spawn_point elige segun donde este
+	# la gente, asi que en una partida cualquiera puede tocar cualquiera.
+	var espacio_arena := arena.get_world_3d().direct_space_state
+	var rotos := ""
+	for t2: Transform3D in arena._spawn_points:
+		var p2 := arena.find_clear_spot(t2.origin, 0.8)
+		var forma2 := PhysicsShapeQueryParameters3D.new()
+		var esf := SphereShape3D.new()
+		esf.radius = 0.55
+		forma2.shape = esf
+		forma2.collision_mask = GameConfig.LAYER_WORLD
+		forma2.transform = Transform3D(Basis.IDENTITY, p2 + Vector3.UP * 1.0)
+		if not espacio_arena.intersect_shape(forma2, 1).is_empty():
+			rotos += "ocupado%v " % p2
+			continue
+		var suelo2 := PhysicsRayQueryParameters3D.create(p2 + Vector3.UP * 0.8, p2 + Vector3.DOWN * 6.0)
+		suelo2.collision_mask = GameConfig.LAYER_WORLD
+		if espacio_arena.intersect_ray(suelo2).is_empty():
+			rotos += "sinpiso%v " % p2
+	_check(rotos.is_empty(), "los %d puntos de aparicion estan libres y con piso %s" % [
+		arena._spawn_points.size(), rotos])
 
 	# LA INVARIANTE DEL ESCALON, que es invisible y cara de descubrir jugando.
 	#
