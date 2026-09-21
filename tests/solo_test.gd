@@ -25,6 +25,7 @@ func _run() -> void:
 	await get_tree().process_frame
 
 	await _test_audio()
+	await _test_progresion()
 	_test_siluetas()
 	await _test_music()
 	_test_settings()
@@ -244,6 +245,132 @@ func _pico(stream: AudioStream) -> float:
 
 
 # --------------------------------------------------------------------- Audio
+
+# ------------------------------------------------------- Progresion y economia
+
+func _test_progresion() -> void:
+	# SIN ESCRIBIR EN DISCO. Estas pruebas suben de nivel, gastan monedas y compran skins
+	# a proposito, y el archivo es el MISMO que usa quien corre el arnes. Sin esto, correr
+	# los tests una vez le borra su progreso real.
+	Progreso.guardado_activo = false
+	Progreso.borrar_todo()
+
+	# --- Niveles ---
+	var costo1 := Progreso.exp_para_nivel(1)
+	Progreso.sumar_exp(costo1 - 1)
+	_check(Progreso.nivel == 1, "no sube de nivel con la experiencia justa para no llegar")
+	Progreso.sumar_exp(1)
+	_check(Progreso.nivel == 2, "sube al llegar al costo del nivel")
+	# EL SOBRANTE NO SE PIERDE, y hace falta probarlo: al terminar una partida buena entran
+	# 200 o 300 de golpe, y una version con un solo "if" tiraba todo lo que pasara del
+	# siguiente nivel o dejaba la barra llena sin subir.
+	Progreso.borrar_todo()
+	Progreso.sumar_exp(Progreso.exp_para_nivel(1) + Progreso.exp_para_nivel(2) + 30)
+	_check(Progreso.nivel == 3 and Progreso.exp_actual == 30,
+		"un golpe grande de experiencia sube varios niveles y conserva el sobrante (nivel %d, sobran %d)" % [
+			Progreso.nivel, Progreso.exp_actual])
+
+	# --- La practica NO paga, y es la regla que sostiene toda la economia ---
+	Progreso.borrar_todo()
+	Modos.iniciar(Modos.PRACTICA)
+	for _i: int in range(10):
+		Progreso.registrar_baja(Modos.da_recompensas())
+	_check(Progreso.monedas == 0 and Progreso.nivel == 1,
+		"diez bajas en la sala de practica no dan ni una moneda ni experiencia")
+	Modos.iniciar(Modos.SUPERVIVENCIA)
+	Progreso.registrar_baja(Modos.da_recompensas())
+	_check(Progreso.monedas == Progreso.MONEDAS_POR_BAJA,
+		"la misma baja en un modo de verdad si paga (%d)" % Progreso.monedas)
+
+	# --- Comprar ---
+	Progreso.borrar_todo()
+	var tienda := SkinDB.en_tienda()
+	_check(tienda.size() >= 6, "la tienda tiene con que llenarse (%d skins)" % tienda.size())
+	var skin := SkinDB.get_skin(tienda[0])
+	_check(not Progreso.gastar_monedas(skin.precio), "no se puede comprar sin monedas")
+	Progreso.sumar_monedas(skin.precio)
+	_check(Progreso.gastar_monedas(skin.precio), "con las monedas justas si se puede")
+	_check(Progreso.monedas == 0, "y el precio se descuenta entero")
+	Progreso.desbloquear_skin(skin.id)
+	_check(Progreso.tiene_skin(skin.id), "la skin queda desbloqueada")
+
+	# Equipar algo que no se tiene NO hace nada. Es lo unico que separa el catalogo de la
+	# lista de lo que compraste.
+	var ajena := SkinDB.get_skin(SkinDB.todas()[0])
+	if ajena.id != skin.id:
+		Progreso.equipar_skin(ajena.character_id, ajena.id)
+		_check(Progreso.skin_de(ajena.character_id) != ajena.id,
+			"no se puede equipar una skin que no se tiene")
+
+	# --- Las skins NO cambian la jugabilidad. ESTE es el chequeo que no puede fallar ---
+	#
+	# Es un juego de PvP gratuito: si una skin comprada diera un punto de vida, de daño o
+	# de velocidad, el que recien entra ya perdio antes de empezar. Se comparan todos los
+	# numeros que tocan una pelea entre el personaje pelado y el mismo con skin puesta.
+	var base := CharacterDB.get_character(skin.character_id)
+	var conskin := SkinDB.aplicar(base, skin.id)
+	_check(conskin != base, "aplicar una skin devuelve una COPIA y no pinta el original")
+	_check(is_equal_approx(conskin.max_health, base.max_health)
+		and is_equal_approx(conskin.max_stamina, base.max_stamina)
+		and is_equal_approx(conskin.move_speed, base.move_speed)
+		and conskin.build_scale.is_equal_approx(base.build_scale)
+		and conskin.silhouette == base.silhouette,
+		"una skin NO cambia vida, stamina, velocidad, tamaño ni silueta")
+	_check(conskin.body_color != base.body_color or conskin.accent_color != base.accent_color,
+		"pero si cambia los colores, que es para lo que existe")
+	# Y el original quedo intacto despues de todo eso.
+	var base2 := CharacterDB.get_character(skin.character_id)
+	_check(base2.body_color == base.body_color,
+		"y el personaje original sigue con su color despues de aplicarla")
+
+	# --- Pase ---
+	Progreso.borrar_todo()
+	_check(not Pase.se_puede_reclamar(1, false), "no se reclama un escalon al que no llegaste")
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON * 3
+	_check(Pase.escalon_actual() == 3, "el escalon sale de la experiencia del pase")
+	_check(Pase.se_puede_reclamar(1, false), "y lo que ya pasaste si se puede reclamar")
+	_check(not Pase.se_puede_reclamar(3, true), "la via pro esta cerrada sin el pase pro")
+	_check(not Pase.reclamar(1, false).is_empty(), "reclamar devuelve que te dieron")
+	_check(not Pase.se_puede_reclamar(1, false), "y no se puede reclamar dos veces")
+
+	# Comprar el pro abre lo que YA pasaste, no solo lo que viene. Es lo que evita que
+	# comprarlo tarde se sienta un castigo.
+	Progreso.monedas = Progreso.PRECIO_PASE_PRO
+	_check(Pase.comprar_pro(), "el pase pro se compra con monedas")
+	_check(Progreso.monedas == 0, "y cuesta lo que dice")
+	_check(Pase.se_puede_reclamar(3, true), "al comprarlo se abren los escalones ya pasados")
+	_check(not Pase.comprar_pro(), "no se puede comprar dos veces")
+
+	var pendientes := Pase.reclamar_todo()
+	_check(pendientes > 0, "reclamar todo cobra lo que haya (%d)" % pendientes)
+	_check(not Pase.hay_algo_para_reclamar(), "y despues no queda nada pendiente")
+
+	# --- Modos ---
+	Modos.iniciar(Modos.ULTIMO_EN_PIE)
+	_check(Modos.bots_iniciales() == Modos.BOTS_ULTIMO_EN_PIE and not Modos.reaparecen_bots()
+		and not Modos.reaparece_jugador(),
+		"ultimo en pie: cinco bots y nadie reaparece")
+	Modos.iniciar(Modos.CONTRARRELOJ)
+	_check(Modos.reaparecen_bots() and Modos.reaparece_jugador(),
+		"contrarreloj: todos reaparecen, lo que corre es el reloj")
+	Modos.iniciar(Modos.SUPERVIVENCIA)
+	# Matar al ultimo bot vivo tiene que traer una oleada MAS GRANDE. Si devolviera cero,
+	# el modo se quedaria sin enemigos y sin terminar nunca.
+	var refuerzos := Modos.bot_murio(0)
+	_check(Modos.oleada == 2 and refuerzos > Modos.OLEADA_INICIAL - 1,
+		"supervivencia: limpiar la oleada trae otra mas grande (oleada %d, %d bots)" % [
+			Modos.oleada, refuerzos])
+	_check(Modos.bot_murio(2) == 0, "y no trae refuerzos si todavia quedan vivos")
+
+	# Se deja todo como estaba y se vuelve a leer del disco: lo que el jugador tenia.
+	Progreso.borrar_todo()
+	# De vuelta a practica, que es lo que el resto de este arnes da por sentado: corre en
+	# una partida solo y cuenta con que haya bots.
+	Modos.iniciar(Modos.PRACTICA)
+	Progreso.guardado_activo = true
+	Progreso.cargar()
+	await get_tree().process_frame
+
 
 func _test_audio() -> void:
 	# El audio se sintetiza por codigo al arrancar: no hay ni un archivo de sonido.
@@ -477,7 +604,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 60
+const CHEQUEOS_MINIMOS: int = 91
 
 
 func _finish() -> void:

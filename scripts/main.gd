@@ -96,10 +96,32 @@ func show_main_menu(message: String = "") -> void:
 	menu.message = message
 	menu.host_requested.connect(_on_host_requested)
 	menu.join_requested.connect(_on_join_requested)
-	menu.practice_requested.connect(_on_practice_requested)
+	menu.modo_requested.connect(_on_modo_requested)
+	menu.pase_requested.connect(show_pase)
+	menu.tienda_requested.connect(show_tienda)
 	menu.quit_requested.connect(_on_quit_requested)
 	_screen = menu
 	add_child(menu)
+
+
+## El pase y la tienda van ENCIMA del menu, no en su lugar.
+##
+## Asi el menu no se reconstruye al volver, que ademas de ser mas rapido evita el parpadeo
+## del fondo animado y que el campo del nombre se vacie si lo estabas escribiendo.
+func show_pase() -> void:
+	var pantalla := PaseMenu.new()
+	pantalla.cerrado.connect(func() -> void:
+		pantalla.queue_free()
+		# El menu se rehace al volver: el boton del pase lleva un punto cuando hay algo
+		# sin cobrar, y si no se rehace el punto queda puesto despues de cobrarlo todo.
+		show_main_menu())
+	add_child(pantalla)
+
+
+func show_tienda() -> void:
+	var pantalla := TiendaMenu.new()
+	pantalla.cerrado.connect(func() -> void: pantalla.queue_free())
+	add_child(pantalla)
 
 
 func show_lobby() -> void:
@@ -137,6 +159,7 @@ func _clear_match() -> void:
 # ---------------------------------------------------------------------- Menu
 
 func _on_host_requested(player_name: String, port: int) -> void:
+	Modos.iniciar(Modos.ONLINE)
 	var err := Net.host_game(port, player_name)
 	if err != OK:
 		show_main_menu("No se pudo abrir el servidor en el puerto %d (error %d)." % [port, err])
@@ -145,6 +168,7 @@ func _on_host_requested(player_name: String, port: int) -> void:
 
 
 func _on_join_requested(player_name: String, ip: String, port: int) -> void:
+	Modos.iniciar(Modos.ONLINE)
 	var err := Net.join_game(ip, port, player_name)
 	if err != OK:
 		show_main_menu("No se pudo conectar a %s:%d (error %d)." % [ip, port, err])
@@ -152,11 +176,12 @@ func _on_join_requested(player_name: String, ip: String, port: int) -> void:
 	show_lobby()
 
 
-## Practica en solitario: mismo flujo que hostear, pero sin abrir ningun puerto.
-func _on_practice_requested(player_name: String) -> void:
+## Un modo offline: mismo flujo que hostear, pero sin abrir ningun puerto.
+func _on_modo_requested(player_name: String, modo: StringName) -> void:
 	# Sala nueva, ajustes nuevos. Si no, los de la practica anterior —"no puedo morir",
 	# "sin cooldowns"— siguen puestos sin que nadie los haya pedido otra vez.
 	Practica.restablecer()
+	Modos.iniciar(modo)
 	Net.start_solo(player_name)
 	show_lobby()
 
@@ -192,9 +217,15 @@ func _on_match_started() -> void:
 	if Net.dedicated:
 		return
 
+	# El cronometro y el contador de oleadas arrancan de cero en cada partida, no en cada
+	# vuelta al menu: si no, la segunda contrarreloj empieza con el tiempo de la primera.
+	Modos.iniciar(Modos.actual)
+
 	Music.play_combat()
 	_hud = HUD.new()
 	add_child(_hud)
+	if not Modos.termino.is_connected(_on_modo_termino):
+		Modos.termino.connect(_on_modo_termino)
 
 	_pause = PauseMenu.new()
 	_pause.resume_requested.connect(_on_resume_requested)
@@ -217,7 +248,24 @@ func _on_match_started() -> void:
 		_hud.bind_player(local)
 
 
+## Un modo offline llego a su final: se muestra el resultado y se vuelve al menu.
+func _on_modo_termino(gano: bool, titulo: String, detalle: String) -> void:
+	if is_instance_valid(_hud):
+		_hud.show_match_result("%s
+%s" % [titulo, detalle])
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	await get_tree().create_timer(5.0).timeout
+	if not Net.solo_mode:
+		return
+	Net.leave_game()
+	show_main_menu()
+
+
 func _on_match_ended(winner_id: int) -> void:
+	# La partida en linea tambien paga: ganar da el plus, y las bajas ya se cobraron una
+	# por una mientras se jugaba.
+	if not Net.dedicated:
+		Progreso.registrar_partida(winner_id == Net.local_id(), Modos.da_recompensas())
 	if Net.dedicated:
 		print("[servidor] termino la partida, gano %s" % Net.get_player_name(winner_id))
 		_restart_dedicated_match()

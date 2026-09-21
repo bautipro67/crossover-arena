@@ -327,10 +327,46 @@ func set_local_character(id: String) -> void:
 	if is_server():
 		if players.has(local_id()):
 			players[local_id()]["character_id"] = id
+			players[local_id()]["skin_id"] = String(Progreso.skin_de(StringName(id)))
 			_broadcast_players()
 			player_list_changed.emit()
 	else:
 		_srv_set_character.rpc_id(1, id)
+
+
+## Avisa que cambio la skin equipada. Mismo camino que el personaje.
+func set_local_skin(skin_id: StringName) -> void:
+	if is_server():
+		if players.has(local_id()):
+			players[local_id()]["skin_id"] = String(skin_id)
+			_broadcast_players()
+			player_list_changed.emit()
+	else:
+		_srv_set_skin.rpc_id(1, String(skin_id))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func _srv_set_skin(skin_id: String) -> void:
+	if not is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if not players.has(sender):
+		return
+	# SE VALIDA CONTRA EL CATALOGO, no contra lo que el cliente diga tener.
+	#
+	# El servidor no puede saber que desbloqueo cada uno —eso vive en el disco de cada
+	# maquina— asi que no hay nada que verificar ahi. Lo que si se puede, y hace falta,
+	# es que el id EXISTA: sin esto un cliente modificado manda cualquier cosa y el
+	# resto del juego tiene que aguantar un id inventado en cada lugar que lo lea.
+	if not skin_id.is_empty() and not SkinDB.existe(StringName(skin_id)):
+		return
+	players[sender]["skin_id"] = skin_id
+	_broadcast_players()
+	player_list_changed.emit()
+
+
+func get_skin_id(id: int) -> StringName:
+	return StringName(get_player_info(id).get("skin_id", ""))
 
 
 ## SOLO SERVIDOR. Suma una kill y evalua si termino la partida.
@@ -502,6 +538,13 @@ func _make_entry(player_name: String, character_id: String) -> Dictionary:
 	return {
 		"name": player_name,
 		"character_id": character_id,
+		# LA SKIN VIAJA CON EL JUGADOR, no se lee del disco.
+		#
+		# Es lo unico que puede funcionar: el progreso esta guardado en la maquina de cada
+		# uno, asi que si el que dibuja mirara SU archivo, todos verian a todos con la
+		# skin que ellos mismos tienen equipada. Va en la entrada del jugador, igual que
+		# el personaje, y se replica por el mismo camino.
+		"skin_id": Progreso.skin_de(StringName(character_id)),
 		"kills": 0,
 		"deaths": 0,
 	}

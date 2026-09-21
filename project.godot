@@ -21,6 +21,10 @@ Sfx="*res://scripts/audio/sfx.gd"
 Music="*res://scripts/audio/music.gd"
 Settings="*res://scripts/core/settings.gd"
 Practica="*res://scripts/core/practica.gd"
+Progreso="*res://scripts/core/progreso.gd"
+SkinDB="*res://scripts/core/skin_db.gd"
+Pase="*res://scripts/core/pase.gd"
+Modos="*res://scripts/core/modos.gd"
 
 [display]
 

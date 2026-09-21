@@ -827,7 +827,11 @@ func _create_player(id: int, character_id: String, spawn_position: Vector3, yaw:
 	player.global_position = spawn_position
 	player.rotation.y = yaw
 
-	var data := CharacterDB.get_character(StringName(character_id))
+	# La skin sale de la entrada del jugador en Net —la suya, no la nuestra— y se aplica
+	# sobre una COPIA de los datos del personaje. Pintar el original le cambiaria el color
+	# a todos los que usan ese personaje, incluido el que no compro nada.
+	var data := SkinDB.aplicar(CharacterDB.get_character(StringName(character_id)),
+		Net.get_skin_id(id))
 	player.setup_character(data)
 
 	_players[id] = player
@@ -882,47 +886,79 @@ func _spawn_dummies() -> void:
 		Vector3(26.0, 0.0, -24.0),
 	]
 
-	# En practica manda el panel; si no, el numero de siempre.
-	var cuantos := Practica.bots if Net.solo_mode else DUMMY_COUNT
+	# El MODO decide cuantos. En practica manda el panel, y cada modo offline tiene su
+	# propio numero; en una partida en linea los bots son relleno para que no haya un mapa
+	# vacio mientras entra gente.
+	#
+	# Y si estamos solos pero el modo quedo en "en linea", vale practica. Es una
+	# combinacion que no tiene sentido —una partida solo no es online— y sin esta salida
+	# daba CERO bots: un mapa vacio, sin nada que hacer y sin ningun aviso de por que.
+	# Pasa cada vez que alguien llama a start_solo sin elegir modo, incluido el arnes.
+	var cuantos := DUMMY_COUNT
+	if Net.solo_mode:
+		cuantos = Modos.bots_iniciales() if Modos.es_offline() else Practica.bots
 	for i: int in range(cuantos):
 		var base: Vector3 = puestos[i] if i < puestos.size() else Vector3(float(i) * 8.0, 0.0, -30.0)
-		var pos := find_clear_spot(base, 1.0)
-		var data := CharacterDB.get_character(ids[i % ids.size()])
-		if data == null:
-			continue
+		_crear_bot(-(i + 1), find_clear_spot(base, 1.0), ids[i % ids.size()])
 
-		var bot: Player = PLAYER_SCENE.instantiate()
-		var id := -(i + 1)
-		bot.name = "Bot_%d" % (i + 1)
-		bot.peer_id = id
-		bot.is_dummy = true
-		bot.player_name = "Bot %s" % data.display_name.split(" ")[0]
-		add_child(bot)
-		bot.global_position = pos
-		bot.home_position = pos
-		bot.rotation.y = 0.0
-		bot.bot_look_yaw = 0.0
-		bot.setup_character(data)
-		bot.health.set_max(DUMMY_HEALTH)
 
-		# El servidor es el dueño de las habilidades del bot.
-		#
-		# HACE FALTA: setup_character deja owner_peer_id en el peer del bot (-1, -2...),
-		# y AbilityCaster rechaza cualquier pedido cuyo emisor no sea el dueño. Con el
-		# id negativo, el bot no podia tirar ni una habilidad y el rechazo era mudo.
-		bot.caster.owner_peer_id = Net.local_id()
+## Un bot mas, en caliente. Lo usan las oleadas de supervivencia y el goteo de
+## contrarreloj: los dos necesitan sumar bots a una partida ya empezada.
+func _sumar_bot() -> void:
+	var ids := CharacterDB.get_all_ids()
+	if ids.is_empty():
+		return
+	# El primer id negativo libre. Reusar uno ocupado pisaria al bot que lo tiene.
+	var id := -1
+	while _players.has(id):
+		id -= 1
+	# Lejos del jugador: aparecer encima del que esta jugando no es dificultad, es una
+	# emboscada que no se puede ver venir.
+	var lejos := Vector3(0.0, 0.0, -30.0)
+	var local := get_local_player()
+	if local != null:
+		var dir := Vector3(randf() - 0.5, 0.0, randf() - 0.5).normalized()
+		lejos = local.global_position + dir * 26.0
+	_crear_bot(id, find_clear_spot(lejos, 1.0), ids[absi(id) % ids.size()])
 
-		bot.name_label.text = bot.player_name
-		bot.name_label.visible = true
 
-		var brain := BotBrain.new()
-		brain.name = "BotBrain"
-		brain.setup(bot, pos)
-		bot.add_child(brain)
+## Crea UN bot. Sale de _spawn_dummies para que las oleadas puedan pedir de a uno sin
+## duplicar las quince lineas de configuracion que necesita un bot para funcionar.
+func _crear_bot(id: int, pos: Vector3, character_id: StringName) -> void:
+	var data := CharacterDB.get_character(character_id)
+	if data == null:
+		return
+	var bot: Player = PLAYER_SCENE.instantiate()
+	bot.name = "Bot_%d" % absi(id)
+	bot.peer_id = id
+	bot.is_dummy = true
+	bot.player_name = "Bot %s" % data.display_name.split(" ")[0]
+	add_child(bot)
+	bot.global_position = pos
+	bot.home_position = pos
+	bot.rotation.y = 0.0
+	bot.bot_look_yaw = 0.0
+	bot.setup_character(data)
+	bot.health.set_max(DUMMY_HEALTH)
 
-		_players[id] = bot
-		_dummy_spawns[id] = pos
-		bot.died.connect(_on_player_died.bind(id))
+	# El servidor es el dueño de las habilidades del bot.
+	#
+	# HACE FALTA: setup_character deja owner_peer_id en el peer del bot (-1, -2...),
+	# y AbilityCaster rechaza cualquier pedido cuyo emisor no sea el dueño. Con el
+	# id negativo, el bot no podia tirar ni una habilidad y el rechazo era mudo.
+	bot.caster.owner_peer_id = Net.local_id()
+
+	bot.name_label.text = bot.player_name
+	bot.name_label.visible = true
+
+	var brain := BotBrain.new()
+	brain.name = "BotBrain"
+	brain.setup(bot, pos)
+	bot.add_child(brain)
+
+	_players[id] = bot
+	_dummy_spawns[id] = pos
+	bot.died.connect(_on_player_died.bind(id))
 
 
 ## Prende o apaga a todos los bots.
@@ -968,12 +1004,42 @@ func _on_player_died(killer_id: int, victim_id: int) -> void:
 	if not Net.is_server():
 		return
 	var victim := get_player(victim_id)
-	# Las muertes de bot no suman al marcador: es practica, no una partida.
+
+	# LA PAGA SE COBRA ACA, en el unico lugar por el que pasan todas las muertes.
+	#
+	# Y solo si la baja es del jugador local: en una partida en linea, el servidor ve
+	# morir a todo el mundo, y pagarle por cada muerte ajena convertiria hostear en la
+	# forma mas rapida de juntar monedas sin jugar.
+	if killer_id == Net.local_id() and killer_id != victim_id:
+		Progreso.registrar_baja(Modos.da_recompensas())
+
 	if victim != null and victim.is_dummy:
-		_respawn_dummy_after_delay(victim_id)
+		_bot_murio(victim_id)
 		return
 	Net.add_kill(killer_id, victim_id)
-	_respawn_after_delay(victim_id)
+	if victim_id == Net.local_id():
+		Modos.jugador_murio()
+	if Modos.reaparece_jugador():
+		_respawn_after_delay(victim_id)
+
+
+## Un bot murio: lo avisa al modo y hace lo que el modo pida.
+##
+## Devolver el numero de refuerzos en vez de que Modos los cree es lo que deja al modo
+## sin saber nada de escenas, spawns ni navmesh: cuenta oleadas y pide bots.
+func _bot_murio(victim_id: int) -> void:
+	var vivos := 0
+	for id: int in _players:
+		if id >= 0:
+			continue
+		var b: Node = _players[id]
+		if id != victim_id and is_instance_valid(b) and not b.health.is_dead:
+			vivos += 1
+	var refuerzos := Modos.bot_murio(vivos)
+	if Modos.reaparecen_bots():
+		_respawn_dummy_after_delay(victim_id)
+	for _i: int in range(refuerzos):
+		_sumar_bot()
 
 
 func _respawn_after_delay(victim_id: int) -> void:

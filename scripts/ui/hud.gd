@@ -53,6 +53,8 @@ var _dash_label: Label = null
 var _kill_feed: VBoxContainer = null
 var _center_label: Label = null
 var _target_label: Label = null
+var _modo_panel: PanelContainer = null
+var _modo_label: Label = null
 var _scoreboard: Control = null
 var _scoreboard_rows: VBoxContainer = null
 
@@ -81,6 +83,27 @@ func _build() -> void:
 	_build_kill_feed(root)
 	_build_center_label(root)
 	_build_scoreboard(root)
+	_build_modo(root)
+
+
+## El marcador del modo: oleada, reloj, cuantos faltan.
+##
+## ARRIBA Y AL CENTRO, que es el unico lugar libre y ademas el correcto: en supervivencia
+## y contrarreloj ese numero es el objetivo de la partida, y un objetivo escondido en una
+## esquina no cumple ninguna funcion. En practica y en linea no se dibuja nada.
+func _build_modo(root: Control) -> void:
+	_modo_panel = UITheme.make_panel(Color(0.08, 0.10, 0.16, 0.82))
+	_modo_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_modo_panel.position = Vector2(-140.0, 12.0)
+	_modo_panel.custom_minimum_size = Vector2(280, 0)
+	_modo_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_modo_panel.visible = false
+	root.add_child(_modo_panel)
+
+	_modo_label = UITheme.make_label("", 18, UITheme.GOLD)
+	_modo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_modo_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_modo_panel.add_child(_modo_label)
 
 
 func _build_crosshair(root: Control) -> void:
@@ -490,7 +513,16 @@ func _build_stamina_markers() -> void:
 
 # ----------------------------------------------------------------------- Update
 
+func _actualizar_modo() -> void:
+	if not is_instance_valid(_modo_label):
+		return
+	var texto := Modos.marcador()
+	_modo_panel.visible = not texto.is_empty()
+	_modo_label.text = texto
+
+
 func _process(delta: float) -> void:
+	_actualizar_modo()
 	_update_chip(delta)
 	_update_stamina_pulse(delta)
 
