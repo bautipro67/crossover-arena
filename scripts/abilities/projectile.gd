@@ -46,8 +46,18 @@ func _ready() -> void:
 
 	_build_visual()
 
-	if not cosmetic_only:
-		body_entered.connect(_on_body_entered)
+	# NO SE USA body_entered, y no es por gusto.
+	#
+	# Estuvo conectado desde siempre y NUNCA DISPARO. Medido: get_overlapping_bodies()
+	# devolvia 0 mientras la granada atravesaba el piso, con monitoring en true, la capa
+	# y la mascara correctas y la señal conectada. Un Area3D que se mueve poniendo su
+	# global_position a mano cada frame no genera los eventos de entrada que uno espera.
+	#
+	# La consecuencia era que TODOS los proyectiles del juego —el hielo de Noelle, los
+	# cuchillos de Dio, los petalos de Flowery— atravesaban jugadores y paredes sin
+	# tocarlos. El arnes no lo veia porque solo comprobaba que nacieran y se movieran.
+	#
+	# Se detecta a mano en _physics_process, con un barrido. Ver _revisar_camino().
 
 
 func _physics_process(delta: float) -> void:
@@ -57,7 +67,66 @@ func _physics_process(delta: float) -> void:
 		return
 	if fall_gravity > 0.0:
 		_velocity.y -= fall_gravity * delta
-	global_position += _velocity * delta
+
+	var desde := global_position
+	var hasta := desde + _velocity * delta
+	if not cosmetic_only and _revisar_camino(desde, hasta):
+		return
+	global_position = hasta
+
+
+## Busca impactos en el tramo que el proyectil esta por recorrer. Devuelve true si el
+## proyectil murio en el camino.
+##
+## SON DOS CONSULTAS DISTINTAS PORQUE SON DOS PROBLEMAS DISTINTOS:
+##
+##   - Contra el MUNDO va un RAYO de donde estaba a donde va. Un rayo no se puede
+##     atravesar por rapido que vaya el proyectil, y eso es lo que evita que una granada
+##     lanzada fuerte pase de largo el piso y reviente tres metros abajo.
+##   - Contra los JUGADORES va una ESFERA en el punto de llegada. Un rayo es infinitamente
+##     fino y pasaria rozando a alguien sin tocarlo; la esfera le da al proyectil el
+##     grosor que se ve en pantalla.
+func _revisar_camino(desde: Vector3, hasta: Vector3) -> bool:
+	var espacio := get_world_3d().direct_space_state
+	if espacio == null:
+		return false
+
+	# --- Jugadores ---
+	var forma := PhysicsShapeQueryParameters3D.new()
+	var esfera := SphereShape3D.new()
+	esfera.radius = hit_radius
+	forma.shape = esfera
+	forma.collision_mask = GameConfig.LAYER_PLAYER
+	forma.transform = Transform3D(Basis.IDENTITY, hasta)
+	if is_instance_valid(shooter):
+		forma.exclude = [shooter.get_rid()]
+	for golpe: Dictionary in espacio.intersect_shape(forma, 4):
+		var cuerpo := golpe.get("collider") as Node3D
+		if cuerpo == null or cuerpo == shooter or not cuerpo.is_in_group("players"):
+			continue
+		var health := cuerpo.get_node_or_null("Health") as Health
+		if health == null or health.is_dead:
+			continue
+		_spent = true
+		global_position = hasta
+		_on_hit_player(cuerpo)
+		_spawn_impact_fx()
+		expire()
+		return true
+
+	# --- Mundo ---
+	var rayo := PhysicsRayQueryParameters3D.create(desde, hasta)
+	rayo.collision_mask = GameConfig.LAYER_WORLD
+	var choque := espacio.intersect_ray(rayo)
+	if not choque.is_empty():
+		_spent = true
+		# En el punto de contacto, no donde habria seguido: asi la explosion sale
+		# pegada a la superficie y no hundida adentro.
+		global_position = choque["position"] as Vector3
+		_spawn_impact_fx()
+		expire()
+		return true
+	return false
 
 
 ## Spawnea el proyectil en el mundo del caster y lo devuelve ya posicionado.

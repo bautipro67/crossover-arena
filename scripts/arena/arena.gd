@@ -608,7 +608,17 @@ func find_clear_spot(alrededor: Vector3, radius: float = 0.75) -> Vector3:
 		query.transform = Transform3D(Basis.IDENTITY, probe + Vector3.UP * 1.0)
 		if space.intersect_shape(query, 1).is_empty():
 			return probe
-	return alrededor
+	# NI LA SALIDA DE ULTIMO RECURSO PUEDE DEVOLVER ALGO FUERA DEL MAPA.
+	#
+	# Devolvia `alrededor` tal cual, sin recortar, y ese era un agujero real: la pistola
+	# de portales de Rick pide un punto a 150 metros, y si los 28 intentos fallaban se
+	# devolvia ese punto crudo. Resultado: te teletransportabas afuera de la arena.
+	#
+	# El recorte estaba, pero solo dentro del bucle. Aca la salida tambien.
+	return Vector3(
+		clampf(alrededor.x, -limite, limite),
+		alrededor.y,
+		clampf(alrededor.z, -limite, limite))
 
 
 ## Devuelve el spawn mas lejano de los demas JUGADORES, para no aparecer en la cara de

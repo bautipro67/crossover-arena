@@ -25,6 +25,9 @@ const DESPEGUE: float = 1.1
 const AVISO: float = 0.35
 ## Radio libre que necesita el destino para ser valido.
 const ESPACIO: float = 0.75
+## Cuanto se queda adentro del muro. Sin margen, un portal contra la pared te deja
+## rozandola y la fisica te empuja.
+const MARGEN_MURO: float = 3.5
 
 
 func _init() -> void:
@@ -102,7 +105,50 @@ static func calcular_destino(caster: Node3D, origin: Vector3, dir: Vector3) -> V
 			# Apuntó al cielo: se queda a la altura desde la que disparó.
 			punto.y = origin.y - 1.2
 
+	# DENTRO DEL MAPA, SIEMPRE Y ANTES DE BUSCAR HUECO.
+	#
+	# Es el unico punto del juego que se calcula a 150 metros, asi que es el unico que
+	# puede caer fuera de la arena, y confiar en que el que busca el hueco recorte no
+	# alcanza: si apuntas al cielo el rayo no pega contra nada y el punto queda a 150
+	# metros en linea recta. Se recorta aca, con margen para no quedar pegado al muro.
+	var limite := Arena.ARENA_SIZE * 0.5 - MARGEN_MURO
+	punto.x = clampf(punto.x, -limite, limite)
+	punto.z = clampf(punto.z, -limite, limite)
+
+	# El recorte va ANTES de buscar hueco y no despues.
+	#
+	# Lo puse tambien despues y fue peor: find_clear_spot corre el punto para sacarlo de
+	# una cobertura, y volver a recortarlo lo mete de nuevo adentro. El recorte previo ya
+	# alcanza, porque find_clear_spot tambien recorta —incluida su salida de ultimo
+	# recurso, que era justamente el agujero por el que uno terminaba fuera del mapa—.
 	var arena := caster.get_parent() as Arena
 	if arena != null:
 		punto = arena.find_clear_spot(punto, ESPACIO)
+
+	# ULTIMO FILTRO: que el punto este REALMENTE libre.
+	#
+	# find_clear_spot prueba 28 posiciones en espiral y, si ninguna sirve, devuelve la
+	# pedida. Eso esta bien para un spawn —siempre hay lugar cerca— pero no para un
+	# portal, que puede apuntar al medio de un bloque macizo. Ahi hay que RETROCEDER por
+	# el rayo hacia el que dispara: el camino por el que vino la mira es, por definicion,
+	# espacio que estaba vacio.
+	if espacio != null and _ocupado(espacio, punto):
+		for paso: int in range(1, 13):
+			var atras := punto - plano * (float(paso) * 1.6)
+			atras.y = punto.y
+			if not _ocupado(espacio, atras):
+				return atras
+		# Ni retrocediendo: el portal no te mueve. Mejor que quedar incrustado.
+		return caster.global_position
 	return punto
+
+
+## Hay algo solido en ese punto?
+static func _ocupado(espacio: PhysicsDirectSpaceState3D, punto: Vector3) -> bool:
+	var forma := PhysicsShapeQueryParameters3D.new()
+	var esfera := SphereShape3D.new()
+	esfera.radius = ESPACIO
+	forma.shape = esfera
+	forma.collision_mask = GameConfig.LAYER_WORLD
+	forma.transform = Transform3D(Basis.IDENTITY, punto + Vector3.UP * 1.0)
+	return not espacio.intersect_shape(forma, 1).is_empty()

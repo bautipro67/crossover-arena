@@ -300,6 +300,38 @@ func _test_projectiles(player: Player, arena: Arena) -> void:
 			sample = proj
 			break
 	_check(sample != null, "encontramos un proyectil cosmetico de muestra")
+
+	# --- Y QUE LE PEGUEN A ALGUIEN ---
+	#
+	# Este chequeo faltaba y es el unico que importa de verdad. Todo lo de arriba mide
+	# que el proyectil NAZCA y SE MUEVA; con eso pasa en verde un proyectil que atraviesa
+	# jugadores y paredes sin tocarlos, que es exactamente lo que estaba pasando.
+	# EL BLANCO SE PONE EN UN CARRIL LIBRE Y SE FIJA EL APUNTADO.
+	#
+	# La primera version lo puso hacia -basis.z del jugador y disparo con la mira de la
+	# camara, que apuntaba a otro lado: el proyectil paso a 6.77 metros del blanco y el
+	# chequeo fallaba por como estaba armado. Y el blanco caia en z=-52, fuera del mapa,
+	# porque _spawn_dummy no recorta a los limites de la arena.
+	var sitio := arena.find_clear_spot(Vector3(0.0, 0.6, 0.0), 1.5)
+	var linea := _carril_libre(player, sitio, 12.0)
+	player.respawn_at(sitio, atan2(-linea.x, -linea.z))
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var blanco2 := _spawn_dummy(arena, sitio + linea * 7.0)
+	blanco2.health.set_max(2000.0)
+	player.aim_override = linea
+	await get_tree().process_frame
+
+	var vida_blanco := blanco2.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	for _i: int in range(90):
+		await get_tree().physics_frame
+	player.aim_override = Vector3.ZERO
+	_check(blanco2.health.current < vida_blanco,
+		"y un proyectil le PEGA al que tiene enfrente (le saco %.0f)" % (vida_blanco - blanco2.health.current))
+	blanco2.queue_free()
 	if sample != null:
 		var start_pos := sample.global_position
 		for _i: int in range(5):
@@ -756,10 +788,21 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	var previo := player.global_position
 	for _i: int in range(360):
 		await get_tree().physics_frame
+		# EL JUGADOR APUNTA AL RIVAL, porque ahora la cadena depende de eso.
+		#
+		# Cada rebote sale hacia donde mira el jugador, no hacia el rival mas cercano.
+		# Sin nadie apuntando, la cadena se corta sola a las dos pasadas —que es el
+		# comportamiento correcto— y el chequeo medía a un jugador que no jugaba.
+		if is_instance_valid(victima):
+			var hacia: Vector3 = victima.global_position - player.global_position
+			hacia.y = 0.0
+			if not hacia.is_zero_approx():
+				player.aim_override = hacia.normalized()
 		var paso := previo.distance_to(player.global_position)
 		recorrido += paso
 		salto_max = maxf(salto_max, paso)
 		previo = player.global_position
+	player.aim_override = Vector3.ZERO
 	var daño := vida_antes - victima.health.current
 	_check(recorrido > 12.0,
 		"JARONA es una embestida: recorre camino (%.1f m)" % recorrido)
@@ -770,7 +813,7 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	# LO QUE LA TERMINA ES FALLAR, NO UN CONTADOR. Estuvo topeada en 4 pasadas, que la
 	# convertia en "cuatro embestidas" en vez de "embiste hasta que lo esquives".
 	_check(daño > Jarona.DAMAGE * 2.0,
-		"y no se corta a las cuatro: siguio mientras seguia pegando (%.0f de daño)" % daño)
+		"y mientras lo sigas apuntando, sigue encadenando (%.0f de daño)" % daño)
 	# Y EL TECHO, que es lo que la volvia rompedora.
 	#
 	# El blanco de este chequeo esta quieto y acorralado: come la cadena ENTERA, que es
@@ -840,9 +883,16 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	player.ultimate.current = UltimateCharge.MAX_CHARGE
 	player.caster.reset_state()
 	player.caster.request_use(3)
-	# Canaliza 1.2s y despues encadena siete pasadas con sus explosiones.
+	# Canaliza 1.2s y despues encadena embestidas con sus explosiones, apuntando: el
+	# ultimate usa el mismo bucle que JARONA, asi que tambien reapunta a donde mires.
 	for _i: int in range(420):
 		await get_tree().physics_frame
+		if is_instance_valid(victima):
+			var hacia_v: Vector3 = victima.global_position - player.global_position
+			hacia_v.y = 0.0
+			if not hacia_v.is_zero_approx():
+				player.aim_override = hacia_v.normalized()
+	player.aim_override = Vector3.ZERO
 	var daño_ulti := vida_ulti - victima.health.current
 	_check(daño_ulti > daño,
 		"el ultimate pega mucho mas que JARONA (%.0f contra %.0f)" % [daño_ulti, daño])
@@ -1052,33 +1102,75 @@ func _test_rick(player: Player, arena: Arena) -> void:
 	_check(alineacion > 0.9,
 		"y hacia donde apuntabas, no a cualquier lado (alineacion %.2f)" % alineacion)
 
-	# --- Y que el destino sea PISABLE ---
+	# --- Y QUE TODO DESTINO SEA PISABLE ---
 	#
-	# Un teletransporte sin limite de distancia es tambien un teletransporte que te
-	# puede meter adentro de una pared, y eso es peor que no tenerlo: la fisica te
-	# expulsa para cualquier lado o te deja trabado. find_clear_spot lo corre al hueco
-	# mas cercano, y esto comprueba que asi sea.
+	# Un teletransporte sin limite de distancia es tambien uno que te puede meter adentro
+	# de una pared, y eso es peor que no tenerlo: la fisica te expulsa o te deja trabado.
+	#
+	# Se comprueba la FUNCION y no donde termina el cuerpo, en ocho direcciones. Mirar
+	# donde queda el jugador despues de aterrizar mezcla dos cosas —si el destino era
+	# bueno, y que le hizo la fisica despues— y cuando falla no se sabe cual de las dos
+	# fallo. El contrato de calcular_destino es "un punto libre, dentro del mapa, con
+	# piso": eso es lo que se mide.
 	var espacio := player.get_world_3d().direct_space_state
-	var forma := PhysicsShapeQueryParameters3D.new()
-	var esfera := SphereShape3D.new()
-	esfera.radius = 0.5
-	forma.shape = esfera
-	forma.collision_mask = GameConfig.LAYER_WORLD
-	forma.transform = Transform3D(Basis.IDENTITY, player.global_position + Vector3.UP * 1.0)
-	_check(espacio.intersect_shape(forma, 1).is_empty(),
-		"y no te deja incrustado adentro de una cobertura")
+	var malos := ""
+	for i: int in range(8):
+		var ang := TAU * float(i) / 8.0
+		var d := Vector3(cos(ang), 0.0, sin(ang))
+		var p := PortalGun.calcular_destino(player, player.get_aim_origin(), d)
 
-	# Y que cayo sobre algo: un portal a media altura te deja cayendo desde el cielo.
-	var suelo := PhysicsRayQueryParameters3D.create(
-		player.global_position + Vector3.UP * 0.6,
-		player.global_position + Vector3.DOWN * 4.0)
-	suelo.collision_mask = GameConfig.LAYER_WORLD
-	_check(not espacio.intersect_ray(suelo).is_empty(), "y con piso debajo")
+		var forma := PhysicsShapeQueryParameters3D.new()
+		var esfera := SphereShape3D.new()
+		esfera.radius = 0.45
+		forma.shape = esfera
+		forma.collision_mask = GameConfig.LAYER_WORLD
+		forma.transform = Transform3D(Basis.IDENTITY, p + Vector3.UP * 1.0)
+		if not espacio.intersect_shape(forma, 1).is_empty():
+			malos += "ocupado%v " % p
+			continue
+		var suelo := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 0.6, p + Vector3.DOWN * 5.0)
+		suelo.collision_mask = GameConfig.LAYER_WORLD
+		if espacio.intersect_ray(suelo).is_empty():
+			malos += "sinpiso%v " % p
+	_check(malos.is_empty(), "todo destino del portal es pisable y esta libre %s" % malos)
 
-	# --- Apuntando al cielo tampoco puede romperse ---
+	# --- NO SE PUEDE SALIR DEL MAPA ---
 	#
-	# El rayo no pega contra nada y el calculo se queda sin punto de referencia. Es el
-	# caso que mas facil se olvida y el mas facil de provocar jugando.
+	# Bug reportado: con el portal se podia salir de la arena. La causa estaba en
+	# find_clear_spot, que recortaba a los limites dentro de su bucle pero devolvia el
+	# punto CRUDO en su salida de ultimo recurso. Como el portal es lo unico que pide un
+	# punto a 150 metros, era el unico que lo destapaba.
+	#
+	# Se prueban las direcciones que mas facil se le escapan: las cuatro diagonales y el
+	# cielo, que son con las que uno apunta afuera sin querer.
+	var limite_mapa := Arena.ARENA_SIZE * 0.5
+	var fugas := ""
+	for d: Vector3 in [Vector3(1, 0, 1), Vector3(-1, 0, 1), Vector3(1, 0, -1),
+			Vector3(-1, 0, -1), Vector3(1, 0.6, 0), Vector3.UP]:
+		var p := PortalGun.calcular_destino(player, player.get_aim_origin(), d.normalized())
+		if absf(p.x) > limite_mapa or absf(p.z) > limite_mapa:
+			fugas += "%v " % p
+	_check(fugas.is_empty(), "el portal nunca te saca del mapa %s" % fugas)
+
+	# --- La granada revienta SOBRE el piso, no bajo tierra ---
+	#
+	# Bug reportado: atravesaba el piso y tardaba en explotar. Eran lo mismo: ningun
+	# proyectil detectaba el mundo, asi que caia hasta que se le acababa la mecha, varios
+	# metros bajo tierra, y el estallido no le llegaba a nadie.
+	var cerca := _spawn_dummy(arena, player.global_position + rumbo * 5.0)
+	cerca.health.set_max(900.0)
+	player.aim_override = (rumbo + Vector3.DOWN * 0.18).normalized()
+	await get_tree().process_frame
+	var vida_cerca := cerca.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	for _i: int in range(150):
+		await get_tree().physics_frame
+	_check(cerca.health.current < vida_cerca,
+		"la granada revienta arriba del piso y alcanza a quien esta al lado (le saco %.0f)" % (vida_cerca - cerca.health.current))
+	cerca.queue_free()
+
 	player.aim_override = Vector3.ZERO
 	var arriba := PortalGun.calcular_destino(player, player.get_aim_origin(), Vector3.UP)
 	_check(is_finite(arriba.x) and is_finite(arriba.y) and is_finite(arriba.z),

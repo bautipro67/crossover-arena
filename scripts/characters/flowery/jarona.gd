@@ -48,6 +48,15 @@ const BOUNCE_TIME: float = 0.16
 const HIT_RADIUS: float = 2.2
 const KNOCKBACK: float = 7.0
 const KNOCKBACK_LIFT: float = 1.5
+## EL RETROCESO DEL QUE EMBISTE. Cuando la embestida conecta salen los DOS despedidos,
+## no solo el que la recibe.
+##
+## Antes el que embestia hacia un retroceso guionado —una carga corta hacia atras— y el
+## que la comia salia empujado por fisica. Se veian como dos cosas distintas porque lo
+## eran. Ahora los dos reciben el mismo tipo de empujon en direcciones opuestas, que es
+## lo que uno espera de un choque y lo que hace que se lea como choque.
+const RETROCESO: float = 3.5
+const RETROCESO_LIFT: float = 0.9
 ## SE REPITE HASTA QUE UNA PASADA FALLE. Esto es un tope de seguridad, no la regla.
 ##
 ## Estuvo en 4 y eso estaba mal: convertia la habilidad en "cuatro embestidas" cuando lo
@@ -144,10 +153,10 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 			# Todavia le quedan ganas: rebota igual y vuelve a probar. Sin esto, tolerar
 			# fallos dejaria al personaje clavado en el lugar entre pasada y pasada.
 			_dejar_estallido(estallido, caster, caster3d, rumbo)
-			await _rebotar_y_reapuntar(caster3d, tree, rumbo)
+			await tree.create_timer(REGROUP).timeout
 			if not is_instance_valid(caster3d):
 				return
-			var reapunte := _hacia_el_mas_cercano(caster3d)
+			var reapunte := _hacia_donde_apunta(caster3d)
 			if not reapunte.is_zero_approx():
 				rumbo = reapunte
 			continue
@@ -170,19 +179,19 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 		# gasta el golpe fuerte, o esquivar la primera te dejaria peor que comerla.
 		golpe = maxf(DAMAGE_MINIMO, golpe * decaimiento)
 
-		# --- Rebote ---
+		# --- Rebote: LOS DOS PARA ATRAS ---
 		FloweryDash.frenar(caster3d)
+		CombatUtils.apply_knockback(caster3d, -rumbo, RETROCESO, RETROCESO_LIFT)
 		_dejar_estallido(estallido, caster, caster3d, rumbo)
 		# La ultima pasada no rebota: quedarse retrocediendo al final se lee como que
 		# el ataque fallo, cuando en realidad conecto.
 		if pasada == tope - 1:
 			return
-		await _rebotar_y_reapuntar(caster3d, tree, rumbo)
+		await tree.create_timer(REGROUP).timeout
 		if not is_instance_valid(caster3d):
 			return
-		# Reapunta hacia el rival despues del rebote: vuelve a venir a por vos, no repite
-		# el rumbo viejo al aire.
-		var nuevo := _hacia_el_mas_cercano(caster3d)
+		# Y LA SIGUIENTE EMBESTIDA VA A DONDE MIRA EL JUGADOR.
+		var nuevo := _hacia_donde_apunta(caster3d)
 		if not nuevo.is_zero_approx():
 			rumbo = nuevo
 
@@ -199,30 +208,24 @@ static func _dejar_estallido(estallido: Callable, caster: Node, caster3d: Node3D
 	estallido.call(caster, caster3d.global_position - rumbo * 2.2)
 
 
-## El retroceso entre pasada y pasada, con su pausa. Es la ventana para esquivar.
-static func _rebotar_y_reapuntar(caster3d: Node3D, tree: SceneTree, rumbo: Vector3) -> void:
-	var vacio: Dictionary = {}
-	await FloweryDash.pasada(caster3d, -rumbo, BOUNCE_SPEED, BOUNCE_TIME, 0.1, vacio)
-	if not is_instance_valid(caster3d):
-		return
-	FloweryDash.frenar(caster3d)
-	await tree.create_timer(REGROUP).timeout
-
-
-## Direccion al rival vivo mas cercano, para reapuntar entre pasadas.
-static func _hacia_el_mas_cercano(caster: Node3D) -> Vector3:
-	var mejor: Node3D = null
-	var mejor_dist := 24.0
-	for target: Node3D in CombatUtils.get_players_in_sphere(caster, caster.global_position, 24.0):
-		var d := caster.global_position.distance_to(target.global_position)
-		if d < mejor_dist:
-			mejor_dist = d
-			mejor = target
-	if mejor == null:
+## Hacia donde esta apuntando el jugador AHORA.
+##
+## ANTES REAPUNTABA SOLO, al rival vivo mas cercano, y eso le sacaba el ataque de las
+## manos: apretabas una vez y el personaje decidia por su cuenta a quien perseguir
+## durante seis segundos. Cada rebote es ahora una decision tuya —te lo llevas a donde
+## quieras, lo alineas con otro, o lo cortas apuntando al aire— y eso es lo que
+## convierte la cadena en algo que se juega en vez de algo que se mira.
+##
+## Para los bots funciona igual: BotBrain les escribe aim_override apuntando a su
+## objetivo, y get_aim_direction() lo devuelve tal cual.
+static func _hacia_donde_apunta(caster: Node3D) -> Vector3:
+	if not caster.has_method("get_aim_direction"):
 		return Vector3.ZERO
-	var dir := mejor.global_position - caster.global_position
-	dir.y = 0.0
-	return dir.normalized()
+	var mira: Vector3 = caster.call("get_aim_direction")
+	var plano := Vector3(mira.x, 0.0, mira.z)
+	if plano.is_zero_approx():
+		return Vector3.ZERO
+	return plano.normalized()
 
 
 ## Le corta el canalizado al objetivo, si estaba canalizando.

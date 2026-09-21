@@ -14,7 +14,11 @@ const IMPACT_DAMAGE: float = 10.0
 const BLAST_DAMAGE: float = 26.0
 const BLAST_RADIUS: float = 4.6
 const SPEED: float = 22.0
-const LIFETIME: float = 2.4
+## Mecha. Con la deteccion de impacto arreglada revienta al tocar el piso, asi que esto
+## solo aplica a una granada tirada al aire libre. 1.6 y no 2.4: el reclamo fue que
+## tardaba en explotar, y aunque la causa real era que atravesaba el piso, dos segundos y
+## medio colgada en el aire igual se siente a que no paso nada.
+const LIFETIME: float = 1.6
 const CAIDA: float = 11.0
 const KNOCKBACK: float = 7.5
 const KNOCKBACK_LIFT: float = 2.4
