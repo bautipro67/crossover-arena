@@ -875,6 +875,172 @@ func spawn_grito(caster: Node, texto: String, color: Color) -> void:
 	tw.chain().tween_callback(label.queue_free)
 
 
+# --------------------------------------------------------------------- Sonic
+#
+# Todo lo de Sonic es LA MISMA BOLA AZUL en distintos tamaños y velocidades: el golpe
+# basico, el spin dash y el homing son los tres el mismo gesto —enrollarse y chocar— y
+# dibujarlos parecidos es lo correcto, no pereza. Es lo que hace que se lea "esto es
+# Sonic" antes de distinguir cual de las tres fue.
+
+## La bola girando. El gesto basico del que salen los otros dos.
+func spawn_spin_ball(caster: Node, origin: Vector3, dir: Vector3, duracion: float) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var bola := MeshInstance3D.new()
+	var esfera := SphereMesh.new()
+	esfera.radius = 0.55
+	esfera.height = 1.1
+	bola.mesh = esfera
+	var mat := Art.glow(Color(0.30, 0.55, 1.0), 2.6)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bola.material_override = mat
+	bola.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(bola)
+	bola.global_position = origin + dir.normalized() * 1.1 + Vector3.UP * 0.2
+
+	var tw := bola.create_tween()
+	tw.set_parallel(true)
+	# Gira rapidisimo y se achata en el eje del giro: una esfera girando se ve quieta,
+	# una esfera achatada girando se ve girar.
+	tw.tween_property(bola, "rotation:x", TAU * 4.0, duracion)
+	tw.tween_property(bola, "scale", Vector3(1.25, 0.72, 1.25), duracion * 0.4)
+	tw.tween_property(mat, "albedo_color:a", 0.0, duracion).from(0.85)
+	tw.chain().tween_callback(bola.queue_free)
+
+
+## La carga del Spin Dash: la bola girando en el lugar, cada vez mas rapido.
+func spawn_spin_charge(caster: Node3D, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var bola := MeshInstance3D.new()
+	var esfera := SphereMesh.new()
+	esfera.radius = 0.62
+	esfera.height = 1.0
+	bola.mesh = esfera
+	var mat := Art.glow(Color(0.25, 0.50, 1.0), 3.0)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bola.material_override = mat
+	bola.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Colgada del cuerpo: la carga es EN EL LUGAR, pero el jugador puede seguir girando
+	# para elegir hacia donde va a salir, y la bola tiene que acompañarlo.
+	caster.add_child(bola)
+	bola.position = Vector3(0.0, 0.55, 0.0)
+
+	var polvo := CPUParticles3D.new()
+	polvo.emitting = true
+	polvo.amount = 24
+	polvo.lifetime = 0.35
+	polvo.direction = Vector3(0.0, 0.3, -1.0)
+	polvo.spread = 25.0
+	polvo.initial_velocity_min = 3.0
+	polvo.initial_velocity_max = 7.0
+	polvo.scale_amount_min = 0.05
+	polvo.scale_amount_max = 0.16
+	polvo.color = Color(0.6, 0.8, 1.0, 0.8)
+	caster.add_child(polvo)
+	polvo.position = Vector3(0.0, 0.2, 0.0)
+
+	var tw := bola.create_tween()
+	tw.set_parallel(true)
+	# Acelerando: arranca lento y termina a toda velocidad, que es lo que se oye y se ve
+	# en el original mientras se carga.
+	tw.tween_property(bola, "rotation:x", TAU * 7.0, duracion).set_ease(Tween.EASE_IN)
+	tw.tween_property(bola, "scale", Vector3(1.15, 0.8, 1.15), duracion)
+	tw.chain().tween_callback(bola.queue_free)
+	_auto_free(polvo, duracion + 0.5)
+
+
+## La mira del Homing Attack sobre el rival elegido.
+##
+## Es el unico ataque del juego que elige blanco solo, asi que TIENE que decir cual eligio:
+## sin esto, el jugador suelta la habilidad sin saber contra quien va, y cuando sale hacia
+## otro parece un error del juego en vez de una decision suya.
+func spawn_homing_lock(context: Node, position: Vector3) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var mira := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.85
+	toro.outer_radius = 1.05
+	mira.mesh = toro
+	var mat := Art.glow(Color(0.55, 0.9, 1.0), 4.0)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mira.material_override = mat
+	mira.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mira.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	world.add_child(mira)
+	mira.global_position = position + Vector3.UP
+
+	var tw := mira.create_tween()
+	tw.set_parallel(true)
+	# Se cierra sobre el blanco: entra grande y se ajusta. Al reves —abriendose— se lee
+	# como algo que se suelta, no como algo que se traba.
+	tw.tween_property(mira, "scale", Vector3.ONE * 0.75, 0.22).from(Vector3.ONE * 2.2)
+	tw.tween_property(mira, "rotation:y", TAU, 0.5)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.5).set_delay(0.18)
+	tw.chain().tween_callback(mira.queue_free)
+
+
+## Super Sonic: el aura dorada mientras dura la transformacion.
+func spawn_super_sonic(caster: Node3D, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var viejo := caster.get_node_or_null(^"AuraSuper")
+	if viejo != null:
+		viejo.queue_free()
+
+	var aura := Node3D.new()
+	aura.name = &"AuraSuper"
+	caster.add_child(aura)
+	aura.position = Vector3(0.0, 1.0, 0.0)
+
+	var cascara := MeshInstance3D.new()
+	var capsula := CapsuleMesh.new()
+	capsula.radius = 0.72
+	capsula.height = 2.5
+	cascara.mesh = capsula
+	var mat := Art.glow(Color(1.0, 0.88, 0.25), 3.2)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mat.albedo_color.a = 0.30
+	cascara.material_override = mat
+	cascara.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	aura.add_child(cascara)
+
+	# Chispas doradas subiendo: es lo que en los juegos dice "esto esta transformado" y no
+	# "esto tiene un escudo". Suben, no caen — la energia sale del cuerpo.
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.amount = 40
+	chispas.lifetime = 0.8
+	chispas.direction = Vector3.UP
+	chispas.spread = 30.0
+	chispas.initial_velocity_min = 1.5
+	chispas.initial_velocity_max = 4.0
+	chispas.gravity = Vector3(0.0, 2.0, 0.0)
+	chispas.scale_amount_min = 0.05
+	chispas.scale_amount_max = 0.14
+	chispas.color = Color(1.0, 0.92, 0.45, 0.9)
+	aura.add_child(chispas)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.85, 0.30)
+	luz.light_energy = 2.6
+	luz.omni_range = 7.0
+	luz.shadow_enabled = false
+	aura.add_child(luz)
+
+	# Late, no queda fijo: un aura quieta se confunde con parte del personaje.
+	var tw := cascara.create_tween()
+	tw.set_loops(int(duracion / 0.5) + 1)
+	tw.tween_property(mat, "albedo_color:a", 0.42, 0.25)
+	tw.tween_property(mat, "albedo_color:a", 0.22, 0.25)
+	_auto_free(aura, duracion)
+
+
 ## Numero de daño flotante.
 func spawn_damage_number(context: Node, position: Vector3, amount: float, is_execute: bool = false) -> void:
 	var world := _world_of(context)

@@ -119,6 +119,33 @@ func _register_all() -> void:
 	_add(rick)
 
 
+	# --------------------------------------------------------------- Sonic
+	#
+	# EL MAS RAPIDO Y EL MAS FRAGIL, que es la unica lectura honesta del personaje. Si
+	# fuera rapido Y aguantara, no habria ninguna razon para elegir a otro.
+	#
+	# Los colores salen de la ficha: pelaje azul, piel durazno en brazos, hocico y frente
+	# del torso, zapatillas rojas y guantes blancos. El acento es el ROJO porque el motor
+	# pinta los zapatos con ese color, asi que las zapatillas salen bien sin tocar nada.
+	var sonic := CharacterData.new()
+	sonic.id = &"sonic"
+	sonic.display_name = "Sonic"
+	sonic.origin_game = "Sonic the Hedgehog"
+	sonic.body_color = Color(0.13, 0.40, 0.86)
+	sonic.accent_color = Color(0.87, 0.16, 0.14)
+	sonic.skin_color = Color(0.99, 0.82, 0.64)
+	sonic.trouser_color = Color(0.11, 0.33, 0.72)
+	# BAJO Y REDONDO: mide 100 cm contra el metro setenta y pico de los demas. Al lado de
+	# Dio tiene que verse que le llega al pecho.
+	sonic.build_scale = Vector3(1.04, 0.80, 1.04)
+	# La vida mas baja del juego y la velocidad mas alta, por bastante.
+	sonic.max_health = 78.0
+	sonic.max_stamina = 112.0
+	sonic.move_speed = 7.4
+	sonic.silhouette = &"quills"
+	_add(sonic)
+
+
 func _add(data: CharacterData) -> void:
 	_characters[data.id] = data
 	if not _order.has(data.id):
@@ -175,6 +202,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(PortalGun.new())
 			list.append(PlasmaGrenade.new())
 			list.append(MeeseeksBox.new())
+		&"sonic":
+			list.append(SpinAttack.new())
+			list.append(SpinDash.new())
+			list.append(HomingAttack.new())
+			list.append(SuperSonic.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

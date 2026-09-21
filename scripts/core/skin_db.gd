@@ -97,6 +97,24 @@ func _registrar_todas() -> void:
 		Color(0.94, 0.95, 0.96), Color(0.30, 0.52, 0.72),
 		Color(0.90, 0.78, 0.63), Color(0.72, 0.74, 0.78), &"epica", 1800))
 
+	# ----------------------------------------------------------------- Sonic
+	#
+	# Las tres salen de formas que el personaje tuvo de verdad: Super Sonic es dorado,
+	# Shadow es negro con vetas rojas y Sonic clasico es el azul oscuro de 1991, mas
+	# saturado que el cobalto moderno.
+	_add(_hacer(&"sonic_super", &"sonic", "Sonic Dorado",
+		"Las siete Esmeraldas Chaos, sin las esmeraldas.",
+		Color(1.00, 0.86, 0.22), Color(0.95, 0.72, 0.10),
+		Color(1.00, 0.93, 0.70), Color(0.92, 0.76, 0.16), &"legendaria", 0))
+	_add(_hacer(&"sonic_oscuro", &"sonic", "Sonic Oscuro",
+		"Negro con vetas rojas. No pregunten de dónde salió.",
+		Color(0.13, 0.13, 0.16), Color(0.88, 0.13, 0.13),
+		Color(0.92, 0.84, 0.76), Color(0.10, 0.10, 0.13), &"epica", 1800))
+	_add(_hacer(&"sonic_clasico", &"sonic", "Sonic Clásico",
+		"El azul de 1991, más oscuro y más redondo.",
+		Color(0.09, 0.16, 0.66), Color(0.90, 0.18, 0.16),
+		Color(0.99, 0.80, 0.56), Color(0.07, 0.13, 0.55), &"rara", 900))
+
 
 func _hacer(id: StringName, personaje: StringName, nombre: String, desc: String,
 		cuerpo: Color, acento: Color, piel: Color, pantalon: Color,

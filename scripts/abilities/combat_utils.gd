@@ -86,6 +86,15 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 		# poder ensayar sin morirse. En un duelo eso convierte al rival en un muñeco, y en
 		# supervivencia hace que la oleada 9 pegue igual que la 1.
 		mult *= Modos.daño_bot() * Practica.daño_bots
+	# Y lo que multiplique EL QUE PEGA. Hoy solo lo mueve Super Sonic, que canonicamente
+	# hace que "todas sus habilidades superen ampliamente a las normales". Se busca al
+	# atacante igual que unas lineas mas abajo para los recursos, asi que no agrega una
+	# busqueda que no estuviera pasando ya.
+	var atacante := find_player_by_peer(target, source_id)
+	if atacante != null:
+		var est := atacante.get_node_or_null("StatusEffects") as StatusEffects
+		if est != null:
+			mult *= est.get_damage_dealt_multiplier()
 	var final_amount := amount * mult
 	var was_alive := not health.is_dead
 	health.apply_damage(final_amount, source_id)

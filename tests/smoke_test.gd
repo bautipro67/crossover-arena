@@ -63,6 +63,7 @@ func _run() -> void:
 	await _test_flowery(player, arena)
 	Arena.set_bots_active(true)
 	await _test_rick(player, arena)
+	await _test_sonic(player, arena)
 	await _test_practica(player, arena)
 	await _test_arena(arena)
 
@@ -1328,6 +1329,100 @@ func _test_rick(player: Player, arena: Arena) -> void:
 ## bots— asi que un cambio en cualquiera de esos cinco puede romperlo sin que se note:
 ## el sintoma seria "la casilla esta tildada y no hace nada", que jugando se confunde
 ## facil con "la puse mal".
+func _test_sonic(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	await _esperar_quieto(player, 60)
+
+	_check(CharacterDB.has_character(&"sonic"), "Sonic esta registrado")
+	var data := CharacterDB.get_character(&"sonic")
+	_check(data != null and data.origin_game == "Sonic the Hedgehog", "Sonic viene de su serie")
+	_check(data != null and data.silhouette == &"quills",
+		"tiene silueta propia: las puas, y no las astas ni los hombros")
+
+	# EL MAS RAPIDO Y EL MAS FRAGIL. Es toda su identidad mecanica: si fuera rapido Y
+	# aguantara, no habria ninguna razon para elegir a otro.
+	var mas_rapido := true
+	var mas_fragil := true
+	for otro_id: StringName in CharacterDB.get_all_ids():
+		if otro_id == &"sonic":
+			continue
+		var otro := CharacterDB.get_character(otro_id)
+		if otro.move_speed >= data.move_speed:
+			mas_rapido = false
+		if otro.max_health <= data.max_health:
+			mas_fragil = false
+	_check(mas_rapido, "es el mas rapido del juego (%.1f)" % data.move_speed)
+	_check(mas_fragil, "y el que menos vida tiene (%.0f)" % data.max_health)
+
+	var kit := CharacterDB.build_abilities_for(&"sonic")
+	_check(kit.size() == 4, "Sonic tiene 4 habilidades (tiene %d)" % kit.size())
+	if kit.size() < 4:
+		return
+	_check(kit[0] is SpinAttack, "slot 0 es Spin Attack")
+	_check(kit[1] is SpinDash, "slot 1 es Spin Dash")
+	_check(kit[2] is HomingAttack, "slot 2 es Homing Attack")
+	_check(kit[3] is SuperSonic, "slot 3 es Super Sonic")
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+	_check(kit[3].stamina_cost == 100.0 and kit[3].requires_charge,
+		"el ultimate cuesta la barra entera Y el medidor")
+
+	player.setup_character(data)
+	var puesto := arena.find_clear_spot(Vector3(30.0, 0.6, -30.0), 1.5)
+	player.respawn_at(puesto, 0.0)
+	for _i: int in range(16):
+		await get_tree().physics_frame
+
+	# --- HOMING ATTACK: sin blanco no sale, y no cobra ---
+	#
+	# Un homing al vacio seria un dash con otro nombre, y ademas dejaria a Sonic volando
+	# hacia la nada por haberse equivocado de momento. Cobrarlo igual castiga por no tener
+	# a nadie cerca, que no es algo que el jugador haya hecho mal.
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	var antes_stamina := player.stamina.current
+	player.caster.request_use(2)
+	for _i: int in range(10):
+		await get_tree().physics_frame
+	_check(player.stamina.current >= antes_stamina - 1.0,
+		"el Homing sin nadie a tiro devuelve la stamina (%.0f de %.0f)" % [
+			player.stamina.current, antes_stamina])
+
+	# --- SUPER SONIC: mas rapido, mas resistente, y se APAGA ---
+	var estado := player.status
+	estado.clear_all()
+	_check(is_equal_approx(estado.get_move_speed_multiplier(), 1.0),
+		"antes del ultimate se mueve a velocidad normal")
+	estado.impulsar(SuperSonic.VELOCIDAD, SuperSonic.RESISTENCIA, SuperSonic.POTENCIA, 0.6)
+	await get_tree().physics_frame
+	_check(estado.get_move_speed_multiplier() > 1.2,
+		"Super Sonic lo acelera (x%.2f)" % estado.get_move_speed_multiplier())
+	_check(estado.get_damage_taken_multiplier() < 0.5,
+		"y recibe mucho menos daño (x%.2f)" % estado.get_damage_taken_multiplier())
+	_check(estado.get_damage_dealt_multiplier() > 1.2,
+		"y reparte mas (x%.2f)" % estado.get_damage_dealt_multiplier())
+	# CASI invulnerable, no invulnerable: una definitiva que te vuelve intocable no se
+	# juega en contra, se espera a que termine.
+	_check(estado.get_damage_taken_multiplier() > 0.0,
+		"pero NO es invulnerable: se le puede seguir pegando")
+
+	# Y CADUCA. Es lo que dice la ficha del personaje —"consume mucha energia, no se puede
+	# mantener mucho tiempo"— y es lo unico que evita que el ultimate sea permanente.
+	for _i: int in range(60):
+		await get_tree().physics_frame
+	_check(not estado.esta_impulsado() and is_equal_approx(estado.get_move_speed_multiplier(), 1.0),
+		"y se apaga solo al vencer el tiempo")
+
+	# Sus skins.
+	var skins := SkinDB.de_personaje(&"sonic")
+	_check(skins.size() >= 3, "Sonic tiene skins propias (%d)" % skins.size())
+	estado.clear_all()
+	# LOS BOTS SE VUELVEN A PRENDER. Los apago al empezar para medir sin que nadie me
+	# empuje, y dejarlos apagados le rompe la prueba al que viene despues: el chequeo del
+	# bot que corre a cortar un canalizado se quedaba sin bot y fallaba por mi culpa, no
+	# por la suya.
+	Arena.set_bots_active(true)
+
+
 func _test_practica(player: Player, arena: Arena) -> void:
 	Practica.restablecer()
 	_check(Practica.bots == 3 and not Practica.invulnerable,
@@ -1474,7 +1569,7 @@ func _check(condition: bool, description: String) -> void:
 ## corrutina sin que su llamador la esperara— y las tres se vieron igual: nada.
 ##
 ## Subir este numero al agregar chequeos es el precio de que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 170
+const CHEQUEOS_MINIMOS: int = 190
 
 
 func _finish() -> void:

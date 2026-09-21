@@ -60,7 +60,10 @@ func _armar_tabla() -> void:
 	_poner(18, [SKIN, "rick_cosmico"], null)
 	_poner(22, null, [SKIN, "flowery_omega"])
 	_poner(26, null, [SKIN, "dio_vampiro"])
-	_poner(30, [MONEDAS, 500], [SKIN, "rick_pickle"])
+	_poner(24, null, [SKIN, "rick_pickle"])
+	# El ultimo escalon es Sonic dorado: es la transformacion que cierra sus juegos, asi
+	# que cierra el pase. Una recompensa final tiene que ser reconocible de lejos.
+	_poner(30, [MONEDAS, 500], [SKIN, "sonic_super"])
 
 
 func _poner(escalon: int, gratis: Variant, pro: Variant) -> void:

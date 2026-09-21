@@ -43,6 +43,20 @@ var _stun_left: float = 0.0
 ##
 ## Va aparte del multiplicador de congelado y se MULTIPLICAN entre si: congelar a
 ## alguien que acaba de cargar tiene que ser el castigo que es.
+## IMPULSO: lo contrario de todo lo de arriba.
+##
+## Los efectos que habia eran todos hacia abajo —frenar, congelar, hacer mas fragil— y no
+## servian para un buff ni poniendolos al reves: apply_slow recorta el resultado a 1.0 asi
+## que no puede acelerar, y apply_vulnerable rechaza cualquier multiplicador menor a 1 asi
+## que no puede proteger. Hizo falta al agregar Super Sonic, que es canonicamente mas
+## rapido, mas fuerte y "casi invulnerable".
+##
+## Es UNO solo para las tres cosas y no tres efectos sueltos porque siempre vienen juntos:
+## una transformacion no te hace mas rapido en un momento y mas resistente en otro.
+var _imp_vel: float = 1.0
+var _imp_resist: float = 1.0
+var _imp_daño: float = 1.0
+var _imp_left: float = 0.0
 var _vuln_mult: float = 1.0
 var _vuln_left: float = 0.0
 
@@ -65,6 +79,15 @@ func _process(delta: float) -> void:
 
 	if _vuln_left > 0.0:
 		_vuln_left = maxf(0.0, _vuln_left - delta)
+	if _imp_left > 0.0:
+		_imp_left = maxf(0.0, _imp_left - delta)
+		if is_zero_approx(_imp_left):
+			# Se resetean los tres al vencer. Dejarlos puestos con el reloj en cero
+			# funcionaria igual —todo consulta _imp_left— pero el proximo impulso haria
+			# maxf contra los valores viejos y heredaria el mejor de los dos.
+			_imp_vel = 1.0
+			_imp_resist = 1.0
+			_imp_daño = 1.0
 		if is_zero_approx(_vuln_left):
 			_vuln_mult = 1.0
 
@@ -133,6 +156,26 @@ func apply_vulnerable(mult: float, duration: float) -> void:
 	_broadcast()
 
 
+## SOLO SERVIDOR. Un impulso temporal: mas veloz, mas resistente y pegando mas fuerte.
+func impulsar(vel: float, resist: float, daño: float, duracion: float) -> void:
+	if not _is_server() or duracion <= 0.0:
+		return
+	_imp_vel = maxf(_imp_vel, vel)
+	_imp_resist = minf(_imp_resist, resist)
+	_imp_daño = maxf(_imp_daño, daño)
+	_imp_left = maxf(_imp_left, duracion)
+	_broadcast()
+
+
+func esta_impulsado() -> bool:
+	return _imp_left > 0.0
+
+
+## Cuanto MULTIPLICA el daño que este jugador reparte. Lo lee CombatUtils al pegar.
+func get_damage_dealt_multiplier() -> float:
+	return _imp_daño if _imp_left > 0.0 else 1.0
+
+
 func is_vulnerable() -> bool:
 	return _vuln_left > 0.0
 
@@ -153,11 +196,20 @@ func can_act() -> bool:
 func get_move_speed_multiplier() -> float:
 	if is_frozen() or is_stunned():
 		return 0.0
-	return clampf(1.0 - _slow_percent, 0.1, 1.0)
+	# EL TECHO SUBE A 2.5, pero el frenado se sigue aplicando encima del impulso: estar
+	# acelerado no te vuelve inmune a que te frenen, solo hace que te frenen desde mas
+	# arriba. Si el impulso ignorara el frenado, Noelle perderia su unica herramienta
+	# contra alguien que se le escapa.
+	var base := clampf(1.0 - _slow_percent, 0.1, 1.0)
+	if _imp_left > 0.0:
+		return clampf(base * _imp_vel, 0.1, 2.5)
+	return base
 
 
 func get_damage_taken_multiplier() -> float:
 	var mult := FROZEN_DAMAGE_TAKEN_MULT if is_frozen() else 1.0
+	if _imp_left > 0.0:
+		mult *= _imp_resist
 	return mult * _vuln_mult
 
 
@@ -186,6 +238,10 @@ func clear_all() -> void:
 	if was_stunned:
 		unstunned.emit()
 	_broadcast()
+	_imp_vel = 1.0
+	_imp_resist = 1.0
+	_imp_daño = 1.0
+	_imp_left = 0.0
 
 
 func _is_server() -> bool:
@@ -194,11 +250,14 @@ func _is_server() -> bool:
 
 func _broadcast() -> void:
 	Net.rpc_ready(self, &"_push_state",
-		[chill_stacks, _freeze_left, _slow_percent, _slow_left, _stun_left, _vuln_mult, _vuln_left])
+		[chill_stacks, _freeze_left, _slow_percent, _slow_left, _stun_left, _vuln_mult, _vuln_left,
+		_imp_vel, _imp_resist, _imp_daño, _imp_left])
 
 
 @rpc("authority", "call_remote", "reliable")
-func _push_state(stacks: int, freeze_left: float, slow_percent: float, slow_left: float, stun_left: float, vuln_mult: float, vuln_left: float) -> void:
+func _push_state(stacks: int, freeze_left: float, slow_percent: float, slow_left: float,
+		stun_left: float, vuln_mult: float, vuln_left: float,
+		imp_vel: float, imp_resist: float, imp_daño: float, imp_left: float) -> void:
 	var was_frozen := is_frozen()
 	var was_stunned := is_stunned()
 	var old_stacks := chill_stacks
@@ -209,6 +268,10 @@ func _push_state(stacks: int, freeze_left: float, slow_percent: float, slow_left
 	_stun_left = stun_left
 	_vuln_mult = vuln_mult
 	_vuln_left = vuln_left
+	_imp_vel = imp_vel
+	_imp_resist = imp_resist
+	_imp_daño = imp_daño
+	_imp_left = imp_left
 	if old_stacks != chill_stacks:
 		chill_changed.emit(chill_stacks)
 	if is_frozen() and not was_frozen:

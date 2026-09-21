@@ -777,6 +777,8 @@ func _build_costume(kind: StringName) -> void:
 			_build_flowery()
 		&"labcoat":
 			_build_rick()
+		&"quills":
+			_build_sonic()
 		_:
 			pass
 
@@ -1247,6 +1249,134 @@ func _build_dio() -> void:
 
 	# Corazon en el pecho, guiño a su diseño.
 	_costume_add(_torso, Art.box(Vector3(0.13, 0.13, 0.05), Art.glow(Art.GOLD, 1.2), Vector3(0.0, 0.42, -0.17)))
+
+
+## Sonic: el erizo.
+##
+## CONTRA LA FICHA, punto por punto, antes de dibujar nada:
+##
+##   - "SEIS PUAS LARGAS en la parte de atras de la cabeza". Seis, no las que queden
+##     lindas: es el numero que dice la referencia y es lo que hace su silueta.
+##   - "DOS ESPINAS que sobresalen de su espalda", aparte de las de la cabeza.
+##   - Orejas CHICAS Y TRIANGULARES, arriba.
+##   - Piel durazno en brazos, hocico, dentro de las orejas y FRENTE DEL TORSO. Esa
+##     panza clara es la mitad de como se lo reconoce de frente.
+##   - Guantes BLANCOS y zapatillas ROJAS.
+##   - Cola corta.
+##
+## Y ES BAJO: mide 100 cm contra el metro setenta y pico de los otros. Por eso su
+## build_scale lo achata en vez de estirarlo — al lado de Dio tiene que notarse que le
+## llega al pecho.
+##
+## SILUETA: seis puas largas saliendo para atras en abanico. De lejos es una flecha
+## apuntando hacia atras, que no se parece a las astas de Noelle, a los hombros de Dio,
+## a los faldones de Rick ni a la campera de Flowery.
+func _build_sonic() -> void:
+	# Cejas bien inclinadas y boca ancha: el gesto canchero de alguien que llega tarde a
+	# propósito.
+	_apply_expression(0.30, -0.008, 0.075)
+
+	var pua := Art.toon(Color(0.11, 0.35, 0.78), OUTLINE_WIDTH)
+	var piel := Art.toon(Color(0.99, 0.82, 0.64), OUTLINE_WIDTH)
+	var guante := Art.toon(Color(0.97, 0.97, 0.98), OUTLINE_WIDTH)
+
+	# --- LAS SEIS PUAS, hacia ATRAS (el frente del modelo es -Z) ---
+	#
+	# En abanico y con tres largos distintos: seis puas iguales se ven como un peine. Las
+	# del medio son las mas largas, que es como estan en cualquier dibujo de referencia.
+	var puas: Array = [
+		{"pos": Vector3(0.00, 0.20, 0.13), "rot": Vector3(58.0, 0.0, 0.0), "len": 0.46},
+		{"pos": Vector3(-0.09, 0.22, 0.12), "rot": Vector3(52.0, -16.0, 0.0), "len": 0.42},
+		{"pos": Vector3(0.09, 0.22, 0.12), "rot": Vector3(52.0, 16.0, 0.0), "len": 0.42},
+		{"pos": Vector3(-0.15, 0.13, 0.13), "rot": Vector3(70.0, -30.0, 0.0), "len": 0.34},
+		{"pos": Vector3(0.15, 0.13, 0.13), "rot": Vector3(70.0, 30.0, 0.0), "len": 0.34},
+		{"pos": Vector3(0.00, 0.06, 0.15), "rot": Vector3(84.0, 0.0, 0.0), "len": 0.30},
+	]
+	for p: Dictionary in puas:
+		var pivote := Node3D.new()
+		pivote.position = p["pos"]
+		pivote.rotation_degrees = p["rot"]
+		_head_pivot.add_child(pivote)
+		_costume.append(pivote)
+		var largo: float = p["len"]
+		# Conos y no capsulas: una pua termina en punta. Con capsulas quedaban salchichas.
+		var cono := MeshInstance3D.new()
+		var malla := CylinderMesh.new()
+		malla.top_radius = 0.0
+		malla.bottom_radius = 0.075
+		malla.height = largo
+		cono.mesh = malla
+		cono.material_override = pua
+		cono.position = Vector3(0.0, largo * 0.5, 0.0)
+		pivote.add_child(cono)
+
+	# --- Orejas: triangulos chicos, arriba ---
+	for lado: float in [-1.0, 1.0]:
+		var oreja := MeshInstance3D.new()
+		var m := CylinderMesh.new()
+		m.top_radius = 0.0
+		m.bottom_radius = 0.075
+		m.height = 0.15
+		oreja.mesh = m
+		oreja.material_override = pua
+		oreja.position = Vector3(0.105 * lado, 0.265, 0.02)
+		oreja.rotation_degrees = Vector3(0.0, 0.0, -14.0 * lado)
+		_costume_add(_head_pivot, oreja)
+		# El interior durazno, que es lo que las hace orejas y no cuernitos.
+		var dentro := Art.sphere(0.036, piel, Vector3(0.105 * lado, 0.245, -0.03))
+		dentro.scale = Vector3(1.0, 1.3, 0.5)
+		_costume_add(_head_pivot, dentro)
+
+	# --- El hocico: adelante, durazno y saliente ---
+	var hocico := Art.sphere(0.115, piel, Vector3(0.0, -0.02, -0.15))
+	hocico.scale = Vector3(1.15, 0.85, 0.95)
+	_costume_add(_head_pivot, hocico)
+
+	# --- Las DOS espinas de la espalda, aparte de las de la cabeza ---
+	for i: int in range(2):
+		var espina := MeshInstance3D.new()
+		var m2 := CylinderMesh.new()
+		m2.top_radius = 0.0
+		m2.bottom_radius = 0.07
+		m2.height = 0.30
+		espina.mesh = m2
+		espina.material_override = pua
+		espina.position = Vector3(0.0, 0.16 - float(i) * 0.24, 0.20)
+		espina.rotation_degrees = Vector3(72.0, 0.0, 0.0)
+		_costume_add(_torso, espina)
+
+	# --- La panza durazno, al frente ---
+	var panza := Art.sphere(0.20, piel, Vector3(0.0, -0.02, -0.16))
+	panza.scale = Vector3(1.0, 1.35, 0.42)
+	_costume_add(_torso, panza)
+
+	# --- Guantes blancos ---
+	#
+	# Van sobre el antebrazo, en los codos: la mano del modelo es la punta de ese hueso.
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo == null:
+			continue
+		var mano := Art.sphere(0.088, guante, Vector3(0.0, -0.30, 0.0))
+		_costume_add(codo, mano)
+		# El puño del guante, un poco mas arriba y mas ancho.
+		var puño := Art.cylinder(0.078, 0.07, guante, Vector3(0.0, -0.225, 0.0))
+		_costume_add(codo, puño)
+
+	# --- La cola corta ---
+	var cola := Art.sphere(0.075, pua, Vector3(0.0, -0.26, 0.17))
+	cola.scale = Vector3(0.9, 0.7, 1.5)
+	_costume_add(_torso, cola)
+
+	# --- La tira blanca de las zapatillas ---
+	#
+	# El zapato ya sale rojo solo, porque usa el color de acento del personaje; lo que
+	# falta es la correa blanca cruzada, que es lo que las vuelve LAS zapatillas de Sonic
+	# y no unos zapatos rojos cualquiera.
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla == null:
+			continue
+		var correa := Art.box(Vector3(0.17, 0.045, 0.10), guante, Vector3(0.0, -0.40, -0.11))
+		_costume_add(rodilla, correa)
 
 
 func _costume_add(parent: Node3D, node: MeshInstance3D) -> void:

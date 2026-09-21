@@ -96,6 +96,18 @@ func predict_spend(amount: float) -> void:
 	changed.emit(current, max_stamina)
 
 
+## Devuelve stamina que se cobro y no se llego a usar.
+##
+## Existe por el Homing Attack: si no hay nadie a tiro la habilidad no sale, y cobrarla
+## igual castiga por no tener un rival cerca, que no es algo que el jugador haya hecho mal.
+## No toca la pausa de regeneracion: el gasto no llego a pasar.
+func devolver(cantidad: float) -> void:
+	if cantidad <= 0.0 or current >= max_stamina:
+		return
+	current = minf(max_stamina, current + cantidad)
+	changed.emit(current, max_stamina)
+
+
 ## SOLO SERVIDOR. Recompensa por pegar. Lo llama CombatUtils cuando este jugador daña.
 ##
 ## OJO: NO toca _regen_block_timer a proposito. La pausa post-gasto existe para que no
