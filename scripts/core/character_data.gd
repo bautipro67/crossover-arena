@@ -16,6 +16,12 @@ extends Resource
 ## Pantalon y cinturon. Hacia falta como campo propio: estaba clavado en un azul oscuro
 ## para todos, y Flowery usa marron.
 @export var trouser_color: Color = Color(0.14, 0.16, 0.25)
+## PROPORCIONES DEL CUERPO. Escala el modelo, no la capsula de colision.
+##
+## Que la colision NO cambie es a proposito: los cuatro ocupan el mismo espacio y reciben
+## los golpes igual, asi que un personaje alto no es un blanco mas facil ni uno bajo mas
+## dificil. Lo que cambia es la silueta, que es lo que uno reconoce a veinte metros.
+@export var build_scale: Vector3 = Vector3.ONE
 @export var max_health: float = 100.0
 @export var max_stamina: float = 100.0
 @export var move_speed: float = 6.0

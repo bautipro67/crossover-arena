@@ -1105,9 +1105,9 @@ func _test_rick(player: Player, arena: Arena) -> void:
 	# son diez o quince metros— y entonces el numero habla del mapa, no de la habilidad.
 	# Lo que hay que garantizar es que el alcance cubra la diagonal entera: si eso vale,
 	# no hay punto del mapa al que no llegue desde ningun otro.
-	_check(PortalGun.ALCANCE > Arena.ARENA_SIZE * 1.42,
+	_check(PortalGun.alcance() > Arena.ARENA_SIZE * 1.42,
 		"el portal alcanza la diagonal entera del mapa (%.0f contra %.0f)" % [
-			PortalGun.ALCANCE, Arena.ARENA_SIZE * 1.42])
+			PortalGun.alcance(), Arena.ARENA_SIZE * 1.42])
 
 	player.stamina.restore_full()
 	player.caster.reset_state()
@@ -1308,10 +1308,16 @@ func _test_practica(player: Player, arena: Arena) -> void:
 	# puede ser contra una pared del mapa. Colocando al bot a nueve metros de ahi sin
 	# mirar, el bot puede caer fuera de la arena o dentro de una cobertura, y entonces
 	# lo que se mide no es si persigue sino donde lo pusimos.
-	var claro := arena.find_clear_spot(Vector3(12.0, 0.6, 12.0), 2.0)
+	# EN LA PLAZA, que es la zona abierta del mapa, y con los DOS puntos buscados.
+	#
+	# Antes plantaba al jugador con find_clear_spot y al bot nueve metros al este SIN
+	# mirar. En el mapa nuevo eso cae a veces sobre una rampa o contra un bloque, y
+	# entonces lo que falla no es que el bot no persiga sino donde lo pusimos: el chequeo
+	# venia dando 0.99, 0.32 y 0.26 en corridas seguidas sin que nada cambiara.
+	var claro := arena.find_clear_spot(Vector3(40.0, 0.6, 38.0), 2.5)
 	player.global_position = claro
 	await get_tree().physics_frame
-	uno.global_position = claro + Vector3(9.0, 0.0, 0.0)
+	uno.global_position = arena.find_clear_spot(claro + Vector3(9.0, 0.0, 0.0), 1.2)
 	uno.bot_move_dir = Vector3.ZERO
 	uno.bot_wants_run = false
 	player.stamina.restore_full()

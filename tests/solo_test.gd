@@ -25,6 +25,7 @@ func _run() -> void:
 	await get_tree().process_frame
 
 	await _test_audio()
+	_test_siluetas()
 	await _test_music()
 	_test_settings()
 
@@ -234,6 +235,8 @@ func _test_audio() -> void:
 		&"hit_ice", &"hit_punch", &"knife", &"ice_shock", &"snowgrave",
 		&"za_warudo", &"freeze", &"dash", &"death", &"channel",
 		&"petals", &"jarona", &"last_jarona",
+		&"plasma", &"plasma_blast", &"portal", &"meeseeks",
+		&"paso", &"salto", &"aterrizaje",
 		&"ui_click", &"no_stamina", &"respawn",
 	]
 	# EL BANCO SE ARMA REPARTIDO ENTRE FRAMES, asi que hay que esperarlo.
@@ -275,6 +278,11 @@ func _test_audio() -> void:
 		"el cuchillo es METALICO y agudo: %.0f cruces/s" % brillos[&"knife"])
 	_check(brillos[&"hit_ice"] > 2000.0,
 		"el hielo es CRISTALINO: %.0f cruces/s" % brillos[&"hit_ice"])
+	# El paso tiene que ser SORDO: suena dos veces por segundo toda la partida, y
+	# cualquier cosa con brillo se vuelve insoportable a los treinta segundos.
+	_check(brillos[&"paso"] < 900.0, "el paso es sordo: %.0f cruces/s" % brillos[&"paso"])
+	_check(brillos[&"aterrizaje"] < 1600.0,
+		"el aterrizaje tiene cuerpo: %.0f cruces/s" % brillos[&"aterrizaje"])
 	_check(brillos[&"knife"] > brillos[&"hit_punch"] * 2.0,
 		"y el acero es mucho mas brillante que la carne (%.0f contra %.0f)" % [
 			brillos[&"knife"], brillos[&"hit_punch"]])
@@ -291,6 +299,32 @@ func _test_audio() -> void:
 	var sample: AudioStreamWAV = Sfx._bank.get(&"snowgrave")
 	_check(sample != null and sample.data.size() > 1000, "el sonido de Snowgrave tiene PCM de verdad adentro")
 	_check(sample != null and sample.format == AudioStreamWAV.FORMAT_16_BITS, "el PCM es de 16 bits")
+
+
+## Los cuatro tienen que verse distintos de lejos.
+##
+## La silueta es lo unico que se lee a veinte metros, y si los cuatro tienen el mismo
+## cuerpo la unica diferencia es el color: de noche, en un mapa azul, eso no alcanza.
+func _test_siluetas() -> void:
+	var vistos: Array[Vector3] = []
+	for id: StringName in CharacterDB.get_all_ids():
+		var data := CharacterDB.get_character(id)
+		if data == null:
+			continue
+		for otro: Vector3 in vistos:
+			var d := (data.build_scale - otro).length()
+			if d < 0.04:
+				_check(false, "%s tiene las mismas proporciones que otro personaje" % id)
+		vistos.append(data.build_scale)
+	_check(vistos.size() >= 4, "hay al menos cuatro personajes con proporciones propias (%d)" % vistos.size())
+	# Y que el mas alto y el mas bajo se diferencien de verdad.
+	var alto := 0.0
+	var bajo := 9.0
+	for v: Vector3 in vistos:
+		alto = maxf(alto, v.y)
+		bajo = minf(bajo, v.y)
+	_check(alto - bajo > 0.10,
+		"y entre el mas alto y el mas bajo hay diferencia visible (%.2f)" % (alto - bajo))
 
 
 # --------------------------------------------------------------------- Musica

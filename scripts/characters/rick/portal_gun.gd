@@ -15,9 +15,14 @@ extends Ability
 ## momento para reaccionar. Un teletransporte instantaneo y silencioso no se puede jugar
 ## en contra; uno que anuncia el destino, si.
 
-## Cuanto se busca en linea recta antes de darse por vencido. La diagonal del mapa es
-## 92 * 1.41 = 130, asi que con 150 se cubre de punta a punta desde cualquier esquina.
-const ALCANCE: float = 150.0
+## Cuanto se busca en linea recta antes de darse por vencido.
+##
+## SALE DEL TAMAÑO DEL MAPA, no es un numero suelto. Estuvo clavado en 150 —que cubria la
+## diagonal de 130 del mapa de 92— y al agrandarlo a 120 la diagonal paso a 170: el
+## portal dejo de llegar de punta a punta sin que nada avisara, salvo el arnes. El 1.15
+## es el margen para que siempre sobre.
+static func alcance() -> float:
+	return Arena.ARENA_SIZE * 1.415 * 1.15
 ## Cuanto se despega de la pared contra la que apuntaste. Sin esto, apuntar a un muro te
 ## deja con medio cuerpo adentro y la fisica te escupe para cualquier lado.
 const DESPEGUE: float = 1.1
@@ -79,7 +84,7 @@ static func calcular_destino(caster: Node3D, origin: Vector3, dir: Vector3) -> V
 	if plano.is_zero_approx():
 		plano = -caster.global_transform.basis.z
 	var espacio := caster.get_world_3d().direct_space_state
-	var punto := origin + plano * ALCANCE
+	var punto := origin + plano * alcance()
 
 	if espacio != null:
 		var rayo := PhysicsRayQueryParameters3D.create(origin, punto)

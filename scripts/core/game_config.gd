@@ -37,7 +37,11 @@ const MAX_PLAYERS: int = 8
 ## empezo a encadenar pasadas de verdad y los tres juntos treparon de 17 a 21 por
 ## segundo. El numero no cambio porque los bots jueguen mejor sino porque una de sus
 ## habilidades se volvio mas larga, asi que corresponde compensarlo aca.
-const BOT_DAMAGE_SCALE: float = 0.33
+## Subio a 0.45 con el mapa de 120 metros. No es que peguen mas fuerte: con el mapa mas
+## grande pasan mas tiempo caminando y menos pegando —de 55% a 35% del tiempo a distancia
+## de golpe— y los tres juntos cayeron de 16 a 9.7 por segundo. El ajuste devuelve el modo
+## practica a los ~14 por segundo que ya habiamos medido como jugables.
+const BOT_DAMAGE_SCALE: float = 0.45
 
 ## Cada cuanto el cliente le manda su transform al servidor.
 const NET_TICK_HZ: float = 20.0

@@ -189,8 +189,11 @@ func _poses_de_embestida(arena: Arena, player: Player) -> void:
 
 ## El mapa entero desde arriba, para la cover ancha 21:9.
 func _panoramica(arena: Arena) -> void:
-	await _camara(Vector3(0.0, 30.0, 58.0), Vector3(0.0, 2.0, -4.0), 55.0, "panoramica")
-	await _camara(Vector3(34.0, 14.0, 34.0), Vector3(0.0, 3.0, 0.0), 58.0, "arena_de_costado")
+	# DERIVADA DEL TAMAÑO DEL MAPA. Estaba clavada para 92 metros y con 120 el mapa ya no
+	# entraba en cuadro: la toma aerea existe para ver el conjunto, y recortada no sirve.
+	var d := Arena.ARENA_SIZE
+	await _camara(Vector3(0.0, d * 0.42, d * 0.72), Vector3(0.0, 2.0, -d * 0.05), 55.0, "panoramica")
+	await _camara(Vector3(d * 0.40, d * 0.16, d * 0.40), Vector3(0.0, 3.0, 0.0), 58.0, "arena_de_costado")
 
 
 # ------------------------------------------------------------------------ Piezas

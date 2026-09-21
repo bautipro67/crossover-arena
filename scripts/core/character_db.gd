@@ -31,6 +31,8 @@ func _register_all() -> void:
 	noelle.accent_color = Color(0.15, 0.15, 0.19)
 	noelle.skin_color = Color(0.95, 0.87, 0.76)
 	noelle.trouser_color = Color(0.13, 0.13, 0.17)
+	# Menuda y angosta: es una adolescente, y al lado de Dio tiene que notarse.
+	noelle.build_scale = Vector3(0.94, 0.97, 0.94)
 	noelle.max_health = 100.0
 	noelle.max_stamina = 100.0
 	noelle.move_speed = 6.0
@@ -51,6 +53,8 @@ func _register_all() -> void:
 	dio.accent_color = Color(0.93, 0.74, 0.22)
 	dio.skin_color = Color(0.94, 0.86, 0.82)
 	dio.trouser_color = Color(0.82, 0.68, 0.26)
+	# Ancho y macizo: el mas corpulento de los cuatro.
+	dio.build_scale = Vector3(1.12, 1.03, 1.10)
 	dio.max_health = 100.0
 	dio.max_stamina = 100.0
 	dio.move_speed = 6.6
@@ -81,6 +85,9 @@ func _register_all() -> void:
 	flowery.accent_color = Color(0.11, 0.11, 0.14)
 	flowery.skin_color = Color(0.74, 0.84, 0.42)
 	flowery.trouser_color = Color(0.42, 0.30, 0.19)
+	# Alto y flaco: la referencia dice 3.5 metros de alto y lean. No se puede llevar tan
+	# lejos sin romper las camaras, pero la proporcion sale en la misma direccion.
+	flowery.build_scale = Vector3(0.93, 1.12, 0.93)
 	flowery.max_health = 88.0
 	flowery.max_stamina = 100.0
 	flowery.move_speed = 6.3
@@ -101,6 +108,8 @@ func _register_all() -> void:
 	rick.accent_color = Color(0.26, 0.18, 0.12)
 	rick.skin_color = Color(0.90, 0.78, 0.63)
 	rick.trouser_color = Color(0.45, 0.33, 0.22)
+	# Alto y flaco tambien, pero encorvado: mas alto que Noelle y mas angosto que Dio.
+	rick.build_scale = Vector3(0.90, 1.08, 0.90)
 	# EL MAS FRAGIL Y EL MAS LENTO, a proposito. Es un viejo flaco que no gana una pelea
 	# de cerca: todo lo que tiene para compensarlo son los aparatos, y el portal.
 	rick.max_health = 82.0

@@ -33,6 +33,8 @@ var body_color: Color = Color(0.85, 0.92, 0.88)
 var accent_color: Color = Color(0.45, 0.78, 1.0)
 var skin_color: Color = Color(0.98, 0.85, 0.74)
 var trouser_color: Color = Color(0.14, 0.16, 0.25)
+## Proporciones del cuerpo. Ver CharacterData.build_scale.
+var build_scale: Vector3 = Vector3.ONE
 
 # --- Articulaciones ---
 var _root: Node3D = null
@@ -98,6 +100,14 @@ var _pose_weight: float = 0.0
 var _release_t: float = 0.0
 ## Cuenta atras del sacudon de impacto de una embestida. Ver golpe_de_embestida().
 var _impacto_t: float = 0.0
+## Aterrizaje: cuanto queda del achatado al tocar el piso.
+var _aterrizaje_t: float = 0.0
+## Si el frame anterior estaba en el aire, para detectar el momento exacto de aterrizar.
+var _estaba_en_aire: bool = false
+## Retroceso de recibir un golpe. Distinto de _hit_t, que es solo el temblor.
+var _dolor_t: float = 0.0
+## Fase del ciclo de caminata en el frame anterior, para saber cuando cae un pie.
+var _paso_previo: float = 0.0
 
 
 func _ready() -> void:
@@ -138,6 +148,24 @@ func _process(delta: float) -> void:
 	_release_t = maxf(0.0, _release_t - delta * 2.2)
 
 	_impacto_t = maxf(0.0, _impacto_t - delta * 3.4)
+	_aterrizaje_t = maxf(0.0, _aterrizaje_t - delta * 5.5)
+	_dolor_t = maxf(0.0, _dolor_t - delta * 4.0)
+
+	# --- EN EL AIRE: saltando o cayendo ---
+	#
+	# Se distinguen por el signo de la velocidad vertical, y son poses distintas porque
+	# son momentos distintos: saltando el cuerpo se recoge —es un impulso— y cayendo se
+	# abre buscando el piso. Con una sola pose para los dos, un salto largo se ve como un
+	# maniqui flotando.
+	var en_aire := not _body.is_on_floor()
+	if en_aire and not _estaba_en_aire and _body.velocity.y > 0.5:
+		Sfx.play_3d(self, &"salto", global_position, -8.0)
+	if _estaba_en_aire and not en_aire:
+		Sfx.play_3d(self, &"aterrizaje", global_position, -6.0)
+		# ATERRIZAJE: el golpe contra el piso. Sin esto el salto termina de golpe, y lo
+		# que hace que un salto se sienta con peso es como cae, no como sube.
+		_aterrizaje_t = 1.0
+	_estaba_en_aire = en_aire
 
 	# LA EMBESTIDA MANDA SOBRE CUALQUIER POSE.
 	#
@@ -148,11 +176,17 @@ func _process(delta: float) -> void:
 	#
 	# El impacto si necesita aviso, y por eso _impacto_t viene de afuera: desde el visual
 	# no hay forma de distinguir una embestida que conecto de una que paso al aire.
+	# PRIORIDAD DE POSES, de mas urgente a menos: el impacto de una embestida tapa todo,
+	# despues el dolor de recibir un golpe, despues el dash, y al final el aire.
 	if _impacto_t > 0.0:
 		_pose = &"impacto"
+	elif _dolor_t > 0.0:
+		_pose = &"dolor"
 	elif _body.is_dashing():
 		_pose = &"embiste"
-	elif _pose == &"embiste" or _pose == &"impacto":
+	elif en_aire:
+		_pose = &"salto" if _body.velocity.y > 0.5 else &"caida"
+	elif _pose == &"embiste" or _pose == &"impacto" or _pose == &"dolor" 			or _pose == &"salto" or _pose == &"caida":
 		_pose = &""
 
 	# La pose entra y sale suave: sin esto los brazos se teletransportan.
@@ -168,6 +202,19 @@ func _process(delta: float) -> void:
 		_cycle += delta * STEP_SPEED * clampf(speed / 6.0, 0.6, 1.9)
 	else:
 		_cycle = lerp_angle(_cycle, 0.0, delta * 8.0)
+
+	# --- PASOS ---
+	#
+	# Se disparan del propio ciclo de caminata, cuando cruza por cero: ahi es exactamente
+	# donde una pierna toca el piso, asi que el sonido cae sincronizado con la animacion
+	# sin necesidad de llevar un temporizador aparte que se desfase.
+	if moving and not en_aire:
+		var fase := fmod(_cycle, PI)
+		if fase < _paso_previo:
+			Sfx.play_3d(self, &"paso", global_position, -17.0)
+		_paso_previo = fase
+	else:
+		_paso_previo = 0.0
 
 	var swing := sin(_cycle) if moving else 0.0
 	var amount := clampf(speed / 9.0, 0.0, 1.35)
@@ -230,7 +277,18 @@ func _process(delta: float) -> void:
 	_torso.rotation.y = lerpf(_torso.rotation.y, -punch_curve * 0.38, delta * 18.0)
 	# El golpe recibido comprime el cuerpo un instante: se lee incluso de lejos.
 	var punch_scale := 1.0 + _hit_t * 0.12
-	_root.scale = Vector3(punch_scale, 1.0 + _hit_t * 0.05, punch_scale)
+	# LA PROPORCION SE MULTIPLICA, no se asigna.
+	#
+	# Esta linea ya la usaba el sacudon del golpe, que estira y encoge el cuerpo en cada
+	# impacto. Poner la proporcion del personaje con un scale aparte la pisaria una vez
+	# por frame; multiplicandola, las dos cosas conviven.
+	# Y el aterrizaje ACHATA: mas ancho y mas bajo. Es el unico momento en que el cuerpo
+	# se deforma en la direccion contraria al golpe, y es lo que le da peso a la caida.
+	var aterriza := _aterrizaje_t * _aterrizaje_t
+	_root.scale = Vector3(
+		punch_scale + aterriza * 0.16,
+		1.0 + _hit_t * 0.05 - aterriza * 0.20,
+		punch_scale + aterriza * 0.16) * build_scale
 	_animate_face(delta)
 	# Y la cabeza mira levemente hacia donde va.
 	_head_pivot.rotation.x = lerpf(_head_pivot.rotation.x, 0.08 * amount, delta * 6.0)
@@ -277,6 +335,32 @@ func _pose_targets() -> Dictionary:
 				"elbow_l": -0.55, "elbow_r": -0.55,
 				"spread_l": 0.85, "spread_r": -0.85,
 				"torso": 0.62,
+			}
+		&"salto":
+			# SUBIENDO: brazos arriba y el cuerpo recogido. Es un impulso.
+			return {
+				"arm_l": 2.30, "arm_r": 2.30,
+				"elbow_l": -0.70, "elbow_r": -0.70,
+				"spread_l": 0.30, "spread_r": -0.30,
+				"torso": -0.12,
+			}
+		&"caida":
+			# CAYENDO: brazos abiertos y afuera, buscando el piso.
+			return {
+				"arm_l": 1.15, "arm_r": 1.15,
+				"elbow_l": -0.20, "elbow_r": -0.20,
+				"spread_l": 0.95, "spread_r": -0.95,
+				"torso": 0.14,
+			}
+		&"dolor":
+			# RECIBIENDO: el cuerpo se cierra sobre si mismo y los brazos se meten hacia
+			# adentro. Es lo contrario de cualquier pose de ataque, y por eso se lee como
+			# que te pegaron aunque dure tres decimas.
+			return {
+				"arm_l": 0.55, "arm_r": 0.55,
+				"elbow_l": -1.15, "elbow_r": -1.15,
+				"spread_l": -0.55, "spread_r": 0.55,
+				"torso": 0.42,
 			}
 		&"release":
 			# Al soltar: los dos brazos al frente, torso volcado hacia adelante.
@@ -395,6 +479,10 @@ func _on_damaged(amount: float, source_id: int) -> void:
 	if amount <= 0.01:
 		return
 	_hit_t = 1.0
+	# Los golpes que valen la pena tambien cambian la POSE, no solo tiemblan. El umbral
+	# existe para que un raspon de 2 no te doble en dos.
+	if amount >= 8.0:
+		_dolor_t = 1.0
 	var punto := global_position + Vector3.UP * 1.25
 	FX.spawn_damage_number(self, global_position + Vector3.UP * 1.9, amount, amount >= 90.0)
 
@@ -631,6 +719,7 @@ func apply_character(data: CharacterData) -> void:
 	accent_color = data.accent_color
 	skin_color = data.skin_color
 	trouser_color = data.trouser_color
+	build_scale = data.build_scale
 
 	_mat_body.albedo_color = body_color
 	_mat_accent.albedo_color = accent_color

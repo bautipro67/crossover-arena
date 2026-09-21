@@ -45,7 +45,17 @@ const NAV_GROUP: StringName = &"arena_solida"
 ## se mudo del costado de una rampa al de la otra, donde el labio mide 0.6.
 const NAV_MAX_CLIMB: float = 0.25
 
-const ARENA_SIZE: float = 92.0
+## 120 y no los 92 de antes.
+##
+## Con cuatro personajes —uno de ellos con teletransporte de mapa completo— 92 metros se
+## quedaron chicos: de una punta a la otra se cruzaba caminando en diez segundos y no
+## habia lugar donde perderse de vista. 120 metros dan 78% mas de superficie, que es lo
+## que hace falta para que las zonas nuevas existan sin pisarse entre si.
+##
+## Casi todo lo demas sale de aca: el alcance de deteccion de los bots, el limite de
+## find_clear_spot, los puntos de aparicion y el recorte del portal. Cambiar este numero
+## mueve el mapa entero.
+const ARENA_SIZE: float = 120.0
 const WALL_HEIGHT: float = 12.0
 
 ## Bots del modo practica. Ya no son maniquies quietos: usan personajes reales y te
@@ -67,6 +77,8 @@ var _spawn_points: Array[Transform3D] = []
 var _players: Dictionary = {}
 ## Donde reaparece cada bot cuando lo matas.
 var _dummy_spawns: Dictionary = {}
+## Numerador de los bloques de cobertura. Ver _bloque().
+var _cover_index: int = 0
 
 var _floor_material: StandardMaterial3D = null
 var _floor_alt_material: StandardMaterial3D = null
@@ -336,72 +348,190 @@ func _build_walls() -> void:
 			_add_pillar(Vector3(half * sx * 0.96, 0.0, half * sz * 0.96), 2.2, h + 3.0)
 
 
+## EL MAPA, POR ZONAS.
+##
+## QUE TENIA DE MALO EL ANTERIOR. Era un anillo de dieciocho bloques repartidos parejo
+## alrededor de una plataforma central. Funcionaba —cortaba lineas de vision, tenia
+## altura— pero los cuatro cuadrantes eran intercambiables: mirando una captura no habia
+## forma de decir en que parte del mapa estabas, y peleando no habia nada que decir mas
+## alla de "cerca del centro" o "lejos".
+##
+## Ahora cada esquina es UN LUGAR, con una forma y una manera de pelearse distintas:
+##
+##   NE  BOSQUE DE PILARES  columnas finas y juntas. Rompe cualquier linea de tiro, asi
+##                          que es donde Noelle y Rick pierden su ventaja y donde Dio y
+##                          Flowery quieren llevarte.
+##   SO  LA TRINCHERA       dos muros largos y paralelos. Un pasillo del que no se sale
+##                          de costado: quien entra se compromete.
+##   NO  LAS TERRAZAS       tres niveles en escalera. La unica zona donde la altura se
+##                          gana caminando, no por rampa.
+##   SE  LA PLAZA           abierta, con poca cobertura baja. Es el espacio de duelo, y
+##                          existe para que el mapa no sea todo escondite.
+##
+## Y DOS PASARELAS elevadas que salen de la plataforma central hacia el bosque y hacia
+## la trinchera. Son lo que le da al centro una salida que no es bajar: desde arriba se
+## ve todo, y por eso tambien es donde mas expuesto estas.
 func _build_cover() -> void:
-	var index := 0
+	_cover_index = 0
+	_zona_centro()
+	_zona_pilares(Vector3(40.0, 0.0, -38.0))
+	_zona_trinchera(Vector3(-40.0, 0.0, 38.0))
+	_zona_terrazas(Vector3(-40.0, 0.0, -38.0))
+	_zona_plaza(Vector3(40.0, 0.0, 38.0))
+	_pasarelas()
+	_anillo_medio()
 
-	# --- Plataforma central elevada, con rampas en los CUATRO lados ---
-	# Cuatro accesos y no dos: en un mapa de 92 metros, dos rampas convierten la
-	# plataforma en una fortaleza a la que hay que dar media vuelta para subir.
-	_add_box(Vector3(0.0, 1.1, 0.0), Vector3(20.0, 2.2, 20.0), _cover_material, "Cover%d" % index)
-	index += 1
-	_add_prop(Vector3(0.0, 2.24, 0.0), Vector3(20.4, 0.12, 20.4), _cover_top_material)
-	_add_ramp(Vector3(0.0, 0.6, 14.8), Vector3(8.0, 0.5, 10.0), -12.5)
-	_add_ramp(Vector3(0.0, 0.6, -14.8), Vector3(8.0, 0.5, 10.0), 12.5)
-	_add_ramp(Vector3(14.8, 0.6, 0.0), Vector3(10.0, 0.5, 8.0), 0.0, -12.5)
-	_add_ramp(Vector3(-14.8, 0.6, 0.0), Vector3(10.0, 0.5, 8.0), 0.0, 12.5)
 
-	# Torre en el centro de la plataforma: corta el duelo de punta a punta.
-	_add_box(Vector3(0.0, 4.6, 0.0), Vector3(5.0, 5.0, 5.0), _cover_material, "Cover%d" % index)
-	index += 1
-	_add_prop(Vector3(0.0, 7.14, 0.0), Vector3(5.6, 0.16, 5.6), _marking_material)
+## La plataforma central con su torre y sus cuatro rampas. Es el ancla del mapa: lo que
+## se ve desde cualquier lado y contra lo que uno se orienta.
+func _zona_centro() -> void:
+	const LADO := 26.0
+	const ALTO := 2.6
+	_bloque(Vector3(0.0, ALTO * 0.5, 0.0), Vector3(LADO, ALTO, LADO), _cover_material)
+	_add_prop(Vector3(0.0, ALTO + 0.04, 0.0), Vector3(LADO + 0.4, 0.12, LADO + 0.4), _cover_top_material)
 
-	# --- Anillo interior: coberturas bajas y medias alrededor de la plataforma ---
-	var blocks: Array = [
-		{"pos": Vector3(-21.0, 1.3, -15.0), "size": Vector3(9.0, 2.6, 3.4)},
-		{"pos": Vector3(20.0, 1.8, 17.0), "size": Vector3(3.4, 3.6, 10.0)},
-		{"pos": Vector3(-25.0, 1.0, 21.0), "size": Vector3(6.5, 2.0, 6.5)},
-		{"pos": Vector3(26.0, 2.2, -19.0), "size": Vector3(5.0, 4.4, 5.0)},
-		{"pos": Vector3(-10.0, 0.7, 27.0), "size": Vector3(12.0, 1.4, 2.8)},
-		{"pos": Vector3(13.0, 0.7, -28.0), "size": Vector3(2.8, 1.4, 12.0)},
-		{"pos": Vector3(-30.0, 1.5, -3.0), "size": Vector3(3.2, 3.0, 8.0)},
-		{"pos": Vector3(30.0, 1.2, 5.0), "size": Vector3(3.2, 2.4, 7.0)},
+	# Cuatro accesos y no dos: con dos, la plataforma es una fortaleza a la que hay que
+	# dar media vuelta para subir.
+	var borde := LADO * 0.5
+	_add_ramp(Vector3(0.0, 0.72, borde + 6.0), Vector3(9.0, 0.55, 12.0), -12.5)
+	_add_ramp(Vector3(0.0, 0.72, -borde - 6.0), Vector3(9.0, 0.55, 12.0), 12.5)
+	_add_ramp(Vector3(borde + 6.0, 0.72, 0.0), Vector3(12.0, 0.55, 9.0), 0.0, -12.5)
+	_add_ramp(Vector3(-borde - 6.0, 0.72, 0.0), Vector3(12.0, 0.55, 9.0), 0.0, 12.5)
 
-		# --- Anillo exterior: el que evita que las esquinas sean un descampado ---
-		{"pos": Vector3(-36.0, 1.6, -30.0), "size": Vector3(7.0, 3.2, 3.2)},
-		{"pos": Vector3(36.0, 1.6, 30.0), "size": Vector3(7.0, 3.2, 3.2)},
-		{"pos": Vector3(-35.0, 1.1, 33.0), "size": Vector3(3.2, 2.2, 8.0)},
-		{"pos": Vector3(35.0, 1.1, -33.0), "size": Vector3(3.2, 2.2, 8.0)},
-		{"pos": Vector3(0.0, 1.4, 36.0), "size": Vector3(10.0, 2.8, 3.0)},
-		{"pos": Vector3(0.0, 1.4, -36.0), "size": Vector3(10.0, 2.8, 3.0)},
-		{"pos": Vector3(-38.0, 1.4, 8.0), "size": Vector3(3.0, 2.8, 10.0)},
-		{"pos": Vector3(38.0, 1.4, -8.0), "size": Vector3(3.0, 2.8, 10.0)},
+	# La torre del medio: corta el duelo de punta a punta por encima de la plataforma.
+	_bloque(Vector3(0.0, ALTO + 3.0, 0.0), Vector3(6.0, 6.0, 6.0), _cover_material)
+	_add_prop(Vector3(0.0, ALTO + 6.1, 0.0), Vector3(6.6, 0.16, 6.6), _marking_material)
+
+
+## NORESTE: columnas finas y juntas. Ninguna tapa de verdad, pero todas juntas no dejan
+## ver a mas de diez metros.
+func _zona_pilares(centro: Vector3) -> void:
+	# VEINTISEIS COLUMNAS Y NO QUINCE. Con quince repartidas en veinte metros se veian los
+	# huecos entre ellas desde afuera y la zona no tapaba nada: un bosque solo funciona si
+	# no se le ve el final.
+	var puestos: Array[Vector2] = [
+		Vector2(-14.0, -14.0), Vector2(-8.0, -16.0), Vector2(-2.0, -13.0), Vector2(5.0, -15.0),
+		Vector2(12.0, -14.0), Vector2(17.0, -11.0),
+		Vector2(-16.0, -7.0), Vector2(-9.0, -6.0), Vector2(-2.0, -5.0), Vector2(4.0, -7.0),
+		Vector2(11.0, -5.0), Vector2(17.0, -3.0),
+		Vector2(-15.0, 1.0), Vector2(-8.0, 2.0), Vector2(-1.0, 3.0), Vector2(6.0, 1.0),
+		Vector2(13.0, 3.0), Vector2(18.0, 5.0),
+		Vector2(-13.0, 9.0), Vector2(-6.0, 10.0), Vector2(1.0, 11.0), Vector2(8.0, 9.0),
+		Vector2(15.0, 11.0),
+		Vector2(-10.0, 16.0), Vector2(-2.0, 17.0), Vector2(7.0, 16.0),
 	]
-	for block: Dictionary in blocks:
-		var pos: Vector3 = block["pos"]
-		var size: Vector3 = block["size"]
-		_add_box(pos, size, _zone_material(pos), "Cover%d" % index)
-		index += 1
-		# Borde claro arriba: hace que la silueta de la cobertura se lea de lejos.
+	for i: int in range(puestos.size()):
+		var q := puestos[i]
+		# Alturas distintas: con todas iguales se lee como una reja y no como un bosque.
+		var alto := 5.5 + float(i % 4) * 1.6
+		_add_pillar(centro + Vector3(q.x, 0.0, q.y), 0.85 + float(i % 3) * 0.12, alto)
+	# Dos bloques bajos en el medio, para tener donde agacharse entre columna y columna.
+	var mat := _zone_material(centro)
+	_bloque(centro + Vector3(1.0, 0.9, -2.0), Vector3(7.0, 1.8, 3.0), mat)
+	_bloque(centro + Vector3(-9.0, 0.9, 12.0), Vector3(3.0, 1.8, 7.0), mat)
+
+
+## SUROESTE: dos muros largos y paralelos. Un pasillo del que no se sale de costado.
+func _zona_trinchera(centro: Vector3) -> void:
+	var mat := _zone_material(centro)
+	for lado: float in [-1.0, 1.0]:
+		_bloque(centro + Vector3(0.0, 1.9, 6.0 * lado), Vector3(40.0, 3.8, 2.6), mat)
+		_add_prop(centro + Vector3(0.0, 3.87, 6.0 * lado), Vector3(40.6, 0.14, 2.9), _cover_top_material)
+	# Tapon en un extremo: sin el es un tubo con dos salidas y no compromete a nadie.
+	_bloque(centro + Vector3(-19.0, 1.9, 0.0), Vector3(2.6, 3.8, 14.6), mat)
+	# Un muro exterior corto, paralelo: hace que la trinchera tenga un afuera propio y no
+	# se pase de campo abierto a pasillo de un paso.
+	_bloque(centro + Vector3(6.0, 1.3, 14.0), Vector3(24.0, 2.6, 2.4), mat)
+	# Y dos escalones para poder salirse por arriba si te acorralan.
+	_bloque(centro + Vector3(8.0, 0.8, 0.0), Vector3(4.0, 1.6, 3.0), mat)
+	_bloque(centro + Vector3(12.0, 1.6, 0.0), Vector3(4.0, 3.2, 3.0), mat)
+
+
+## NOROESTE: tres niveles en escalera. La altura se gana caminando, no por rampa.
+func _zona_terrazas(centro: Vector3) -> void:
+	var mat := _zone_material(centro)
+	# Cada escalon sube 1.3, que es mas de lo que el cuerpo trepa solo (0.5): hay que
+	# subir por el costado corto de cada terraza, y eso convierte la zona en un recorrido
+	# en vez de una pared.
+	for nivel: int in range(4):
+		var f := float(nivel)
+		var alto := 1.4 + f * 1.4
+		var lado := 28.0 - f * 5.5
+		_bloque(centro + Vector3(f * 2.0, alto * 0.5, f * 2.0), Vector3(lado, alto, lado), mat)
+		_add_prop(centro + Vector3(f * 2.0, alto + 0.05, f * 2.0),
+			Vector3(lado + 0.3, 0.12, lado + 0.3), _cover_top_material)
+	# Rampa de acceso al primer nivel, por el lado que mira al centro del mapa.
+	_add_ramp(centro + Vector3(17.0, 0.38, 0.0), Vector3(7.0, 0.5, 8.0), 0.0, -12.5)
+
+
+## SURESTE: abierta. Es el espacio de duelo, y existe para que el mapa no sea todo
+## escondite: en algun lado tiene que poder pelearse de frente.
+func _zona_plaza(centro: Vector3) -> void:
+	var mat := _zone_material(centro)
+	_bloque(centro + Vector3(0.0, 0.7, 0.0), Vector3(12.0, 1.4, 12.0), mat)
+	_add_prop(centro + Vector3(0.0, 1.46, 0.0), Vector3(12.4, 0.12, 12.4), _cover_top_material)
+	for q: Vector2 in [Vector2(-14.0, -13.0), Vector2(14.0, 12.0), Vector2(-15.0, 14.0),
+			Vector2(15.0, -14.0), Vector2(0.0, -16.0), Vector2(-17.0, 0.0)]:
+		_bloque(centro + Vector3(q.x, 0.8, q.y), Vector3(5.0, 1.6, 5.0), mat)
+	for q2: Vector2 in [Vector2(16.0, -6.0), Vector2(-16.0, -8.0), Vector2(8.0, 17.0)]:
+		_add_pillar(centro + Vector3(q2.x, 0.0, q2.y), 1.0, 7.5)
+
+
+## Las pasarelas: salen de la plataforma central a la altura de su superficie y bajan por
+## una rampa al llegar a la zona. Desde arriba se ve todo, y por eso tambien es donde mas
+## expuesto estas: no hay donde taparse en una pasarela.
+func _pasarelas() -> void:
+	var mat := _cover_material
+	# Hacia el noreste (bosque de pilares).
+	_bloque(Vector3(16.0, 1.3, -16.0), Vector3(22.0, 2.6, 4.0), mat)
+	_add_prop(Vector3(16.0, 2.66, -16.0), Vector3(22.3, 0.12, 4.3), _cover_top_material)
+	_add_ramp(Vector3(30.0, 0.72, -16.0), Vector3(12.0, 0.55, 4.0), 0.0, -12.5)
+	# Hacia el suroeste (trinchera).
+	_bloque(Vector3(-16.0, 1.3, 16.0), Vector3(22.0, 2.6, 4.0), mat)
+	_add_prop(Vector3(-16.0, 2.66, 16.0), Vector3(22.3, 0.12, 4.3), _cover_top_material)
+	_add_ramp(Vector3(-30.0, 0.72, 16.0), Vector3(12.0, 0.55, 4.0), 0.0, 12.5)
+
+
+## Coberturas sueltas entre el centro y las zonas. Existen para que cruzar de una punta a
+## otra no sea nunca campo abierto.
+func _anillo_medio() -> void:
+	var sueltos: Array = [
+		{"pos": Vector3(-24.0, 1.4, -6.0), "size": Vector3(3.2, 2.8, 9.0)},
+		{"pos": Vector3(24.0, 1.4, 6.0), "size": Vector3(3.2, 2.8, 9.0)},
+		{"pos": Vector3(-6.0, 1.4, 24.0), "size": Vector3(9.0, 2.8, 3.2)},
+		{"pos": Vector3(6.0, 1.4, -24.0), "size": Vector3(9.0, 2.8, 3.2)},
+		{"pos": Vector3(-30.0, 1.1, -14.0), "size": Vector3(7.0, 2.2, 3.0)},
+		{"pos": Vector3(30.0, 1.1, 14.0), "size": Vector3(7.0, 2.2, 3.0)},
+		{"pos": Vector3(18.0, 1.1, 26.0), "size": Vector3(3.0, 2.2, 8.0)},
+		{"pos": Vector3(-18.0, 1.1, -26.0), "size": Vector3(3.0, 2.2, 8.0)},
+		{"pos": Vector3(-34.0, 1.5, 22.0), "size": Vector3(8.0, 3.0, 3.2)},
+		{"pos": Vector3(34.0, 1.5, -22.0), "size": Vector3(8.0, 3.0, 3.2)},
+		{"pos": Vector3(-8.0, 1.2, 38.0), "size": Vector3(10.0, 2.4, 3.0)},
+		{"pos": Vector3(8.0, 1.2, -38.0), "size": Vector3(10.0, 2.4, 3.0)},
+		{"pos": Vector3(-44.0, 1.4, -8.0), "size": Vector3(3.0, 2.8, 11.0)},
+		{"pos": Vector3(44.0, 1.4, 8.0), "size": Vector3(3.0, 2.8, 11.0)},
+		{"pos": Vector3(26.0, 1.1, -4.0), "size": Vector3(3.0, 2.2, 7.0)},
+		{"pos": Vector3(-26.0, 1.1, 4.0), "size": Vector3(3.0, 2.2, 7.0)},
+	]
+	for b: Dictionary in sueltos:
+		var pos: Vector3 = b["pos"]
+		var size: Vector3 = b["size"]
+		_bloque(pos, size, _zone_material(pos))
 		_add_prop(pos + Vector3(0.0, size.y * 0.5 + 0.07, 0.0),
 			Vector3(size.x * 1.03, 0.14, size.z * 1.03), _cover_top_material)
+	for spot: Vector3 in [Vector3(-20.0, 0.0, 34.0), Vector3(20.0, 0.0, -34.0),
+			Vector3(-34.0, 0.0, 6.0), Vector3(34.0, 0.0, -6.0),
+			Vector3(-48.0, 0.0, 44.0), Vector3(48.0, 0.0, -44.0),
+			Vector3(48.0, 0.0, 44.0), Vector3(-48.0, 0.0, -44.0),
+			Vector3(0.0, 0.0, 46.0), Vector3(0.0, 0.0, -46.0)]:
+		_add_pillar(spot, 1.0, 7.5)
 
-	# --- Dos plataformas laterales elevadas, para que la altura no sea solo el centro ---
-	for side: float in [-1.0, 1.0]:
-		var base := Vector3(side * 28.0, 0.75, side * -27.0)
-		_add_box(base, Vector3(11.0, 1.5, 11.0), _zone_material(base), "Cover%d" % index)
-		index += 1
-		_add_prop(base + Vector3(0.0, 0.83, 0.0), Vector3(11.3, 0.12, 11.3), _cover_top_material)
-		_add_ramp(base + Vector3(side * -8.5, -0.28, 0.0), Vector3(8.0, 0.4, 6.0), 0.0, side * 10.0)
 
-	# Pilares sueltos, para romper las lineas rectas.
-	var spots: Array[Vector3] = [
-		Vector3(-16.0, 0.0, 30.0), Vector3(17.0, 0.0, -26.0),
-		Vector3(-33.0, 0.0, 13.0), Vector3(33.0, 0.0, -12.0),
-		Vector3(-12.0, 0.0, -22.0), Vector3(11.0, 0.0, 23.0),
-		Vector3(-42.0, 0.0, -14.0), Vector3(42.0, 0.0, 14.0),
-	]
-	for spot: Vector3 in spots:
-		_add_pillar(spot, 0.95, 6.5)
+## Alta de nombrar bloques: el nombre "CoverN" lo usan los arneses para contar
+## coberturas, asi que la numeracion tiene que seguir siendo correlativa.
+func _bloque(pos: Vector3, size: Vector3, material: StandardMaterial3D) -> void:
+	_add_box(pos, size, material, "Cover%d" % _cover_index)
+	_cover_index += 1
 
 
 # ---------------------------------------------------------- Piezas del escenario
@@ -559,17 +689,22 @@ func _build_navigation() -> void:
 # ------------------------------------------------------------------- Spawn points
 
 func _build_spawn_points() -> void:
-	# Pegados al borde del mapa nuevo (medio lado = 46) pero adentro de las paredes, y
-	# lejos de las coberturas para no aparecer encajado en una.
+	# DERIVADOS DEL TAMAÑO DEL MAPA, no escritos a mano.
+	#
+	# Estaban clavados en +-40 con el mapa en 92. Al agrandarlo quedaban a veinte metros
+	# de la pared, o sea ya no en el borde sino en tierra de nadie, y dos de ellos caian
+	# justo encima de las zonas nuevas.
+	var borde := ARENA_SIZE * 0.5 - 8.0
+	var medio := ARENA_SIZE * 0.5 - 7.0
 	var positions: Array[Vector3] = [
-		Vector3(-40.0, 0.0, -40.0),
-		Vector3(40.0, 0.0, -40.0),
-		Vector3(-40.0, 0.0, 40.0),
-		Vector3(40.0, 0.0, 40.0),
-		Vector3(-6.0, 0.0, -41.0),
-		Vector3(6.0, 0.0, 41.0),
-		Vector3(-41.0, 0.0, 24.0),
-		Vector3(41.0, 0.0, -24.0),
+		Vector3(-borde, 0.0, -borde),
+		Vector3(borde, 0.0, -borde),
+		Vector3(-borde, 0.0, borde),
+		Vector3(borde, 0.0, borde),
+		Vector3(-7.0, 0.0, -medio),
+		Vector3(7.0, 0.0, medio),
+		Vector3(-medio, 0.0, 18.0),
+		Vector3(medio, 0.0, -18.0),
 	]
 	_spawn_points.clear()
 	for pos: Vector3 in positions:

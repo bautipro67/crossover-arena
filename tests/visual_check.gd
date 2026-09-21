@@ -382,14 +382,14 @@ func _vista_aerea() -> void:
 	var cam := Camera3D.new()
 	cam.fov = 62.0
 	arena.add_child(cam)
-	cam.global_position = Vector3(0.0, 62.0, 66.0)
+	cam.global_position = Vector3(0.0, Arena.ARENA_SIZE * 0.52, Arena.ARENA_SIZE * 0.72)
 	cam.look_at(Vector3(0.0, 2.0, 0.0), Vector3.UP)
 	cam.make_current()
 	await _wait(0.6)
 	await _shot("18_mapa_desde_arriba")
 
 	# Y una segunda, mas baja y de costado, que muestra la silueta del mapa.
-	cam.global_position = Vector3(48.0, 22.0, 48.0)
+	cam.global_position = Vector3(Arena.ARENA_SIZE * 0.40, Arena.ARENA_SIZE * 0.18, Arena.ARENA_SIZE * 0.40)
 	cam.look_at(Vector3(0.0, 3.0, 0.0), Vector3.UP)
 	await _wait(0.5)
 	await _shot("19_mapa_de_costado")

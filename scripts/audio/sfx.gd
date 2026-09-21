@@ -273,7 +273,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 20
+const TOTAL_SONIDOS: int = 23
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -286,6 +286,7 @@ func _build_combate() -> void:
 	var receta: Array = [
 		[&"hit_punch", _synth_punch], [&"hit_ice", _synth_ice_hit],
 		[&"petals", _synth_petals], [&"knife", _synth_knife],
+		[&"paso", _synth_paso], [&"salto", _synth_salto], [&"aterrizaje", _synth_aterrizaje],
 		[&"dash", _synth_dash], [&"ice_shock", _synth_ice_shock],
 		[&"jarona", _synth_jarona], [&"freeze", _synth_freeze],
 		[&"death", _synth_death], [&"channel", _synth_channel],
@@ -525,6 +526,28 @@ func _synth_punch() -> PackedFloat32Array:
 		out[i] += chasquido[i] * 0.85
 		# La palmada: brevisima, pero es lo que hace que el golpe "suene cerca".
 		out[i] += _ruido() * 0.35 * exp(-t * 420.0)
+	# --- Y UNA CAPA VOCAL DEBAJO ---
+	#
+	# En el original lo que se oye no es solo el golpe: es DIO GRITANDO encima de cada
+	# uno. Una voz no se puede sintetizar sin que suene a robot, pero SI se puede poner
+	# el gesto: un diente de sierra grave pasado por los formantes de una "U" —que es la
+	# vocal de MUDA— durante las mismas dos decimas que dura el impacto. No se oye como
+	# una palabra; se oye como que alguien esta ahi.
+	var fuente := _vacio(0.2)
+	var fase := 0.0
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / 0.2
+		fase += (128.0 - 26.0 * p) / float(MIX_RATE)
+		fuente[i] = _sierra(fase) * exp(-p * 5.5) * minf(1.0, p * 12.0)
+	var voz := _vacio(0.2)
+	# Formantes de una "U" cerrada: F1 bajo y F2 bajo tambien, muy juntos.
+	_resonar(voz, fuente, 320.0, 0.982, 1.0)
+	_resonar(voz, fuente, 800.0, 0.972, 0.42)
+	_resonar(voz, fuente, 2240.0, 0.960, 0.12)
+	for i: int in range(n):
+		out[i] += voz[i] * 0.55
+
 	_saturar(out, 2.6)
 	_normalizar(out, 0.9)
 	_bordes(out, 0.3, 12.0)
@@ -668,7 +691,12 @@ func _synth_portal() -> PackedFloat32Array:
 	for i: int in range(n):
 		var t := float(i) / MIX_RATE
 		var p := t / dur
-		var base: float = lerpf(210.0, 1150.0, p * p)
+		# EL BAMBOLEO. El portal del original no es un barrido limpio: tiene un vaiven
+		# rapido encima que lo hace sonar a algo liquido e inestable. Un barrido derecho
+		# suena a puerta de nave espacial; esto tiene que sonar a agujero abierto a la
+		# fuerza en el aire.
+		var vaiven: float = 1.0 + sin(TAU * 13.0 * t) * 0.09 * (1.0 - p * 0.5)
+		var base: float = lerpf(210.0, 1150.0, p * p) * vaiven
 		f1 += base / float(MIX_RATE)
 		f2 += base * 1.031 / float(MIX_RATE)
 		var env: float = minf(1.0, p * 9.0) * exp(-p * 2.4)
@@ -708,6 +736,68 @@ func _synth_meeseeks() -> PackedFloat32Array:
 	_pasabajos(out, 5200.0)
 	_normalizar(out, 0.62)
 	_bordes(out, 1.0, 25.0)
+	return out
+
+
+# ------------------------------------------------------------- Cuerpo y suelo
+#
+# Los tres sonidos que faltaban, y que son los que mas suenan en toda la partida: cada
+# paso, cada salto y cada caida. Sin ellos el personaje se desliza en silencio y el
+# mundo se siente de cartón, por muy bien que suenen las habilidades.
+
+## Un paso. Sordo, muy corto y sin tono definido.
+##
+## LO IMPORTANTE ES QUE SEA DISCRETO. Un paso suena unas dos veces por segundo mientras
+## caminas: cualquier cosa con tono se vuelve insoportable a los treinta segundos. Ruido
+## filtrado bien abajo y una envolvente de cuarenta milisegundos.
+func _synth_paso() -> PackedFloat32Array:
+	var out := _vacio(0.13)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		out[i] = _ruido() * exp(-t * 46.0)
+	_pasabajos(out, 900.0)
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		# Un golpe grave debajo: es lo que lo hace un pie y no un siseo.
+		out[i] += sin(TAU * lerpf(120.0, 58.0, minf(1.0, t * 30.0)) * t) * 0.5 * exp(-t * 38.0)
+	_normalizar(out, 0.30)
+	_bordes(out, 0.3, 10.0)
+	return out
+
+
+## Salto: aire que sube. Barrido corto hacia arriba, muy suave.
+func _synth_salto() -> PackedFloat32Array:
+	var out := _vacio(0.22)
+	var n := out.size()
+	for i: int in range(n):
+		out[i] = _ruido()
+	_pasabajos(out, 1900.0)
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / 0.22
+		# El ruido sube de volumen y ademas se abre el filtro: las dos cosas juntas son
+		# lo que el oido lee como "hacia arriba".
+		out[i] *= (0.25 + 0.75 * p) * exp(-p * 2.2) * 0.8
+		out[i] += sin(TAU * lerpf(210.0, 430.0, p) * t) * 0.22 * exp(-p * 3.5)
+	_normalizar(out, 0.34)
+	_bordes(out, 1.0, 16.0)
+	return out
+
+
+## Aterrizaje: el golpe contra el piso. Es el paso, pero con el doble de cuerpo.
+func _synth_aterrizaje() -> PackedFloat32Array:
+	var out := _vacio(0.3)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		out[i] = sin(TAU * lerpf(150.0, 44.0, minf(1.0, t * 22.0)) * t) * 0.9 * exp(-t * 15.0)
+		# La raspada de las suelas, encima y muy corta.
+		out[i] += _ruido() * 0.45 * exp(-t * 32.0)
+	_pasabajos(out, 2600.0)
+	_saturar(out, 1.8)
+	_normalizar(out, 0.55)
+	_bordes(out, 0.3, 24.0)
 	return out
 
 
