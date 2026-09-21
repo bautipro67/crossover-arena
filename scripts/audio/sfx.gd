@@ -162,6 +162,30 @@ static func _sierra(fase: float) -> float:
 	return 2.0 * (fase - floor(fase + 0.5))
 
 
+## La fuente de las VOCES: una parabola, no un diente de sierra.
+##
+## Es una correccion fisica, no un gusto. La cadena de una voz es
+##     flujo glotico  ->  garganta (formantes)  ->  labios  ->  aire
+## donde el flujo glotico cae 12 dB por octava y los labios, que radian su derivada,
+## suben 6. El resultado son los -6 dB/octava que mide una persona hablando.
+##
+## Un diente de sierra cae 6 y no 12. Con los mismos labios eso deja la voz en 0: medido,
+## salia en -2.3 dB/octava cuando tenia que estar entre -6 y -12. Tres veces mas brillante
+## que cualquier garganta humana, y eso se oye como chillon y metalico por mas que los
+## formantes esten exactamente en su lugar. Era el defecto de fondo.
+##
+## Una parabola cae exactamente 12 dB por octava —sus armonicos van como 1/n² en vez de
+## 1/n— y ademas es suave, asi que tampoco genera armonicos altos que se doblen.
+##
+## (Probe antes el pulso de Rosenberg, que es la forma glotica de manual. Tambien cae 12,
+## pero por arriba se apaga mucho mas rapido y se llevo puestos los formantes altos: el
+## reconocimiento de vocales se cayo de 31 sobre 31 a 24. La parabola da la misma
+## pendiente conservando los armonicos que las vocales necesitan para entenderse.)
+static func _parabola(fase: float) -> float:
+	var t: float = fase - floor(fase)
+	return 8.0 * t * (1.0 - t) - 1.0
+
+
 ## Onda cuadrada con ancho de pulso. `ancho` 0.5 da cuadrada; valores chicos dan ese
 ## timbre nasal de chiptune que usa Deltarune para casi todo.
 static func _pulso(fase: float, ancho: float) -> float:
@@ -510,7 +534,12 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 
 	# --- La fuente: cuerdas vocales mas aire ---
 	var fuente := _vacio(dur)
+	var soplido := _vacio(dur)
+	var silbido := _vacio(dur)
 	var fase := 0.0
+	var ciclo_previo: int = -1
+	var jitter: float = 1.0
+	var shimmer: float = 1.0
 	for i: int in range(n_total):
 		var t: float = float(i) / MIX_RATE
 		var p: float = t / dur
@@ -523,9 +552,20 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 		var cae: float = 0.34 * dramatismo
 		var f0: float = f0_pico * (1.0 - sube + sube * (1.0 - exp(-p * 14.0)) - cae * p * p)
 		f0 *= 1.0 + sin(TAU * 5.2 * t) * (0.016 * dramatismo)
-		fase += f0 / float(MIX_RATE)
-		var aire: float = _ruido() * (aspereza + ruidoso[i] * 0.85)
-		var pulso: float = _sierra(fase) * 0.85
+		# JITTER Y SHIMMER: las dos imperfecciones que separan una voz de un oscilador.
+		#
+		# Ninguna garganta repite dos ciclos iguales: el periodo varia cerca del 0.6% y la
+		# amplitud otro tanto. Es poquisimo y es decisivo — un tono perfectamente periodico
+		# se oye como una maquina por mas que los formantes esten impecables. Se sortean
+		# una vez POR CICLO, porque es una variacion de ciclo a ciclo; sorteada por muestra
+		# seria ruido encima de la voz, no una voz temblando.
+		var ciclo: int = int(fase)
+		if ciclo != ciclo_previo:
+			ciclo_previo = ciclo
+			jitter = 1.0 + _ruido() * 0.006
+			shimmer = 1.0 + _ruido() * 0.045
+		fase += f0 * jitter / float(MIX_RATE)
+		var pulso: float = _parabola(fase) * 0.85 * shimmer
 		# RASGADO: un subarmonico a la mitad del tono.
 		#
 		# Es lo que hace una garganta forzada —los ciclos dejan de ser todos iguales y
@@ -533,7 +573,10 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 		# Sin esto, gritar fuerte solo suena mas alto, nunca mas peligroso.
 		if rasgado > 0.0:
 			pulso *= 1.0 - rasgado * 0.5 * (1.0 + sin(PI * fase))
-		fuente[i] = (pulso + aire) * env[i]
+		fuente[i] = pulso * env[i]
+		# El aire va aparte porque hay que filtrarlo distinto (ver abajo).
+		soplido[i] = _ruido() * aspereza * env[i]
+		silbido[i] = _ruido() * ruidoso[i] * 0.85 * env[i]
 
 	# PREENFASIS PARA LOS FORMANTES DE ARRIBA, y sin esto no se entiende una palabra.
 	#
@@ -546,6 +589,22 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 	# abierta esta la boca; F2 dice si la lengua esta adelante o atras, que es lo que
 	# separa "i" de "u". Con F2 aplastado no hay palabras, hay un quejido con ritmo.
 	#
+	# EL AIRE DE LA VOZ TAMBIEN SE INCLINA, y esto era lo que arruinaba todo lo demas.
+	#
+	# El soplido estaba como ruido blanco, o sea PLANO. Con una fuente que cae 12 dB por
+	# octava, arriba de los 2 kHz el ruido ya es mas fuerte que la voz y se queda con todo
+	# el agudo: medido, la pendiente total no bajaba de -3 dB/octava por mas que se
+	# arreglara la fuente, porque no la mandaba la fuente sino el ruido.
+	#
+	# Un soplido de verdad tampoco es plano —sale de la glotis y lo filtra la misma
+	# garganta— asi que cortarlo arriba no es un truco, es lo que falta.
+	#
+	# El silbido de las consonantes NO se toca: una "s" o una "j" SON ruido agudo, y
+	# filtrarlas las convertiria en soplidos sordos.
+	_pasabajos(soplido, 2200.0)
+	for i: int in range(n_total):
+		fuente[i] += soplido[i] + silbido[i]
+
 	# La derivada de primer orden sube 6 dB por octava y cancela exactamente la caida.
 	# Es ademas lo que fisicamente hace una boca: los labios radian la derivada del flujo
 	# de aire, no el flujo.
@@ -594,16 +653,22 @@ static func _voz(silabas: Array, f0_pico: float, escala: float,
 	# Esto inclina el espectro ENTERO: una voz juvenil y declamada tiene presencia arriba,
 	# una voz de pecho amenazante la tiene apagada. Es lo que uno oye primero, antes que
 	# ningun formante.
+	#
+	# PERO CON LA MANO MUCHO MAS LIVIANA QUE AL PRINCIPIO. Estuvo al doble de esto, y a esa
+	# altura no separaba personajes: los rompia. Le devolvia al agudo todo lo que la fuente
+	# glotica acababa de sacarle, y la voz volvia a quedar en -3 dB/octava, o sea chillona.
+	# La diferencia entre los dos personajes la tienen que hacer el tono y el tamaño de la
+	# garganta, que son fisicos; esto es un retoque, no el mecanismo.
 	if not is_equal_approx(brillo_alto, 1.0):
 		var lado := out.duplicate()
 		if brillo_alto > 1.0:
 			_pasaaltos(lado, 1700.0)
 			for i: int in range(out.size()):
-				out[i] += lado[i] * (brillo_alto - 1.0) * 1.6
+				out[i] += lado[i] * (brillo_alto - 1.0) * 0.7
 		else:
 			_pasabajos(lado, 1700.0)
 			for i: int in range(out.size()):
-				out[i] = lerpf(out[i], lado[i], (1.0 - brillo_alto) * 1.3)
+				out[i] = lerpf(out[i], lado[i], (1.0 - brillo_alto) * 0.7)
 
 	_saturar(out, 1.45)
 	_normalizar(out, 0.85)
@@ -678,7 +743,7 @@ const D_RASGADO: float = 0.38
 func _synth_voz_muda() -> PackedFloat32Array:
 	var silabas: Array = []
 	for _i: int in range(3):
-		silabas.append(["u", 0.10, "nasal"])
+		silabas.append(["u", 0.12, "nasal"])
 		silabas.append(["a", 0.14, "suave"])
 	return _voz(silabas, D_TONO + 8.0, D_CUERPO, 0.16, D_DRAMA, D_BRILLO, D_RASGADO)
 
