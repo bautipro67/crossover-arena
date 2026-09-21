@@ -234,10 +234,15 @@ func _test_audio() -> void:
 	var expected: Array[StringName] = [
 		&"hit_ice", &"hit_punch", &"knife", &"ice_shock", &"snowgrave",
 		&"za_warudo", &"freeze", &"dash", &"death", &"channel",
-		&"petals", &"jarona", &"last_jarona",
+		&"petals", &"last_jarona",
 		&"plasma", &"plasma_blast", &"portal", &"meeseeks",
 		&"paso", &"salto", &"aterrizaje",
 		&"ui_click", &"no_stamina", &"respawn",
+		# LAS VOCES, que son las que dicen las frases de las habilidades. Sin alguna de
+		# estas el personaje sigue mostrando el cartel pero se queda mudo, que es
+		# exactamente el sintoma que hubo que arreglar: se leia "¡JARONA!" y no se oia.
+		&"voz_jarona", &"voz_here_i_come", &"voz_last_jarona",
+		&"voz_muda", &"voz_za_warudo", &"voz_toki",
 	]
 	# EL BANCO SE ARMA REPARTIDO ENTRE FRAMES, asi que hay que esperarlo.
 	#
@@ -256,6 +261,21 @@ func _test_audio() -> void:
 		if not Sfx._bank.has(name):
 			missing.append(String(name))
 	_check(missing.is_empty(), "los %d sonidos se sintetizaron (faltan: %s)" % [expected.size(), ", ".join(missing)])
+
+	# --- Y QUE CADA FRASE APUNTE A UNA VOZ QUE EXISTE ---
+	#
+	# Es la juntura entre las dos mitades del sistema: la tabla de frases dice QUE se
+	# grita y el banco tiene el sonido. Si un id no coincide, play_3d se sale sin hacer
+	# nada —no avisa, no falla, no rompe— y el personaje se queda mudo mostrando el
+	# cartel. Es exactamente el sintoma que hubo que arreglar, y no lo detectaba ningun
+	# chequeo: uno miraba el banco, otro miraba el cartel, y nadie miraba el hilo.
+	var sin_voz: Array[String] = []
+	for id: StringName in Frases.LINEAS:
+		for linea: Array in Frases.LINEAS[id]:
+			var voz := linea[2] as StringName
+			if not Sfx._bank.has(voz):
+				sin_voz.append("%s->%s" % [id, voz])
+	_check(sin_voz.is_empty(), "toda frase tiene su voz en el banco (rotas: %s)" % ", ".join(sin_voz))
 
 	# --- Y que cada uno tenga el CARACTER que se supone que tiene ---
 	#

@@ -290,7 +290,7 @@ func spawn_jarona_wave(caster: Node, origin: Vector3, radius: float,
 	# y siete temblores encimados marean.
 	if con_sonido:
 		camera_shake(0.7)
-		Sfx.play_3d(caster, &"jarona", origin, 0.0)
+		Sfx.play_3d(caster, &"hit_punch", origin, 2.0)
 
 
 ## Los siete colores de las flores del capitulo, en orden.

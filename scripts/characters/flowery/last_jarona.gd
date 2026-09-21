@@ -69,7 +69,7 @@ func execute(caster: Node, _origin: Vector3, dir: Vector3) -> void:
 	# en los argumentos: mismo ataque, con estallido y con aguante.
 	await Jarona.correr_embestida(
 		caster, dir, PASSES, DAMAGE, _explotar, FALLOS_TOLERADOS, ESTELA, 1.0,
-		"¡LAST JARONA!")
+		"¡LAST JARONA!", &"voz_last_jarona")
 
 
 ## La explosion que deja atras. La llama el bucle de JARONA en cada rebote.

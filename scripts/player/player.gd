@@ -583,20 +583,33 @@ func _on_health_changed(_current: float, _max_value: float) -> void:
 ## TIENE QUE VERSE EN LA PANTALLA DEL OTRO, sobre todo en la del otro. La frase es el
 ## aviso de que viene el ataque; si solo la viera el que la dice, seria decoracion para
 ## el que menos la necesita.
-func avisar_grito(texto: String) -> void:
+func avisar_grito(texto: String, voz: StringName) -> void:
 	if not Net.is_server():
 		return
-	Net.rpc_ready(self, &"_net_grito", [texto])
-	_grito(texto)
+	Net.rpc_ready(self, &"_net_grito", [texto, voz])
+	_grito(texto, voz)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _net_grito(texto: String) -> void:
-	_grito(texto)
+func _net_grito(texto: String, voz: StringName) -> void:
+	_grito(texto, voz)
 
 
-func _grito(texto: String) -> void:
+## LA VOZ Y EL CARTEL SALEN DE LA MISMA LLAMADA, a proposito.
+##
+## Es lo unico que garantiza que se oiga lo que se lee. Si la voz la tirara la habilidad
+## y el cartel este otro camino, cualquier diferencia de un frame entre los dos —o peor,
+## que uno se replique y el otro no— dejaria a un jugador leyendo "¡ZA WARUDO!" en
+## silencio y al otro escuchandolo sin ver nada.
+##
+## El cartel ademas es la red de seguridad de la voz: el banco de sonido se genera a lo
+## largo del arranque y las voces son lo ultimo en estar listo, asi que en los primeros
+## segundos de una partida play_3d se sale sin hacer nada. Ahi el texto es lo unico que
+## queda, y es mejor que nada.
+func _grito(texto: String, voz: StringName) -> void:
 	FX.spawn_grito(self, texto, Frases.color_de(character_id))
+	if voz != &"":
+		Sfx.play_3d(self, voz, global_position, 4.0)
 
 
 func avisar_impacto_embestida() -> void:

@@ -273,7 +273,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 23
+const TOTAL_SONIDOS: int = 28
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -288,12 +288,21 @@ func _build_combate() -> void:
 		[&"petals", _synth_petals], [&"knife", _synth_knife],
 		[&"paso", _synth_paso], [&"salto", _synth_salto], [&"aterrizaje", _synth_aterrizaje],
 		[&"dash", _synth_dash], [&"ice_shock", _synth_ice_shock],
-		[&"jarona", _synth_jarona], [&"freeze", _synth_freeze],
+		[&"freeze", _synth_freeze],
 		[&"death", _synth_death], [&"channel", _synth_channel],
 		[&"plasma", _synth_plasma], [&"plasma_blast", _synth_plasma_blast],
 		[&"meeseeks", _synth_meeseeks],
 		[&"last_jarona", _synth_last_jarona], [&"snowgrave", _synth_snowgrave],
 		[&"portal", _synth_portal], [&"za_warudo", _synth_za_warudo],
+		# Las voces al final: son las mas caras de generar —tres resonadores moviles por
+		# palabra— y son las unicas que nadie puede necesitar en el primer segundo,
+		# porque para gritar una habilidad primero hay que tener una habilidad lista.
+		[&"voz_jarona", _synth_voz_jarona],
+		[&"voz_here_i_come", _synth_voz_here_i_come],
+		[&"voz_last_jarona", _synth_voz_last_jarona],
+		[&"voz_muda", _synth_voz_muda],
+		[&"voz_za_warudo", _synth_voz_za_warudo],
+		[&"voz_toki", _synth_voz_toki],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -304,6 +313,306 @@ func _build_combate() -> void:
 			await get_tree().process_frame
 	print("[sfx] banco completo en %d ms (%d sonidos a %d Hz)" % [
 		Time.get_ticks_msec() - arranque, _bank.size(), MIX_RATE])
+
+
+# ----------------------------------------------------------------------- Voz
+#
+# Los personajes ANUNCIAN sus ataques, y en los dos originales ese anuncio es audible.
+# Hasta aca el juego tenia gritos —un "AAAH" con los formantes de una A— pero ninguna
+# PALABRA: se oia a alguien gritando, no se oia "Jarona".
+#
+# La diferencia entre las dos cosas es que las vocales se MUEVAN. Un grito sostenido es
+# un formante fijo; una palabra es una garganta cambiando de forma en el medio. Con los
+# formantes quietos, "ja-ro-na" y "za-wa-ru-do" suenan exactamente igual.
+
+## Formantes por vocal, en Hz: [F1, F2, F3]. Son los valores medidos de una garganta
+## masculina adulta; cada personaje los escala segun el tamaño del suyo.
+const VOCALES: Dictionary = {
+	"a": [730.0, 1090.0, 2440.0],
+	"e": [530.0, 1840.0, 2480.0],
+	"i": [270.0, 2290.0, 3010.0],
+	"o": [570.0, 840.0, 2410.0],
+	"u": [300.0, 870.0, 2240.0],
+}
+
+## Cuanto tarda la boca en pasar de una vocal a la siguiente. 45 ms es lo que tarda una
+## de verdad: mas rapido suena a corte de cinta, mas lento se vuelve un aullido y las
+## silabas dejan de separarse.
+const TRANSICION: float = 0.045
+
+
+## Resonador de dos polos con la frecuencia EN MOVIMIENTO.
+##
+## El _resonar de arriba tiene la frecuencia clavada, que alcanza para un grito pero no
+## para una palabra: si el formante no se mueve no hay articulacion, y todas las silabas
+## salen con la misma vocal.
+##
+## Los coeficientes se recalculan cada 64 muestras y no en cada una. A 32 kHz eso son 500
+## actualizaciones por segundo, diez veces mas rapido que lo que tarda una boca en
+## moverse, y evita 28 mil cosenos por formante y por palabra.
+## NORMALIZADO EN EL PICO, y ahi estaba el bug que hacia que no se entendiera nada.
+##
+## El _resonar de arriba usa a0 = (1 - r²), que deja ganancia uno cerca de continua pero
+## NO en la resonancia. Y cuanto mas arriba esta el formante, peor: medido, el mismo a0
+## daba pico 16 a 313 Hz y pico 1.8 a 2650 Hz. Diecinueve decibeles de diferencia que no
+## pidio nadie, y que caen justo sobre F2 y F3.
+##
+## Consecuencia: el F2 de una "i" salia 36 dB por debajo de F1 —en una voz de verdad son
+## 10 o 15— asi que sencillamente no estaba. Medido en el espectro: donde tenia que haber
+## un pico a 2650 Hz habia un MINIMO. El sintetizador decia todas las vocales con la
+## misma boca.
+##
+## La ganancia real en el pico de un resonador de dos polos es
+##     a0 / [ (1-r) · sqrt(1 - 2r·cos(2w) + r²) ]
+## asi que multiplicar por ese denominador la deja en uno, sea cual sea la frecuencia.
+## Recien con eso `ganancia` significa lo que aparenta y se pueden usar las amplitudes de
+## formante de los libros.
+static func _resonar_movil(buf: PackedFloat32Array, fuente: PackedFloat32Array,
+		pista: PackedFloat32Array, r: float, ganancia: float) -> void:
+	var b2: float = -r * r
+	var a0: float = 0.0
+	var b1: float = 0.0
+	var y1 := 0.0
+	var y2 := 0.0
+	for i: int in range(buf.size()):
+		if i % 64 == 0:
+			var w: float = TAU * pista[i] / float(MIX_RATE)
+			b1 = 2.0 * r * cos(w)
+			a0 = ganancia * (1.0 - r) * sqrt(maxf(0.0,
+				1.0 - 2.0 * r * cos(2.0 * w) + r * r))
+		var y: float = a0 * fuente[i] + b1 * y1 + b2 * y2
+		y2 = y1
+		y1 = y
+		buf[i] += y
+
+
+## Una palabra gritada.
+##
+## `silabas` es una lista de [vocal, duracion, ataque]. El ataque es la consonante con la
+## que arranca la silaba, y es lo que hace que se oigan SEPARADAS: sin el, las vocales se
+## funden en un solo sonido largo aunque los formantes se muevan bien.
+##
+##   "golpe" -> oclusiva (t, k, d, z): silencio y despues un chasquido. El silencio es la
+##              parte que importa; es lo que el oido lee como "empezo una silaba nueva".
+##   "aire"  -> fricativa (j, s, h): soplido que se funde con la vocal.
+##   "nasal" -> m, n: el primer formante se hunde y el volumen baja un momento.
+##   ""      -> la vocal entra directo.
+static func _voz(silabas: Array, f0_pico: float, escala: float,
+		aspereza: float = 0.12) -> PackedFloat32Array:
+	var dur := 0.08
+	for s: Array in silabas:
+		dur += s[1] as float
+	var n_total: int = int(dur * MIX_RATE)
+	var p1 := PackedFloat32Array()
+	p1.resize(n_total)
+	var p2 := PackedFloat32Array()
+	p2.resize(n_total)
+	var p3 := PackedFloat32Array()
+	p3.resize(n_total)
+	var env := PackedFloat32Array()
+	env.resize(n_total)
+	var ruidoso := PackedFloat32Array()
+	ruidoso.resize(n_total)
+
+	# --- Pistas de formante y envolvente, silaba por silaba ---
+	var t0 := 0.0
+	for k: int in range(silabas.size()):
+		var sil: Array = silabas[k]
+		var vocal: String = sil[0]
+		var largo: float = sil[1]
+		var ataque: String = sil[2]
+		var f: Array = VOCALES[vocal]
+		var previa: Array = f if k == 0 else VOCALES[(silabas[k - 1] as Array)[0] as String]
+		var desde: int = int(t0 * MIX_RATE)
+		var hasta: int = mini(n_total, int((t0 + largo) * MIX_RATE))
+
+		# Cuanto dura la consonante antes de que entre la vocal.
+		# LA TRANSICION SE ACORTA EN LAS SILABAS CORTAS.
+		#
+		# 45 ms es lo que tarda una boca de verdad, pero las silabas de "mu-da mu-da" duran
+		# 100 ms de vocal: la transicion se comia la mitad y la vocal nunca llegaba a su
+		# lugar. Medido, las tres "a" de MUDA se reconocian como "o", que es exactamente la
+		# vocal por la que pasa la "u" camino a la "a".
+		var pre := 0.0
+		if ataque == "golpe":
+			pre = 0.032
+		elif ataque == "aire":
+			pre = 0.042
+		elif ataque == "nasal":
+			pre = 0.035
+
+		var desliz: float = minf(TRANSICION, (largo - pre) * 0.35)
+		for i: int in range(desde, hasta):
+			var t: float = float(i) / MIX_RATE - t0
+			# La boca no salta de una vocal a la otra: se desliza. El deslizamiento
+			# arranca DESPUES de la consonante, porque la consonante es justamente el
+			# momento en que la boca esta cerrada.
+			var mezcla: float = clampf((t - pre) / desliz, 0.0, 1.0)
+			p1[i] = lerpf(previa[0] as float, f[0] as float, mezcla) * escala
+			p2[i] = lerpf(previa[1] as float, f[1] as float, mezcla) * escala
+			p3[i] = lerpf(previa[2] as float, f[2] as float, mezcla) * escala
+
+			var a := 1.0
+			if t < pre:
+				var q: float = t / maxf(pre, 0.0001)
+				if ataque == "golpe":
+					# Silencio, y recien al final el chasquido. Es el silencio el que
+					# marca la silaba; el chasquido solo la hace sonar dura.
+					a = 0.0 if q < 0.72 else 1.4
+					ruidoso[i] = 1.0 if q >= 0.72 else 0.0
+				elif ataque == "aire":
+					a = q * 0.55
+					ruidoso[i] = 1.0 - q * 0.5
+				elif ataque == "nasal":
+					a = 0.35 + q * 0.4
+					# Nasal: el primer formante se hunde, que es lo que distingue una
+					# "n" de la vocal que viene despues.
+					p1[i] = lerpf(260.0 * escala, p1[i], q)
+			else:
+				var resto: float = (t - pre) / maxf(largo - pre, 0.0001)
+				# Cae hacia el final de la silaba. Sin esta caida las silabas se pegan.
+				a = 1.0 - 0.5 * pow(clampf((resto - 0.55) / 0.45, 0.0, 1.0), 1.5)
+			env[i] = a
+		t0 += largo
+
+	# Cola: la ultima vocal se apaga sola en vez de cortarse.
+	var ultima: Array = silabas[silabas.size() - 1]
+	var f_ult: Array = VOCALES[ultima[0] as String]
+	for i: int in range(int(t0 * MIX_RATE), n_total):
+		var q: float = (float(i) / MIX_RATE - t0) / 0.08
+		p1[i] = (f_ult[0] as float) * escala
+		p2[i] = (f_ult[1] as float) * escala
+		p3[i] = (f_ult[2] as float) * escala
+		env[i] = maxf(0.0, 0.5 * (1.0 - q))
+
+	# --- La fuente: cuerdas vocales mas aire ---
+	var fuente := _vacio(dur)
+	var fase := 0.0
+	for i: int in range(n_total):
+		var t: float = float(i) / MIX_RATE
+		var p: float = t / dur
+		# El tono de un grito: se dispara y despues se desinfla. Es lo que separa gritar
+		# de hablar, y sin la caida final suena a robot leyendo.
+		var f0: float = f0_pico * (0.72 + 0.28 * (1.0 - exp(-p * 14.0)) - 0.30 * p * p)
+		f0 *= 1.0 + sin(TAU * 5.2 * t) * 0.02
+		fase += f0 / float(MIX_RATE)
+		var aire: float = _ruido() * (aspereza + ruidoso[i] * 0.85)
+		fuente[i] = (_sierra(fase) * 0.85 + aire) * env[i]
+
+	# PREENFASIS PARA LOS FORMANTES DE ARRIBA, y sin esto no se entiende una palabra.
+	#
+	# Un diente de sierra pierde 6 dB por octava: el armonico numero diez ya viene diez
+	# veces mas debil que el primero. F1 vive abajo y sale fuerte, pero F2 y F3 viven
+	# arriba y quedan enterrados —medido: las seis palabras daban F2 entre 600 y 800 Hz
+	# SIN IMPORTAR la vocal, o sea que la "i" y la "u" salian identicas—.
+	#
+	# Y F2 es justamente el formante que distingue las vocales entre si. F1 dice cuan
+	# abierta esta la boca; F2 dice si la lengua esta adelante o atras, que es lo que
+	# separa "i" de "u". Con F2 aplastado no hay palabras, hay un quejido con ritmo.
+	#
+	# La derivada de primer orden sube 6 dB por octava y cancela exactamente la caida.
+	# Es ademas lo que fisicamente hace una boca: los labios radian la derivada del flujo
+	# de aire, no el flujo.
+	#
+	# Y LOS TRES FORMANTES TIENEN QUE LEER DE ACA, no solo los de arriba.
+	#
+	# Estuvo un rato con F1 leyendo la fuente cruda y F2/F3 la preenfatizada, que parecia
+	# lo razonable —subir solo lo que hace falta— y no servia de nada: el preenfasis no da
+	# una ventaja absoluta sino RELATIVA dentro de la misma señal, asi que si F1 lee otra
+	# copia el balance entre ellos no cambia. Peor: a 2650 Hz el filtro vale 0.51, o sea
+	# que F2 perdia 6 dB en vez de ganar. Medido, F2 quedaba 31 dB debajo de F1 cuando en
+	# una voz de verdad son 10 o 20.
+	var brillo := _vacio(dur)
+	var previo_x := 0.0
+	for i: int in range(n_total):
+		brillo[i] = fuente[i] - previo_x * 0.97
+		previo_x = fuente[i]
+
+	var out := _vacio(dur)
+	# Amplitudes de formante de manual: F1 manda, F2 algo mas de la mitad, F3 un cuarto.
+	# Ahora que los tres estan normalizados en el pico, estos numeros significan eso.
+	# LOS ANCHOS DE BANDA, que son lo que decide si dos vocales se confunden.
+	#
+	# El ancho de un resonador de dos polos es (1-r)·frecuencia_de_muestreo/pi. Con r=0.976
+	# eso da 244 Hz, y el F2 de la "a" y el de la "o" estan a 242 Hz uno del otro: los dos
+	# picos se solapaban casi por completo y el oido no tenia con que separarlos. Medido,
+	# cuatro "a" se reconocian como "o".
+	#
+	# Una garganta de verdad tiene F1 de unos 70 Hz de ancho y F2 de unos 120. Estos son
+	# esos: no es afinar a ojo, es dejar de tener formantes tres veces mas anchos que los
+	# de una persona.
+	_resonar_movil(out, brillo, p1, 0.9932, 1.0)
+	_resonar_movil(out, brillo, p2, 0.9882, 0.62)
+	_resonar_movil(out, brillo, p3, 0.9820, 0.26)
+	# Saturacion suave y no fuerte: el tanh distorsiona F1 —que es el mas potente— y esos
+	# armonicos nuevos caen justo encima de F2. Apretar de mas vuelve a tapar lo que el
+	# preenfasis acaba de destapar.
+	_saturar(out, 1.45)
+	_normalizar(out, 0.85)
+	_bordes(out, 2.0, 30.0)
+	return out
+
+
+## "¡JARONA!" — ja-ro-na.
+##
+## Agudo y con los formantes estirados: Flowery es chico, y una garganta chica resuena
+## mas arriba. Es lo que lo separa de Dio sin cambiar una sola silaba.
+## NO TAN AGUDO COMO PARECERIA, y no es una decision de gusto.
+##
+## Estuvo en 248 Hz, que es lo que uno elige para "personaje chico", y a ese tono las
+## vocales dejaban de distinguirse: medido, la "a" le ganaba a la "o" en su propia banda
+## por 0.7 dB, o sea nada. La razon es que una voz aguda muestrea el espectro con los
+## armonicos muy separados —a 248 Hz uno cada 248 Hz— y los formantes que hay que separar
+## para oir "ja-ro-na" estan a 290 Hz uno del otro: no entran entre dos armonicos.
+##
+## Es el mismo motivo por el que a una soprano no se le entiende la letra. A 200 Hz la
+## rejilla se hace bastante mas fina, sigue sonando chico al lado de los 124 de Dio, y
+## ahi si se entiende que dice.
+func _synth_voz_jarona() -> PackedFloat32Array:
+	return _voz([["a", 0.17, "aire"], ["o", 0.15, ""], ["a", 0.26, "nasal"]], 200.0, 1.14)
+
+
+## "¡HERE I COME!"
+func _synth_voz_here_i_come() -> PackedFloat32Array:
+	return _voz([["i", 0.15, "aire"], ["a", 0.12, ""], ["i", 0.09, ""],
+		["a", 0.24, "golpe"]], 206.0, 1.14)
+
+
+## "¡LAST JARONA!" — el mismo grito pero mas grande.
+##
+## Una octava abajo y los formantes encogidos: la garganta que lo dice es otra. Es el
+## ultimate, asi que tiene que sonar a que se solto algo que antes estaba guardado.
+func _synth_voz_last_jarona() -> PackedFloat32Array:
+	return _voz([["a", 0.20, ""], ["a", 0.15, "aire"], ["o", 0.15, ""],
+		["a", 0.34, "nasal"]], 176.0, 1.02, 0.18)
+
+
+## "¡MUDA MUDA MUDA!" — mu-da, tres veces, una por cada tanda de puñetazos.
+func _synth_voz_muda() -> PackedFloat32Array:
+	var silabas: Array = []
+	for _i: int in range(3):
+		silabas.append(["u", 0.10, "nasal"])
+		silabas.append(["a", 0.13, "golpe"])
+	# LA ESCALA NO BAJA TANTO COMO PARECERIA. Una voz grave lo es por el TONO —Dio anda
+	# por los 130 Hz contra los 200 de Flowery— y no por los formantes, que dependen del
+	# largo de la garganta. Estuvo en 0.90 y comprimia tanto las vocales que la "a" y la
+	# "o" se superponian: medido, las tres "a" de MUDA se reconocian como "o".
+	return _voz(silabas, 132.0, 0.97, 0.16)
+
+
+## "¡ZA WARUDO!" — za-wa-ru-do.
+func _synth_voz_za_warudo() -> PackedFloat32Array:
+	return _voz([["a", 0.20, "golpe"], ["a", 0.15, ""], ["u", 0.13, ""],
+		["o", 0.32, "golpe"]], 124.0, 0.97, 0.14)
+
+
+## "¡TOKI YO TOMARE!" — to-ki-yo-to-ma-re. La orden, no el nombre.
+##
+## Mas rapida y mas plana que ZA WARUDO a proposito: la primera es el anuncio y esta es
+## la orden que lo ejecuta. Si las dos se gritaran igual, la segunda sonaria a eco.
+func _synth_voz_toki() -> PackedFloat32Array:
+	return _voz([["o", 0.12, "golpe"], ["i", 0.12, "golpe"], ["o", 0.14, ""],
+		["o", 0.12, "golpe"], ["a", 0.13, "nasal"], ["e", 0.26, ""]], 118.0, 0.97, 0.13)
 
 
 # ------------------------------------------------------------------- Deltarune
@@ -428,67 +737,33 @@ func _synth_snowgrave() -> PackedFloat32Array:
 	return out
 
 
-## JARONA: el grito de Flowery.
-##
-## SINTESIS DE FORMANTES, que es la unica forma de que algo suene a voz.
-##
-## Un grito no es un tono con ruido encima —asi estaba antes y sonaba a alarma de horno—.
-## Es una fuente rica —las cuerdas vocales, aca un diente de sierra— pasada por las
-## resonancias de una garganta. Poniendo tres resonadores en las frecuencias de formante
-## de una "A" (730 / 1090 / 2440 Hz) el diente de sierra se convierte en una vocal, y
-## como el tono sube y despues cae, se lee como alguien gritando y no como una nota.
-func _synth_jarona() -> PackedFloat32Array:
-	var dur := 0.6
-	var fuente := _vacio(dur)
-	var n := fuente.size()
-	var fase := 0.0
-	for i: int in range(n):
-		var t := float(i) / MIX_RATE
-		var p := t / dur
-		# La curva de un grito: arranca, se dispara y despues se desinfla.
-		var f0: float = 190.0 + 210.0 * (1.0 - exp(-p * 11.0)) - 120.0 * p
-		# Vibrato: una voz nunca se queda quieta en una frecuencia.
-		f0 *= 1.0 + sin(TAU * 5.5 * t) * 0.022
-		fase += f0 / float(MIX_RATE)
-		var env: float = minf(1.0, p * 16.0) * exp(-p * 2.9)
-		# Un poco de aire mezclado con la fuente: es lo aspero de gritar fuerte.
-		fuente[i] = (_sierra(fase) * 0.8 + _ruido() * 0.12) * env
-	var out := _vacio(dur)
-	# Formantes de una "A" abierta.
-	_resonar(out, fuente, 730.0, 0.985, 1.0)
-	_resonar(out, fuente, 1090.0, 0.975, 0.55)
-	_resonar(out, fuente, 2440.0, 0.965, 0.22)
-	_saturar(out, 2.2)
-	_normalizar(out, 0.85)
-	_bordes(out, 2.0, 25.0)
-	return out
-
-
 ## LAST JARONA: el mismo grito una octava abajo, mas largo y con el mundo cayendose.
 ##
 ## Mismos formantes pero corridos hacia abajo: una garganta mas grande. Y debajo, un sub
 ## que entra tarde, que es lo que lo separa de "Jarona pero mas fuerte".
 func _synth_last_jarona() -> PackedFloat32Array:
+	# YA NO ES UNA VOZ, es lo que pasa DEBAJO de la voz.
+	#
+	# Era un grito de formantes una octava abajo, y ahora que el personaje dice "LAST
+	# JARONA" de verdad los dos se pisaban: dos gargantas distintas diciendo cosas
+	# distintas al mismo tiempo. Lo que hacia falta de este sonido no era la voz sino el
+	# peso, asi que queda el peso.
 	var dur := 1.5
-	var fuente := _vacio(dur)
-	var n := fuente.size()
-	var fase := 0.0
-	for i: int in range(n):
-		var t := float(i) / MIX_RATE
-		var p := t / dur
-		var f0: float = 105.0 + 150.0 * (1.0 - exp(-p * 8.0)) - 70.0 * p
-		f0 *= 1.0 + sin(TAU * 4.2 * t) * 0.03
-		fase += f0 / float(MIX_RATE)
-		var env: float = minf(1.0, p * 9.0) * exp(-p * 1.9)
-		fuente[i] = (_sierra(fase) * 0.8 + _ruido() * 0.16) * env
 	var out := _vacio(dur)
-	_resonar(out, fuente, 590.0, 0.988, 1.0)
-	_resonar(out, fuente, 900.0, 0.978, 0.6)
-	_resonar(out, fuente, 2100.0, 0.968, 0.25)
+	var n := out.size()
+	var barrido := _vacio(dur)
 	for i: int in range(n):
 		var t := float(i) / MIX_RATE
 		var p := t / dur
-		out[i] += sin(TAU * lerpf(70.0, 34.0, p) * t) * 0.75 * smoothstep(0.05, 0.4, p) * exp(-p * 2.0)
+		# El sub que cae: es el suelo yendose.
+		out[i] = sin(TAU * lerpf(78.0, 30.0, p) * t) * 0.85 * smoothstep(0.0, 0.12, p) * exp(-p * 1.8)
+		# Segundo grave apenas desafinado: el batido entre los dos es lo que hace que no
+		# suene a una nota sino a una masa.
+		out[i] += sin(TAU * lerpf(83.0, 32.5, p) * t) * 0.45 * smoothstep(0.02, 0.2, p) * exp(-p * 1.7)
+		barrido[i] = _ruido() * pow(1.0 - p, 1.4) * 0.5
+	_pasabajos(barrido, 700.0)
+	for i: int in range(n):
+		out[i] += barrido[i]
 	_saturar(out, 2.4)
 	_normalizar(out, 0.95)
 	_bordes(out, 3.0, 50.0)

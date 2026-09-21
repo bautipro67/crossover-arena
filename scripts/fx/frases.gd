@@ -16,7 +16,7 @@ extends RefCounted
 ## el grito ES el nombre del movimiento, y si se gritara en cada disparo dejaria de
 ## leerse como un anuncio para ser ruido de fondo.
 
-## Frases por habilidad. Cada una es [texto, retardo en segundos].
+## Frases por habilidad. Cada una es [texto, retardo en segundos, voz].
 ##
 ## El retardo existe por ZA WARUDO, que son dos frases: el nombre y despues la orden
 ## ("toki yo tomare", "tiempo, detente"). Las dos, en ese orden, con el tiempo parandose
@@ -25,13 +25,14 @@ const LINEAS: Dictionary = {
 	# --- FLOWERY (Deltarune) ---
 	# Los nombres de sus movimientos son nombres de ataques de anime inventados, y los
 	# grita enteros. "Jarona" es el que repite antes de cada embestida.
-	&"jarona": [["¡JARONA!", 0.0]],
-	&"here_i_come": [["¡HERE I COME!", 0.0]],
-	&"last_jarona": [["¡LAST JARONA!", 0.0]],
+	&"jarona": [["¡JARONA!", 0.0, &"voz_jarona"]],
+	&"here_i_come": [["¡HERE I COME!", 0.0, &"voz_here_i_come"]],
+	&"last_jarona": [["¡LAST JARONA!", 0.0, &"voz_last_jarona"]],
 	# --- DIO (JoJo) ---
-	&"muda_rush": [["¡MUDA MUDA MUDA!", 0.0]],
-	&"stand_barrage": [["¡MUDAMUDAMUDAMUDA!", 0.0]],
-	&"za_warudo": [["¡ZA WARUDO!", 0.0], ["¡TOKI YO TOMARE!", 0.75]],
+	&"muda_rush": [["¡MUDA MUDA MUDA!", 0.0, &"voz_muda"]],
+	&"stand_barrage": [["¡MUDAMUDAMUDAMUDA!", 0.0, &"voz_muda"]],
+	&"za_warudo": [["¡ZA WARUDO!", 0.0, &"voz_za_warudo"],
+		["¡TOKI YO TOMARE!", 0.75, &"voz_toki"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el
@@ -66,12 +67,13 @@ static func decir(caster: Node, ability_id: StringName) -> void:
 	for linea: Array in lineas:
 		var texto := linea[0] as String
 		var retardo := linea[1] as float
+		var voz := linea[2] as StringName
 		if retardo <= 0.0:
-			caster.call("avisar_grito", texto)
+			caster.call("avisar_grito", texto, voz)
 			continue
 		var tree := caster.get_tree()
 		if tree == null:
 			continue
 		await tree.create_timer(retardo).timeout
 		if is_instance_valid(caster):
-			caster.call("avisar_grito", texto)
+			caster.call("avisar_grito", texto, voz)
