@@ -79,6 +79,7 @@ var _players: Dictionary = {}
 var _dummy_spawns: Dictionary = {}
 ## Numerador de los bloques de cobertura. Ver _bloque().
 var _cover_index: int = 0
+var _colina: MeshInstance3D = null
 
 var _floor_material: StandardMaterial3D = null
 var _floor_alt_material: StandardMaterial3D = null
@@ -113,6 +114,10 @@ func _ready() -> void:
 			_spawn_dummies()
 			# El panel puede pedir otra cantidad en cualquier momento.
 			Practica.bots_a_rehacer.connect(_on_bots_a_rehacer)
+		if Modos.actual == Modos.COLINA:
+			_construir_colina()
+		if not Modos.respiro.is_connected(_on_respiro):
+			Modos.respiro.connect(_on_respiro)
 	else:
 		# Avisamos al servidor que ya tenemos la arena armada y podemos recibir spawns.
 		_srv_client_ready.rpc_id(1)
@@ -939,7 +944,10 @@ func _crear_bot(id: int, pos: Vector3, character_id: StringName) -> void:
 	bot.rotation.y = 0.0
 	bot.bot_look_yaw = 0.0
 	bot.setup_character(data)
-	bot.health.set_max(DUMMY_HEALTH)
+	# La vida la decide el MODO. 170 era el numero de la practica —un maniqui que aguanta
+	# mientras ensayas— y en un modo que se puede perder estaba al reves: medido, un
+	# jugador de habilidad de bot no mataba ni uno en cuarenta segundos.
+	bot.health.set_max(Modos.vida_bot() if Net.solo_mode else DUMMY_HEALTH)
 
 	# El servidor es el dueño de las habilidades del bot.
 	#
@@ -968,6 +976,68 @@ func _crear_bot(id: int, pos: Vector3, character_id: StringName) -> void:
 ## un bot cruzado delante de la camara.
 static func set_bots_active(active: bool) -> void:
 	BotBrain.globally_enabled = active
+
+
+## La zona de Rey de la Colina, y el reloj que corre solo cuando el jugador esta adentro.
+##
+## Va en la arena y no en Modos porque hay que DIBUJARLA y hay que medir una distancia
+## contra un jugador: las dos cosas son de acá. Modos solo recibe "esta adentro, si o no".
+func _construir_colina() -> void:
+	var anillo := MeshInstance3D.new()
+	anillo.name = "ZonaColina"
+	var toro := TorusMesh.new()
+	toro.inner_radius = Modos.RADIO_COLINA - 0.35
+	toro.outer_radius = Modos.RADIO_COLINA
+	anillo.mesh = toro
+	# Sin sombra y sin profundidad: es una marca en el piso, no un objeto con el que se
+	# choca. Si proyectara sombra se leeria como una pared baja.
+	anillo.material_override = Art.glow(Color(1.0, 0.82, 0.30), 2.4)
+	anillo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(anillo)
+	anillo.position = Vector3(0.0, 0.08, 0.0)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.82, 0.35)
+	luz.light_energy = 2.2
+	luz.omni_range = Modos.RADIO_COLINA * 2.2
+	luz.shadow_enabled = false
+	add_child(luz)
+	luz.position = Vector3(0.0, 3.0, 0.0)
+	_colina = anillo
+
+
+func _physics_process(delta: float) -> void:
+	if not Net.is_server() or Modos.actual != Modos.COLINA:
+		return
+	var p := get_local_player()
+	if p == null or p.health.is_dead:
+		Modos.avanzar_colina(false, delta)
+		return
+	var lejos := Vector2(p.global_position.x, p.global_position.z).length()
+	var dentro := lejos <= Modos.RADIO_COLINA
+	Modos.avanzar_colina(dentro, delta)
+	if is_instance_valid(_colina):
+		# El anillo se enciende cuando estas adentro: es la unica confirmacion inmediata
+		# de que el reloj esta corriendo, y se ve sin sacar la vista de la pelea.
+		var mat := _colina.material_override as StandardMaterial3D
+		if mat != null:
+			var quiero := Color(0.45, 1.0, 0.55) if dentro else Color(1.0, 0.82, 0.30)
+			mat.albedo_color = mat.albedo_color.lerp(quiero, delta * 6.0)
+			mat.emission = mat.albedo_color
+
+
+## Respiro entre oleadas o entre jefes: el jugador vuelve a vida llena.
+func _on_respiro() -> void:
+	if not Net.is_server():
+		return
+	var p := get_local_player()
+	if p == null or p.health.is_dead:
+		return
+	p.health.revive_full()
+	p.stamina.restore_full()
+	p.status.clear_all()
+	FX.spawn_impact_burst(p, p.global_position + Vector3.UP, Color(0.5, 1.0, 0.6))
+	Sfx.play_3d(p, &"respawn", p.global_position, -3.0)
 
 
 func _on_bots_a_rehacer() -> void:

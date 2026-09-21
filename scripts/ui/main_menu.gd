@@ -82,15 +82,16 @@ func _ready() -> void:
 	grilla.add_theme_constant_override("v_separation", 6)
 	box.add_child(grilla)
 
-	var modos: Array = [
-		[Modos.SUPERVIVENCIA, "SUPERVIVENCIA", true],
-		[Modos.CONTRARRELOJ, "CONTRARRELOJ", true],
-		[Modos.ULTIMO_EN_PIE, "ÚLTIMO EN PIE", false],
-		[Modos.PRACTICA, "PRÁCTICA", false],
-	]
-	for m: Array in modos:
-		var id: StringName = m[0]
-		var boton := UITheme.make_button(m[1] as String, m[2] as bool)
+	# La lista sale de Modos y no esta escrita aca: agregar un modo alla lo hace aparecer
+	# aca solo, con su nombre y su descripcion. Van en el orden en que Modos los lista, que
+	# es del mas parejo al mas dificil — el que abre el juego por primera vez tiene que
+	# encontrar el duelo antes que la torre de jefes.
+	for id: StringName in Modos.LISTA:
+		var antes := Modos.actual
+		Modos.actual = id
+		var etiqueta := Modos.nombre().to_upper()
+		Modos.actual = antes
+		var boton := UITheme.make_button(etiqueta, id == Modos.DUELO)
 		boton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		boton.pressed.connect(func() -> void: modo_requested.emit(_name_field.text, id))
 		# Al pasar el mouse, el detalle abajo. Evita cuatro renglones de explicacion

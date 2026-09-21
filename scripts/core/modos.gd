@@ -13,27 +13,100 @@ extends Node
 signal estado_cambio()
 ## gano, titulo, detalle
 signal termino(gano: bool, titulo: String, detalle: String)
+## Se limpio una oleada. La arena cura al jugador cuando pasa.
+signal respiro()
 
 const PRACTICA: StringName = &"practica"
 const SUPERVIVENCIA: StringName = &"supervivencia"
 const CONTRARRELOJ: StringName = &"contrarreloj"
 const ULTIMO_EN_PIE: StringName = &"ultimo_en_pie"
 const ONLINE: StringName = &"online"
+const DUELO: StringName = &"duelo"
+const JEFES: StringName = &"jefes"
+const COLINA: StringName = &"colina"
+
+## Todos los offline, en el orden en que se muestran: del mas parejo al mas dificil.
+const LISTA: Array[StringName] = [DUELO, CONTRARRELOJ, COLINA, SUPERVIVENCIA,
+	ULTIMO_EN_PIE, JEFES, PRACTICA]
 
 ## Cuantas bajas pide contrarreloj.
-const META_CONTRARRELOJ: int = 20
+##
+## ERAN VEINTE Y ERA UNA BARBARIDAD. Medido: contra un bot de 55 de vida, una racha de
+## veinte son varios minutos de lo mismo. Un modo de velocidad tiene que durar lo que dura
+## una buena racha, no lo que dura la paciencia.
+const META_CONTRARRELOJ: int = 12
 ## Cuantos bots hay a la vez en contrarreloj.
 const BOTS_CONTRARRELOJ: int = 3
 ## Con cuantos empieza supervivencia y cuantos puede haber a la vez como maximo.
 const OLEADA_INICIAL: int = 2
 const TOPE_SIMULTANEOS: int = 6
-const BOTS_ULTIMO_EN_PIE: int = 5
+const BOTS_ULTIMO_EN_PIE: int = 4
+## Cuantos jefes seguidos, uno por vez.
+const JEFES_TOTAL: int = 5
+## Cuantos segundos hay que tener la zona en Rey de la Colina, y cuantos la disputan.
+const META_COLINA: float = 45.0
+const BOTS_COLINA: int = 3
+## Radio de la zona.
+const RADIO_COLINA: float = 9.0
+
+
+# ------------------------------------------------ Cuanto aguantan los enemigos
+#
+# ERA UN NUMERO SOLO PARA TODO, Y ESTABA PENSADO PARA LA PRACTICA: 170 de vida contra los
+# 100 del jugador, para que un maniqui aguante mientras ensayas combos. En un modo que se
+# puede PERDER eso esta al reves. Medido con un jugador de habilidad de bot contra esos
+# mismos bots: cero bajas en cuarenta segundos, ni siquiera uno contra uno. No era
+# dificil, era imposible.
+#
+# Ahora cada modo trae los suyos, y la practica se queda con los de antes porque ahi si
+# hacen falta.
+
+## Vida de cada enemigo en este modo.
+func vida_bot() -> float:
+	match actual:
+		PRACTICA: return 170.0
+		# Un duelo tiene que ser un duelo: aguanta bastante, pero se puede matar.
+		DUELO: return 130.0
+		# Arrancan blandos y engordan con la oleada. Que el modo suba de dificultad
+		# subiendo la VIDA y no solo la cantidad evita que la oleada 8 sea una pared de
+		# ocho cuerpos: son pocos y duros, que se pelea mejor que muchos y flojos.
+		SUPERVIVENCIA: return 70.0 + float(oleada) * 12.0
+		# Contrarreloj corre contra el reloj, no contra su vida: si aguantan mucho, el
+		# modo deja de ser una carrera y pasa a ser veinte peleas largas seguidas.
+		CONTRARRELOJ: return 55.0
+		# En la colina el objetivo no es matarlos: son una molestia que te quiere sacar del
+		# circulo. Poca vida para poder despejarla, no para farmearlos.
+		COLINA: return 75.0
+		ULTIMO_EN_PIE: return 85.0
+		# El ultimo jefe crece MENOS de lo que crecia. Con +70 por jefe, el quinto tenia 430
+		# de vida: mas de lo que un jugador saca antes de que se le acabe la suya, o sea una
+		# pared en vez de un final.
+		JEFES: return 140.0 + float(bajas) * 48.0
+	return 170.0
+
+
+## Cuanto pega un enemigo, como fraccion del daño normal.
+func daño_bot() -> float:
+	match actual:
+		PRACTICA: return GameConfig.BOT_DAMAGE_SCALE
+		DUELO: return 0.70
+		# Sube con las oleadas pero con techo: pasado cierto punto, mas daño no hace el
+		# modo mas interesante, solo lo corta antes.
+		SUPERVIVENCIA: return minf(0.40 + float(oleada) * 0.03, 0.62)
+		CONTRARRELOJ: return 0.38
+		COLINA: return 0.42
+		ULTIMO_EN_PIE: return 0.45
+		JEFES: return 0.55
+	return GameConfig.BOT_DAMAGE_SCALE
 
 var actual: StringName = ONLINE
 var activo: bool = false
 var bajas: int = 0
 var oleada: int = 0
 var tiempo: float = 0.0
+## Cuantos segundos lleva el jugador adentro del circulo, acumulados.
+var colina_avance: float = 0.0
+var colina_dentro: bool = false
 var _terminado: bool = false
 
 
@@ -63,6 +136,9 @@ func nombre() -> String:
 		SUPERVIVENCIA: return "Supervivencia"
 		CONTRARRELOJ: return "Contrarreloj"
 		ULTIMO_EN_PIE: return "Último en pie"
+		DUELO: return "Duelo"
+		JEFES: return "Torre de jefes"
+		COLINA: return "Rey de la colina"
 	return "En línea"
 
 
@@ -75,7 +151,13 @@ func descripcion() -> String:
 		CONTRARRELOJ:
 			return "%d bajas lo más rápido posible. Reapareces, pero el reloj no para." % META_CONTRARRELOJ
 		ULTIMO_EN_PIE:
-			return "%d contra uno. Nadie reaparece, ni ellos ni vos." % BOTS_ULTIMO_EN_PIE
+			return "%d contra uno, todos a la vez. Nadie reaparece." % BOTS_ULTIMO_EN_PIE
+		DUELO:
+			return "Uno contra uno, parejo. El mejor lugar para aprender un personaje."
+		JEFES:
+			return "%d enemigos, de a uno, cada uno más duro que el anterior." % JEFES_TOTAL
+		COLINA:
+			return "Aguantá %d segundos dentro del círculo. Si te salen, el reloj para." % int(META_COLINA)
 	return "Contra otros jugadores."
 
 
@@ -86,12 +168,15 @@ func bots_iniciales() -> int:
 		SUPERVIVENCIA: return OLEADA_INICIAL
 		CONTRARRELOJ: return BOTS_CONTRARRELOJ
 		ULTIMO_EN_PIE: return BOTS_ULTIMO_EN_PIE
+		DUELO: return 1
+		JEFES: return 1
+		COLINA: return BOTS_COLINA
 	return 0
 
 
 ## Vuelve el bot despues de morir?
 func reaparecen_bots() -> bool:
-	return actual == PRACTICA or actual == CONTRARRELOJ
+	return actual == PRACTICA or actual == CONTRARRELOJ or actual == COLINA
 
 
 ## Vuelve el jugador despues de morir?
@@ -99,7 +184,7 @@ func reaparecen_bots() -> bool:
 ## En supervivencia y en ultimo en pie, no: son modos que se pueden PERDER, y un modo que
 ## no se puede perder no se puede ganar tampoco.
 func reaparece_jugador() -> bool:
-	return actual != SUPERVIVENCIA and actual != ULTIMO_EN_PIE
+	return actual == PRACTICA or actual == CONTRARRELOJ or actual == ONLINE or actual == COLINA
 
 
 # --------------------------------------------------------------------- Partida
@@ -109,6 +194,8 @@ func iniciar(modo: StringName) -> void:
 	activo = es_offline() and modo != PRACTICA
 	bajas = 0
 	oleada = 1 if modo == SUPERVIVENCIA else 0
+	colina_avance = 0.0
+	colina_dentro = false
 	tiempo = 0.0
 	_terminado = false
 	estado_cambio.emit()
@@ -142,13 +229,48 @@ func bot_murio(vivos_restantes: int) -> int:
 			# Oleada limpia: viene la siguiente, una mas grande.
 			oleada += 1
 			estado_cambio.emit()
+			# Y EL JUGADOR SE CURA ENTRE OLEADAS.
+			#
+			# Sin esto el modo era una sola vida para toda la partida: cualquier error de la
+			# oleada 2 se pagaba en la 7, cuando ya no quedaba nada que hacer. Curar entre
+			# oleadas convierte "aguanta sin equivocarte nunca" en "aguanta cada oleada", que
+			# es lo que un modo de oleadas tiene que pedir.
+			respiro.emit()
 			return mini(OLEADA_INICIAL + oleada - 1, TOPE_SIMULTANEOS)
 		ULTIMO_EN_PIE:
 			if vivos_restantes <= 0:
 				_finalizar(true, "¡ÚLTIMO EN PIE!", "%d contra uno, en %s" % [
 					BOTS_ULTIMO_EN_PIE, reloj()])
 			return 0
+		DUELO:
+			_finalizar(true, "¡GANASTE EL DUELO!", "En %s" % reloj())
+			return 0
+		JEFES:
+			if bajas >= JEFES_TOTAL:
+				_finalizar(true, "¡TORRE COMPLETADA!", "%d jefes en %s" % [bajas, reloj()])
+				return 0
+			# Un respiro entre jefes: son peleas largas, y encadenarlas sin curar hace que la
+			# torre la decida el primero en vez del ultimo.
+			respiro.emit()
+			return 1
 	return 0
+
+
+## La llama la arena cada frame de fisica mientras se juega Rey de la Colina.
+##
+## EL RELOJ PARA AL SALIR, no retrocede. Retroceder castiga dos veces —te sacaron Y
+## perdiste lo hecho— y convierte una salida mala en una partida perdida sin remedio. Que
+## se pause ya alcanza para que valga la pena volver.
+func avanzar_colina(dentro: bool, delta: float) -> void:
+	if not activo or _terminado or actual != COLINA:
+		return
+	colina_dentro = dentro
+	if not dentro:
+		return
+	colina_avance += delta
+	if colina_avance >= META_COLINA:
+		_finalizar(true, "¡REY DE LA COLINA!", "Aguantaste %d segundos en %s" % [
+			int(META_COLINA), reloj()])
 
 
 ## La llama la arena cuando muere el jugador local.
@@ -159,6 +281,11 @@ func jugador_murio() -> void:
 		SUPERVIVENCIA:
 			_finalizar(false, "OLEADA %d" % oleada,
 				"%d bajas antes de caer" % bajas)
+		DUELO:
+			_finalizar(false, "PERDISTE EL DUELO", "Probá con otro personaje.")
+		JEFES:
+			_finalizar(false, "JEFE %d" % (bajas + 1), "Llegaste al jefe %d de %d" % [
+				bajas + 1, JEFES_TOTAL])
 		ULTIMO_EN_PIE:
 			_finalizar(false, "TE GANARON", "%d de %d" % [bajas, BOTS_ULTIMO_EN_PIE])
 
@@ -189,4 +316,14 @@ func marcador() -> String:
 			return "%d / %d    %s" % [bajas, META_CONTRARRELOJ, reloj()]
 		ULTIMO_EN_PIE:
 			return "QUEDAN %d    %s" % [maxi(0, BOTS_ULTIMO_EN_PIE - bajas), reloj()]
+		DUELO:
+			return "DUELO    %s" % reloj()
+		JEFES:
+			return "JEFE %d / %d    %s" % [mini(bajas + 1, JEFES_TOTAL), JEFES_TOTAL, reloj()]
+		COLINA:
+			# Dice tambien si el reloj esta corriendo: sin eso, estar afuera se ve igual que
+			# estar adentro y no se entiende por que no avanza.
+			return "%s  %d / %d s" % [
+				"EN LA ZONA" if colina_dentro else "FUERA DE LA ZONA",
+				int(colina_avance), int(META_COLINA)]
 	return ""

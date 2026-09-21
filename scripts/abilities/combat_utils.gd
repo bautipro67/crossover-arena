@@ -80,7 +80,12 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 		# Y encima de eso, lo que diga el panel de practica. En 0 los bots siguen
 		# atacando y animando igual pero no sacan vida: es el modo para ensayar esquives
 		# sin morirse cada diez segundos.
-		mult *= GameConfig.BOT_DAMAGE_SCALE * Practica.daño_bots
+		# LO DECIDE EL MODO, no una constante sola para todo el juego.
+		#
+		# 0.45 era el numero de la practica, donde los bots tienen que pegar flojo para
+		# poder ensayar sin morirse. En un duelo eso convierte al rival en un muñeco, y en
+		# supervivencia hace que la oleada 9 pegue igual que la 1.
+		mult *= Modos.daño_bot() * Practica.daño_bots
 	var final_amount := amount * mult
 	var was_alive := not health.is_dead
 	health.apply_damage(final_amount, source_id)
@@ -96,7 +101,7 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 	# daño del modo practica. Cobrando los recursos sobre el golpe sin rebajar, el bot
 	# junta su ultimate al mismo ritmo que lo juntaria un rival de verdad —que es contra
 	# lo que uno quiere practicar— y sigue pegando flojo.
-	var para_recursos := amount * (mult / maxf(0.01, GameConfig.BOT_DAMAGE_SCALE * Practica.daño_bots)) if source_id < 0 else final_amount
+	var para_recursos := amount * (mult / maxf(0.01, Modos.daño_bot() * Practica.daño_bots)) if source_id < 0 else final_amount
 
 	if feeds_resources:
 		var attacker := find_player_by_peer(target, source_id)

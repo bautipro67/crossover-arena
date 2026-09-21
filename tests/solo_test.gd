@@ -346,6 +346,74 @@ func _test_progresion() -> void:
 	_check(not Pase.hay_algo_para_reclamar(), "y despues no queda nada pendiente")
 
 	# --- Modos ---
+	#
+	# TODOS TIENEN QUE SER GANABLES, y esa es la queja que los origino: la primera version
+	# les daba a los enemigos los 170 de vida de la sala de practica, que es el numero de
+	# un maniqui para ensayar, no de un rival. Contra eso un modo que se puede perder no es
+	# dificil, es imposible.
+	for m: StringName in Modos.LISTA:
+		Modos.iniciar(m)
+		var nom := Modos.nombre()
+		var desc := Modos.descripcion()
+		_check(not nom.is_empty() and not desc.is_empty() and nom != "En línea",
+			"el modo %s se presenta con nombre y explicacion" % m)
+		if m == Modos.PRACTICA:
+			continue
+		_check(Modos.bots_iniciales() >= 1, "%s arranca con enemigos" % m)
+		# El tope es la vida del maniqui de practica. Un rival de un modo que se puede
+		# perder no puede aguantar MAS que un muñeco de entrenamiento.
+		_check(Modos.vida_bot() <= 170.0,
+			"%s: sus enemigos no aguantan mas que un maniqui (%.0f)" % [m, Modos.vida_bot()])
+		_check(Modos.daño_bot() <= 0.75,
+			"%s: sus enemigos no pegan como un jugador entero (x%.2f)" % [m, Modos.daño_bot()])
+
+	# El que no reaparece tiene que curarse entre etapas. Sin eso el modo es una sola vida
+	# para toda la partida: un error de la oleada 2 se paga en la 7, cuando ya no hay nada
+	# que hacer.
+	Modos.iniciar(Modos.SUPERVIVENCIA)
+	var hubo_respiro := [false]
+	Modos.respiro.connect(func() -> void: hubo_respiro[0] = true)
+	Modos.bot_murio(0)
+	_check(hubo_respiro[0], "supervivencia cura al jugador al limpiar una oleada")
+
+	# --- Duelo: un solo rival, y matarlo gana ---
+	Modos.iniciar(Modos.DUELO)
+	var gano_duelo := [false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void: gano_duelo[0] = g)
+	_check(Modos.bots_iniciales() == 1, "el duelo es uno contra uno")
+	Modos.bot_murio(0)
+	_check(gano_duelo[0], "y matarlo gana el duelo")
+
+	# --- Torre de jefes: de a uno, y cada uno mas duro ---
+	Modos.iniciar(Modos.JEFES)
+	var primero := Modos.vida_bot()
+	_check(Modos.bots_iniciales() == 1, "la torre manda un jefe por vez")
+	_check(Modos.bot_murio(0) == 1, "y al caer uno viene el siguiente")
+	_check(Modos.vida_bot() > primero,
+		"cada jefe aguanta mas que el anterior (%.0f -> %.0f)" % [primero, Modos.vida_bot()])
+	# Pero no tanto como para volverse una pared: el ultimo tiene que seguir siendo
+	# matable dentro de lo que dura la vida del jugador.
+	Modos.bajas = Modos.JEFES_TOTAL - 1
+	_check(Modos.vida_bot() <= 360.0,
+		"y el ultimo sigue siendo matable (%.0f de vida)" % Modos.vida_bot())
+
+	# --- Rey de la colina: el reloj corre solo adentro ---
+	Modos.iniciar(Modos.COLINA)
+	Modos.avanzar_colina(false, 5.0)
+	_check(is_zero_approx(Modos.colina_avance), "fuera del circulo el reloj no corre")
+	Modos.avanzar_colina(true, 5.0)
+	_check(Modos.colina_avance > 4.9, "y adentro si (%.1f s)" % Modos.colina_avance)
+	# Salir PAUSA, no retrocede: retroceder castiga dos veces y convierte una salida mala
+	# en una partida perdida sin remedio.
+	var guardado := Modos.colina_avance
+	Modos.avanzar_colina(false, 3.0)
+	_check(is_equal_approx(Modos.colina_avance, guardado),
+		"salirse pausa el reloj pero no lo hace retroceder")
+	var gano_colina := [false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void: gano_colina[0] = g)
+	Modos.avanzar_colina(true, Modos.META_COLINA)
+	_check(gano_colina[0], "y completar los segundos gana")
+
 	Modos.iniciar(Modos.ULTIMO_EN_PIE)
 	_check(Modos.bots_iniciales() == Modos.BOTS_ULTIMO_EN_PIE and not Modos.reaparecen_bots()
 		and not Modos.reaparece_jugador(),
@@ -604,7 +672,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 91
+const CHEQUEOS_MINIMOS: int = 127
 
 
 func _finish() -> void:
