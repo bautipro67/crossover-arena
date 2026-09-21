@@ -15,6 +15,10 @@ const MUESTREO: float = 0.25
 
 var _main: Node = null
 var _muestras: Dictionary = {}
+## A menos de esto dos bots se tapan entre si y no podes elegir a cual pegarle.
+const ENCIMADOS: float = 1.5
+var _encimados: float = 0.0
+var _min_entre_bots: float = 9999.0
 
 
 func _ready() -> void:
@@ -57,9 +61,15 @@ func _run() -> void:
 				"cerca": 0.0,           # tiempo a distancia de pegar
 				"giros": 0,             # cambios bruscos de direccion
 				"dir_prev": Vector3.ZERO,
+				"esquives": 0,          # dashes propios, no empujones
+				"ultimates": 0,
+				"dasheaba": false,
 			}
-			p.caster.ability_used.connect(func(_i: int) -> void:
-				_muestras[p.name]["ataques"] += 1)
+			p.caster.ability_used.connect(func(i: int) -> void:
+				_muestras[p.name]["ataques"] += 1
+				# El slot 3 es el ultimate en los tres kits.
+				if i == 3:
+					_muestras[p.name]["ultimates"] += 1)
 
 	# Estado real del servidor de navegacion: si el mapa esta vacio, el agente jamas va
 	# a devolver un camino y todo lo demas que midamos es ruido.
@@ -80,6 +90,19 @@ func _run() -> void:
 	while t < DURACION:
 		await get_tree().create_timer(MUESTREO).timeout
 		t += MUESTREO
+		# Lo mas cerca que estuvieron dos bots en ESTA muestra.
+		var par_mas_cerca := 9999.0
+		for i: int in range(bots.size()):
+			for j: int in range(i + 1, bots.size()):
+				if not is_instance_valid(bots[i]) or not is_instance_valid(bots[j]):
+					continue
+				par_mas_cerca = minf(par_mas_cerca,
+					bots[i].global_position.distance_to(bots[j].global_position))
+		if par_mas_cerca < 9000.0:
+			_min_entre_bots = minf(_min_entre_bots, par_mas_cerca)
+			if par_mas_cerca < ENCIMADOS:
+				_encimados += MUESTREO
+
 		for bot: Player in bots:
 			if not is_instance_valid(bot):
 				continue
@@ -95,6 +118,13 @@ func _run() -> void:
 			m["dist_max"] = maxf(m["dist_max"], d)
 			if d <= BotBrain.MELEE_RANGE + 0.6:
 				m["cerca"] += MUESTREO
+			# Dashes: se cuenta el FLANCO, el frame en que arranca uno. Contando "esta
+			# dasheando" saldrian veinte por dash, uno por muestra.
+			var dasheando: bool = float(bot.get("_dash_left")) > 0.0
+			if dasheando and not bool(m["dasheaba"]):
+				m["esquives"] += 1
+			m["dasheaba"] = dasheando
+
 			var dir: Vector3 = bot.bot_move_dir
 			if not dir.is_zero_approx() and not m["dir_prev"].is_zero_approx():
 				if dir.dot(m["dir_prev"]) < -0.3:
@@ -114,7 +144,9 @@ func _run() -> void:
 		print("   distancia al jugador .. min %.1f m / max %.1f m" % [m["dist_min"], m["dist_max"]])
 		print("   a distancia de pegar .. %.1f s  (%.0f%%)" % [
 			m["cerca"], 100.0 * m["cerca"] / DURACION])
-		print("   ataques tirados ....... %d" % m["ataques"])
+		print("   ataques tirados ....... %d  (de esos, %d ultimates)" % [
+			m["ataques"], m["ultimates"]])
+		print("   esquives (dash) ....... %d" % m["esquives"])
 		print("   cambios bruscos de rumbo %d" % m["giros"])
 
 	# Y cuanto le sacaron al jugador entre los tres.
@@ -124,11 +156,12 @@ func _run() -> void:
 		perdida, DURACION, perdida / DURACION])
 
 	# Amontonamiento: si los tres estan en el mismo punto, se tapan y pelean como uno.
-	if bots.size() >= 2:
-		var minimo := 9999.0
-		for i: int in range(bots.size()):
-			for j: int in range(i + 1, bots.size()):
-				minimo = minf(minimo, bots[i].global_position.distance_to(bots[j].global_position))
-		print("distancia minima ENTRE bots al final: %.1f m" % minimo)
+	#
+	# MEDIDO A LO LARGO DE TODA LA PARTIDA, no en el ultimo instante. Mirar solo el final
+	# daba numeros que saltaban de 0.2 a 2.4 entre corridas segun donde cayera el ultimo
+	# frame, y con eso no se puede decidir nada.
+	print("")
+	print("amontonamiento: %.0f%% del tiempo hay dos bots a menos de %.1f m  (lo mas cerca: %.1f m)" % [
+		100.0 * _encimados / DURACION, ENCIMADOS, _min_entre_bots])
 
 	get_tree().quit(0)

@@ -10,6 +10,11 @@ extends Node
 
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
 
+## Un peer que no es de nadie. POSITIVO a proposito: con uno negativo, deal_damage lo
+## tomaria por un bot y le aplicaria la rebaja de daño del modo practica, que es lo que
+## ya rompio una vez el chequeo del escudo.
+const FUENTE_NEUTRA: int = 99
+
 var _failures: Array[String] = []
 var _checks: int = 0
 
@@ -56,6 +61,8 @@ func _run() -> void:
 	await _test_defensa_de_hielo(player, arena)
 	await _test_rafaga_del_stand(player, arena)
 	await _test_flowery(player, arena)
+	Arena.set_bots_active(true)
+	await _test_practica(player, arena)
 	_test_arena(arena)
 
 	_finish()
@@ -501,7 +508,6 @@ func _test_defensa_de_hielo(player: Player, arena: Arena) -> void:
 	# GameConfig.BOT_DAMAGE_SCALE. Usando enemy.peer_id (-77) estos numeros salian a la
 	# mitad y el "golpe grande" ya no reventaba el escudo. Aca se prueba la mecanica del
 	# escudo, no el balance de los bots, asi que el golpe viene de un peer neutro.
-	const FUENTE_NEUTRA := 99
 	var hp_before := player.health.current
 	var shield_before := player.health.shield
 	CombatUtils.deal_damage(player, 20.0, FUENTE_NEUTRA)
@@ -627,7 +633,57 @@ func _spawn_dummy(arena: Arena, at: Vector3) -> Player:
 
 # ----------------------------------------------------------------- Flowery
 
+## Vuelve a plantar a Flowery en su marca con la victima justo adelante.
+##
+## HACE FALTA ANTES DE CADA SUB-CHEQUEO, y aprendido por las malas. Las embestidas
+## encadenadas lo dejan a cuarenta metros y mirando para cualquier lado, asi que poner a
+## la victima con el `rumbo` del arranque la dejaba DETRAS suyo. El chequeo del
+## canalizado fallaba asi: Jarona embestia perfecto, nada mas que para el lado contrario
+## —el jugador apuntaba a (-0.76, 0.64) y la victima estaba en (+0.87, +0.50)—.
+##
+## La espera de 24 frames no es de mas: la direccion de la embestida sale de un rayo que
+## arranca EN LA CAMARA, y el brazo de la camara tarda varios frames en acomodarse
+## despues de un respawn.
+func _plantar_flowery(player: Player, victima: Player, puesto: Vector3, rumbo: Vector3,
+		distancia: float) -> void:
+	var yaw := atan2(-rumbo.x, -rumbo.z)
+	player.respawn_at(puesto, yaw)
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	player.status.clear_all()
+	victima.global_position = puesto + rumbo * distancia
+	victima.velocity = Vector3.ZERO
+	victima.health.revive_full()
+	victima.status.clear_all()
+	for _i: int in range(24):
+		await get_tree().physics_frame
+
+
 func _test_flowery(player: Player, arena: Arena) -> void:
+	# LOS BOTES AFUERA, Y NO ES UN PARCHE COSMETICO.
+	#
+	# Las embestidas de Flowery encadenadas recorren mas de cien metros en un mapa de
+	# noventa y dos, asi que lo llevan derecho encima de los tres bots de practica. Con
+	# los bots prendidos el jugador se moria A MITAD de JARONA y respawneaba en un punto
+	# de spawn, y el chequeo del canalizado fallaba porque el que tenia que atropellar a
+	# la victima estaba en la otra punta del mapa. El bug no era de la habilidad.
+	#
+	# (Que los bots maten a alguien que les pasa por al lado es exactamente lo que se
+	# les pidio; el problema es medir a Flowery con ellos encima.)
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+
+	# Y SE ESPERA UN RESPAWN AJENO ANTES DE MEDIR NADA.
+	#
+	# _test_ultimate_charge mata al jugador a proposito —para comprobar que morir no
+	# borra el medidor— y eso deja un respawn programado a 4 segundos. Esos 4 segundos
+	# vencian justo en la TERCERA PASADA de JARONA: el jugador aparecia de golpe en un
+	# punto de spawn a setenta metros, y "cuanto lo mueve la embestida" daba 103 metros
+	# de embestida que nunca existio. El chequeo pasaba en verde midiendo un
+	# teletransporte.
+	await get_tree().create_timer(GameConfig.RESPAWN_DELAY + 0.5).timeout
+
 	_check(CharacterDB.has_character(&"flowery"), "Flowery esta registrada")
 	var data := CharacterDB.get_character(&"flowery")
 	_check(data != null and data.origin_game == "Deltarune", "Flowery viene de Deltarune")
@@ -664,16 +720,83 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	for _i: int in range(24):
 		await get_tree().physics_frame
 
-	# --- LO QUE LA HACE DISTINTA: Jarona corta canalizados ---
+	# --- JARONA: embestida que REBOTA y vuelve ---
 	#
-	# Es la unica del juego que puede. Hasta ahora un Snowgrave empezado solo se frenaba
-	# congelando al que lo tiraba o rompiendole la linea de vision, o sea que solo Noelle
-	# podia frenar a Noelle.
-	var victima := _spawn_dummy(arena, player.global_position + rumbo * 4.0)
+	# Es la mecanica central y la que la hace distinta de cualquier otro golpe: su
+	# duracion la decide el rival. Si te quedas en el camino te pasa por encima varias
+	# veces; si te corres, la primera pasada al aire lo deja plantado.
+	var victima := _spawn_dummy(arena, player.global_position + rumbo * 5.0)
 	victima.setup_character(CharacterDB.get_character(&"noelle"))
 	victima.caster.owner_peer_id = Net.local_id()
+	victima.health.set_max(3000.0)
 	await get_tree().process_frame
 
+	var vida_antes := victima.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)  # JARONA
+
+	# SE MIDE EL CAMINO RECORRIDO, NO EL DESPLAZAMIENTO NETO.
+	#
+	# La embestida rebota y reapunta, o sea que OSCILA alrededor del rival: arranca y
+	# termina casi en el mismo punto aunque haya recorrido treinta metros. Midiendo
+	# "distancia entre el inicio y el final" daba 2.9 m y parecia que no se habia movido.
+	#
+	# Y el salto por frame es mejor detector de teletransporte que un tope de distancia
+	# total: a 30 m/s un frame son 50 cm, asi que cualquier salto de metros es un
+	# teletransporte y no una carrera. Antes esto se cubria con un tope a la distancia
+	# total, que un respawn ajeno ya habia burlado una vez.
+	#
+	# La ventana son 6 segundos y hacen falta: cada pasada son 0.58s entre ida, rebote y
+	# pausa, asi que con los 2.5s de antes entraban cuatro y el test no podia distinguir
+	# "se corto sola a las cuatro" de "se acabo el tiempo de mirar".
+	var recorrido := 0.0
+	var salto_max := 0.0
+	var previo := player.global_position
+	for _i: int in range(360):
+		await get_tree().physics_frame
+		var paso := previo.distance_to(player.global_position)
+		recorrido += paso
+		salto_max = maxf(salto_max, paso)
+		previo = player.global_position
+	var daño := vida_antes - victima.health.current
+	_check(recorrido > 12.0,
+		"JARONA es una embestida: recorre camino (%.1f m)" % recorrido)
+	_check(salto_max < 5.0,
+		"y lo recorre embistiendo, no teletransportandose (salto maximo %.2f m)" % salto_max)
+	_check(daño >= Jarona.DAMAGE * 1.5,
+		"rebota y vuelve a pegar: %.0f de daño, o sea mas de una pasada" % daño)
+	# LO QUE LA TERMINA ES FALLAR, NO UN CONTADOR. Estuvo topeada en 4 pasadas, que la
+	# convertia en "cuatro embestidas" en vez de "embiste hasta que lo esquives".
+	_check(daño > Jarona.DAMAGE * 2.0,
+		"y no se corta a las cuatro: siguio mientras seguia pegando (%.0f de daño)" % daño)
+	# Y EL TECHO, que es lo que la volvia rompedora.
+	#
+	# El blanco de este chequeo esta quieto y acorralado: come la cadena ENTERA, que es
+	# el peor caso posible. Con daño plano eran 210 contra los 100 de vida de un jugador,
+	# o sea un boton de matar. Con el decaimiento la cadena completa tiene que doler
+	# mucho y aun asi dejarte vivo, porque si no, no hay nada que jugar despues.
+	var vida_de_un_jugador := 100.0
+	_check(daño < vida_de_un_jugador,
+		"y la cadena ENTERA no alcanza para matar: %.0f contra %.0f de vida" % [
+			daño, vida_de_un_jugador])
+
+	# Y si no toca a nadie, se corta en la primera pasada en vez de seguir rebotando.
+	victima.global_position = player.global_position + rumbo * 60.0
+	await get_tree().process_frame
+	var solo_desde := player.global_position
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	for _i: int in range(150):
+		await get_tree().physics_frame
+	var recorrido_vacio := solo_desde.distance_to(player.global_position)
+	_check(recorrido_vacio < 14.0,
+		"una pasada al aire lo deja plantado (%.1f m, no cuatro pasadas)" % recorrido_vacio)
+
+	# --- Y atropellar corta canalizados ---
+	victima.health.set_max(3000.0)
+	await _plantar_flowery(player, victima, puesto, rumbo, 4.0)
 	victima.stamina.restore_full()
 	victima.ultimate.current = UltimateCharge.MAX_CHARGE
 	victima.caster.reset_state()
@@ -681,59 +804,51 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	await get_tree().process_frame
 	_check(victima.caster.is_channeling, "la victima esta canalizando Snowgrave")
 
-	var stamina_antes := victima.stamina.current
 	player.stamina.restore_full()
 	player.caster.reset_state()
-	player.caster.request_use(1)  # JARONA
-	await get_tree().process_frame
-	_check(not victima.caster.is_channeling, "JARONA le corta el canalizado")
-	_check(victima.stamina.current > stamina_antes,
-		"y le devuelve parte de la stamina al interrumpido (%.0f -> %.0f)" % [
-			stamina_antes, victima.stamina.current])
-
-	# --- La carga mueve de verdad y deja expuesta ---
-	victima.health.revive_full()
-	victima.status.clear_all()
-	player.status.clear_all()
-	var desde := player.global_position
-	var vida_victima := victima.health.current
-	player.stamina.restore_full()
-	player.caster.reset_state()
-	player.caster.request_use(2)  # Here I Come, San Francisco
+	player.caster.request_use(1)
 	for _i: int in range(40):
 		await get_tree().physics_frame
-	var recorrido := desde.distance_to(player.global_position)
-	_check(recorrido > 5.0, "la carga la desplaza de verdad (%.1f m)" % recorrido)
-	_check(victima.health.current < vida_victima,
-		"y atropella a lo que se cruza (%.0f -> %.0f)" % [vida_victima, victima.health.current])
+		if not victima.caster.is_channeling:
+			break
+	_check(not victima.caster.is_channeling, "la embestida le corta el canalizado")
 
-	await get_tree().create_timer(0.3).timeout
-	_check(player.status.is_vulnerable(), "al frenar queda EXPUESTA, que es el precio")
-	var normal := 1.0
-	_check(player.status.get_damage_taken_multiplier() > normal,
-		"expuesta recibe mas daño (x%.2f)" % player.status.get_damage_taken_multiplier())
+	# --- HERE I COME: si engancha, cadena de golpes ---
+	victima.health.set_max(3000.0)
+	await _plantar_flowery(player, victima, puesto, rumbo, 6.0)
 
-	# --- El ultimate pega mas fuerte cuanto mas cerca ---
-	#
-	# Es lo que le da contrajuego a un radio de 22 metros: sin caida, seria "aprieto Q
-	# y gana el que tenga mas rango".
-	var cerca := _spawn_dummy(arena, player.global_position + Vector3(3.0, 0.0, 0.0))
-	var lejos := _spawn_dummy(arena, player.global_position + Vector3(17.0, 0.0, 0.0))
-	await get_tree().process_frame
-	var vida_cerca := cerca.health.current
-	var vida_lejos := lejos.health.current
-	LastJarona.new().execute(player, player.global_position + Vector3.UP, Vector3.FORWARD)
-	await get_tree().process_frame
-	var daño_cerca := vida_cerca - cerca.health.current
-	var daño_lejos := vida_lejos - lejos.health.current
-	_check(daño_cerca > daño_lejos + 10.0,
-		"LAST JARONA pega mas cerca que lejos (%.0f a 3m contra %.0f a 17m)" % [
-			daño_cerca, daño_lejos])
-	_check(daño_lejos > 0.0, "pero el que esta lejos igual se lo come (%.0f)" % daño_lejos)
+	var vida_cadena := victima.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	for _i: int in range(120):
+		await get_tree().physics_frame
+	var total_cadena := vida_cadena - victima.health.current
+	var minimo := HereICome.IMPACT_DAMAGE + HereICome.CHAIN_DAMAGE * 2.0
+	_check(total_cadena >= minimo,
+		"engancha y encadena golpes (%.0f de daño, minimo esperado %.0f)" % [total_cadena, minimo])
+
+	# --- LAST JARONA: siete embestidas, y no se corta si falla una ---
+	_check(LastJarona.FALLOS_TOLERADOS > 0,
+		"LAST JARONA aguanta esquives y por eso dura mas que JARONA (%d)" % LastJarona.FALLOS_TOLERADOS)
+	victima.health.set_max(9000.0)
+	await _plantar_flowery(player, victima, puesto, rumbo, 5.0)
+
+	var vida_ulti := victima.health.current
+	player.stamina.restore_full()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.reset_state()
+	player.caster.request_use(3)
+	# Canaliza 1.2s y despues encadena siete pasadas con sus explosiones.
+	for _i: int in range(420):
+		await get_tree().physics_frame
+	var daño_ulti := vida_ulti - victima.health.current
+	_check(daño_ulti > daño,
+		"el ultimate pega mucho mas que JARONA (%.0f contra %.0f)" % [daño_ulti, daño])
+	_check(daño_ulti >= LastJarona.DAMAGE * 2.0,
+		"encadena varias embestidas de verdad (%.0f de daño)" % daño_ulti)
 
 	victima.queue_free()
-	cerca.queue_free()
-	lejos.queue_free()
 	await get_tree().process_frame
 
 
@@ -807,6 +922,151 @@ func _test_arena(arena: Arena) -> void:
 		if child.name.begins_with("Cover"):
 			covers += 1
 	_check(covers >= 5, "la arena tiene coberturas para cortar la linea de vision (%d)" % covers)
+
+	# LA INVARIANTE DEL ESCALON, que es invisible y cara de descubrir jugando.
+	#
+	# El navmesh promete caminos que suben escalones de hasta NAV_MAX_CLIMB; el cuerpo
+	# sube hasta STEP_HEIGHT. Si el navegador promete mas de lo que el cuerpo puede, manda
+	# a los bots por encima de labios que no pueden trepar y se quedan clavados ahi HASTA
+	# EL FINAL DE LA PARTIDA, sin ningun otro sintoma. Asi estuvo el bot de Flowery el 83%
+	# del tiempo, y desde afuera parecia "el bot esta tonto", no "la navegacion miente".
+	#
+	# El margen de una celda (0.25) es por el redondeo de Recast, que cuantiza las alturas
+	# y puede ver un desnivel de 0.6 como uno de 0.5.
+	_check(Player.STEP_HEIGHT >= Arena.NAV_MAX_CLIMB + 0.25,
+		"el cuerpo sube mas escalon del que el navmesh promete (%.2f contra %.2f)" % [
+			Player.STEP_HEIGHT, Arena.NAV_MAX_CLIMB])
+	# Y el otro lado: que subir escalones no vuelva escalables las coberturas, que es lo
+	# que sostiene que sirvan de cobertura.
+	var cobertura_mas_baja := 99.0
+	for child: Node in arena.get_children():
+		if not child.name.begins_with("Cover"):
+			continue
+		var forma := child.get_child(0) as CollisionShape3D
+		if forma != null and forma.shape is BoxShape3D:
+			cobertura_mas_baja = minf(cobertura_mas_baja, (forma.shape as BoxShape3D).size.y)
+	_check(cobertura_mas_baja > Player.STEP_HEIGHT * 2.0,
+		"las coberturas siguen sin poder escalarse (la mas baja mide %.1f m)" % cobertura_mas_baja)
+
+
+# ------------------------------------------------------- La sala de practica
+
+## Los interruptores del panel de practica.
+##
+## Cada uno toca un sistema distinto —stamina, cooldowns, vida, daño, objetivos de los
+## bots— asi que un cambio en cualquiera de esos cinco puede romperlo sin que se note:
+## el sintoma seria "la casilla esta tildada y no hace nada", que jugando se confunde
+## facil con "la puse mal".
+func _test_practica(player: Player, arena: Arena) -> void:
+	Practica.restablecer()
+	_check(Practica.bots == 3 and not Practica.invulnerable,
+		"la practica arranca en valores de fabrica")
+
+	# --- Stamina infinita ---
+	player.stamina.restore_full()
+	var antes_stamina := player.stamina.current
+	Practica.set_stamina_infinita(true)
+	var gasto := player.stamina.try_spend(60.0)
+	_check(gasto and is_equal_approx(player.stamina.current, antes_stamina),
+		"stamina infinita: la habilidad sale y la barra no baja")
+	Practica.set_stamina_infinita(false)
+	_check(player.stamina.try_spend(60.0) and player.stamina.current < antes_stamina,
+		"y apagandola vuelve a costar")
+
+	# --- Sin cooldowns ---
+	player.caster.reset_state()
+	player.stamina.restore_full()
+	player.caster.request_use(1)
+	await get_tree().process_frame
+	_check(player.caster.is_on_cooldown(1), "normalmente una habilidad queda en espera")
+	Practica.set_sin_cooldowns(true)
+	_check(not player.caster.is_on_cooldown(1), "sin esperas: se puede repetir en el acto")
+	Practica.set_sin_cooldowns(false)
+
+	# --- No puedo morir ---
+	player.health.revive_full()
+	Practica.set_invulnerable(true)
+	player.health.apply_damage(player.health.max_health * 3.0, FUENTE_NEUTRA)
+	_check(not player.health.is_dead and player.health.current > 0.0,
+		"no puedo morir: la vida se planta en %.0f en vez de llegar a cero" % player.health.current)
+	_check(player.health.current < player.health.max_health,
+		"pero la vida SI baja y se ve: no es un escudo, es un piso")
+	Practica.set_invulnerable(false)
+	player.health.revive_full()
+
+	# --- Cuanto pegan los bots ---
+	var maniqui := _spawn_dummy(arena, arena.find_clear_spot(Vector3(20.0, 0.6, -20.0), 1.5))
+	maniqui.health.set_max(2000.0)
+	await get_tree().process_frame
+	# Fuente NEGATIVA a proposito: asi se reconoce a un bot en deal_damage.
+	Practica.set_daño_bots(0.0)
+	var vida := maniqui.health.current
+	CombatUtils.deal_damage(maniqui, 50.0, -1)
+	_check(is_equal_approx(maniqui.health.current, vida),
+		"en x0 los bots atacan igual pero no sacan vida")
+	Practica.set_daño_bots(1.0)
+	CombatUtils.deal_damage(maniqui, 50.0, -1)
+	_check(maniqui.health.current < vida, "y en x1 vuelven a pegar")
+
+	# --- Que se peleen entre ellos ---
+	#
+	# Se le pregunta AL CEREBRO a quien elige, en vez de mirar barras de vida. Mirando
+	# vida, un bot que no llega a tiempo se confundiria con uno que no cambio de
+	# objetivo, y serian dos bugs distintos con el mismo sintoma.
+	#
+	# El cerebro se arma a mano porque este arnes hostea una partida en vez de usar el
+	# modo solo, asi que la arena no spawnea bots propios: los unicos maniquies son los
+	# que crea el test, y esos no traen cerebro.
+	var uno := _spawn_dummy(arena, arena.find_clear_spot(Vector3(-24.0, 0.6, -16.0), 1.5))
+	var otro := _spawn_dummy(arena, uno.global_position + Vector3(3.0, 0.0, 0.0))
+	var cerebro := BotBrain.new()
+	cerebro.name = "BotBrain"
+	cerebro.setup(uno, uno.global_position)
+	uno.add_child(cerebro)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	Practica.set_bots_se_pelean(false)
+	var elegido := cerebro._pick_target()
+	_check(elegido != null and not elegido.is_dummy,
+		"apagado, un bot te elige a VOS aunque tenga otro bot al lado")
+
+	Practica.set_bots_se_pelean(true)
+	var rival := cerebro._pick_target()
+	_check(rival == otro,
+		"prendido, elige al bot que tiene a tres metros en vez de a vos")
+
+	Practica.restablecer()
+	_check(cerebro._pick_target() != otro,
+		"y al restablecer vuelve a ignorar a los otros bots")
+
+	# --- Castigar al que canaliza ---
+	#
+	# El bot tiene que dejar de orbitar y venirse encima del que esta cargando algo. Es
+	# lo que le enseña al jugador que canalizar en campo abierto se paga; sin esto podes
+	# cargar un Snowgrave a tres metros de un bot y el bot sigue haciendo circulos.
+	uno.global_position = player.global_position + Vector3(9.0, 0.0, 0.0)
+	uno.bot_move_dir = Vector3.ZERO
+	uno.bot_wants_run = false
+	player.stamina.restore_full()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.reset_state()
+	player.caster.request_use(3)
+	await get_tree().process_frame
+	_check(player.caster.is_channeling, "el jugador esta canalizando para el chequeo")
+	# 24 frames y no 4: el cerebro reevalua cada THINK_INTERVAL (0.2s), asi que con
+	# cuatro frames se lo estaba midiendo antes de que pensara una sola vez.
+	for _i: int in range(24):
+		await get_tree().process_frame
+	var hacia_vos := (player.global_position - uno.global_position).normalized()
+	var va_hacia := uno.bot_move_dir.dot(hacia_vos)
+	_check(uno.bot_wants_run and va_hacia > 0.4,
+		"el bot corre a cortarte el canalizado (alineacion %.2f)" % va_hacia)
+	player.caster.cancel_channel()
+
+	uno.queue_free()
+	otro.queue_free()
+	maniqui.queue_free()
 
 
 # ------------------------------------------------------------------- Resultados

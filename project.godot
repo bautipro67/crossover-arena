@@ -20,6 +20,7 @@ FX="*res://scripts/fx/fx.gd"
 Sfx="*res://scripts/audio/sfx.gd"
 Music="*res://scripts/audio/music.gd"
 Settings="*res://scripts/core/settings.gd"
+Practica="*res://scripts/core/practica.gd"
 
 [display]
 

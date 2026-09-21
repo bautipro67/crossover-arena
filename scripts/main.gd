@@ -7,6 +7,7 @@ var _screen: Control = null
 var _arena: Arena = null
 var _hud: HUD = null
 var _pause: PauseMenu = null
+var _practica: PracticePanel = null
 
 
 func _ready() -> void:
@@ -128,6 +129,9 @@ func _clear_match() -> void:
 	if is_instance_valid(_pause):
 		_pause.queue_free()
 	_pause = null
+	if is_instance_valid(_practica):
+		_practica.queue_free()
+	_practica = null
 
 
 # ---------------------------------------------------------------------- Menu
@@ -150,6 +154,9 @@ func _on_join_requested(player_name: String, ip: String, port: int) -> void:
 
 ## Practica en solitario: mismo flujo que hostear, pero sin abrir ningun puerto.
 func _on_practice_requested(player_name: String) -> void:
+	# Sala nueva, ajustes nuevos. Si no, los de la practica anterior —"no puedo morir",
+	# "sin cooldowns"— siguen puestos sin que nadie los haya pedido otra vez.
+	Practica.restablecer()
 	Net.start_solo(player_name)
 	show_lobby()
 
@@ -193,6 +200,15 @@ func _on_match_started() -> void:
 	_pause.resume_requested.connect(_on_resume_requested)
 	_pause.leave_requested.connect(_on_leave_match_requested)
 	add_child(_pause)
+
+	# El panel de practica solo existe en la sala de practica. No es solo que este
+	# oculto: en una partida con otros el nodo ni se crea.
+	if Practica.disponible():
+		_practica = PracticePanel.new()
+		# Con nombre fijo: el chequeo visual lo busca por nombre para capturarlo, y un
+		# CanvasLayer creado con new() se queda con un nombre autogenerado.
+		_practica.name = "PracticePanel"
+		add_child(_practica)
 
 	_arena.local_player_spawned.connect(_hud.bind_player)
 	# Si el jugador local ya existia cuando se armo el HUD, lo enganchamos igual.

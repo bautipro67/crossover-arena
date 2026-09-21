@@ -35,6 +35,26 @@ signal respawned()
 ## teniendo control, pero parcial: podes corregir el rumbo, no cancelar el empujon.
 const KNOCKBACK_CONTROL_TIME: float = 0.28
 
+## Escalon maximo que el cuerpo sube solo.
+##
+## GODOT NO SUBE ESCALONES: move_and_slide frena en seco contra cualquier labio
+## vertical, por bajo que sea. El navmesh, en cambio, SI los da por subibles
+## (agent_max_climb), asi que le promete a los bots caminos que el cuerpo no puede
+## recorrer. Medido: el bot de Flowery se pasaba el 83% de la partida clavado contra el
+## costado de una rampa de acceso, donde el labio mide 39 centimetros. El navegador le
+## marcaba el camino derecho por encima y el cuerpo no se podia levantar.
+##
+## No es solo cosa de bots: a un jugador humano le pasa igual: las cuatro rampas de la
+## plataforma central tienen un borde de tobillo que te frena en seco si no las encaras
+## por la punta baja. Una pared invisible, en la practica.
+##
+## TIENE QUE SER MAYOR que Arena.NAV_MAX_CLIMB, por al menos una celda del navmesh: el
+## cuerpo tiene que poder subir MAS de lo que el navegador promete, nunca menos. El por
+## que del margen esta explicado en Arena.NAV_MAX_CLIMB.
+const STEP_HEIGHT: float = 0.5
+## Cuanto sondea hacia adelante para ver si del otro lado hay donde pisar.
+const STEP_PROBE: float = 0.42
+
 var peer_id: int = 1
 var player_name: String = "Jugador"
 ## Bot de entrenamiento: lo maneja un BotBrain y sus muertes no suman al marcador.
@@ -195,6 +215,31 @@ func _net_charge(dir: Vector3, speed: float, duration: float) -> void:
 	_apply_charge_local(dir, speed, duration)
 
 
+## SOLO SERVIDOR. Corta una carga en seco.
+##
+## Lo usa el rebote de JARONA: sin frenar, el rebote arranca peleando contra la inercia
+## de la ida y el cambio de direccion se ve como un patinazo en vez de como un rebote.
+func stop_charge() -> void:
+	if not Net.is_server():
+		return
+	if is_dummy or is_local_player() or multiplayer.multiplayer_peer == null:
+		_apply_stop_charge()
+		return
+	Net.rpc_ready_id(self, peer_id, &"_net_stop_charge", [])
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_stop_charge() -> void:
+	_apply_stop_charge()
+
+
+func _apply_stop_charge() -> void:
+	_dash_left = 0.0
+	dash_speed_override = 0.0
+	velocity.x = 0.0
+	velocity.z = 0.0
+
+
 func _apply_charge_local(dir: Vector3, speed: float, duration: float) -> void:
 	var flat := Vector3(dir.x, 0.0, dir.z)
 	if flat.is_zero_approx():
@@ -304,6 +349,7 @@ func _handle_local_movement(delta: float) -> void:
 	rotation.y = look
 
 	move_and_slide()
+	_resolver_escalon(wish)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -329,24 +375,40 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _try_dash() -> void:
-	if _dash_cd_left > 0.0 or _dash_left > 0.0:
-		return
-	if caster.is_channeling:
-		return
 	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var basis := camera_pivot.get_movement_basis()
 	var dir := (basis.x * input_dir.x + basis.z * input_dir.y)
 	dir.y = 0.0
-	if dir.is_zero_approx():
-		# Sin input direccional dasheas hacia adelante.
-		dir = -global_transform.basis.z
-		dir.y = 0.0
-	_dash_dir = dir.normalized()
+	# Sin input direccional dasheas hacia adelante.
+	dash_hacia(dir)
+
+
+## Dash en una direccion explicita. Devuelve true si salio.
+##
+## EXISTE SEPARADA DE _try_dash PORQUE LOS BOTS NO PUEDEN USAR ESA.
+##
+## _try_dash saca la direccion de Input.get_vector() y de la camara. Un bot no tiene
+## camara, y —lo importante— Input es GLOBAL: un bot llamando a _try_dash leeria las
+## teclas que esta apretando el jugador humano en ese instante. Sus esquives irian para
+## donde te estas moviendo vos.
+func dash_hacia(dir: Vector3) -> bool:
+	if _dash_cd_left > 0.0 or _dash_left > 0.0:
+		return false
+	if caster.is_channeling or health.is_dead or not status.can_act():
+		return false
+	var plano := Vector3(dir.x, 0.0, dir.z)
+	if plano.is_zero_approx():
+		plano = -global_transform.basis.z
+		plano.y = 0.0
+	if plano.is_zero_approx():
+		return false
+	_dash_dir = plano.normalized()
 	_dash_left = dash_duration
 	_dash_cd_left = dash_cooldown
 	_iframe_left = dash_iframes
 	visual.play_dash_trail()
 	Sfx.play_3d(self, &"dash", global_position, -6.0)
+	return true
 
 
 ## Maniqui: recibe el empujon, se frena solo y despues vuelve caminando a su marca.
@@ -405,6 +467,63 @@ func _process_bot(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, bot_look_yaw, minf(1.0, delta * 9.0))
 
 	move_and_slide()
+	_resolver_escalon(wish)
+
+
+## Sube un escalon bajo que tenga justo adelante. Devuelve true si subio.
+##
+## Se llama DESPUES de move_and_slide, cuando ya sabemos que choco. El sondeo es el
+## clasico de tres pasos —levantar, avanzar, dejar caer— y cada paso tiene su motivo:
+##
+##   1. LEVANTAR: si no hay aire encima, no hay escalon que valga, es una pared.
+##   2. AVANZAR:  si arriba sigue bloqueado, tampoco: es una pared mas alta que el paso.
+##   3. CAER:     si del otro lado no hay piso al alcance, es un precipicio, no un
+##                escalon, y subirse seria caminar al vacio.
+##
+## Solo si los tres dan, mueve el cuerpo. Las coberturas del mapa miden de 1.4 a 4.4
+## metros, muy por encima de STEP_HEIGHT, asi que esto no las vuelve escalables.
+func _subir_escalon(direccion: Vector3) -> bool:
+	if direccion.is_zero_approx():
+		return false
+	var plano := Vector3(direccion.x, 0.0, direccion.z).normalized()
+	if plano.is_zero_approx():
+		return false
+
+	var t := global_transform
+	var arriba := Vector3.UP * STEP_HEIGHT
+	if test_move(t, arriba):
+		return false
+	t.origin += arriba
+
+	var avance := plano * STEP_PROBE
+	if test_move(t, avance):
+		return false
+	t.origin += avance
+
+	var golpe := KinematicCollision3D.new()
+	if not test_move(t, Vector3.DOWN * (STEP_HEIGHT + 0.05), golpe):
+		return false
+
+	global_position = t.origin + golpe.get_travel()
+	return true
+
+
+## Despues de moverse: si quedo trabado contra un labio bajo, lo sube.
+##
+## `intencion` es hacia donde QUERIA ir, no hacia donde quedo apuntando la velocidad:
+## move_and_slide ya la deslizo a lo largo de la pared, y usar eso lo haria sondear
+## paralelo al obstaculo en vez de contra el.
+func _resolver_escalon(intencion: Vector3) -> void:
+	if not is_on_wall() or not is_on_floor():
+		return
+	# La rapidez se mide ANTES de tocar nada: si se calcula sobre la marcha, el segundo
+	# eje se computa con el primero ya pisado.
+	var rapidez := Vector3(velocity.x, 0.0, velocity.z).length()
+	if _subir_escalon(intencion):
+		# move_and_slide se comio la velocidad contra la pared; se la devolvemos para que
+		# no quede frenandose arriba de cada escalon.
+		velocity.x = intencion.x * rapidez
+		velocity.z = intencion.z * rapidez
 
 
 func get_dash_cooldown_ratio() -> float:
@@ -425,7 +544,20 @@ func _on_died(killer_id: int) -> void:
 	_dash_left = 0.0
 	visual.set_dead(true)
 	Sfx.play_3d(self, &"death", global_position, -1.0)
-	collision.disabled = true
+	# DIFERIDO, no directo.
+	#
+	# Morir se dispara DENTRO de una consulta fisica: las habilidades buscan a quien
+	# pegarle con intersect_shape, y el daño —y con el la muerte— sale de ahi adentro.
+	# Apagar la forma en ese momento es cambiarle el estado al servidor de fisica
+	# mientras esta recorriendo sus propias consultas, y Godot lo rechaza:
+	#
+	#   "Can't change this state while flushing queries.
+	#    Use call_deferred() or set_deferred() ... instead."
+	#
+	# Lo encontre en la consola del navegador jugando el build exportado; en los arneses
+	# de escritorio no aparecia. La consecuencia de no diferirlo es que el cadaver a
+	# veces se queda solido y sigue frenando embestidas.
+	collision.set_deferred("disabled", true)
 	name_label.visible = false
 	died.emit(killer_id)
 
@@ -462,7 +594,10 @@ func _apply_respawn(spawn_position: Vector3, yaw: float) -> void:
 	_dash_cd_left = 0.0
 	visual.set_dead(false)
 	Sfx.play_3d(self, &"respawn", spawn_position, -3.0)
-	collision.disabled = false
+	# Tambien diferido, por simetria: revivir puede caer dentro de una consulta igual que
+	# morir, y ademas asi el par apagar/prender se aplica siempre en el mismo momento del
+	# frame. Mezclar uno directo con uno diferido es como se consiguen cadaveres solidos.
+	collision.set_deferred("disabled", false)
 	name_label.visible = not is_local_player()
 	if is_local_player() and is_instance_valid(camera_pivot):
 		camera_pivot.set_yaw(yaw)

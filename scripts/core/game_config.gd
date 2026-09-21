@@ -27,7 +27,17 @@ const MAX_PLAYERS: int = 8
 ## Se aplica en CombatUtils.deal_damage a todo atacante con peer negativo, que es como
 ## se identifican los bots. Las animaciones y los tiempos quedan iguales: lo unico que
 ## cambia son los numeros, asi que lo que practicas sigue siendo valido.
-const BOT_DAMAGE_SCALE: float = 0.5
+##
+## Bajo de 0.5 a 0.4 al arreglar el escalon del navmesh. No es que los bots peguen mas
+## fuerte: es que hasta entonces UNO DE LOS TRES se pasaba la partida clavado contra el
+## borde de una rampa, y el 0.5 estaba calibrado sin darse cuenta contra dos bots y
+## medio. Con los tres peleando de verdad el mismo numero daba 22 por segundo. Este
+## devuelve el modo practica a los 17 por segundo que ya habiamos medido como jugables.
+## Bajo otra vez a 0.33 cuando JARONA paso a repetirse hasta fallar: el bot de Flowery
+## empezo a encadenar pasadas de verdad y los tres juntos treparon de 17 a 21 por
+## segundo. El numero no cambio porque los bots jueguen mejor sino porque una de sus
+## habilidades se volvio mas larga, asi que corresponde compensarlo aca.
+const BOT_DAMAGE_SCALE: float = 0.33
 
 ## Cada cuanto el cliente le manda su transform al servidor.
 const NET_TICK_HZ: float = 20.0
@@ -58,6 +68,16 @@ const BINDINGS: Dictionary = {
 	"ability_2": [KEY_E],
 	"ability_ultimate": [KEY_Q],
 	"scoreboard": [KEY_TAB],
+	# Panel de la sala de practica.
+	#
+	# P PRIMERO Y F1 DESPUES, y el orden importa aunque las dos funcionen.
+	#
+	# Arranco solo con F1 y en el navegador NO ABRIA: F1 es la tecla de ayuda del
+	# navegador y se la come antes de que llegue al canvas. Lo comprobe en el build web
+	# servido en local —Escape abria la pausa, F1 no hacia nada—, y el navegador es
+	# justamente donde vive la mayoria de los que juegan esto, porque es lo que esta en
+	# itch. F1 queda igual porque en escritorio funciona y es lo que uno prueba primero.
+	"practice_panel": [KEY_P, KEY_F1],
 }
 
 ## Acciones ligadas al mouse: accion -> boton.

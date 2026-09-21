@@ -78,7 +78,18 @@ func apply_damage(amount: float, source_id: int) -> void:
 		if amount <= 0.0:
 			return
 
-	current = clampf(current - amount, 0.0, max_health)
+	# Panel de practica: la vida BAJA Y SE VE BAJAR, pero se planta en 1.
+	#
+	# A proposito no es "no recibe daño": querer practicar sin morir no quiere decir
+	# querer practicar sin enterarte de cuanto te estan pegando. Viendo la barra igual
+	# aprendes que intercambios te convienen; lo unico que se saca es la interrupcion de
+	# tener que esperar el respawn.
+	# Solo al jugador, no a los bots: un bot inmortal no se puede matar y el modo
+	# practica dejaria de servir para lo mas basico, que es rematar.
+	var duenio := get_parent() as Player
+	var protegido := Practica.invulnerable and duenio != null and not duenio.is_dummy
+	var piso := 1.0 if protegido else 0.0
+	current = clampf(current - amount, piso, max_health)
 	damaged.emit(amount, source_id)
 	changed.emit(current, max_health)
 	if current <= 0.0:

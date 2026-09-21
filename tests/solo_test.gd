@@ -24,7 +24,7 @@ func _run() -> void:
 	add_child(main)
 	await get_tree().process_frame
 
-	_test_audio()
+	await _test_audio()
 	await _test_music()
 	_test_settings()
 
@@ -125,7 +125,13 @@ func _test_bots_pelean(arena: Arena, player: Player, bots: Array[Player]) -> voi
 		"el servidor es dueño de las habilidades del bot (owner=%d)" % bot.caster.owner_peer_id)
 
 	var brain: BotBrain = bot.get_node("BotBrain")
-	_check(not brain._usable.has(3), "el bot NO usa el ultimate")
+	# EL BOT SI USA EL ULTIMATE, y el chequeo cambio de signo a proposito.
+	#
+	# Antes estaba prohibido por miedo a que fuera injusto, y era el razonamiento al
+	# reves: los tres ultimates canalizan a la vista, o sea que son lo que MAS se puede
+	# practicar, y son lo que mas falta saber manejar. Un modo practica donde nunca ves
+	# un Snowgrave no te prepara para lo que decide las partidas.
+	_check(brain._usable.has(3), "el bot tambien usa el ultimate")
 	_check(brain._usable.size() >= 3, "pero si el resto del kit (%d)" % brain._usable.size())
 
 	# --- LO QUE IMPORTA: que te encuentren SOLOS, desde donde nacen ---
@@ -179,6 +185,47 @@ func _test_bots_pelean(arena: Arena, player: Player, bots: Array[Player]) -> voi
 	Arena.set_bots_active(true)
 
 
+## Nivel medio (RMS) de un tramo del stream, en muestras.
+func _rms(stream: AudioStreamWAV, desde: int, cuantas: int) -> float:
+	var datos := stream.data
+	var total := datos.size() / 2
+	var fin: int = mini(total, desde + cuantas)
+	if fin <= desde:
+		return 0.0
+	var suma := 0.0
+	for i: int in range(desde, fin):
+		var v := float(datos.decode_s16(i * 2)) / 32768.0
+		suma += v * v
+	return sqrt(suma / float(fin - desde))
+
+
+## Cruces por cero por segundo. Indicador barato de que tan agudo es un sonido.
+func _cruces_por_segundo(stream: AudioStreamWAV) -> float:
+	var datos := stream.data
+	var muestras := datos.size() / 2
+	if muestras < 2:
+		return 0.0
+	var cruces := 0
+	var previo := datos.decode_s16(0)
+	for i: int in range(1, muestras):
+		var v := datos.decode_s16(i * 2)
+		# Umbral chico para no contar el ruido de fondo del silencio final.
+		if absi(v) > 400 and (v < 0) != (previo < 0):
+			cruces += 1
+		if absi(v) > 400:
+			previo = v
+	return float(cruces) * float(stream.mix_rate) / float(muestras)
+
+
+func _pico(stream: AudioStreamWAV) -> float:
+	var datos := stream.data
+	var muestras := datos.size() / 2
+	var pico := 0
+	for i: int in range(muestras):
+		pico = maxi(pico, absi(datos.decode_s16(i * 2)))
+	return float(pico) / 32767.0
+
+
 # --------------------------------------------------------------------- Audio
 
 func _test_audio() -> void:
@@ -189,11 +236,57 @@ func _test_audio() -> void:
 		&"petals", &"jarona", &"last_jarona",
 		&"ui_click", &"no_stamina", &"respawn",
 	]
+	# EL BANCO SE ARMA REPARTIDO ENTRE FRAMES, asi que hay que esperarlo.
+	#
+	# Los sonidos de combate ya no se generan todos de golpe al arrancar: eso congelaba
+	# medio segundo la pantalla. Ahora va uno por frame mientras el jugador mira el menu.
+	# Este arnés entra a una partida en el primer frame, o sea mucho antes que cualquier
+	# persona, y por eso tiene que esperar a mano lo que a un jugador ya le llego hecho.
+	var espera := 0
+	while not Sfx.banco_listo() and espera < 600:
+		await get_tree().process_frame
+		espera += 1
+	_check(Sfx.banco_listo(), "el banco termino de armarse (tardo %d frames)" % espera)
+
 	var missing: Array[String] = []
 	for name: StringName in expected:
 		if not Sfx._bank.has(name):
 			missing.append(String(name))
 	_check(missing.is_empty(), "los %d sonidos se sintetizaron (faltan: %s)" % [expected.size(), ", ".join(missing)])
+
+	# --- Y que cada uno tenga el CARACTER que se supone que tiene ---
+	#
+	# Que exista PCM adentro no dice nada: un buffer de ruido blanco pasa ese chequeo.
+	# Lo que se mide aca es el CRUCE POR CERO, que es un indicador barato de brillo:
+	# cuantas veces por segundo la onda cambia de signo. Un golpe grave cruza pocas
+	# veces; un cristal o un filo de metal cruzan muchisimas.
+	#
+	# Sirve para pescar la clase de error que no se ve leyendo el codigo: un filtro con
+	# el corte al reves, un pasabajos donde iba un pasaaltos, una envolvente que se comio
+	# el transitorio. Cualquiera de esos deja el sonido "existiendo" y sonando mal.
+	var brillos: Dictionary = {}
+	for name: StringName in expected:
+		brillos[name] = _cruces_por_segundo(Sfx._bank[name])
+	_check(brillos[&"hit_punch"] < 1400.0,
+		"el puñetazo es GRAVE: %.0f cruces/s" % brillos[&"hit_punch"])
+	_check(brillos[&"za_warudo"] < 1400.0,
+		"ZA WARUDO es un retumbe, no un siseo: %.0f cruces/s" % brillos[&"za_warudo"])
+	_check(brillos[&"knife"] > 2500.0,
+		"el cuchillo es METALICO y agudo: %.0f cruces/s" % brillos[&"knife"])
+	_check(brillos[&"hit_ice"] > 2000.0,
+		"el hielo es CRISTALINO: %.0f cruces/s" % brillos[&"hit_ice"])
+	_check(brillos[&"knife"] > brillos[&"hit_punch"] * 2.0,
+		"y el acero es mucho mas brillante que la carne (%.0f contra %.0f)" % [
+			brillos[&"knife"], brillos[&"hit_punch"]])
+
+	# Nivel: ninguno mudo, ninguno recortado.
+	var flojo := ""
+	for name: StringName in expected:
+		var pico := _pico(Sfx._bank[name])
+		if pico < 0.25 or pico > 0.999:
+			flojo = "%s (pico %.2f)" % [name, pico]
+			break
+	_check(flojo.is_empty(), "ninguno sale mudo ni recortado %s" % flojo)
 
 	var sample: AudioStreamWAV = Sfx._bank.get(&"snowgrave")
 	_check(sample != null and sample.data.size() > 1000, "el sonido de Snowgrave tiene PCM de verdad adentro")
@@ -220,6 +313,28 @@ func _test_music() -> void:
 		# Sin loop, la musica corta despues de un pase y queda silencio.
 		_check(stream.loop_mode == AudioStreamWAV.LOOP_FORWARD, "el tema '%s' loopea" % name)
 		_check(stream.loop_end > 0, "el tema '%s' tiene el loop marcado" % name)
+
+	# --- Que el tema de combate tenga FORMA, no solo bytes ---
+	#
+	# "Tiene PCM adentro" lo cumple igual un loop de cuatro compases repetido. Lo que se
+	# mide aca es la estructura A/B: la segunda mitad tiene la melodia encima, asi que
+	# TIENE que tener mas energia que la primera. Si alguien rompe la melodia —un indice
+	# mal, un volumen en cero, un compas de entrada equivocado— el tema sigue sonando y
+	# sigue pasando cualquier chequeo de tamaño, pero vuelve a ser un colchon.
+	var combate: AudioStreamWAV = Music._tracks.get(&"combate")
+	if combate != null:
+		var mitad := (combate.data.size() / 2) / 2
+		var rms_a := _rms(combate, 0, mitad)
+		var rms_b := _rms(combate, mitad, mitad)
+		_check(rms_b > rms_a * 1.06,
+			"el combate tiene seccion A y seccion B: la melodia levanta la segunda mitad (%.4f contra %.4f)" % [rms_b, rms_a])
+		# Y que no haya huecos: un silencio en medio de un loop se oye como un corte.
+		var trozos := 12
+		var mas_flojo := 1.0
+		for k: int in range(trozos):
+			var largo := (combate.data.size() / 2) / trozos
+			mas_flojo = minf(mas_flojo, _rms(combate, k * largo, largo))
+		_check(mas_flojo > 0.01, "y no tiene huecos de silencio (el trozo mas flojo: %.4f)" % mas_flojo)
 
 	# Y que se pueda cambiar de tema sin explotar.
 	Music.play_menu()

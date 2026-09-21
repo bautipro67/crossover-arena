@@ -194,6 +194,9 @@ func _run() -> void:
 	# --- Los bots peleando, que es lo que cambia el modo practica ---
 	await _bots_en_combate()
 
+	# --- El panel de la sala de practica ---
+	await _panel_de_practica()
+
 	# --- Vista aerea del mapa entero ---
 	await _vista_aerea()
 
@@ -439,6 +442,40 @@ func _find_dummy(arena: Arena) -> Player:
 		if p != null and p.is_dummy:
 			return p
 	return null
+
+
+## El panel de practica, abierto. Vale la captura porque es la unica pantalla del juego
+## que se dibuja entera por codigo con controles de Godot y no con UITheme a mano: si un
+## control se sale del panel o el scroll no aparece, aca se ve.
+func _panel_de_practica() -> void:
+	var panel := _main.get_node_or_null("PracticePanel") as PracticePanel
+	if panel == null:
+		# El panel solo existe en practica. Si el chequeo visual corriera de otro modo,
+		# preferimos decirlo a sacar una captura vacia y darla por buena.
+		print("[visual] no hay panel de practica: no se captura")
+		return
+	# SE ABRE CON LA TECLA, no llamando a abrir() a mano.
+	#
+	# Llamandolo a mano el chequeo pasaba en verde con el atajo roto: el panel se dibuja
+	# bien pero nadie puede abrirlo. Sintetizar la tecla prueba el camino entero
+	# —InputMap, _unhandled_input, el nodo en el arbol— que es lo que usa un jugador.
+	print("[visual] accion registrada: %s | eventos: %d" % [
+		str(InputMap.has_action("practice_panel")),
+		InputMap.action_get_events("practice_panel").size() if InputMap.has_action("practice_panel") else -1])
+	var tecla := InputEventKey.new()
+	tecla.physical_keycode = KEY_P
+	tecla.pressed = true
+	Input.parse_input_event(tecla)
+	await _wait(0.4)
+	print("[visual] el panel quedo abierto con la tecla: %s" % str(panel.esta_abierto()))
+	await _shot("26_panel_de_practica")
+	# Y con los bots peleandose entre ellos, que es el ajuste que mas cambia la sala.
+	Practica.set_bots_se_pelean(true)
+	await _wait(2.2)
+	panel.cerrar()
+	await _wait(0.5)
+	await _shot("27_bots_peleandose_entre_si")
+	Practica.set_bots_se_pelean(false)
 
 
 func _wait(seconds: float) -> void:

@@ -55,8 +55,33 @@ const ATTACK_COOLDOWN: float = 0.9
 ## Sin esto los tres convergen al mismo punto y terminan a 70 cm uno de otro: se tapan,
 ## se leen como un solo enemigo con tres cuerpos y no podes elegir a cual pegarle.
 const SEPARACION: float = 3.2
+## Cuanto pesa ese empujon MIENTRAS VA EN CAMINO al jugador.
+##
+## Flojo a proposito: ahi compite con la ruta del navmesh. Con 0.9 sacaba a los bots del
+## camino calculado, los volvia a meter contra las paredes y uno de los tres terminaba
+## trabado el 29% del tiempo. Aca corrige, no manda.
+const PESO_EN_RUTA: float = 0.4
+## Y cuanto pesa YA PEGADO al jugador, que es un problema distinto.
+##
+## Aca no hay ruta que respetar —el bot orbita— asi que el empujon puede mandar. Hace
+## falta que mande: con el mismo 0.4 de la ruta, los tres bots pasaban un tercio de la
+## partida a menos de metro y medio uno del otro, tapandose entre si. Tres cuerpos
+## encimados se leen como un enemigo solo y no podes elegir a cual pegarle.
+const PESO_PEGADO: float = 0.55
+## A que velocidad giran alrededor del jugador, en radianes por segundo. Lento: es una
+## ronda que presiona, no un carrusel.
+const ORBITA: float = 0.55
+## Cada cuanto intenta un esquive, en segundos (se sortea en ese rango, por bot).
+##
+## POR QUE HACIA FALTA. Los bots NUNCA dasheaban, y eso es lo primero que los delata:
+## cualquier persona se despega con un dash apenas la presionan, y un rival que camina
+## en linea recta hacia vos no te enseña a leer un esquive. Ahora se van de costado cada
+## tanto, y como el intervalo se sortea no podes contar los segundos.
+const ESQUIVE_MIN: float = 2.2
+const ESQUIVE_MAX: float = 4.8
 
-## Apagable para el chequeo visual, que necesita capturas quietas y reproducibles.
+## Apagable para el chequeo visual, que necesita capturas quietas y reproducibles, y
+## desde el panel de practica. Arena.set_bots_active() escribe los dos lados.
 static var globally_enabled: bool = true
 
 var home: Vector3 = Vector3.ZERO
@@ -71,6 +96,9 @@ var _strafe_left: float = 0.0
 var _attack_left: float = 0.0
 ## Indices de habilidad que este bot puede usar, sin el ultimate.
 var _usable: Array[int] = []
+## Sector propio alrededor del objetivo. Ver _puesto_de_pelea().
+var _sector: float = 0.0
+var _esquive_left: float = 0.0
 
 
 func setup(body: Player, home_position: Vector3) -> void:
@@ -80,6 +108,10 @@ func setup(body: Player, home_position: Vector3) -> void:
 	# vez y se lee como un solo enemigo con tres cuerpos.
 	_think_left = randf() * THINK_INTERVAL
 	_strafe_dir = 1.0 if randf() < 0.5 else -1.0
+	_esquive_left = ESQUIVE_MIN + randf() * (ESQUIVE_MAX - ESQUIVE_MIN)
+	# Un sector por bot, repartidos parejo. El peer de un bot es -1, -2, -3...
+	var indice := maxi(0, absi(body.peer_id) - 1)
+	_sector = TAU * float(indice) / float(maxi(1, Arena.DUMMY_COUNT))
 
 
 func _ready() -> void:
@@ -115,10 +147,14 @@ func _ready() -> void:
 	_usable.clear()
 	for i: int in range(_body.caster.abilities.size()):
 		var ability := _body.caster.abilities[i]
-		# El ultimate queda afuera a proposito: 260 de daño sin aviso no se practica,
-		# se sufre. Y el medidor se lo ganaria pegandote, o sea justo cuando ya vas
-		# perdiendo el intercambio.
-		if ability != null and not ability.requires_charge:
+		# EL ULTIMATE ENTRA. Antes lo dejaba afuera por miedo a que fuera injusto, y era
+		# el razonamiento al reves: los tres ultimates CANALIZAN a la vista de todos, o
+		# sea que son justamente lo que MAS se puede practicar. Y son lo que mas falta
+		# saber manejar —cortar un Snowgrave, salir de un ZA WARUDO— asi que un modo
+		# practica donde nunca los ves no te prepara para lo unico que decide partidas.
+		# El bot ademas carga el medidor pegando, y pega a un tercio de daño, o sea que
+		# se lo gana despacio y no abre con el.
+		if ability != null:
 			_usable.append(i)
 	set_process(true)
 
@@ -127,12 +163,22 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(_body) or not _is_server():
 		return
 
-	if not globally_enabled or _body.health.is_dead or not _body.status.can_act():
+	# DOS INTERRUPTORES, y los dos tienen que estar puestos. `globally_enabled` lo apagan
+	# los arneses de prueba, que necesitan capturas quietas y reproducibles;
+	# `bots_activos` lo apaga el jugador desde el panel de practica. Son independientes a
+	# proposito: si el panel pisara al de los arneses, apagar los bots para sacar una
+	# captura dejaria de funcionar.
+	if not globally_enabled or not Practica.bots_activos:
+		_body.bot_move_dir = Vector3.ZERO
+		_body.bot_wants_run = false
+		return
+	if _body.health.is_dead or not _body.status.can_act():
 		_body.bot_move_dir = Vector3.ZERO
 		_body.bot_wants_run = false
 		return
 
 	_attack_left = maxf(0.0, _attack_left - delta)
+	_esquive_left = maxf(0.0, _esquive_left - delta)
 
 	_strafe_left -= delta
 	if _strafe_left <= 0.0:
@@ -157,14 +203,22 @@ func _process(delta: float) -> void:
 
 # ---------------------------------------------------------------------- Decisiones
 
-## El vivo mas cercano que no sea otro bot. Los bots no se pelean entre ellos: seria
-## gracioso una vez y despues dejaria al jugador mirando.
+## El vivo mas cercano. Por defecto ignora a los otros bots y va solo por el jugador.
+##
+## CON `bots_se_pelean` PUESTO, tambien se eligen entre ellos, y eso cambia para que
+## sirve el modo practica: pasa de ser un entrenamiento a ser una pelea que podes MIRAR.
+## Es la unica forma de ver que hace un kit que no estas jugando —desde adentro nunca ves
+## tu propia animacion completa— y ademas te deja entrar cuando dos ya se gastaron media
+## barra, que es una situacion que practicando solo no se da nunca.
 func _pick_target() -> Player:
 	var best: Player = null
 	var best_dist := detect_range()
+	var entre_bots: bool = Practica.bots_se_pelean
 	for node: Node in get_tree().get_nodes_in_group("players"):
 		var other := node as Player
-		if other == null or other == _body or other.is_dummy:
+		if other == null or other == _body:
+			continue
+		if other.is_dummy and not entre_bots:
 			continue
 		if not is_instance_valid(other) or other.health.is_dead:
 			continue
@@ -194,29 +248,62 @@ func _fight(target: Player) -> void:
 		return
 
 	var lateral := plano.cross(Vector3.UP) * _strafe_dir
+
+	# CASTIGAR AL QUE CANALIZA: si el rival esta cargando algo, se le va encima en vez de
+	# seguir orbitando en su sector.
+	#
+	# Es lo que le enseña al jugador que canalizar en campo abierto se paga. Sin esto se
+	# puede cargar un Snowgrave a tres metros de un bot y el bot sigue haciendo circulos.
+	if _esta_canalizando(target) and dist > TOO_CLOSE:
+		_body.bot_wants_run = true
+		_body.bot_move_dir = _rumbo_navegado(target.global_position)
+		# Y si le da el dash, lo usa para llegar antes de que termine de cargar.
+		if _esquive_left <= 0.0 and dist < 16.0 and _body.dash_hacia(plano):
+			_reiniciar_esquive()
+		_try_attack(dist)
+		return
+
+	# ESQUIVE. De costado si lo tiene cerca, de frente si esta lejos: de cerca sirve para
+	# salirse de la linea de un ataque, de lejos para cerrar distancia.
+	if _esquive_left <= 0.0 and dist < detect_range() * 0.35:
+		var rumbo_esquive := lateral if dist < MELEE_RANGE + 5.0 else plano
+		if _body.dash_hacia(rumbo_esquive):
+			_reiniciar_esquive()
 	# Corre solo para cerrar distancia. Pegado al rival camina, que es lo que deja leer
 	# sus movimientos y poder esquivarlos.
 	_body.bot_wants_run = dist > MELEE_RANGE + 2.5
 
-	if dist > MELEE_RANGE:
-		# LEJOS: va por el camino del navmesh, que rodea las coberturas.
+	if dist > MELEE_RANGE + 6.0:
+		# LEJOS: manda el camino del navmesh y nada mas.
 		#
-		# El strafe lateral se suma SOLO un poco y solo en los ultimos metros. Mezclarlo
-		# durante todo el trayecto desviaba al bot del camino calculado y volvia a
-		# meterlo contra las paredes, que es justo lo que el navmesh viene a resolver.
-		var camino := _rumbo_navegado(target.global_position)
-		if dist < MELEE_RANGE + 6.0:
-			# Solo en los ultimos metros se le suma strafe y separacion. Durante el
-			# trayecto largo manda el camino y nada mas: cualquier cosa que se le sume
-			# ahi lo desvia de la ruta y lo vuelve a meter contra una pared.
-			camino = (camino + lateral * 0.35 + _separacion()).normalized()
-		_body.bot_move_dir = camino
-	elif dist < TOO_CLOSE:
-		# PEGADO: ya no hace falta camino, y a un metro el navmesh devuelve rumbos
-		# erraticos porque el objetivo esta dentro del radio del punto actual.
-		_body.bot_move_dir = (-plano + lateral * 0.5 + _separacion()).normalized()
+		# Cualquier cosa que se le sume durante el trayecto largo lo desvia de la ruta
+		# calculada y lo vuelve a meter contra una pared, que es justo lo que el navmesh
+		# viene a resolver.
+		_body.bot_move_dir = _rumbo_navegado(target.global_position)
 	else:
-		_body.bot_move_dir = (lateral + _separacion()).normalized()
+		# CERCA: va a SU puesto alrededor del jugador, no encima del jugador.
+		var puesto := _puesto_de_pelea(target)
+		var hacia_puesto := puesto - _body.global_position
+		hacia_puesto.y = 0.0
+		var falta := hacia_puesto.length()
+		if falta < 0.4:
+			# Ya esta donde queria: se queda ahi, encarado. Que un bot se plante a veces
+			# tambien se lee mejor que uno que tiembla alrededor de su marca.
+			_body.bot_move_dir = Vector3.ZERO
+		elif falta < 1.5:
+			# Al lado del puesto va derecho: a esta distancia el navmesh devuelve rumbos
+			# erraticos porque el destino cae dentro del radio del punto actual.
+			_body.bot_move_dir = (hacia_puesto.normalized() + _separacion(PESO_PEGADO)).normalized()
+		else:
+			# Y el resto TAMBIEN POR EL CAMINO DEL NAVMESH.
+			#
+			# La primera version iba derecho al puesto en cuanto entraba en los ultimos
+			# seis metros, y eso reintrodujo el problema que el navmesh resuelve: si entre
+			# el bot y su puesto hay una cobertura, camina contra ella. Medido: un bot
+			# trabado el 28% de la partida. Estar cerca del jugador no quiere decir que el
+			# camino este libre.
+			_body.bot_move_dir = (_rumbo_navegado(puesto)
+				+ _separacion(PESO_PEGADO)).normalized()
 
 	_try_attack(dist)
 
@@ -261,6 +348,15 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 		&"ice_defense":
 			# Defensiva: la levanta cuando la tiene cerca, que es cuando le sirve.
 			return dist < 8.0
+		&"snowgrave":
+			# Barre un cono de 20 m: tirarlo de mas lejos es regalar el medidor.
+			return dist < 17.0
+		&"za_warudo":
+			# Detiene el tiempo a su alrededor: solo sirve con el rival encima.
+			return dist < 9.0
+		&"last_jarona":
+			# Es una embestida larga: sale de lejos, pero no de punta a punta del mapa.
+			return dist < 20.0
 		_:
 			return dist <= MELEE_RANGE + 0.6
 
@@ -278,11 +374,61 @@ func _go_home() -> void:
 	_body.bot_look_yaw = atan2(-hacia.x, -hacia.z)
 
 
+## Esta el objetivo cargando una habilidad?
+static func _esta_canalizando(target: Player) -> bool:
+	var ac := target.get_node_or_null("AbilityCaster") as AbilityCaster
+	return ac != null and ac.is_channeling
+
+
+func _reiniciar_esquive() -> void:
+	_esquive_left = ESQUIVE_MIN + randf() * (ESQUIVE_MAX - ESQUIVE_MIN)
+
+
+## Donde quiere pararse este bot: a distancia de pelea del objetivo, pero EN SU SECTOR.
+##
+## POR QUE UN SECTOR Y NO SOLO UN EMPUJON ENTRE ELLOS. Antes los tres apuntaban al mismo
+## punto —el jugador— y se despegaban a empujones. No alcanza, y se puede ver por que: la
+## atraccion al jugador y la repulsion entre bots son las dos simetricas, asi que los
+## tres terminan oscilando alrededor del mismo lugar. Medido: un tercio de la partida a
+## menos de metro y medio uno del otro. Y subir la fuerza del empujon lo EMPEORO —de 27%
+## a 41%—, porque un empujon mas fuerte no rompe la simetria, la hace rebotar mas rapido.
+##
+## Con un sector propio cada uno se para en un lado distinto por construccion, sin
+## depender de que las fuerzas se acomoden. Ademas se juega mejor: quedas rodeado en vez
+## de amontonado, y tenes que girar la camara en vez de mirar a un solo bulto.
+##
+## El sector gira despacio (ORBITA) para que no sea una formacion congelada, y GIRA CON
+## UN RELOJ COMPARTIDO, no con uno por bot.
+##
+## Esa parte no es un detalle. La primera version hacia avanzar la orbita de cada bot por
+## su cuenta y para el lado de su strafe, que se invierte al azar cada dos o tres
+## segundos. El reparto de 120 grados no se mantenia: los angulos derivaban solos hasta
+## juntarse, y el amontonamiento volvia entre el 18% y el 46% segun la corrida. Con un
+## reloj comun la separacion angular es exacta todo el tiempo, por construccion.
+func _puesto_de_pelea(target: Player) -> Vector3:
+	var angulo := _sector + float(Time.get_ticks_msec()) * 0.001 * ORBITA
+	var ideal := target.global_position + Vector3(cos(angulo), 0.0, sin(angulo)) * MELEE_RANGE
+	# Y PEGADO AL NAVMESH, porque el puesto ideal puede caer adentro de una cobertura.
+	#
+	# Cuando caia ahi, is_target_reachable() daba false, el rumbo se iba al de linea recta
+	# y el bot caminaba derecho contra el bloque: las trabas volvieron al 10%. Pedirle al
+	# navegador el punto navegable mas cercano mueve el puesto justo hasta el borde de la
+	# cobertura, que ademas es una posicion sensata para pararse a pelear.
+	var mapa := _body.get_world_3d().navigation_map
+	if not mapa.is_valid():
+		return ideal
+	return NavigationServer3D.map_get_closest_point(mapa, ideal)
+
+
 ## Empujon lateral para no encimarse con los otros bots.
 ##
 ## Los bots no colisionan entre si (su mascara es solo el mundo), asi que sin esto
 ## terminan literalmente adentro del mismo espacio. Medido: 0.7 metros entre los tres.
-func _separacion() -> Vector3:
+##
+## Ahora es un CORRECTOR, no el mecanismo: de repartirlos se encarga _puesto_de_pelea().
+## Esto solo resuelve el caso en que dos sectores se crucen igual, por ejemplo cuando el
+## jugador se mueve rapido y los puestos de dos bots quedan momentaneamente juntos.
+func _separacion(peso: float) -> Vector3:
 	var empuje := Vector3.ZERO
 	for node: Node in get_tree().get_nodes_in_group("players"):
 		var otro := node as Player
@@ -298,10 +444,7 @@ func _separacion() -> Vector3:
 		# Cuanto mas cerca, mas fuerte. Al borde del radio no aporta nada, asi que no
 		# desvia a un bot que ya estaba lo bastante lejos.
 		empuje += d.normalized() * (1.0 - dist / SEPARACION)
-	# Flojo a proposito: es un empujon que corrige, no un rumbo que manda. Con 0.9
-	# competia con el camino del navmesh, sacaba a los bots de la ruta y uno de los
-	# tres volvia a quedarse trabado el 29% del tiempo.
-	return empuje * 0.4
+	return empuje * peso
 
 
 ## Rumbo hacia `destino` segun el camino del navmesh.

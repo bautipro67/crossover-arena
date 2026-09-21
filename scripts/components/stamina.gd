@@ -63,12 +63,18 @@ func set_max(value: float) -> void:
 
 
 func has_enough(amount: float) -> bool:
+	if Practica.stamina_infinita:
+		return true
 	return current >= amount
 
 
 ## SOLO SERVIDOR. Gasta si alcanza; si no alcanza no gasta nada y devuelve false.
 func try_spend(amount: float) -> bool:
 	if amount <= 0.0:
+		return true
+	# Panel de practica: ensayar una secuencia de seis habilidades no se puede si la
+	# barra corta el ejercicio en la tercera.
+	if Practica.stamina_infinita:
 		return true
 	if current < amount:
 		return false

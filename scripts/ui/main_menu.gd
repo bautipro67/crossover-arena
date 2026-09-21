@@ -70,7 +70,7 @@ func _ready() -> void:
 	practice_button.pressed.connect(func() -> void: practice_requested.emit(_name_field.text))
 	box.add_child(practice_button)
 
-	var practice_hint := UITheme.make_label("Tres bots que pelean de verdad. No necesitas a nadie mas.", 11, UITheme.TEXT_DIM)
+	var practice_hint := UITheme.make_label("Bots que pelean de verdad. Adentro, P abre el panel de la sala.", 11, UITheme.TEXT_DIM)
 	practice_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(practice_hint)
 

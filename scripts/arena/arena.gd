@@ -28,6 +28,22 @@ const PLAYER_SCENE: PackedScene = preload("res://scenes/player/player.tscn")
 ## de 8 a 18: la densidad quedo mas alta que antes, no mas baja.
 ## Grupo con toda la geometria solida. El navmesh se hornea a partir de el.
 const NAV_GROUP: StringName = &"arena_solida"
+## Escalon que el navmesh da por subible.
+##
+## TIENE QUE SER MENOR QUE Player.STEP_HEIGHT, y por al menos una celda (0.25). No es
+## un detalle de ajuste, es la invariante que mantiene honesto al navegador:
+##
+##     lo que el navmesh PROMETE  <  lo que el cuerpo PUEDE
+##
+## Recast cuantiza las alturas a celdas, asi que un desnivel real de 0.6 lo puede ver
+## como 0.5 y darlo por subible. Si el cuerpo sube exactamente lo mismo que el navmesh
+## promete, ese redondeo alcanza para que el camino pase por un labio que el cuerpo no
+## puede trepar, y el bot se clava ahi hasta el final de la partida. Con el margen de
+## una celda, el error de redondeo cae del lado seguro.
+##
+## Lo probe primero al reves —igualar los dos en 0.5— y el bot trabado no desaparecio:
+## se mudo del costado de una rampa al de la otra, donde el labio mide 0.6.
+const NAV_MAX_CLIMB: float = 0.25
 
 const ARENA_SIZE: float = 92.0
 const WALL_HEIGHT: float = 12.0
@@ -83,6 +99,8 @@ func _ready() -> void:
 			_create_player(Net.local_id(), char_id, t.origin, t.basis.get_euler().y)
 		if Net.solo_mode:
 			_spawn_dummies()
+			# El panel puede pedir otra cantidad en cualquier momento.
+			Practica.bots_a_rehacer.connect(_on_bots_a_rehacer)
 	else:
 		# Avisamos al servidor que ya tenemos la arena armada y podemos recibir spawns.
 		_srv_client_ready.rpc_id(1)
@@ -494,13 +512,25 @@ func _build_navigation() -> void:
 	region.name = "NavRegion"
 
 	var nav := NavigationMesh.new()
-	# Un poco mas ancho que el jugador (capsula de 0.4 de radio): asi el camino no pasa
-	# raspando las esquinas y el bot no se traba al doblar.
-	nav.agent_radius = 0.65
-	nav.agent_height = 1.8
-	# Los escalones de las coberturas son de 1.4 a 4.4 metros: no se suben. Lo unico
-	# escalable son las rampas, y para eso alcanza la pendiente.
-	nav.agent_max_climb = 0.4
+	# TODO ESTO EN MULTIPLOS DE LA CELDA, a proposito.
+	#
+	# Godot redondea agent_radius y agent_height hacia arriba y agent_max_climb hacia
+	# abajo, siempre a unidades de celda, y avisa por consola cada vez que lo hace. Los
+	# valores de antes (0.65 / 1.8 / 0.4) se convertian en 0.75 / 2.0 / 0.25 en silencio,
+	# asi que lo que decia el codigo y lo que usaba el horneado no eran lo mismo.
+	# Escritos ya redondeados, el codigo dice la verdad y la consola queda limpia.
+	#
+	# El radio es mas ancho que el jugador (capsula de 0.4) para que el camino no pase
+	# raspando las esquinas y el bot no se trabe al doblar.
+	nav.agent_radius = 0.75
+	nav.agent_height = 2.0
+	# Menor que Player.STEP_HEIGHT a proposito: ver NAV_MAX_CLIMB. Las coberturas miden
+	# de 1.4 a 4.4 metros y siguen siendo inescalables con cualquiera de los dos valores.
+	#
+	# Las rampas no se rompen con un valor tan bajo: con 12.5 grados de pendiente, una
+	# celda de 25 cm sube 5.5 cm, muy por debajo del limite, asi que la superficie de la
+	# rampa sigue siendo una sola pieza conectada.
+	nav.agent_max_climb = NAV_MAX_CLIMB
 	nav.agent_max_slope = 48.0
 	# La altura de celda TIENE que coincidir con la del mapa de navegacion del proyecto
 	# (0.25 por defecto). Con 0.2 Godot avisa de errores de rasterizacion en los bordes
@@ -682,14 +712,19 @@ func _spawn_dummies() -> void:
 	if ids.is_empty():
 		return
 
-	# En arco al otro lado del mapa: entran juntos pero no en fila india.
+	# En arco al otro lado del mapa: entran juntos pero no en fila india. Cinco puestos
+	# porque el panel de practica deja pedir hasta cinco bots.
 	var puestos: Array[Vector3] = [
 		Vector3(-14.0, 0.0, -30.0),
 		Vector3(0.0, 0.0, -34.0),
 		Vector3(14.0, 0.0, -30.0),
+		Vector3(-26.0, 0.0, -24.0),
+		Vector3(26.0, 0.0, -24.0),
 	]
 
-	for i: int in range(DUMMY_COUNT):
+	# En practica manda el panel; si no, el numero de siempre.
+	var cuantos := Practica.bots if Net.solo_mode else DUMMY_COUNT
+	for i: int in range(cuantos):
 		var base: Vector3 = puestos[i] if i < puestos.size() else Vector3(float(i) * 8.0, 0.0, -30.0)
 		var pos := find_clear_spot(base, 1.0)
 		var data := CharacterDB.get_character(ids[i % ids.size()])
@@ -737,6 +772,34 @@ func _spawn_dummies() -> void:
 ## un bot cruzado delante de la camara.
 static func set_bots_active(active: bool) -> void:
 	BotBrain.globally_enabled = active
+
+
+func _on_bots_a_rehacer() -> void:
+	rehacer_bots()
+
+
+## Borra los bots que haya y vuelve a crearlos con la cantidad que pida el panel.
+##
+## EN CALIENTE, sin reiniciar la partida. Ese es medio punto del panel: probar "y si
+## fueran dos" sin volver al menu, perder la posicion y tener que recargar cooldowns.
+func rehacer_bots() -> void:
+	if not Net.is_server():
+		return
+	for id: int in _players.keys().duplicate():
+		if id >= 0:
+			continue
+		var bot: Node = _players[id]
+		if is_instance_valid(bot):
+			bot.queue_free()
+		_players.erase(id)
+		_dummy_spawns.erase(id)
+	# Un frame para que los queue_free() se hagan efectivos: si no, los bots nuevos
+	# nacen mientras los viejos todavia estan en el grupo "players" y se cuentan entre
+	# ellos para separarse y para elegir objetivo.
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	_spawn_dummies()
 
 
 # ------------------------------------------------------------------ Muerte / respawn

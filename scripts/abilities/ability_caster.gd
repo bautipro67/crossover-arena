@@ -111,6 +111,10 @@ func get_cooldown_remaining(index: int) -> float:
 
 
 func is_on_cooldown(index: int) -> bool:
+	# Panel de practica: mirar una animacion veinte veces seguidas es imposible si hay
+	# que esperar ocho segundos entre una y otra.
+	if Practica.sin_cooldowns:
+		return false
 	return get_cooldown_remaining(index) > 0.0
 
 

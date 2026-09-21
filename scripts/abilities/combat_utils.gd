@@ -77,24 +77,40 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 		mult = status.get_damage_taken_multiplier()
 	# Los bots de practica pegan mas flojo. Se los reconoce por el peer negativo.
 	if source_id < 0:
-		mult *= GameConfig.BOT_DAMAGE_SCALE
+		# Y encima de eso, lo que diga el panel de practica. En 0 los bots siguen
+		# atacando y animando igual pero no sacan vida: es el modo para ensayar esquives
+		# sin morirse cada diez segundos.
+		mult *= GameConfig.BOT_DAMAGE_SCALE * Practica.daño_bots
 	var final_amount := amount * mult
 	var was_alive := not health.is_dead
 	health.apply_damage(final_amount, source_id)
+
+	# LOS RECURSOS SE PAGAN SOBRE EL DAÑO SIN LA REBAJA DE LOS BOTS.
+	#
+	# Un bot pega a un tercio, y si ademas cargara el medidor con ese tercio tardaria el
+	# TRIPLE que una persona en juntar su ultimate. Medido: en 26 segundos de pelea los
+	# tres bots juntos no llegaban ni a la mitad del medidor, o sea que habilitarles el
+	# ultimate no servia de nada porque no lo tiraban nunca.
+	#
+	# Esa lentitud no es una decision de diseño, es un efecto secundario de la rebaja de
+	# daño del modo practica. Cobrando los recursos sobre el golpe sin rebajar, el bot
+	# junta su ultimate al mismo ritmo que lo juntaria un rival de verdad —que es contra
+	# lo que uno quiere practicar— y sigue pegando flojo.
+	var para_recursos := amount * (mult / maxf(0.01, GameConfig.BOT_DAMAGE_SCALE * Practica.daño_bots)) if source_id < 0 else final_amount
 
 	if feeds_resources:
 		var attacker := find_player_by_peer(target, source_id)
 		if attacker != null:
 			var charge := attacker.get_node_or_null("UltimateCharge") as UltimateCharge
 			if charge != null:
-				charge.add_from_damage(final_amount)
+				charge.add_from_damage(para_recursos)
 				if was_alive and health.is_dead:
 					charge.add_kill_bonus()
 			# Y le devuelve stamina. La regeneracion pasiva es lenta a proposito: esta
 			# es la via rapida, y solo la cobra el que se anima a entrar a pegar.
 			var stam := attacker.get_node_or_null("Stamina") as Stamina
 			if stam != null:
-				stam.restore_from_damage(final_amount)
+				stam.restore_from_damage(para_recursos)
 
 	return final_amount
 
