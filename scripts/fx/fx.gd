@@ -322,6 +322,98 @@ func spawn_soul_rings(caster: Node, origin: Vector3, radius: float) -> void:
 		)
 
 
+## El destello blanco ANTES de cada embestida de Flowery.
+##
+## No es adorno. En el original, Flowery grita y destella en blanco justo antes de
+## tirarse, y ese destello es lo unico que te da el tiempo de reaccion para esquivarla.
+## Sin el, una embestida a 30 m/s es un golpe sin aviso.
+func spawn_jarona_flash(target: Node3D) -> void:
+	if not is_instance_valid(target):
+		return
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 1.0, 1.0)
+	luz.light_energy = 7.0
+	luz.omni_range = 6.0
+	luz.shadow_enabled = false
+	target.add_child(luz)
+	luz.position = Vector3(0.0, 1.1, 0.0)
+	_fade_light(luz, 0.16)
+
+	# Cascara blanca de un frame y medio sobre el cuerpo: el "flash" propiamente dicho.
+	var cascara := MeshInstance3D.new()
+	var capsula := CapsuleMesh.new()
+	capsula.radius = 0.5
+	capsula.height = 2.1
+	cascara.mesh = capsula
+	var mat := Art.glow(Color(1.0, 1.0, 1.0), 4.0)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	cascara.material_override = mat
+	cascara.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	target.add_child(cascara)
+	cascara.position = Vector3(0.0, 1.0, 0.0)
+	var tw := cascara.create_tween()
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.18).from(0.85)
+	tw.tween_callback(cascara.queue_free)
+
+
+## La explosion que LAST JARONA deja en cada rebote.
+##
+## Va hacia ARRIBA y se queda un instante, no es un estallido plano: tiene que leerse
+## como una zona que acaba de reventar y por la que no querés pasar.
+func spawn_jarona_blast(context: Node, position: Vector3) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+
+	var bola := MeshInstance3D.new()
+	var esfera := SphereMesh.new()
+	esfera.radius = 1.0
+	esfera.height = 2.0
+	bola.mesh = esfera
+	var mat := Art.glow(Color(1.0, 0.52, 0.20), 3.2)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	bola.material_override = mat
+	bola.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(bola)
+	bola.global_position = position + Vector3.UP * 0.9
+
+	var tw := bola.create_tween().set_parallel()
+	tw.tween_property(bola, "scale", Vector3.ONE * 2.6, 0.38).from(Vector3.ONE * 0.4)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.38).from(0.9)
+	tw.chain().tween_callback(bola.queue_free)
+
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.one_shot = true
+	chispas.amount = 26
+	chispas.lifetime = 0.55
+	chispas.explosiveness = 1.0
+	chispas.direction = Vector3.UP
+	chispas.spread = 80.0
+	chispas.initial_velocity_min = 4.0
+	chispas.initial_velocity_max = 11.0
+	chispas.gravity = Vector3(0.0, -12.0, 0.0)
+	chispas.scale_amount_min = 0.1
+	chispas.scale_amount_max = 0.3
+	chispas.color = Color(1.0, 0.66, 0.26, 0.95)
+	world.add_child(chispas)
+	chispas.global_position = position + Vector3.UP * 0.6
+	_auto_free(chispas, 1.4)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.56, 0.24)
+	luz.light_energy = 5.0
+	luz.omni_range = 7.0
+	luz.shadow_enabled = false
+	world.add_child(luz)
+	luz.global_position = position + Vector3.UP * 1.0
+	_fade_light(luz, 0.4)
+
+	camera_shake(0.55)
+
+
 ## Arranque de la carga: estela hacia adelante.
 func spawn_charge_burst(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	var world := _world_of(caster)
@@ -345,6 +437,57 @@ func spawn_charge_burst(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	trail.global_position = origin + Vector3.UP * 0.9
 	_auto_free(trail, 1.0)
 	camera_shake(0.4)
+
+
+## Una marca de estela en el camino de una embestida.
+##
+## POR QUE HACE FALTA. Las tres habilidades de Flowery son embestidas, y una embestida
+## dura tres decimas: el estallido del arranque ya se apago cuando el cuerpo va por la
+## mitad, y en el medio no se ve NADA. Mirando capturas del momento exacto del impacto de
+## Here I Come no habia ni un pixel que dijera que estaba pasando un ataque — se veia al
+## personaje parado al lado del rival.
+##
+## La estela es lo que convierte "el personaje cambio de lugar" en "el personaje se tiro".
+## Se deja una cada dos tics, asi que el rastro queda continuo sin llenar la escena.
+func spawn_dash_streak(caster: Node, origin: Vector3, dir: Vector3, color: Color) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var streak := MeshInstance3D.new()
+	# FINA Y LARGA, y las medidas importan. La primera version era una capsula de 0.34 de
+	# radio por 1.9 de largo: a 30 m/s, dejando una cada dos tics, quedaban a tres metros
+	# una de otra con solo 1.9 de largo, o sea con un metro de hueco en el medio. En
+	# pantalla no se leia una estela sino salchichas rosas sueltas tiradas en el piso.
+	# Con 3.6 de largo y una por tic, cada marca se solapa con la siguiente y el rastro
+	# sale continuo.
+	var cap := CapsuleMesh.new()
+	cap.radius = 0.17
+	cap.height = 3.6
+	streak.mesh = cap
+	var mat := Art.glow(color, 1.5)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	# Translucida: se van a superponer varias y si cada una fuera opaca el rastro seria
+	# un tubo solido en vez de un halo.
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.34)
+	# Sin sombra ni profundidad: es un rastro de luz, no un cuerpo. Con profundidad se
+	# recorta contra el personaje y parece una capsula solida metida adentro de el.
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	streak.material_override = mat
+	streak.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(streak)
+	streak.global_position = origin + Vector3.UP * 0.9
+	# Acostada a lo largo del rumbo: una capsula parada se lee como una columna, no como
+	# velocidad.
+	var plano := Vector3(dir.x, 0.0, dir.z).normalized()
+	if not plano.is_zero_approx():
+		streak.look_at_from_position(streak.global_position, streak.global_position + plano, Vector3.UP)
+		streak.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+
+	var tween := streak.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(mat, "albedo_color:a", 0.0, 0.24)
+	tween.tween_property(streak, "scale", Vector3(0.3, 1.0, 0.3), 0.24)
+	tween.chain().tween_callback(streak.queue_free)
 
 
 ## Frenada de la carga. Marca el momento en que Flowery queda expuesta.
@@ -371,10 +514,13 @@ func spawn_last_jarona(caster: Node, origin: Vector3, radius: float) -> void:
 					radius * (0.45 + 0.09 * float(i)), SOUL_COLORS[i], false)
 		)
 
+	# Energia 7 y no 12: sumada a la luz de la forma Omega, que ya esta encendida encima
+	# del jugador, la de 12 terminaba de quemar la pantalla entera a blanco. Un ultimate
+	# tiene que verse enorme, no tapar lo que pasa.
 	var flash := OmniLight3D.new()
 	flash.light_color = Color(1.0, 0.72, 0.38)
-	flash.light_energy = 12.0
-	flash.omni_range = radius
+	flash.light_energy = 7.0
+	flash.omni_range = radius * 1.4
 	flash.shadow_enabled = false
 	world.add_child(flash)
 	flash.global_position = origin + Vector3.UP * 1.5
@@ -512,9 +658,13 @@ func spawn_channel_ritual(caster: Node3D, color: Color) -> Node3D:
 	rise.emission_ring_axis = Vector3.UP
 	root.add_child(rise)
 
+	# 1.6 y no 2.2. Sobre el piso claro de la plataforma central, 2.2 ya dejaba la
+	# superficie al borde del blanco puro, y a Flowery —que ademas enciende la forma
+	# Omega encima— lo empujaba del otro lado: el piso salia quemado en media pantalla y
+	# durante el canalizado no se veia ni la arena ni donde estaban los rivales.
 	var light := OmniLight3D.new()
 	light.light_color = ring_color
-	light.light_energy = 2.2
+	light.light_energy = 1.6
 	light.omni_range = 6.0
 	light.position = Vector3(0.0, 0.8, 0.0)
 	root.add_child(light)
@@ -834,11 +984,13 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 		&"petal_shot":
 			PetalShot.spawn_cosmetic(caster, origin, dir)
 		&"jarona":
-			spawn_jarona_wave(caster, origin, Jarona.RADIUS)
+			# El movimiento del cuerpo ya lo replica el transform; aca solo el destello.
+			if caster is Node3D:
+				spawn_jarona_flash(caster as Node3D)
 		&"here_i_come":
 			spawn_charge_burst(caster, origin, dir)
 		&"last_jarona":
-			spawn_last_jarona(caster, origin, LastJarona.RADIUS)
+			spawn_last_jarona(caster, origin, LastJarona.BLAST_RADIUS)
 		_:
 			pass
 

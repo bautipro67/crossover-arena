@@ -2,95 +2,110 @@ class_name HereICome
 extends Ability
 ## Slot 2 de Flowery: "Here I Come, San Francisco".
 ##
-## El momento en que se tira contra el Roaring Knight: una carga de frente contra algo
-## mucho mas grande que ella.
+## Su embestida contra el Roaring Knight: se tira contra algo mucho mas grande que el.
 ##
-## LO QUE TIENE QUE TRANSMITIR ES EL COMPROMISO, no el daño. Por eso:
+## DIFERENCIA CON JARONA, que tambien es una embestida:
 ##
-##   - una vez que arranca NO SE PUEDE FRENAR. Ignora tu input mientras dura, igual que
-##     un dash, asi que apuntas antes y despues te aguantas donde caiste;
-##   - lo deja EXPUESTO al final: durante un segundo recibe 30% mas de daño. Tirarse de
-##     cabeza tiene que costar algo, si no es solo un dash con daño;
-##   - pega a todo lo que atropella en el camino, una vez por objetivo.
+##   JARONA      -> muchas pasadas cortas. Si conecta rebota y vuelve. Es persistencia.
+##   HERE I COME -> UNA pasada. Si conecta, se le prende encima y le mete una CADENA de
+##                  golpes seguidos. Es compromiso.
 ##
-## Mecanicamente es el unico desplazamiento largo del juego que ademas hace daño, y es
-## lo que le permite a Flowery entrar y salir: dispara petalos de lejos, carga cuando
-## quiere presionar, y usa Jarona para sacarse de encima al que lo alcanzo.
+## O sea: Jarona te pasa por encima varias veces, esta te agarra una vez y no te suelta.
 ##
-## VA EN NARANJA a proposito: la pelea de Flowery es donde Deltarune introduce el dash
-## del ALMA NARANJA, y esta habilidad es ese dash.
+## NO TIENE CASTIGO POR FALLAR. Le habia puesto un "queda expuesto un segundo" que no
+## estaba en el pedido; era una idea mia sobre lo que la habilidad deberia costar, no lo
+## que se me pidio que hiciera. Lo que se pidio es una embestida que, si conecta, encadena
+## golpes. Eso, y nada mas.
+##
+## Va en naranja: la pelea de Flowery es donde Deltarune introduce el dash del ALMA
+## NARANJA, y esta habilidad es ese dash.
 
-const DAMAGE: float = 26.0
-const SPEED: float = 26.0
-const DURATION: float = 0.5
-## Radio del atropello. Generoso: si pidiera precision, una carga a 26 m/s seria
-## imposible de acertar.
+const SPEED: float = 27.0
+const DASH_TIME: float = 0.42
 const HIT_RADIUS: float = 2.3
-const KNOCKBACK: float = 6.5
-const KNOCKBACK_LIFT: float = 1.6
-## Cada cuanto revisa a quien atropello. Diez veces en medio segundo: suficiente para
-## no pasar de largo a nadie a 26 m/s.
-const TICK: float = 0.05
-## Cuanto dura la exposicion al terminar, y cuanto daño extra recibe.
-const VULNERABLE_TIME: float = 1.0
-const VULNERABLE_MULT: float = 1.3
+## El golpe de la embestida, antes de la cadena.
+const IMPACT_DAMAGE: float = 14.0
+## La cadena: golpes rapidos al que engancho.
+const CHAIN_HITS: int = 5
+const CHAIN_DAMAGE: float = 11.0
+const CHAIN_INTERVAL: float = 0.12
+## Alcance de la cadena. Si el rival se escapa de este radio, la cadena se corta: no es
+## un agarre garantizado, es una presion que se puede romper.
+const CHAIN_RANGE: float = 3.4
+## El ultimo golpe de la cadena manda lejos.
+const FINISH_KNOCKBACK: float = 11.0
+const FINISH_LIFT: float = 3.0
+## Naranja, como el ALMA NARANJA que su pelea introduce y de donde sale este dash.
+const ESTELA: Color = Color(1.0, 0.58, 0.18)
 
 
 func _init() -> void:
 	id = &"here_i_come"
 	display_name = "Here I Come, San Francisco"
-	description = "Carga %.0fm de frente, %d de daño a lo que atropelle. No se puede frenar y lo deja expuesto %.0fs." % [
-		SPEED * DURATION, int(DAMAGE), VULNERABLE_TIME]
+	description = "Embiste. Si engancha, se le prende encima y le mete %d golpes seguidos (%d + %dx%d)." % [
+		CHAIN_HITS, int(IMPACT_DAMAGE), CHAIN_HITS, int(CHAIN_DAMAGE)]
 	stamina_cost = 30.0
 	cooldown = 8.0
 	channel_time = 0.0
 	icon_color = Color(1.0, 0.58, 0.18)
 
 
-## CORRE EN EL SERVIDOR. Es una corrutina: acompaña la carga mientras dura.
+## CORRE EN EL SERVIDOR. Corrutina: la embestida y despues la cadena.
 func execute(caster: Node, _origin: Vector3, dir: Vector3) -> void:
 	var caster3d := caster as Node3D
 	if caster3d == null:
 		return
-	var source_id: int = caster.peer_id
 	var tree := caster.get_tree()
 	if tree == null:
 		return
+	var source_id: int = caster.peer_id
 
-	var plano := Vector3(dir.x, 0.0, dir.z).normalized()
-	if plano.is_zero_approx():
-		plano = -caster3d.global_transform.basis.z
+	var rumbo := Vector3(dir.x, 0.0, dir.z).normalized()
+	if rumbo.is_zero_approx():
+		rumbo = -caster3d.global_transform.basis.z
 
-	caster.call("launch_charge", plano, SPEED, DURATION)
-	FX.spawn_charge_burst(caster, caster3d.global_position, plano)
+	FX.spawn_charge_burst(caster, caster3d.global_position, rumbo)
 
-	# Una vez por objetivo: sin esto, un rival que queda pegado al camino comeria diez
-	# ticks de 26 y la habilidad haria 260 de daño.
-	var ya_golpeados: Dictionary = {}
-	var pasos := int(DURATION / TICK)
-	for i: int in range(pasos):
-		await tree.create_timer(TICK).timeout
-		if not is_instance_valid(caster3d):
-			return
-		var health := caster.get_node_or_null("Health") as Health
-		if health != null and health.is_dead:
-			return
-
-		var aqui := caster3d.global_position
-		for target: Node3D in CombatUtils.get_players_in_sphere(caster3d, aqui, HIT_RADIUS):
-			var key := target.get_instance_id()
-			if ya_golpeados.has(key):
-				continue
-			ya_golpeados[key] = true
-			CombatUtils.deal_damage(target, DAMAGE, source_id)
-			CombatUtils.apply_knockback(target, target.global_position - aqui, KNOCKBACK, KNOCKBACK_LIFT)
-			FX.spawn_hit_impact(caster, target.global_position + Vector3.UP, DAMAGE,
-				Color(1.0, 0.6, 0.3))
-
-	# Y el precio: al frenar queda abierta.
+	var golpeados: Dictionary = {}
+	# FRENA AL CONTACTO: esta habilidad se PRENDE del rival, no lo atraviesa. Sin
+	# frenar, la embestida terminaba cinco metros pasado el objetivo y la cadena no
+	# llegaba a nadie.
+	var tocados := await FloweryDash.pasada(
+		caster3d, rumbo, SPEED, DASH_TIME, HIT_RADIUS, golpeados, true, ESTELA)
 	if not is_instance_valid(caster3d):
 		return
-	var status := caster.get_node_or_null("StatusEffects") as StatusEffects
-	if status != null:
-		status.apply_vulnerable(VULNERABLE_MULT, VULNERABLE_TIME)
-	FX.spawn_charge_landing(caster, caster3d.global_position)
+	FloweryDash.frenar(caster3d)
+
+	if tocados.is_empty():
+		FX.spawn_charge_landing(caster, caster3d.global_position)
+		return
+
+	# --- Enganchado: la cadena ---
+	var victima := tocados[0]
+	CombatUtils.deal_damage(victima, IMPACT_DAMAGE, source_id)
+	FX.spawn_hit_impact(caster, victima.global_position + Vector3.UP, IMPACT_DAMAGE,
+		Color(1.0, 0.62, 0.24))
+
+	for i: int in range(CHAIN_HITS):
+		await tree.create_timer(CHAIN_INTERVAL).timeout
+		if not is_instance_valid(caster3d) or not is_instance_valid(victima):
+			break
+		var health := caster.get_node_or_null("Health") as Health
+		if health != null and health.is_dead:
+			break
+		var estado := caster.get_node_or_null("StatusEffects") as StatusEffects
+		if estado != null and not estado.can_act():
+			break
+		# Se le escapo: la cadena se corta. Es la contra de la habilidad.
+		if caster3d.global_position.distance_to(victima.global_position) > CHAIN_RANGE:
+			break
+
+		var es_ultimo := i == CHAIN_HITS - 1
+		CombatUtils.deal_damage(victima, CHAIN_DAMAGE, source_id)
+		FX.spawn_hit_impact(caster, victima.global_position + Vector3.UP, CHAIN_DAMAGE,
+			Color(1.0, 0.62, 0.24))
+		if es_ultimo:
+			var lejos := victima.global_position - caster3d.global_position
+			CombatUtils.apply_knockback(victima, lejos, FINISH_KNOCKBACK, FINISH_LIFT)
+			FX.spawn_jarona_blast(caster3d, victima.global_position)
+

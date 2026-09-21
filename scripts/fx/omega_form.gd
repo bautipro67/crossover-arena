@@ -83,9 +83,22 @@ func _ready() -> void:
 		add_child(pico)
 		_pelo.append(pico)
 
+	# LUZ FLOJA Y CORTA, y no por timidez.
+	#
+	# Estaba en energia 4 con 9 metros de alcance, y como la forma Omega dura todo el
+	# canalizado —casi tres segundos— eso no era un destello sino un reflector encendido
+	# al lado del jugador: el piso de la plataforma salia BLANCO PURO en media pantalla y
+	# durante su propio ultimate no se veia ni la arena ni donde estaban los rivales.
+	# Cegarte a vos mismo no es espectacular, es un bug con buena intencion.
+	#
+	# El aspecto Omega lo sostienen las mallas emisivas, que brillan solas; esta luz es
+	# solo el derrame sobre el piso y alcanza con que se note. Y tiene que ser floja
+	# tambien porque NO ESTA SOLA: el anillo de canalizado ya trae la suya, y lo que
+	# quemaba la pantalla era la suma de las dos, no ninguna por separado. Lo comprobe
+	# apagandolas: con las dos en cero el piso vuelve a tener degradé.
 	_luz = OmniLight3D.new()
-	_luz.omni_range = 9.0
-	_luz.light_energy = 4.0
+	_luz.omni_range = 4.0
+	_luz.light_energy = 0.9
 	_luz.shadow_enabled = false
 	add_child(_luz)
 
