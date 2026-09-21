@@ -21,6 +21,12 @@ extends RefCounted
 ## El retardo existe por ZA WARUDO, que son dos frases: el nombre y despues la orden
 ## ("toki yo tomare", "tiempo, detente"). Las dos, en ese orden, con el tiempo parandose
 ## en el medio.
+##
+## Es un MINIMO, no un valor exacto: la segunda nunca arranca antes de que termine la
+## primera. Con las dos sintetizadas el numero escrito alcanzaba, porque yo elegia cuanto
+## duraban. Desde que pueden ser grabaciones ya no: el "ZA WARUDO" de verdad dura 1.8
+## segundos y la orden le caia encima a los 0.75, las dos hablando a la vez. Quien pone el
+## archivo no tiene por que venir a ajustar un numero en otro lado.
 const LINEAS: Dictionary = {
 	# --- FLOWERY (Deltarune) ---
 	# Los nombres de sus movimientos son nombres de ataques de anime inventados, y los
@@ -64,13 +70,18 @@ static func decir(caster: Node, ability_id: StringName) -> void:
 	if not is_instance_valid(caster) or not caster.has_method("avisar_grito"):
 		return
 	var lineas: Array = LINEAS.get(ability_id, [])
-	for linea: Array in lineas:
+	for i: int in range(lineas.size()):
+		var linea: Array = lineas[i]
 		var texto := linea[0] as String
 		var retardo := linea[1] as float
 		var voz := linea[2] as StringName
 		if retardo <= 0.0:
 			caster.call("avisar_grito", texto, voz)
 			continue
+		# Despues de que la anterior termine de sonar, con un respiro.
+		if i > 0:
+			var previa := (lineas[i - 1] as Array)[2] as StringName
+			retardo = maxf(retardo, Sfx.duracion(previa) + 0.12)
 		var tree := caster.get_tree()
 		if tree == null:
 			continue

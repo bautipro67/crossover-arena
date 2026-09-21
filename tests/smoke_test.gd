@@ -280,7 +280,13 @@ func _test_time_stop(player: Player) -> void:
 	player.ultimate.add_from_damage(99999.0)  # ZA WARUDO es el ultimate: hay que cargarlo
 	player.caster.request_use(3)  # ZA WARUDO
 	var dichas: Dictionary = {}
-	for _i: int in range(150):
+	# VENTANA LARGA, y hace falta desde que los sonidos pueden ser grabaciones.
+	#
+	# La segunda frase ya no sale a los 0.75 s fijos: espera a que termine de sonar la
+	# primera, que es lo correcto —el "ZA WARUDO" grabado dura 1.8 s y antes la orden le
+	# caia encima— pero significa que su momento lo decide el archivo. Con los 2.5 s de
+	# antes el test se quedaba corto y reportaba que Dio decia una sola frase.
+	for _i: int in range(360):
 		await get_tree().physics_frame
 		var burbuja := player.get_node_or_null(^"GritoFrase") as Label3D
 		if burbuja != null:

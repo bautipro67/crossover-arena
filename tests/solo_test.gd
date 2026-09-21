@@ -344,8 +344,20 @@ func _test_audio() -> void:
 			break
 	_check(flojo.is_empty(), "ninguno sale mudo ni recortado %s" % flojo)
 
-	var sample: AudioStreamWAV = Sfx._bank.get(&"snowgrave")
-	_check(sample != null and sample.data.size() > 1000, "el sonido de Snowgrave tiene PCM de verdad adentro")
+	# EL PCM SE COMPRUEBA SOBRE UNO SINTETIZADO, CUALQUIERA, y no sobre uno elegido a mano.
+	#
+	# Estaba clavado en snowgrave, y al llegar un snowgrave.ogg la asignacion a una
+	# variable AudioStreamWAV volo por tipo y volvio a cortar la suite a la mitad: la MISMA
+	# trampa que el arreglo anterior, en otro renglon. Cualquier id escrito a mano puede
+	# amanecer siendo un archivo, asi que no se elige ninguno: se busca uno que siga siendo
+	# PCM. Mientras quede uno solo sintetizado, esto se puede comprobar.
+	var sample: AudioStreamWAV = null
+	for id: StringName in Sfx._bank:
+		var candidato := Sfx._bank[id] as AudioStreamWAV
+		if candidato != null:
+			sample = candidato
+			break
+	_check(sample != null and sample.data.size() > 1000, "los sonidos sintetizados tienen PCM de verdad adentro")
 	_check(sample != null and sample.format == AudioStreamWAV.FORMAT_16_BITS, "el PCM es de 16 bits")
 
 
@@ -465,7 +477,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 58
+const CHEQUEOS_MINIMOS: int = 60
 
 
 func _finish() -> void:

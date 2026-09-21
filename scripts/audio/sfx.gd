@@ -85,7 +85,7 @@ func _apply_volume() -> void:
 		AudioServer.set_bus_volume_db(bus, linear_to_db(master_volume))
 
 
-## Busca una grabacion para este sonido en assets/voces/.
+## Busca una grabacion para este sonido en assets/audio/.
 ##
 ## Acepta .ogg y .wav. El .ogg es el que conviene publicar —pesa una fraccion y la
 ## version web se descarga entera antes de jugar— pero el .wav entra igual para poder
@@ -93,9 +93,9 @@ func _apply_volume() -> void:
 ##
 ## Devuelve null si no hay nada, y eso NO es un error: significa "esta la sintetiza el
 ## codigo", que es el caso de casi todo el juego.
-func _voz_de_archivo(id: StringName) -> AudioStream:
+func _audio_de_archivo(id: StringName) -> AudioStream:
 	for ext: String in ["ogg", "wav"]:
-		var ruta := "res://assets/voces/%s.%s" % [id, ext]
+		var ruta := "res://assets/audio/%s.%s" % [id, ext]
 		if ResourceLoader.exists(ruta):
 			var recurso := load(ruta)
 			if recurso is AudioStream:
@@ -105,6 +105,16 @@ func _voz_de_archivo(id: StringName) -> AudioStream:
 
 
 # ------------------------------------------------------------------ Reproduccion
+
+## Cuanto dura un sonido del banco, en segundos. 0 si no existe.
+##
+## Hace falta porque desde que los sonidos pueden venir de un archivo, su duracion dejo de
+## ser un numero que conoce el que escribio la habilidad: la decide el que dejo caer el
+## .ogg. Lo que se encadena con un sonido tiene que preguntar, no suponer.
+func duracion(sound: StringName) -> float:
+	var s: AudioStream = _bank.get(sound)
+	return s.get_length() if s != null else 0.0
+
 
 ## Sonido no posicional (UI, avisos).
 func play_2d(sound: StringName, volume_db: float = 0.0) -> void:
@@ -309,9 +319,10 @@ static func _vacio(segundos: float) -> PackedFloat32Array:
 ## play_2d/play_3d ya ignoran lo que todavia no esta en el banco, asi que un sonido
 ## pedido antes de tiempo simplemente no suena, no rompe nada.
 func _build_bank() -> void:
-	_bank[&"ui_click"] = _make(_synth_ui_click())
-	_bank[&"no_stamina"] = _make(_synth_no_stamina())
-	_bank[&"respawn"] = _make(_synth_respawn())
+	for par: Array in [[&"ui_click", _synth_ui_click], [&"no_stamina", _synth_no_stamina],
+			[&"respawn", _synth_respawn]]:
+		var grabado := _audio_de_archivo(par[0])
+		_bank[par[0]] = grabado if grabado != null else _make((par[1] as Callable).call())
 	_build_combate.call_deferred()
 
 
@@ -351,18 +362,22 @@ func _build_combate() -> void:
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
 	for item: Array in receta:
 		var generador: Callable = item[1]
-		# UN ARCHIVO GANA SIEMPRE, si existe.
+		# UN ARCHIVO GANA SIEMPRE, si existe. Para CUALQUIER sonido del banco.
 		#
-		# El juego se sintetiza entero por codigo, y eso es la regla general y lo que hace
-		# que pese 9 MB. Pero para la VOZ la sintesis tiene un techo duro: puede decir
-		# palabras entendibles y nunca va a sonar a una persona gritando. Asi que la voz es
-		# la excepcion: si hay una grabacion, se usa la grabacion.
+		# El juego se sintetiza entero por codigo y esa sigue siendo la regla: es lo que
+		# hace que pese 9 MB y que no dependa de nada. Pero la sintesis tiene un techo, muy
+		# duro en las voces —puede decir palabras entendibles, no suena a una persona— y
+		# real tambien en los efectos con identidad propia. Asi que cualquiera se puede
+		# reemplazar por una grabacion.
+		#
+		# Empezo valiendo solo para las voces y se generalizo apenas aparecio el primer
+		# efecto grabado. No hay motivo para que el mecanismo distinga: un id, un archivo.
 		#
 		# Es una comprobacion por sonido y no un modo aparte a proposito. Se pueden tener
 		# tres voces grabadas y tres sintetizadas sin configurar nada: cada una busca su
 		# archivo y, si no esta, se genera. Nada se rompe por faltar, que es lo que importa
 		# cuando los archivos los va poniendo alguien de a uno.
-		var grabada := _voz_de_archivo(item[0])
+		var grabada := _audio_de_archivo(item[0])
 		_bank[item[0]] = grabada if grabada != null else _make(generador.call())
 		if is_inside_tree():
 			await get_tree().process_frame
