@@ -64,9 +64,15 @@ func _register_all() -> void:
 	flowery.origin_game = "Deltarune"
 	# Camisa BLANCA (el chaleco verde y marron lo pone la silueta encima), pelo rubio
 	# y piel amarillenta, como en el Dark World.
-	flowery.body_color = Color(0.94, 0.94, 0.92)
-	flowery.accent_color = Color(0.98, 0.86, 0.36)
-	flowery.skin_color = Color(0.99, 0.92, 0.76)
+	# LOS COLORES DE LA REFERENCIA, no los que yo supuse. Los tenia casi todos mal:
+	# piel palida en vez de CHARTREUSE (verde amarillento, que es lo que lo separa de
+	# cualquier otro rubio), zapatos amarillos en vez de negros y pantalon azul oscuro
+	# en vez de marron. Con la piel palida y el pelo dorado la cabeza entera era del
+	# mismo tono y no se leia ningun rasgo.
+	flowery.body_color = Color(0.95, 0.95, 0.93)
+	flowery.accent_color = Color(0.11, 0.11, 0.14)
+	flowery.skin_color = Color(0.74, 0.84, 0.42)
+	flowery.trouser_color = Color(0.42, 0.30, 0.19)
 	flowery.max_health = 88.0
 	flowery.max_stamina = 100.0
 	flowery.move_speed = 6.3

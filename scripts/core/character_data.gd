@@ -13,6 +13,9 @@ extends Resource
 @export var accent_color: Color = Color.CYAN
 ## Piel (cara, manos, antebrazos).
 @export var skin_color: Color = Color(0.98, 0.85, 0.74)
+## Pantalon y cinturon. Hacia falta como campo propio: estaba clavado en un azul oscuro
+## para todos, y Flowery usa marron.
+@export var trouser_color: Color = Color(0.14, 0.16, 0.25)
 @export var max_health: float = 100.0
 @export var max_stamina: float = 100.0
 @export var move_speed: float = 6.0

@@ -32,6 +32,7 @@ const PUNCH_DECAY: float = 3.4
 var body_color: Color = Color(0.85, 0.92, 0.88)
 var accent_color: Color = Color(0.45, 0.78, 1.0)
 var skin_color: Color = Color(0.98, 0.85, 0.74)
+var trouser_color: Color = Color(0.14, 0.16, 0.25)
 
 # --- Articulaciones ---
 var _root: Node3D = null
@@ -365,7 +366,7 @@ func _build_rig() -> void:
 	_mat_body = Art.toon(body_color, OUTLINE_WIDTH)
 	_mat_accent = Art.toon(accent_color, OUTLINE_WIDTH, 0.45)
 	_mat_skin = Art.toon(skin_color, OUTLINE_WIDTH)
-	_mat_dark = Art.toon(Color(0.14, 0.16, 0.25), OUTLINE_WIDTH)
+	_mat_dark = Art.toon(trouser_color, OUTLINE_WIDTH)
 
 	_root = Node3D.new()
 	add_child(_root)
@@ -576,11 +577,13 @@ func apply_character(data: CharacterData) -> void:
 	body_color = data.body_color
 	accent_color = data.accent_color
 	skin_color = data.skin_color
+	trouser_color = data.trouser_color
 
 	_mat_body.albedo_color = body_color
 	_mat_accent.albedo_color = accent_color
 	_mat_accent.emission = accent_color
 	_mat_skin.albedo_color = skin_color
+	_mat_dark.albedo_color = trouser_color
 
 	_build_costume(data.silhouette)
 
@@ -604,84 +607,135 @@ func _build_costume(kind: StringName) -> void:
 			pass
 
 
-## Flowery: el humanoide rubio de su pelea en el Dark World.
+## Flowery: el humanoide del Dark World, la forma de la Flor Dorada.
 ##
-## LA PRIMERA VERSION ESTABA MAL. Lo hice con cabeza de flor porque me guie por el
-## nombre, y en el Dark World —que es donde pasa la pelea de jefe— Flowery es un
-## humanoide ALTO Y RUBIO, con camisa blanca y chaleco verde y marron. La flor dorada
-## de seis petalos es su forma del Light World, no esta.
+## LAS DOS PRIMERAS VERSIONES ESTUVIERON MAL porque las hice de memoria. La referencia
+## dice, y cada punto corrige algo que yo tenia al reves:
 ##
-## Los petalos siguen apareciendo, pero donde corresponden: en sus ataques.
+##   - PIEL CHARTREUSE (verde amarillento). Yo le habia puesto piel palida, y con el pelo
+##     dorado encima la cabeza entera quedaba del mismo tono: una bola amarilla sin
+##     rasgos. El verde es ademas lo unico que lo separa de cualquier otro rubio.
+##   - PELO DORADO TEÑIDO, CON LAS RAICES NEGRAS. Ese contraste es la mitad del
+##     personaje y yo no lo tenia.
+##   - FLEQUILLO APUNTANDO HACIA ARRIBA, en puntas. Yo le habia hecho una raya al
+##     costado con el pelo cayendo, que es casi lo contrario.
+##   - CHALECO VERDE Y NARANJA. Yo tenia verde con ribete marron.
+##   - PANTALON MARRON y ZAPATOS NEGROS de vestir. Yo tenia pantalon oscuro y zapatos
+##     amarillos.
+##   - UNA CAMPERA NEGRA COLGADA DEL HOMBRO, que no tenia. Es lo que mas le cambia la
+##     silueta: rompe la simetria y se lee de espaldas, que es como se lo ve casi toda
+##     la partida.
 ##
-## SILUETA: alto y angosto, con el pelo en flequillo partido al costado. Se separa de
-## Noelle (astas anchas arriba) y de Dio (hombreras) por la verticalidad limpia y por
-## el chaleco, que le corta el torso en dos tonos a cualquier distancia.
+## Es alto y flaco, y se viste de preppy. La flor dorada de seis petalos es su forma del
+## Light World, no esta: los petalos aparecen en sus ataques, que es donde corresponden.
+##
+## SILUETA: vertical y angosta, con el bulto asimetrico de la campera en un hombro y las
+## puntas del pelo arriba. Se separa de Noelle (astas anchas) y de Dio (hombreras
+## simetricas) justamente por esa asimetria.
 func _build_flowery() -> void:
 	# Sonrisa ancha y cejas apenas caidas: la cordialidad que no termina de cerrar.
 	_apply_expression(-0.10, 0.008, 0.082)
 
-	# Rubio MAS SATURADO que la piel. La referencia dice pelo rubio y piel amarillenta,
-	# o sea parecidos — pero con los dos en el mismo tono la cabeza salia como una bola
-	# amarilla sin rasgos. El oro va mas fuerte y la piel mas palida.
-	var hair := Art.toon(Color(0.99, 0.78, 0.18), OUTLINE_WIDTH)
-	var vest := Art.toon(Color(0.27, 0.42, 0.26), OUTLINE_WIDTH)
-	var vest_trim := Art.toon(Color(0.42, 0.31, 0.19), OUTLINE_WIDTH)
+	var oro := Art.toon(Color(0.99, 0.80, 0.16), OUTLINE_WIDTH)
+	# Las raices. Casi negro, no gris: tiene que leerse como "teñido", no como sombra.
+	var raiz := Art.toon(Color(0.09, 0.09, 0.12), OUTLINE_WIDTH)
+	var verde := Art.toon(Color(0.29, 0.49, 0.27), OUTLINE_WIDTH)
+	var naranja := Art.toon(Color(0.93, 0.52, 0.15), OUTLINE_WIDTH)
+	var campera := Art.toon(Color(0.12, 0.12, 0.16), OUTLINE_WIDTH)
+	var camisa := Art.toon(Color(0.97, 0.97, 0.95), OUTLINE_WIDTH)
 
-	# --- Pelo rubio con flequillo partido al costado ---
-	# Mas ARRIBA y mas CHATO que un casquete normal. Centrado en 0.15 con radio 0.215,
-	# el pelo bajaba hasta debajo de los ojos y la cara quedaba reducida al tercio de
-	# abajo: se veia una bola dorada con boca.
-	var cap := Art.sphere(0.213, hair, Vector3(0.0, 0.225, 0.02))
-	cap.scale = Vector3(1.03, 0.78, 1.03)
-	_costume_add(_head_pivot, cap)
-
-	# El flequillo va PARTIDO: un mechon largo cruzando la frente y uno corto del otro
-	# lado. Un flequillo simetrico lo haria leer como cualquier otro personaje rubio.
+	# --- Pelo ---
 	#
-	# OJO CON LA ALTURA: las cejas estan en y = 0.196. La primera version puso el
-	# flequillo en 0.215 con 0.10 de alto, o sea que ocupaba de 0.165 a 0.265 y le
-	# tapaba los ojos por completo. Va arriba de las cejas y mas fino.
-	var fringe_long := Art.box(Vector3(0.29, 0.065, 0.12), hair, Vector3(-0.05, 0.268, -0.135))
-	fringe_long.rotation_degrees = Vector3(0.0, 0.0, -7.0)
-	_costume_add(_head_pivot, fringe_long)
-	var fringe_short := Art.box(Vector3(0.14, 0.06, 0.12), hair, Vector3(0.145, 0.281, -0.13))
-	fringe_short.rotation_degrees = Vector3(0.0, 0.0, 12.0)
-	_costume_add(_head_pivot, fringe_short)
-	# Patilla del lado largo: es lo que hace leer la raya al costado de frente.
-	var patilla := Art.box(Vector3(0.07, 0.14, 0.115), hair, Vector3(-0.178, 0.212, -0.10))
-	patilla.rotation_degrees = Vector3(0.0, 0.0, -6.0)
-	_costume_add(_head_pivot, patilla)
-	# Dos mechones cortos hacia atras, para que la nuca no sea una esfera lisa.
-	for side: float in [-1.0, 1.0]:
-		var tuft := Art.capsule(0.055, 0.17, hair, Vector3(0.14 * side, 0.12, 0.14))
-		tuft.rotation_degrees = Vector3(26.0, 0.0, 12.0 * side)
-		_costume_add(_head_pivot, tuft)
+	# Medidas contra la cabeza real: esfera de radio 0.20 centrada en y=0.11, o sea
+	# coronilla en 0.326 y cara en z=-0.19, con las cejas en y=0.196.
 
-	# --- Chaleco sobre la camisa ---
-	# El torso ya es la camisa (body_color blanco). El chaleco es una capa por encima,
-	# un poco mas ancha, abierta al frente.
+	# Raices: masa oscura que asoma por la NUCA. Va mas abajo, mas angosta y CORRIDA
+	# HACIA ATRAS que la dorada.
+	#
+	# Lo de atras es lo que costo. Centrada como la dorada, el negro le ganaba en ancho
+	# justo a la altura de las orejas —ahi la esfera dorada ya venia cerrandose y la
+	# oscura estaba en su parte mas gruesa— y el personaje quedaba con dos manchas
+	# negras a los costados de la cara: auriculares, no raices. Empujada 9 cm hacia
+	# atras, a esa altura la tapa el dorado y solo se ve desde atras, que es donde van.
+	var base := Art.sphere(0.198, raiz, Vector3(0.0, 0.148, 0.088))
+	base.scale = Vector3(0.97, 0.95, 1.02)
+	_costume_add(_head_pivot, base)
+	# El dorado encima, un poco mas ancho y mas alto: se come todo menos esa franja.
+	var teñido := Art.sphere(0.200, oro, Vector3(0.0, 0.200, 0.042))
+	teñido.scale = Vector3(1.06, 0.88, 1.04)
+	_costume_add(_head_pivot, teñido)
+
+	# FLEQUILLO EN PUNTAS HACIA ARRIBA.
+	#
+	# CORTAS, ADELANTE Y MUY INCLINADAS. Es un flequillo peinado para arriba, no una
+	# corona, y la diferencia esta toda en estos tres numeros. La primera version las
+	# hizo de 30 cm, casi verticales y repartidas de oreja a oreja: el resultado era
+	# literalmente una corona de rey. Un flequillo nace SOBRE LA FRENTE —en el tercio de
+	# adelante—, es mas corto que la cabeza y se echa hacia adelante antes de subir.
+	for i: int in range(4):
+		var t := float(i) / 3.0 - 0.5
+		var punta := MeshInstance3D.new()
+		var cono := CylinderMesh.new()
+		cono.top_radius = 0.0
+		cono.bottom_radius = 0.055
+		cono.height = 0.20 - 0.05 * absf(t) * 2.0
+		punta.mesh = cono
+		punta.material_override = oro
+		punta.position = Vector3(t * 0.21, 0.300, -0.128)
+		punta.rotation_degrees = Vector3(-40.0, 0.0, -t * 34.0)
+		_costume_add(_head_pivot, punta)
+
+	# Patillas finas por delante de la oreja: cierran el pelo contra la mandibula sin
+	# hacer bulto. DORADAS y no oscuras: en negro se sumaban a la mancha de la nuca y
+	# volvia el efecto orejera que la correccion de arriba acababa de sacar.
 	for side: float in [-1.0, 1.0]:
-		var panel := Art.box(Vector3(0.17, 0.42, 0.30), vest, Vector3(0.115 * side, 0.34, 0.0))
+		var patilla := Art.sphere(0.058, oro, Vector3(0.184 * side, 0.152, -0.042))
+		patilla.scale = Vector3(0.36, 1.10, 1.00)
+		_costume_add(_head_pivot, patilla)
+
+	# --- Chaleco verde y naranja sobre la camisa blanca ---
+	# El torso ya es la camisa. El chaleco es una capa por encima, abierta al frente.
+	for side: float in [-1.0, 1.0]:
+		var panel := Art.box(Vector3(0.17, 0.42, 0.30), verde, Vector3(0.115 * side, 0.34, 0.0))
 		_costume_add(_torso, panel)
-	# Espalda entera.
-	_costume_add(_torso, Art.box(Vector3(0.40, 0.44, 0.13), vest, Vector3(0.0, 0.34, 0.13)))
-	# Ribete marron: el segundo color del chaleco, y lo que lo lee como chaleco y no
-	# como un peto verde.
-	_costume_add(_torso, Art.box(Vector3(0.42, 0.055, 0.32), vest_trim, Vector3(0.0, 0.135, 0.0)))
+	_costume_add(_torso, Art.box(Vector3(0.38, 0.40, 0.13), verde, Vector3(0.0, 0.32, 0.13)))
 	for side: float in [-1.0, 1.0]:
-		var borde := Art.box(Vector3(0.045, 0.42, 0.045), vest_trim,
+		var hombro := Art.sphere(0.105, verde, Vector3(0.165 * side, 0.50, 0.075))
+		hombro.scale = Vector3(0.85, 0.72, 1.15)
+		_costume_add(_torso, hombro)
+
+	# EL NARANJA: la franja baja y los dos bordes del frente. Es el segundo color del
+	# chaleco y lo que lo despega de ser un peto verde cualquiera.
+	_costume_add(_torso, Art.box(Vector3(0.42, 0.06, 0.32), naranja, Vector3(0.0, 0.135, 0.0)))
+	for side: float in [-1.0, 1.0]:
+		var borde := Art.box(Vector3(0.042, 0.42, 0.045), naranja,
 			Vector3(0.037 * side, 0.34, -0.152))
 		_costume_add(_torso, borde)
 
 	# --- Cuello de la camisa ---
-	# Chico y pegado al cuerpo: la primera version eran dos solapas grandes que
-	# sobresalian como alas.
-	var camisa := Art.toon(Color(0.97, 0.97, 0.95), OUTLINE_WIDTH)
 	for side: float in [-1.0, 1.0]:
 		var collar := Art.box(Vector3(0.085, 0.05, 0.07), camisa,
 			Vector3(0.055 * side, 0.585, -0.115))
 		collar.rotation_degrees = Vector3(0.0, 0.0, -22.0 * side)
 		_costume_add(_torso, collar)
+
+	# --- LA CAMPERA NEGRA AL HOMBRO ---
+	#
+	# Lo que mas le cambia la silueta, y por eso vale la pena aunque sean cuatro cajas:
+	# es lo unico asimetrico del personaje. De espaldas —que es como se lo ve casi toda
+	# la partida— un bulto oscuro sobre un hombro se reconoce a veinte metros, mientras
+	# que el color del chaleco a esa distancia ya es una mancha.
+	var colgada := Art.box(Vector3(0.20, 0.30, 0.17), campera, Vector3(0.255, 0.50, 0.055))
+	colgada.rotation_degrees = Vector3(0.0, 0.0, -13.0)
+	_costume_add(_torso, colgada)
+	# La parte que cae por la espalda, mas angosta abajo.
+	var cola := Art.box(Vector3(0.155, 0.26, 0.12), campera, Vector3(0.245, 0.27, 0.115))
+	cola.rotation_degrees = Vector3(0.0, 0.0, -7.0)
+	_costume_add(_torso, cola)
+	# Y el pliegue de arriba, que la redondea contra el hombro.
+	var pliegue := Art.sphere(0.105, campera, Vector3(0.235, 0.615, 0.03))
+	pliegue.scale = Vector3(0.95, 0.62, 1.05)
+	_costume_add(_torso, pliegue)
 
 
 ## Noelle: chica reno. Silueta alta y angosta, con el peso arriba.
