@@ -119,6 +119,19 @@ func _run_client() -> void:
 			_check(local.peer_id == Net.local_id(), "[cliente] su jugador tiene el peer id correcto")
 			_check(local.caster.abilities.size() == 4, "[cliente] tiene su kit cargado")
 
+	# Y EL CLIENTE TAMBIEN ESPERA ANTES DE CORTAR. La espera del host ya estaba; esta
+	# faltaba, y su ausencia hacia fallar al host de una forma que no se parecia en nada
+	# a su causa.
+	#
+	# Que pasaba: el cliente terminaba sus chequeos y salia, el host veia la desconexion,
+	# borraba al jugador del cliente de su arena, y RECIEN AHI contaba. Resultado: "hay 2
+	# jugadores en la arena (hay 1)" en el host mientras el cliente reportaba los 2 en
+	# verde. Parecia que el host no spawneaba al cliente; en realidad lo spawneaba bien y
+	# despues lo borraba, porque el cliente ya se habia ido.
+	#
+	# Era una carrera de fotos —los dos terminan alrededor del mismo segundo— asi que
+	# pasaba o fallaba segun lo cargada que estuviera la maquina.
+	await _wait(6.0)
 	_finish()
 
 
