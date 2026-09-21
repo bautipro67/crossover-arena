@@ -87,6 +87,28 @@ func _register_all() -> void:
 	flowery.silhouette = &"petals"
 	_add(flowery)
 
+	var rick := CharacterData.new()
+	rick.id = &"rick"
+	rick.display_name = "Rick Sanchez"
+	rick.origin_game = "Rick and Morty"
+	# Referencia: viejo alto y flaco, PELO CELESTE GRISACEO en puntas con entradas,
+	# uniceja, GUARDAPOLVO BLANCO sobre camisa celeste, PANTALON MARRON algo corto con
+	# las medias blancas a la vista y zapatos marron oscuro.
+	#
+	# body_color es la CAMISA CELESTE; el guardapolvo se dibuja encima en la silueta,
+	# igual que el chaleco de Flowery.
+	rick.body_color = Color(0.62, 0.80, 0.88)
+	rick.accent_color = Color(0.26, 0.18, 0.12)
+	rick.skin_color = Color(0.90, 0.78, 0.63)
+	rick.trouser_color = Color(0.45, 0.33, 0.22)
+	# EL MAS FRAGIL Y EL MAS LENTO, a proposito. Es un viejo flaco que no gana una pelea
+	# de cerca: todo lo que tiene para compensarlo son los aparatos, y el portal.
+	rick.max_health = 82.0
+	rick.max_stamina = 110.0
+	rick.move_speed = 5.7
+	rick.silhouette = &"labcoat"
+	_add(rick)
+
 
 func _add(data: CharacterData) -> void:
 	_characters[data.id] = data
@@ -139,6 +161,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(Jarona.new())
 			list.append(HereICome.new())
 			list.append(LastJarona.new())
+		&"rick":
+			list.append(PlasmaShot.new())
+			list.append(PortalGun.new())
+			list.append(PlasmaGrenade.new())
+			list.append(MeeseeksBox.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

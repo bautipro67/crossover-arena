@@ -677,6 +677,156 @@ func spawn_channel_ritual(caster: Node3D, color: Color) -> Node3D:
 	return root
 
 
+## Un portal verde. `entrada` false es el de salida (de donde saliste), true el de
+## llegada, que se abre ANTES y es el aviso de a donde vas a aparecer.
+func spawn_portal(caster: Node, origin: Vector3, dir: Vector3, entrada: bool) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var plano := Vector3(dir.x, 0.0, dir.z).normalized()
+	if plano.is_zero_approx():
+		plano = Vector3.FORWARD
+
+	var raiz := Node3D.new()
+	world.add_child(raiz)
+	raiz.global_position = origin + Vector3.UP * 1.0
+	# Parado y encarado al rumbo: un portal acostado en el piso se lee como un charco.
+	raiz.look_at_from_position(raiz.global_position, raiz.global_position + plano, Vector3.UP)
+
+	var verde := Color(0.42, 1.0, 0.32)
+	# El anillo. Es lo unico que se ve de lejos, asi que va con harta emision.
+	var anillo := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.78
+	toro.outer_radius = 0.95
+	anillo.mesh = toro
+	anillo.material_override = Art.glow(verde, 3.4)
+	anillo.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	raiz.add_child(anillo)
+
+	# El disco de adentro, translucido: sin el, el anillo se lee como un aro y no como
+	# un agujero a otro lado.
+	var disco := MeshInstance3D.new()
+	var plano_mesh := PlaneMesh.new()
+	plano_mesh.size = Vector2(1.62, 1.62)
+	disco.mesh = plano_mesh
+	var mat := Art.glow(Color(0.20, 0.75, 0.28), 1.5)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.20, 0.75, 0.28, 0.45)
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	disco.material_override = mat
+	disco.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	raiz.add_child(disco)
+
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.amount = 34
+	chispas.lifetime = 0.7
+	chispas.direction = Vector3.ZERO
+	chispas.spread = 180.0
+	chispas.initial_velocity_min = 0.6
+	chispas.initial_velocity_max = 2.4
+	chispas.gravity = Vector3.ZERO
+	chispas.scale_amount_min = 0.05
+	chispas.scale_amount_max = 0.17
+	chispas.color = verde
+	chispas.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	chispas.emission_ring_radius = 0.9
+	chispas.emission_ring_inner_radius = 0.75
+	chispas.emission_ring_height = 0.1
+	chispas.emission_ring_axis = Vector3.UP
+	raiz.add_child(chispas)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = verde
+	luz.light_energy = 2.6
+	luz.omni_range = 5.5
+	luz.shadow_enabled = false
+	raiz.add_child(luz)
+
+	# El de llegada dura mas: tiene que seguir abierto cuando el cuerpo aparece, o el
+	# aviso se apaga justo antes de que sirva para algo.
+	var vida := 1.15 if entrada else 0.7
+	var giro := anillo.create_tween().set_loops()
+	giro.tween_property(anillo, "rotation:y", TAU, 1.1).from(0.0)
+	var cierre := raiz.create_tween()
+	cierre.tween_interval(vida * 0.55)
+	cierre.tween_property(raiz, "scale", Vector3(0.05, 0.05, 0.05), vida * 0.45)
+	cierre.tween_callback(raiz.queue_free)
+
+
+## Explosion de la granada de plasma.
+func spawn_plasma_blast(caster: Node, origin: Vector3, radius: float) -> void:
+	spawn_jarona_wave(caster, origin, radius, Color(0.55, 1.0, 0.32))
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.one_shot = true
+	chispas.amount = 46
+	chispas.lifetime = 0.7
+	chispas.explosiveness = 0.92
+	chispas.direction = Vector3.UP
+	chispas.spread = 85.0
+	chispas.initial_velocity_min = 4.0
+	chispas.initial_velocity_max = 12.0
+	chispas.gravity = Vector3(0.0, -9.0, 0.0)
+	chispas.scale_amount_min = 0.07
+	chispas.scale_amount_max = 0.24
+	chispas.color = Color(0.7, 1.0, 0.45)
+	world.add_child(chispas)
+	chispas.global_position = origin
+	_auto_free(chispas, 1.4)
+
+	var flash := OmniLight3D.new()
+	flash.light_color = Color(0.55, 1.0, 0.35)
+	flash.light_energy = 5.5
+	flash.omni_range = radius * 2.0
+	flash.shadow_enabled = false
+	world.add_child(flash)
+	flash.global_position = origin + Vector3.UP * 0.8
+	_fade_light(flash, 0.45)
+	camera_shake(1.0)
+
+
+## La caja abriendose. Chica y corta: lo que importa es lo que sale de ella.
+func spawn_meeseeks_box(caster: Node, origin: Vector3, dir: Vector3) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var caja := MeshInstance3D.new()
+	var cubo := BoxMesh.new()
+	cubo.size = Vector3(0.5, 0.42, 0.5)
+	caja.mesh = cubo
+	caja.material_override = Art.toon(Color(0.24, 0.62, 0.80), 0.012)
+	world.add_child(caja)
+	caja.global_position = origin + dir.normalized() * 0.9
+	var salto := caja.create_tween()
+	salto.tween_property(caja, "position:y", caja.position.y + 0.5, 0.18)
+	salto.parallel().tween_property(caja, "rotation:y", TAU, 0.5)
+	salto.tween_property(caja, "scale", Vector3.ZERO, 0.25)
+	salto.tween_callback(caja.queue_free)
+
+	var humo := CPUParticles3D.new()
+	humo.emitting = true
+	humo.one_shot = true
+	humo.amount = 30
+	humo.lifetime = 0.8
+	humo.explosiveness = 0.85
+	humo.direction = Vector3.UP
+	humo.spread = 60.0
+	humo.initial_velocity_min = 1.5
+	humo.initial_velocity_max = 5.0
+	humo.gravity = Vector3.ZERO
+	humo.scale_amount_min = 0.08
+	humo.scale_amount_max = 0.26
+	humo.color = Color(0.42, 0.85, 0.98)
+	world.add_child(humo)
+	humo.global_position = origin + dir.normalized() * 0.9
+	_auto_free(humo, 1.5)
+
+
 ## Numero de daño flotante.
 func spawn_damage_number(context: Node, position: Vector3, amount: float, is_execute: bool = false) -> void:
 	var world := _world_of(context)
@@ -983,6 +1133,17 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 			spawn_stand_barrage(caster, origin, dir, StandBarrage.TICKS, StandBarrage.TICK_INTERVAL)
 		&"petal_shot":
 			PetalShot.spawn_cosmetic(caster, origin, dir)
+		&"plasma_shot":
+			PlasmaShot.spawn_cosmetic(caster, origin, dir)
+		&"plasma_grenade":
+			PlasmaGrenade.spawn_cosmetic(caster, origin, dir)
+		&"meeseeks_box":
+			MeeseeksBox.spawn_cosmetic(caster, origin, dir)
+		&"portal_gun":
+			# El portal de SALIDA nada mas. El de destino no se puede replicar desde aca
+			# porque el cliente no sabe a donde apunto el servidor, y el salto en si ya
+			# lo replica _net_teleport.
+			spawn_portal(caster, origin, dir, false)
 		&"jarona":
 			# El movimiento del cuerpo ya lo replica el transform; aca solo el destello.
 			if caster is Node3D:

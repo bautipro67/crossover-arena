@@ -273,7 +273,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 16
+const TOTAL_SONIDOS: int = 20
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -289,8 +289,10 @@ func _build_combate() -> void:
 		[&"dash", _synth_dash], [&"ice_shock", _synth_ice_shock],
 		[&"jarona", _synth_jarona], [&"freeze", _synth_freeze],
 		[&"death", _synth_death], [&"channel", _synth_channel],
+		[&"plasma", _synth_plasma], [&"plasma_blast", _synth_plasma_blast],
+		[&"meeseeks", _synth_meeseeks],
 		[&"last_jarona", _synth_last_jarona], [&"snowgrave", _synth_snowgrave],
-		[&"za_warudo", _synth_za_warudo],
+		[&"portal", _synth_portal], [&"za_warudo", _synth_za_warudo],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -594,6 +596,118 @@ func _synth_za_warudo() -> PackedFloat32Array:
 	_saturar(out, 1.8)
 	_normalizar(out, 0.95)
 	_bordes(out, 4.0, 90.0)
+	return out
+
+
+# --------------------------------------------------------- Rick and Morty
+#
+# El mundo de Rick. Todo lo suyo es un APARATO: sintetico, electrico y un poco
+# desafinado, porque lo armo en el garage.
+
+## Disparo de plasma: barrido de tono hacia abajo, muy corto.
+##
+## Hacia ABAJO y no hacia arriba, que es lo que uno escribiria primero. Un barrido
+## ascendente se oye como algo que se carga; uno descendente, como algo que ya salio
+## disparado. La diferencia entre un arma y un cargador es la direccion del barrido.
+func _synth_plasma() -> PackedFloat32Array:
+	var out := _vacio(0.22)
+	var n := out.size()
+	var fase := 0.0
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / 0.22
+		var f: float = lerpf(1750.0, 380.0, sqrt(p))
+		fase += f / float(MIX_RATE)
+		var env: float = exp(-p * 7.0)
+		var v := _pulso(fase, 0.24) * 0.45 * env
+		v += _campana(t, f * 1.7, 1.9, 1.6) * 0.18 * env
+		# Chispazo del disparo, solo en los primeros milisegundos.
+		v += _ruido() * 0.30 * exp(-t * 180.0)
+		out[i] = v
+	_pasaaltos(out, 260.0)
+	_saturar(out, 1.7)
+	_normalizar(out, 0.68)
+	_bordes(out, 0.4, 12.0)
+	return out
+
+
+## Explosion de la granada: el mismo timbre electrico del disparo, pero reventando.
+func _synth_plasma_blast() -> PackedFloat32Array:
+	var out := _vacio(0.8)
+	var cuerpo := _vacio(0.8)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / 0.8
+		var golpe: float = exp(-t * 9.0)
+		# Sub que cae: es el peso, y lo que la separa de un chisporroteo.
+		out[i] = sin(TAU * lerpf(150.0, 40.0, minf(1.0, t * 9.0)) * t) * 0.85 * golpe
+		# Y el zumbido electrico encima, que es lo que la hace de plasma y no de polvora.
+		out[i] += _pulso(lerpf(420.0, 90.0, p) * t, 0.35) * 0.30 * exp(-p * 5.0)
+		cuerpo[i] = _ruido() * exp(-t * 11.0)
+	_pasabajos(cuerpo, 2400.0)
+	for i: int in range(n):
+		out[i] += cuerpo[i] * 0.55
+	_saturar(out, 2.2)
+	_normalizar(out, 0.92)
+	_bordes(out, 0.5, 40.0)
+	return out
+
+
+## El portal: barrido ascendente con un batido adentro.
+##
+## El batido —dos tonos casi al unisono peleandose— es lo que le da esa sensacion de
+## cosa inestable. Un barrido limpio sonaria a puerta de nave espacial; este tiene que
+## sonar a agujero abierto a la fuerza.
+func _synth_portal() -> PackedFloat32Array:
+	var dur := 0.7
+	var out := _vacio(dur)
+	var n := out.size()
+	var f1 := 0.0
+	var f2 := 0.0
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		var base: float = lerpf(210.0, 1150.0, p * p)
+		f1 += base / float(MIX_RATE)
+		f2 += base * 1.031 / float(MIX_RATE)
+		var env: float = minf(1.0, p * 9.0) * exp(-p * 2.4)
+		var v := (_sierra(f1) + _sierra(f2)) * 0.26 * env
+		v += _campana(t, base * 2.0, 1.48, 2.2) * 0.18 * env
+		# Chisporroteo del borde del portal.
+		v += _ruido() * 0.13 * env * p
+		out[i] = v
+	_pasabajos(out, 7000.0)
+	_pasaaltos(out, 180.0)
+	_saturar(out, 1.6)
+	_normalizar(out, 0.78)
+	_bordes(out, 2.0, 30.0)
+	return out
+
+
+## "I'M MISTER MEESEEKS": tres notas subiendo, con vibrato ancho.
+##
+## No es una voz —no hay forma de hacer una frase por sintesis sin que suene a robot—
+## pero si el GESTO de una: el vibrato exagerado y las tres notas para arriba son lo que
+## el oido lee como alguien hablando entusiasmado.
+func _synth_meeseeks() -> PackedFloat32Array:
+	var dur := 0.65
+	var out := _vacio(dur)
+	var n := out.size()
+	var notas: Array[float] = [392.0, 523.25, 659.25]
+	var paso := 0.17
+	var fase := 0.0
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var k: int = mini(notas.size() - 1, int(t / paso))
+		var dt := t - float(k) * paso
+		var f: float = notas[k] * (1.0 + sin(TAU * 7.5 * t) * 0.035)
+		fase += f / float(MIX_RATE)
+		var env: float = minf(1.0, dt * 40.0) * exp(-dt * 5.0) * exp(-t * 1.2)
+		out[i] = (_pulso(fase, 0.36) * 0.42 + sin(TAU * f * 2.0 * t) * 0.14) * env
+	_pasabajos(out, 5200.0)
+	_normalizar(out, 0.62)
+	_bordes(out, 1.0, 25.0)
 	return out
 
 

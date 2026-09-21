@@ -62,6 +62,7 @@ func _run() -> void:
 	await _test_rafaga_del_stand(player, arena)
 	await _test_flowery(player, arena)
 	Arena.set_bots_active(true)
+	await _test_rick(player, arena)
 	await _test_practica(player, arena)
 	_test_arena(arena)
 
@@ -949,6 +950,143 @@ func _test_arena(arena: Arena) -> void:
 		"las coberturas siguen sin poder escalarse (la mas baja mide %.1f m)" % cobertura_mas_baja)
 
 
+## Espera a que el cuerpo deje de moverse solo.
+##
+## Hace falta entre tests: las habilidades son corrutinas que siguen vivas despues de
+## que el test que las disparo termino, y la siguiente medicion se toma sobre un cuerpo
+## que todavia viene empujado por la habilidad anterior.
+func _esperar_quieto(player: Player, tope: int) -> void:
+	var quietos := 0
+	for _i: int in range(tope):
+		await get_tree().physics_frame
+		if Vector3(player.velocity.x, 0.0, player.velocity.z).length() < 0.6:
+			quietos += 1
+			if quietos >= 10:
+				return
+		else:
+			quietos = 0
+
+
+# ------------------------------------------------------------------- Rick
+
+func _test_rick(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+
+	# ESPERAR A QUE EL CUERPO SE QUEDE QUIETO ANTES DE MEDIR NADA.
+	#
+	# El test anterior es el de Flowery, y JARONA son hasta diez pasadas encadenadas que
+	# tardan unos seis segundos. La corrutina sigue viva y sigue empujando el cuerpo
+	# aunque el personaje ya haya cambiado, asi que las primeras mediciones de Rick se
+	# tomaban sobre un cuerpo que venia a 30 m/s de la habilidad de otro. El sintoma era
+	# desconcertante: el portal llegaba al punto exacto y el chequeo daba 8 metros de
+	# diferencia, porque despues de llegar lo seguian arrastrando.
+	await _esperar_quieto(player, 480)
+
+	_check(CharacterDB.has_character(&"rick"), "Rick esta registrado")
+	var data := CharacterDB.get_character(&"rick")
+	_check(data != null and data.origin_game == "Rick and Morty", "Rick viene de Rick and Morty")
+	var kit := CharacterDB.build_abilities_for(&"rick")
+	_check(kit.size() == 4, "Rick tiene 4 habilidades (tiene %d)" % kit.size())
+	if kit.size() < 4:
+		return
+	_check(kit[0] is PlasmaShot, "slot 0 es la pistola de plasma")
+	_check(kit[1] is PortalGun, "slot 1 es la PISTOLA DE PORTALES")
+	_check(kit[2] is PlasmaGrenade, "slot 2 es la granada")
+	_check(kit[3] is MeeseeksBox, "slot 3 es la caja de Meeseeks")
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+
+	player.setup_character(data)
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, 30.0), 1.5)
+	var rumbo := _carril_libre(player, puesto, 16.0)
+	player.respawn_at(puesto, atan2(-rumbo.x, -rumbo.z))
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(atan2(-rumbo.x, -rumbo.z))
+	for _i: int in range(24):
+		await get_tree().physics_frame
+
+	# --- EL TELETRANSPORTE ---
+	#
+	# Es lo que se pidio, asi que se comprueba lo que se pidio: que llegue LEJOS y que
+	# llegue A DONDE APUNTA. Lo primero solo no alcanza —un empujon fuerte tambien
+	# mueve— y lo segundo solo tampoco, porque teletransportarse dos metros adelante
+	# tambien cumple "a donde apunto".
+	# APUNTADO FIJO PARA MEDIR.
+	#
+	# get_aim_direction() saca el rumbo de un rayo que arranca en la camara, asi que
+	# cambia entre el momento en que el test calcula el destino y el momento en que la
+	# habilidad lo recalcula. La primera version comparaba dos destinos distintos y daba
+	# 7.3 metros de diferencia sin que nada estuviera roto. aim_override fija el rumbo
+	# para los dos, que es lo unico que hace comparable la medicion.
+	player.aim_override = rumbo
+	var desde := player.global_position
+	# SIN LIMITE DE DISTANCIA, que es lo que se pidio.
+	#
+	# Se comprueba sobre la constante y no midiendo un disparo: cualquier medicion real
+	# la corta lo primero que haya en el camino —en un mapa con veinte coberturas eso
+	# son diez o quince metros— y entonces el numero habla del mapa, no de la habilidad.
+	# Lo que hay que garantizar es que el alcance cubra la diagonal entera: si eso vale,
+	# no hay punto del mapa al que no llegue desde ningun otro.
+	_check(PortalGun.ALCANCE > Arena.ARENA_SIZE * 1.42,
+		"el portal alcanza la diagonal entera del mapa (%.0f contra %.0f)" % [
+			PortalGun.ALCANCE, Arena.ARENA_SIZE * 1.42])
+
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	# El portal avisa antes de mover: hay que esperar el aviso mas margen.
+	for _i: int in range(60):
+		await get_tree().physics_frame
+	var recorrido := player.global_position - desde
+	var salto := Vector3(recorrido.x, 0.0, recorrido.z).length()
+	_check(salto > 12.0, "y te lleva ahi de verdad (salto de %.1f m)" % salto)
+
+	# EN LA DIRECCION QUE APUNTASTE, que es la promesa de la habilidad.
+	#
+	# No se compara contra un punto predicho a proposito: la habilidad recalcula su
+	# destino al EJECUTARSE, desde su propio origen, asi que un punto calculado antes
+	# nunca coincide exacto y el chequeo falla por como esta medido y no por como
+	# funciona. Lo que hay que garantizar es la promesa: lejos, y hacia donde mirabas.
+	var alineacion := Vector3(recorrido.x, 0.0, recorrido.z).normalized().dot(rumbo)
+	_check(alineacion > 0.9,
+		"y hacia donde apuntabas, no a cualquier lado (alineacion %.2f)" % alineacion)
+
+	# --- Y que el destino sea PISABLE ---
+	#
+	# Un teletransporte sin limite de distancia es tambien un teletransporte que te
+	# puede meter adentro de una pared, y eso es peor que no tenerlo: la fisica te
+	# expulsa para cualquier lado o te deja trabado. find_clear_spot lo corre al hueco
+	# mas cercano, y esto comprueba que asi sea.
+	var espacio := player.get_world_3d().direct_space_state
+	var forma := PhysicsShapeQueryParameters3D.new()
+	var esfera := SphereShape3D.new()
+	esfera.radius = 0.5
+	forma.shape = esfera
+	forma.collision_mask = GameConfig.LAYER_WORLD
+	forma.transform = Transform3D(Basis.IDENTITY, player.global_position + Vector3.UP * 1.0)
+	_check(espacio.intersect_shape(forma, 1).is_empty(),
+		"y no te deja incrustado adentro de una cobertura")
+
+	# Y que cayo sobre algo: un portal a media altura te deja cayendo desde el cielo.
+	var suelo := PhysicsRayQueryParameters3D.create(
+		player.global_position + Vector3.UP * 0.6,
+		player.global_position + Vector3.DOWN * 4.0)
+	suelo.collision_mask = GameConfig.LAYER_WORLD
+	_check(not espacio.intersect_ray(suelo).is_empty(), "y con piso debajo")
+
+	# --- Apuntando al cielo tampoco puede romperse ---
+	#
+	# El rayo no pega contra nada y el calculo se queda sin punto de referencia. Es el
+	# caso que mas facil se olvida y el mas facil de provocar jugando.
+	player.aim_override = Vector3.ZERO
+	var arriba := PortalGun.calcular_destino(player, player.get_aim_origin(), Vector3.UP)
+	_check(is_finite(arriba.x) and is_finite(arriba.y) and is_finite(arriba.z),
+		"apuntar al cielo devuelve un destino valido, no un infinito")
+
+	Arena.set_bots_active(true)
+
+
 # ------------------------------------------------------- La sala de practica
 
 ## Los interruptores del panel de practica.
@@ -1045,7 +1183,16 @@ func _test_practica(player: Player, arena: Arena) -> void:
 	# El bot tiene que dejar de orbitar y venirse encima del que esta cargando algo. Es
 	# lo que le enseña al jugador que canalizar en campo abierto se paga; sin esto podes
 	# cargar un Snowgrave a tres metros de un bot y el bot sigue haciendo circulos.
-	uno.global_position = player.global_position + Vector3(9.0, 0.0, 0.0)
+	# AL JUGADOR SE LO PLANTA EN UN LUGAR CONOCIDO PRIMERO.
+	#
+	# El test de Rick termina con el jugador teletransportado a donde haya quedado, que
+	# puede ser contra una pared del mapa. Colocando al bot a nueve metros de ahi sin
+	# mirar, el bot puede caer fuera de la arena o dentro de una cobertura, y entonces
+	# lo que se mide no es si persigue sino donde lo pusimos.
+	var claro := arena.find_clear_spot(Vector3(12.0, 0.6, 12.0), 2.0)
+	player.global_position = claro
+	await get_tree().physics_frame
+	uno.global_position = claro + Vector3(9.0, 0.0, 0.0)
 	uno.bot_move_dir = Vector3.ZERO
 	uno.bot_wants_run = false
 	player.stamina.restore_full()

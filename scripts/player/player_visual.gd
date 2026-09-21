@@ -603,6 +603,8 @@ func _build_costume(kind: StringName) -> void:
 			_build_dio()
 		&"petals":
 			_build_flowery()
+		&"labcoat":
+			_build_rick()
 		_:
 			pass
 
@@ -754,6 +756,117 @@ func _corazon(padre: Node3D, material: StandardMaterial3D, pos: Vector3, tam: fl
 	var punta := Art.box(Vector3(tam * 1.25, tam * 1.25, tam * 0.45), material, Vector3.ZERO)
 	punta.rotation_degrees = Vector3(0.0, 0.0, 45.0)
 	raiz.add_child(punta)
+
+
+## Rick: el viejo del guardapolvo.
+##
+## HECHO CONTRA LA REFERENCIA DESDE EL PRIMER INTENTO, que es lo que no hice con los
+## otros tres:
+##
+##   - Alto y FLACO, con las extremidades finas.
+##   - Pelo CELESTE GRISACEO, salvaje y en puntas, con ENTRADAS: la coronilla despejada
+##     y el pelo saliendo de los costados. Esa forma de U invertida es su silueta.
+##   - UNICEJA. Una sola linea sobre los dos ojos.
+##   - GUARDAPOLVO BLANCO abierto, sobre camisa celeste.
+##   - Pantalon marron con CINTO de hebilla dorada.
+##   - Y las medias blancas asomando, porque el pantalon le queda corto.
+##
+## SILUETA: el guardapolvo abierto le da dos faldones rectos que cuelgan y no se mueven
+## como los de nadie mas. De lejos es una L blanca vertical, que no se parece ni a las
+## astas de Noelle, ni a los hombros de Dio, ni a la campera al hombro de Flowery.
+func _build_rick() -> void:
+	# Cejas bajas y rectas, boca chica y torcida: el gesto de alguien a quien todo le
+	# parece una perdida de tiempo.
+	_apply_expression(0.06, -0.010, 0.050)
+
+	var pelo := Art.toon(Color(0.66, 0.80, 0.86), OUTLINE_WIDTH)
+	var guardapolvo := Art.toon(Color(0.95, 0.96, 0.97), OUTLINE_WIDTH)
+	var cinto := Art.toon(Color(0.28, 0.19, 0.12), OUTLINE_WIDTH)
+	var hebilla := Art.toon(Color(0.85, 0.70, 0.25), OUTLINE_WIDTH)
+
+	# --- Pelo: tupe arriba, entradas ATRAS ---
+	#
+	# LO TENIA AL REVES. La primera version puso la masa de pelo en la nuca y dejo la
+	# coronilla pelada, y el resultado era un calvo con una cresta detras. La referencia
+	# dice lo contrario: un TUPE que cubre la parte de arriba y adelante, y la pelada en
+	# la NUCA. Es la diferencia entre Rick y un punk.
+	# ARRIBA Y CORRIDO HACIA ATRAS. Centrado y bajo, la esfera del tupe baja hasta y=0.087
+	# y le tapa los ojos, que estan en 0.128. Es la tercera vez que cometo ese error en
+	# este archivo —ya me habia pasado con Flowery y con Noelle— asi que van las cuentas:
+	# los ojos estan en y=0.128 y las cejas en y=0.196, y el borde de abajo del pelo tiene
+	# que quedar POR ENCIMA de 0.196 en la parte de adelante.
+	var tupe := Art.sphere(0.196, pelo, Vector3(0.0, 0.255, 0.015))
+	tupe.scale = Vector3(1.04, 0.72, 0.95)
+	_costume_add(_head_pivot, tupe)
+
+	# Las puntas salen del tupe hacia arriba y ATRAS, no hacia adelante: es pelo sin
+	# peinar que se fue para atras solo, no un flequillo.
+	for i: int in range(7):
+		var t := float(i) / 6.0 - 0.5
+		var punta := MeshInstance3D.new()
+		var cono := CylinderMesh.new()
+		cono.top_radius = 0.0
+		cono.bottom_radius = 0.052
+		# Mas largas en el medio: un abanico parejo se lee como una corona.
+		cono.height = 0.30 - absf(t) * 0.26
+		punta.mesh = cono
+		punta.material_override = pelo
+		punta.position = Vector3(t * 0.30, 0.345, 0.010 + absf(t) * 0.022)
+		punta.rotation_degrees = Vector3(26.0, 0.0, -t * 58.0)
+		_costume_add(_head_pivot, punta)
+
+	# Patillas finas por delante de la oreja. Chicas: anchas se leen como orejeras, que
+	# es lo que me paso con Flowery y con Noelle.
+	for side: float in [-1.0, 1.0]:
+		var patilla := Art.sphere(0.044, pelo, Vector3(0.180 * side, 0.168, -0.030))
+		patilla.scale = Vector3(0.36, 0.95, 0.78)
+		_costume_add(_head_pivot, patilla)
+
+	# --- LA UNICEJA ---
+	#
+	# Una sola barra sobre los dos ojos. _build_face ya dibujo dos cejas separadas a
+	# y=0.196, asi que esta va apenas mas adelante y las tapa: es mas barato que rehacer
+	# la cara y deja la expresion animada funcionando igual.
+	#
+	# Va PEGADA A LA CARA y fina. La primera version era gruesa y a la altura del
+	# nacimiento del pelo, y ahi arriba no se leia como ceja sino como vincha.
+	var uniceja := Art.box(Vector3(0.205, 0.019, 0.028),
+		Art.flat(Color(0.56, 0.68, 0.76)), Vector3(0.0, 0.188, -0.176))
+	_costume_add(_head_pivot, uniceja)
+
+	# --- Guardapolvo ABIERTO ---
+	# Espalda entera y dos solapas al frente, separadas: por el medio se ve la camisa
+	# celeste, que es lo que lo lee como abierto y no como un mameluco blanco.
+	_costume_add(_torso, Art.box(Vector3(0.42, 0.46, 0.13), guardapolvo, Vector3(0.0, 0.34, 0.13)))
+	for side: float in [-1.0, 1.0]:
+		_costume_add(_torso, Art.box(Vector3(0.15, 0.46, 0.30), guardapolvo,
+			Vector3(0.135 * side, 0.34, 0.0)))
+		var hombro := Art.sphere(0.108, guardapolvo, Vector3(0.168 * side, 0.50, 0.06))
+		hombro.scale = Vector3(0.88, 0.76, 1.12)
+		_costume_add(_torso, hombro)
+		# Faldon: baja por debajo de la cintura y es lo que lo hace alto de lejos.
+		var faldon := Art.box(Vector3(0.155, 0.30, 0.16), guardapolvo,
+			Vector3(0.145 * side, 0.02, 0.055))
+		_costume_add(_torso, faldon)
+
+	# Cuello del guardapolvo.
+	for side: float in [-1.0, 1.0]:
+		var solapa := Art.box(Vector3(0.10, 0.06, 0.08), guardapolvo,
+			Vector3(0.062 * side, 0.578, -0.108))
+		solapa.rotation_degrees = Vector3(0.0, 0.0, -26.0 * side)
+		_costume_add(_torso, solapa)
+
+	# --- Cinto marron con hebilla dorada ---
+	_costume_add(_torso, Art.box(Vector3(0.44, 0.070, 0.30), cinto, Vector3(0.0, 0.085, 0.0)))
+	_costume_add(_torso, Art.box(Vector3(0.085, 0.062, 0.32), hebilla, Vector3(0.0, 0.085, -0.02)))
+
+	# --- Medias blancas ---
+	# El pantalon le queda corto y se le ven: es un detalle chico y es de los que mas
+	# dicen del personaje, porque nadie mas del juego tiene la ropa mal puesta.
+	var media := Art.toon(Color(0.93, 0.93, 0.90), OUTLINE_WIDTH)
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if is_instance_valid(rodilla):
+			_costume_add(rodilla, Art.capsule(0.082, 0.13, media, Vector3(0.0, -0.335, 0.0)))
 
 
 ## Noelle: chica reno. Silueta alta y angosta, con el peso arriba.

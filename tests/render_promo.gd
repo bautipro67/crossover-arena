@@ -65,6 +65,7 @@ func _run() -> void:
 	await _retrato(arena, player, &"flowery", "retrato_flowery")
 	await _retrato(arena, player, &"noelle", "retrato_noelle")
 	await _retrato(arena, player, &"dio", "retrato_dio")
+	await _retrato(arena, player, &"rick", "retrato_rick")
 	await _panoramica(arena)
 
 	print("")

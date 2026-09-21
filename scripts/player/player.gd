@@ -572,6 +572,41 @@ func _on_health_changed(_current: float, _max_value: float) -> void:
 	pass
 
 
+## SOLO SERVIDOR. Teletransporta el cuerpo a un punto y avisa a todos.
+##
+## POR QUE NO ALCANZA CON PONER global_position EN EL SERVIDOR.
+##
+## El movimiento de este juego es AUTORIDAD DEL CLIENTE: cada uno manda su propia
+## posicion y el servidor la acepta. Si el servidor moviera el cuerpo por su cuenta, el
+## siguiente paquete del cliente —que todavia se cree en el lugar viejo— lo devolveria
+## ahi, y el teletransporte duraria una fraccion de segundo.
+##
+## Por eso viaja como RPC a todos, incluido el dueño: el que manda su posicion aplica el
+## salto primero y despues reporta el lugar nuevo. Es el mismo camino que usa respawn_at.
+func teleport_to(destino: Vector3) -> void:
+	if not Net.is_server():
+		return
+	Net.rpc_ready(self, &"_net_teleport", [destino])
+	_apply_teleport(destino)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_teleport(destino: Vector3) -> void:
+	_apply_teleport(destino)
+
+
+func _apply_teleport(destino: Vector3) -> void:
+	global_position = destino
+	# El objetivo de interpolacion tambien, o los clientes remotos ven al cuerpo
+	# DESLIZARSE hasta el destino en vez de aparecer ahi.
+	_target_pos = destino
+	velocity = Vector3.ZERO
+	# Y se corta cualquier embestida en curso: salir de un portal con la inercia de
+	# una carga encima manda al personaje volando apenas llega.
+	_dash_left = 0.0
+	dash_speed_override = 0.0
+
+
 ## SOLO SERVIDOR. Revive y reposiciona.
 func respawn_at(spawn_position: Vector3, yaw: float) -> void:
 	if not Net.is_server():
