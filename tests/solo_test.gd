@@ -201,8 +201,20 @@ func _rms(stream: AudioStreamWAV, desde: int, cuantas: int) -> float:
 
 
 ## Cruces por cero por segundo. Indicador barato de que tan agudo es un sonido.
-func _cruces_por_segundo(stream: AudioStreamWAV) -> float:
-	var datos := stream.data
+## Devuelve -1 si el sonido no es PCM crudo (una voz grabada viene en Ogg comprimido).
+##
+## ESTABA TIPADO A AudioStreamWAV y eso rompio el arnes de la peor manera posible: al
+## poner la primera voz grabada, la funcion recibio un Ogg, el error de tipo corto la
+## corrutina a la mitad, y la suite siguio diciendo "TODO OK" con DIEZ chequeos menos.
+## Un arnes que deja de probar en silencio es peor que uno que falla.
+## (Y se vuelve a tipar apenas pasa el chequeo. Dejarlo como AudioStream a secas convierte
+## stream.data en una busqueda dinamica, y con ella datos.decode_s16 dentro de un bucle de
+## un millon largo de iteraciones: el arnes paso de 40 segundos a no terminar nunca.)
+func _cruces_por_segundo(stream: AudioStream) -> float:
+	var wav := stream as AudioStreamWAV
+	if wav == null:
+		return -1.0
+	var datos := wav.data
 	var muestras := datos.size() / 2
 	if muestras < 2:
 		return 0.0
@@ -215,11 +227,15 @@ func _cruces_por_segundo(stream: AudioStreamWAV) -> float:
 			cruces += 1
 		if absi(v) > 400:
 			previo = v
-	return float(cruces) * float(stream.mix_rate) / float(muestras)
+	return float(cruces) * float(wav.mix_rate) / float(muestras)
 
 
-func _pico(stream: AudioStreamWAV) -> float:
-	var datos := stream.data
+## Idem: -1 si no es PCM crudo.
+func _pico(stream: AudioStream) -> float:
+	var wav := stream as AudioStreamWAV
+	if wav == null:
+		return -1.0
+	var datos := wav.data
 	var muestras := datos.size() / 2
 	var pico := 0
 	for i: int in range(muestras):
@@ -287,9 +303,19 @@ func _test_audio() -> void:
 	# Sirve para pescar la clase de error que no se ve leyendo el codigo: un filtro con
 	# el corte al reves, un pasabajos donde iba un pasaaltos, una envolvente que se comio
 	# el transitorio. Cualquiera de esos deja el sonido "existiendo" y sonando mal.
+	#
+	# Solo aplica a lo que genera el codigo. Una voz grabada viene comprimida y ademas no
+	# tiene por que cumplir estas reglas: las puso una garganta, no un filtro.
 	var brillos: Dictionary = {}
+	var grabados := 0
 	for name: StringName in expected:
-		brillos[name] = _cruces_por_segundo(Sfx._bank[name])
+		var cps := _cruces_por_segundo(Sfx._bank[name])
+		if cps < 0.0:
+			grabados += 1
+			continue
+		brillos[name] = cps
+	_check(brillos.has(&"hit_punch") and brillos.has(&"knife"),
+		"los sonidos sintetizados se pueden medir (%d vienen de archivo y se saltean)" % grabados)
 	_check(brillos[&"hit_punch"] < 1400.0,
 		"el puñetazo es GRAVE: %.0f cruces/s" % brillos[&"hit_punch"])
 	_check(brillos[&"za_warudo"] < 1400.0,
@@ -311,6 +337,8 @@ func _test_audio() -> void:
 	var flojo := ""
 	for name: StringName in expected:
 		var pico := _pico(Sfx._bank[name])
+		if pico < 0.0:
+			continue
 		if pico < 0.25 or pico > 0.999:
 			flojo = "%s (pico %.2f)" % [name, pico]
 			break
@@ -430,7 +458,20 @@ func _check(condition: bool, description: String) -> void:
 		_failures.append(description)
 
 
+## Minimo de chequeos que esta suite TIENE que correr.
+##
+## No es una formalidad. Una corrutina que se corta a la mitad —por un error de tipo, por
+## un await que nunca vuelve— deja la suite terminando en verde con la mitad de las
+## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
+## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
+## que el verde signifique algo.
+const CHEQUEOS_MINIMOS: int = 58
+
+
 func _finish() -> void:
+	if _checks < CHEQUEOS_MINIMOS:
+		_failures.append("la suite corrio %d chequeos y tenia que correr al menos %d: se corto a la mitad" % [
+			_checks, CHEQUEOS_MINIMOS])
 	print("")
 	print("==========================================")
 	if _failures.is_empty():

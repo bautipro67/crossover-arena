@@ -9,3 +9,14 @@ build/
 # Sistema
 Thumbs.db
 desktop.ini
+
+# Voces grabadas: los audios NO van al repositorio publico.
+#
+# El codigo que las usa si va —esta en sfx.gd y funciona para cualquiera— pero los
+# archivos de audio se quedan en la maquina. Subirlos a un repo publico de GitHub es
+# republicarlos, que es una cosa distinta de usarlos en el build propio, y es gratis
+# no hacerlo: el juego funciona igual y el que no los tenga oye la voz sintetizada.
+assets/voces/*.ogg
+assets/voces/*.wav
+assets/voces/*.mp3
+assets/voces/*.import
