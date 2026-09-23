@@ -253,6 +253,10 @@ func _test_progresion() -> void:
 	# a proposito, y el archivo es el MISMO que usa quien corre el arnes. Sin esto, correr
 	# los tests una vez le borra su progreso real.
 	Progreso.guardado_activo = false
+	# Y SIN MODO DESARROLLADOR. El arnes corre en la misma maquina que el juego, y en la del
+	# autor existe el archivo que da monedas infinitas: con el prendido, "no se puede
+	# comprar sin monedas" fallaria siempre y por una razon que no tiene nada que ver.
+	Progreso.modo_dev = false
 	Progreso.borrar_todo()
 
 	# --- Niveles ---
@@ -424,11 +428,28 @@ func _test_progresion() -> void:
 	Modos.iniciar(Modos.SUPERVIVENCIA)
 	# Matar al ultimo bot vivo tiene que traer una oleada MAS GRANDE. Si devolviera cero,
 	# el modo se quedaria sin enemigos y sin terminar nunca.
+	var vida_1 := Modos.vida_bot()
 	var refuerzos := Modos.bot_murio(0)
-	_check(Modos.oleada == 2 and refuerzos > Modos.OLEADA_INICIAL - 1,
-		"supervivencia: limpiar la oleada trae otra mas grande (oleada %d, %d bots)" % [
+	_check(Modos.oleada == 2 and refuerzos >= Modos.OLEADA_INICIAL,
+		"supervivencia: limpiar la oleada trae la siguiente (oleada %d, %d bots)" % [
 			Modos.oleada, refuerzos])
+	_check(Modos.vida_bot() > vida_1, "y sus enemigos aguantan mas que los de la anterior")
+	_check(Modos.bots_en_oleada(7) > Modos.bots_en_oleada(1),
+		"y la cantidad crece con las oleadas (%d en la 1, %d en la 7)" % [
+			Modos.bots_en_oleada(1), Modos.bots_en_oleada(7)])
 	_check(Modos.bot_murio(2) == 0, "y no trae refuerzos si todavia quedan vivos")
+
+	# --- Modo desarrollador: la compra sale y el saldo no baja ---
+	Progreso.borrar_todo()
+	Progreso.modo_dev = true
+	_check(Progreso.alcanza(999999), "en modo desarrollador todo alcanza")
+	_check(Progreso.gastar_monedas(5000) and Progreso.monedas == 0,
+		"y comprar no descuenta nada: infinitas es que no se gastan")
+	Progreso.modo_dev = false
+	_check(not Progreso.alcanza(1), "y sin el modo, vuelve la regla de siempre")
+	# El marcador vive en user://, fuera del proyecto: no puede terminar dentro del .pck.
+	_check(Progreso.MARCA_DEV.begins_with("user://"),
+		"el marcador del modo desarrollador nunca se publica con el juego")
 
 	# Se deja todo como estaba y se vuelve a leer del disco: lo que el jugador tenia.
 	Progreso.borrar_todo()
@@ -437,6 +458,7 @@ func _test_progresion() -> void:
 	Modos.iniciar(Modos.PRACTICA)
 	Progreso.guardado_activo = true
 	Progreso.cargar()
+	Progreso.detectar_modo_dev()
 	await get_tree().process_frame
 
 
@@ -672,7 +694,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 127
+const CHEQUEOS_MINIMOS: int = 133
 
 
 func _finish() -> void:

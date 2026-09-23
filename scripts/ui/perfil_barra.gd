@@ -72,4 +72,6 @@ func refrescar() -> void:
 		# La barra se estira con el ancla derecha y no con el tamaño: asi acompaña al
 		# contenedor cuando cambia el ancho de la ventana, sin recalcular nada.
 		_barra.anchor_right = Progreso.progreso_nivel()
-	_monedas.text = str(Progreso.monedas)
+	# El infinito a la vista: si el modo desarrollador estuviera prendido sin avisar, un
+	# saldo que no baja al comprar se veria como un bug.
+	_monedas.text = "∞" if Progreso.modo_dev else str(Progreso.monedas)

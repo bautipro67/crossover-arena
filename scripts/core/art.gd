@@ -60,6 +60,42 @@ static func toon(color: Color, outline_width: float = 0.012, rim_amount: float =
 	return m
 
 
+## Toon con TEXTURA DE PELO. Para los personajes que son bichos y no personas.
+##
+## Un toon liso es piel: una superficie continua y perfecta. El pelaje se distingue por que
+## la luz no corta limpio — el borde entre luz y sombra queda deshilachado, porque cada
+## pelo apunta para un lado. Eso se consigue con un mapa de normales de ruido ESTIRADO en
+## un eje, que imita hebras: con el sombreado toon, el corte de luz sigue esas hebras y se
+## vuelve dentado.
+##
+## El ruido se genera por codigo —FastNoiseLite— asi que sigue sin haber un solo archivo
+## de textura. Y se comparte: generar un ruido de 256x256 por personaje y por respawn es
+## trabajo tirado, el mismo sirve para todos.
+static var _normal_pelo: NoiseTexture2D = null
+
+static func pelaje(color: Color, outline_width: float = 0.012) -> StandardMaterial3D:
+	var m := toon(color, outline_width, 0.35)
+	if _normal_pelo == null:
+		var ruido := FastNoiseLite.new()
+		ruido.noise_type = FastNoiseLite.TYPE_CELLULAR
+		ruido.frequency = 0.09
+		ruido.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_DIV
+		_normal_pelo = NoiseTexture2D.new()
+		_normal_pelo.width = 256
+		_normal_pelo.height = 256
+		_normal_pelo.seamless = true
+		_normal_pelo.as_normal_map = true
+		_normal_pelo.bump_strength = 6.0
+		_normal_pelo.noise = ruido
+	m.normal_enabled = true
+	m.normal_texture = _normal_pelo
+	m.normal_scale = 0.9
+	# Estirado en un eje: celdas alargadas se leen como hebras, redondas como granito.
+	m.uv1_scale = Vector3(5.0, 1.6, 1.0)
+	m.roughness = 1.0
+	return m
+
+
 ## Igual que toon pero emitiendo luz propia. Para los detalles que tienen que cantar:
 ## trims del mapa, proyectiles, acentos de personaje.
 static func glow(color: Color, energy: float = 2.0, outline_width: float = 0.0) -> StandardMaterial3D:

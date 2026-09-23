@@ -175,6 +175,15 @@ func _tarjeta(s: SkinData) -> Control:
 	elif tiene:
 		b = UITheme.make_button("EQUIPAR", true)
 		b.pressed.connect(func() -> void: _equipar(s.character_id, s.id))
+	elif s.precio <= 0 and Progreso.modo_dev:
+		# En modo desarrollador las del pase tambien se pueden probar. Las monedas
+		# infinitas existen PARA probar skins, y la mitad de las skins son del pase: sin
+		# esto, el modo servia para la mitad de lo que se pidio.
+		b = UITheme.make_button("DESBLOQUEAR (DEV)", true)
+		b.pressed.connect(func() -> void:
+			Progreso.desbloquear_skin(s.id)
+			_equipar(s.character_id, s.id)
+			_avisar("%s desbloqueada (modo desarrollador)" % s.display_name))
 	elif s.precio <= 0:
 		# Del pase. El boton no se puede apretar pero dice de donde sale: un candado
 		# mudo hace que la gente piense que es un error del juego.
@@ -182,7 +191,7 @@ func _tarjeta(s: SkinData) -> Control:
 		b.disabled = true
 	else:
 		b = UITheme.make_button("COMPRAR — %d ◆" % s.precio, true)
-		b.disabled = Progreso.monedas < s.precio
+		b.disabled = not Progreso.alcanza(s.precio)
 		b.pressed.connect(func() -> void: _comprar(s))
 	v.add_child(b)
 	return caja

@@ -60,6 +60,20 @@ var equipadas: Dictionary = {}
 ## Sin esto, correr las pruebas una vez le borraba a quien las corre su nivel, sus monedas
 ## y todo lo que hubiera desbloqueado. Un arnes no puede cobrarse eso.
 var guardado_activo: bool = true
+
+## MODO DESARROLLADOR: monedas infinitas, para probar skins sin tener que jugar horas.
+##
+## SE PRENDE CON UN ARCHIVO, no con una opcion ni con un argumento, y es a proposito. El
+## .exe de Windows es el MISMO que baja cualquiera de itch.io, asi que cualquier cosa
+## escrita en el codigo —una constante, una opcion en el menu— la tendrian todos. Un
+## archivo en la carpeta de datos del juego existe solo en la maquina donde alguien lo
+## puso: en las demas, este codigo lee que no esta y no hace nada.
+##
+## (Y no rompe ninguna economia: las monedas son locales y solo compran cosmeticos. Quien
+## quiera hacer trampa puede editar progreso.cfg a mano desde siempre; esto no le abre
+## ninguna puerta que no estuviera abierta.)
+const MARCA_DEV: String = "user://modo_desarrollador"
+var modo_dev: bool = false
 var bajas_totales: int = 0
 var partidas_jugadas: int = 0
 var victorias: int = 0
@@ -67,6 +81,13 @@ var victorias: int = 0
 
 func _ready() -> void:
 	cargar()
+	detectar_modo_dev()
+
+
+func detectar_modo_dev() -> void:
+	modo_dev = FileAccess.file_exists(MARCA_DEV)
+	if modo_dev:
+		print("[progreso] modo desarrollador: monedas infinitas")
 
 
 # ------------------------------------------------------------------- Niveles
@@ -121,10 +142,24 @@ func sumar_monedas(cantidad: int) -> void:
 	cambio.emit()
 
 
+## Alcanza la plata para esto? Toda la interfaz pregunta ACA y no compara monedas a mano:
+## si comparara, el modo desarrollador mostraria los botones de comprar apagados aunque la
+## compra fuera a salir bien.
+func alcanza(cantidad: int) -> bool:
+	return modo_dev or monedas >= cantidad
+
+
 ## Devuelve false si no alcanza. El que llama TIENE que mirar el resultado: es lo unico
 ## que evita regalar una skin porque el boton se apreto dos veces.
 func gastar_monedas(cantidad: int) -> bool:
-	if cantidad < 0 or monedas < cantidad:
+	if cantidad < 0:
+		return false
+	# En modo desarrollador la compra sale y el saldo no se toca: "infinitas" quiere decir
+	# que no se gastan, no que haya un numero muy grande que algun dia se termina.
+	if modo_dev:
+		cambio.emit()
+		return true
+	if monedas < cantidad:
 		return false
 	monedas -= cantidad
 	monedas_cambiaron.emit(monedas)

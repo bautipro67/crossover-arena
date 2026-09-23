@@ -61,27 +61,45 @@ const RADIO_COLINA: float = 9.0
 # Ahora cada modo trae los suyos, y la practica se queda con los de antes porque ahi si
 # hacen falta.
 
+## Cuantos enemigos trae la oleada `n` de supervivencia.
+##
+## UNO MAS CADA DOS OLEADAS, no cada una. Supervivencia es una RACHA: hay que pasar la
+## oleada 1 Y la 2 Y la 3, y las probabilidades se multiplican. Sumando uno por oleada, la
+## cuarta ya era cinco a la vez, y medido el heroe no pasaba de la tercera en ninguna de
+## quince corridas. Una racha tiene que empezar facil para que tenga sentido llegar lejos.
+##
+## Es una funcion y no una cuenta escrita en dos lados porque el simulador de balance la
+## necesita tambien: tenia su propia copia, que es justo lo que se desincroniza en silencio.
+static func bots_en_oleada(n: int) -> int:
+	return mini(OLEADA_INICIAL + (n - 1) / 2, TOPE_SIMULTANEOS)
+
+
 ## Vida de cada enemigo en este modo.
+##
+## CALIBRADO CON PELEAS SIMULADAS, no a ojo (tests/balance_modos.gd): un heroe con la vida
+## y el daño de un jugador contra los enemigos de cada modo, seis veces por modo. La
+## primera medicion fue lapidaria: supervivencia, jefes y ultimo en pie daban CERO
+## victorias de seis, y el duelo cinco de seis.
+##
+## Lo que enseño la medicion, y que no es obvio:
+##
+## - Contra VARIOS, la dificultad crece mucho mas rapido que la cantidad. Dos enemigos
+##   no son el doble de dificiles que uno: pegan el doble Y hay que sacarles el doble de
+##   vida, asi que son varias veces mas dificiles. Por eso en los modos de muchos cada
+##   enemigo tiene que ser bastante mas debil que el del duelo.
+## - En uno contra uno hay un punto muy marcado: por debajo de unos 150 de vida el heroe
+##   gana casi siempre, y por arriba de 180 pierde casi siempre. La torre subia 48 por
+##   jefe y pasaba ese umbral en el segundo, asi que el jefe 1 se ganaba y el 2 no.
 func vida_bot() -> float:
 	match actual:
 		PRACTICA: return 170.0
-		# Un duelo tiene que ser un duelo: aguanta bastante, pero se puede matar.
-		DUELO: return 130.0
-		# Arrancan blandos y engordan con la oleada. Que el modo suba de dificultad
-		# subiendo la VIDA y no solo la cantidad evita que la oleada 8 sea una pared de
-		# ocho cuerpos: son pocos y duros, que se pelea mejor que muchos y flojos.
-		SUPERVIVENCIA: return 70.0 + float(oleada) * 12.0
-		# Contrarreloj corre contra el reloj, no contra su vida: si aguantan mucho, el
-		# modo deja de ser una carrera y pasa a ser veinte peleas largas seguidas.
+		DUELO: return 150.0
+		SUPERVIVENCIA: return 40.0 + float(oleada) * 6.0
 		CONTRARRELOJ: return 55.0
-		# En la colina el objetivo no es matarlos: son una molestia que te quiere sacar del
-		# circulo. Poca vida para poder despejarla, no para farmearlos.
-		COLINA: return 75.0
-		ULTIMO_EN_PIE: return 85.0
-		# El ultimo jefe crece MENOS de lo que crecia. Con +70 por jefe, el quinto tenia 430
-		# de vida: mas de lo que un jugador saca antes de que se le acabe la suya, o sea una
-		# pared en vez de un final.
-		JEFES: return 140.0 + float(bajas) * 48.0
+		ULTIMO_EN_PIE: return 50.0
+		# Sube de a poco para no cruzar de golpe el umbral de los 180.
+		JEFES: return 112.0 + float(bajas) * 20.0
+		COLINA: return 60.0
 	return 170.0
 
 
@@ -89,14 +107,14 @@ func vida_bot() -> float:
 func daño_bot() -> float:
 	match actual:
 		PRACTICA: return GameConfig.BOT_DAMAGE_SCALE
-		DUELO: return 0.70
-		# Sube con las oleadas pero con techo: pasado cierto punto, mas daño no hace el
-		# modo mas interesante, solo lo corta antes.
-		SUPERVIVENCIA: return minf(0.40 + float(oleada) * 0.03, 0.62)
+		DUELO: return 0.72
+		SUPERVIVENCIA: return minf(0.21 + float(oleada) * 0.02, 0.40)
 		CONTRARRELOJ: return 0.38
-		COLINA: return 0.42
-		ULTIMO_EN_PIE: return 0.45
-		JEFES: return 0.55
+		ULTIMO_EN_PIE: return 0.31
+		# Los jefes se endurecen tambien pegando, no solo aguantando: un jefe que solo tiene
+		# mas vida es la misma pelea mas larga.
+		JEFES: return 0.50 + float(bajas) * 0.03
+		COLINA: return 0.34
 	return GameConfig.BOT_DAMAGE_SCALE
 
 var actual: StringName = ONLINE
@@ -236,7 +254,7 @@ func bot_murio(vivos_restantes: int) -> int:
 			# oleadas convierte "aguanta sin equivocarte nunca" en "aguanta cada oleada", que
 			# es lo que un modo de oleadas tiene que pedir.
 			respiro.emit()
-			return mini(OLEADA_INICIAL + oleada - 1, TOPE_SIMULTANEOS)
+			return bots_en_oleada(oleada)
 		ULTIMO_EN_PIE:
 			if vivos_restantes <= 0:
 				_finalizar(true, "¡ÚLTIMO EN PIE!", "%d contra uno, en %s" % [

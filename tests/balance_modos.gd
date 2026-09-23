@@ -1,71 +1,157 @@
 extends Node
-## Herramienta: ¿cuánto daño por segundo come el jugador en cada modo?
+## Herramienta: ¿cuánto gana un jugador en cada modo?
 ##
-## NO SIMULA UNA PELEA ENTERA, a propósito. Lo intenté dos veces y las dos dieron números
-## sin sentido: un BotBrain colgado del jugador no mueve nada porque _process_bot solo
-## corre para maniquíes, y marcándolo maniquí los bots dejan de apuntarle. Simular a un
-## humano es difícil y el resultado no sería confiable igual.
+## Simula peleas enteras: un HÉROE con las estadísticas del jugador —vida del personaje,
+## daño sin la rebaja de bot— contra los enemigos del modo con SUS números. El héroe es
+## un BotBrain, así que pelea peor que una persona que sabe jugar: esquiva mal y apunta
+## regular. Por eso lo que importa no es que gane siempre, sino que la tasa de victoria
+## tenga sentido para cada modo, y que un humano —que pelea mejor— gane más.
 ##
-## Esto mide lo que sí define "injusto" y se puede medir sin trampas: el daño que entra
-## por segundo. De ahí sale cuánto vive un jugador de 100 de vida que se come todo, que es
-## el peor caso, y comparado contra lo que tarda en matar a uno da la relación de fuerzas.
+##     godot --headless --fixed-fps 60 --path . res://tests/balance_modos.tscn
+##
+## --fixed-fps hace que cada frame avance exactamente 1/60 de segundo de juego, sin
+## importar cuánto tarde de verdad: la simulación corre tan rápido como da la máquina.
 
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
+const PRUEBAS: int = 15
+const TOPE_PELEA: float = 70.0
 var _arena: Arena = null
+var _siguiente_id: int = 7000
+## Los enemigos van con id NEGATIVO, y no es un detalle: CombatUtils le aplica la rebaja de
+## daño del modo solo a los peer negativos. La primera corrida les daba ids positivos, los
+## enemigos pegaban al cien por ciento y el duelo salia 1 de 6 midiendo otra cosa.
+var _siguiente_malo: int = -1000
+
 
 func _ready() -> void:
 	var m := MAIN_SCENE.instantiate(); m.name = "Main"
 	get_tree().root.call_deferred("add_child", m)
 	_correr.call_deferred()
 
+
 func _correr() -> void:
 	await get_tree().process_frame
 	Progreso.guardado_activo = false
-	Net.host_game(GameConfig.DEFAULT_PORT + 46, "T")
+	Net.host_game(GameConfig.DEFAULT_PORT + 52, "T")
 	await get_tree().process_frame
 	Net.start_match()
 	for _i in range(20): await get_tree().physics_frame
 	_arena = get_tree().root.get_node_or_null(^"Main/Arena") as Arena
+	var local := _arena.get_local_player()
+	# El jugador de verdad afuera del mapa: si queda cerca, los enemigos lo eligen a el.
+	local.health.set_max(99999.0); local.health.revive_full()
+	local._apply_respawn(Vector3(0, -200, 0), 0.0)
+	local.set_physics_process(false)
+
+	var args := OS.get_cmdline_user_args()
+	var modos: Array = [Modos.DUELO, Modos.ULTIMO_EN_PIE, Modos.JEFES, Modos.SUPERVIVENCIA,
+		Modos.CONTRARRELOJ, Modos.COLINA]
+	if args.size() > 0:
+		modos = [StringName(args[0])]
 	print("")
-	print("%-16s %5s %7s %8s %9s %9s" % ["modo","bots","vida","daño","dps","vive"])
-	for m in [Modos.DUELO, Modos.CONTRARRELOJ, Modos.SUPERVIVENCIA, Modos.ULTIMO_EN_PIE,
-			Modos.JEFES, Modos.PRACTICA]:
-		Modos.iniciar(m)
-		var dps := await _dps(Modos.bots_iniciales())
-		var vive := 100.0 / maxf(dps, 0.01)
-		print("%-16s %5d %7.0f %8.2f %8.1f %8.1fs" % [
-			m, Modos.bots_iniciales(), Modos.vida_bot(), Modos.daño_bot(), dps, vive])
-	Modos.iniciar(Modos.PRACTICA)
+	for m in modos:
+		await _medir(m)
 	get_tree().quit()
 
-## Pone N bots alrededor de un jugador que no se defiende y mide cuánto le sacan.
-func _dps(enemigos: int) -> float:
+
+## Una pelea: el héroe contra `enemigos` bots con la vida y el daño que diga el modo.
+## Devuelve [gano, segundos, vida_que_le_quedo].
+func _pelea(personaje: StringName, enemigos: int, vida_heroe: float) -> Array:
 	for id in _arena._players.keys().duplicate():
-		if id < 0:
-			var b = _arena._players[id]
-			if is_instance_valid(b): b.queue_free()
-			_arena._players.erase(id)
+		if id == Net.local_id():
+			continue
+		var b = _arena._players[id]
+		if is_instance_valid(b): b.queue_free()
+		_arena._players.erase(id)
 	await get_tree().process_frame
 
-	var p := _arena.get_local_player()
-	# Vida enorme para medir sin que se muera a mitad de la muestra.
-	p.health.set_max(100000.0)
-	p.health.revive_full()
-	p.status.clear_all()
-	p._apply_respawn(_arena.find_clear_spot(Vector3.ZERO, 1.5), 0.0)
-	for i in range(enemigos):
-		var ang := TAU * float(i) / float(maxi(1, enemigos))
-		_arena._crear_bot(-(i + 1), _arena.find_clear_spot(
-			Vector3(cos(ang), 0, sin(ang)) * 7.0, 1.0), CharacterDB.get_all_ids()[i % 4])
-	Arena.set_bots_active(true)
-	for _i in range(30): await get_tree().physics_frame
+	var base: Vector3 = _arena.get_free_spawn_point().origin
+	var heroe_id := _siguiente_id; _siguiente_id += 1
+	_arena._crear_bot(heroe_id, base, personaje)
+	var heroe: Player = _arena._players[heroe_id]
+	heroe.set_meta(&"heroe", true)
+	# Vida de JUGADOR, no la del modo.
+	heroe.health.set_max(CharacterDB.get_character(personaje).max_health)
+	heroe.health.revive_full()
+	heroe.health.current = minf(vida_heroe, heroe.health.max_health)
+	# Sin respawn ni refuerzos: se mide la pelea pelada.
+	for c in heroe.died.get_connections():
+		heroe.died.disconnect(c["callable"])
 
-	var antes := p.health.current
+	var ids := CharacterDB.get_all_ids()
+	var malos: Array = []
+	for i in range(enemigos):
+		var ang := TAU * float(i) / float(maxi(1, enemigos)) + 0.4
+		var id := _siguiente_malo; _siguiente_malo -= 1
+		_arena._crear_bot(id, _arena.find_clear_spot(base + Vector3(cos(ang), 0, sin(ang)) * 11.0, 1.0),
+			ids[(i + 1) % ids.size()])
+		var b: Player = _arena._players[id]
+		# La vida del MODO, puesta a mano: fuera de una partida solo, _crear_bot les da los
+		# 170 de la practica, que es justo el numero que se esta intentando no medir.
+		b.health.set_max(Modos.vida_bot())
+		b.health.revive_full()
+		for c in b.died.get_connections():
+			b.died.disconnect(c["callable"])
+		malos.append(b)
+	Arena.set_bots_active(true)
+
 	var t := 0.0
-	while t < 25.0:
+	while t < TOPE_PELEA:
 		await get_tree().physics_frame
-		t += get_physics_process_delta_time()
-	var perdido: float = antes - p.health.current
-	p.health.set_max(100.0)
-	p.health.revive_full()
-	return perdido / t
+		t += 1.0 / 60.0
+		if heroe.health.is_dead:
+			return [false, t, 0.0]
+		var vivos := 0
+		for b in malos:
+			if is_instance_valid(b) and not b.health.is_dead:
+				vivos += 1
+		if vivos == 0:
+			return [true, t, heroe.health.current]
+	return [false, t, heroe.health.current]
+
+
+func _medir(modo: StringName) -> void:
+	Modos.iniciar(modo)
+	var personajes := CharacterDB.get_all_ids()
+	var ganadas := 0
+	var detalle := ""
+	for prueba in range(PRUEBAS):
+		var pj: StringName = personajes[prueba % personajes.size()]
+		Modos.iniciar(modo)
+		var gano := false
+		var nota := ""
+		match modo:
+			Modos.DUELO, Modos.ULTIMO_EN_PIE:
+				var r: Array = await _pelea(pj, Modos.bots_iniciales(), 999.0)
+				gano = r[0]
+				nota = "%.0fs" % r[1]
+			Modos.JEFES:
+				# De a uno, curandose entre jefe y jefe, como en el modo.
+				var llego := 0
+				for jefe in range(Modos.JEFES_TOTAL):
+					Modos.bajas = jefe
+					var r: Array = await _pelea(pj, 1, 999.0)
+					if not r[0]:
+						break
+					llego += 1
+				gano = llego >= Modos.JEFES_TOTAL
+				nota = "%d/%d" % [llego, Modos.JEFES_TOTAL]
+			Modos.SUPERVIVENCIA:
+				var oleada := 1
+				while oleada <= 8:
+					Modos.oleada = oleada
+					var n := Modos.bots_en_oleada(oleada)
+					var r: Array = await _pelea(pj, n, 999.0)
+					if not r[0]:
+						break
+					oleada += 1
+				gano = oleada > 5
+				nota = "oleada %d" % oleada
+			Modos.CONTRARRELOJ, Modos.COLINA:
+				var r: Array = await _pelea(pj, Modos.bots_iniciales(), 999.0)
+				gano = r[0]
+				nota = "%.0fs" % r[1]
+		if gano:
+			ganadas += 1
+		detalle += "%s:%s%s " % [String(pj).substr(0, 3), "G" if gano else "p", "(" + nota + ")"]
+	print("%-15s %d/%d   %s" % [modo, ganadas, PRUEBAS, detalle])

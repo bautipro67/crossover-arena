@@ -124,7 +124,7 @@ func _refrescar() -> void:
 		_boton_pro.disabled = true
 	else:
 		_boton_pro.text = "COMPRAR PASE PRO — %d ◆" % Progreso.PRECIO_PASE_PRO
-		_boton_pro.disabled = Progreso.monedas < Progreso.PRECIO_PASE_PRO
+		_boton_pro.disabled = not Progreso.alcanza(Progreso.PRECIO_PASE_PRO)
 	_boton_todo.disabled = not Pase.hay_algo_para_reclamar()
 
 	for hijo: Node in _tira.get_children():

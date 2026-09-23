@@ -70,6 +70,10 @@ var _blink_t: float = 0.0
 var _brow_tilt: float = 0.0
 
 var _costume: Array[Node3D] = []
+## La cabeza y el cuello, guardados para poder cambiarles el material. Todos los
+## personajes tienen cabeza de piel salvo los que son bichos, y esos la necesitan de pelo.
+var _head_mesh: MeshInstance3D = null
+var _neck_mesh: MeshInstance3D = null
 var _frost: CPUParticles3D = null
 var _freeze_shell: Node3D = null
 var _time_marker: Node3D = null
@@ -567,11 +571,13 @@ func _build_rig() -> void:
 	_head_pivot = Node3D.new()
 	_head_pivot.position = Vector3(0.0, 0.70, 0.0)
 	_torso.add_child(_head_pivot)
-	_head_pivot.add_child(Art.capsule(0.06, 0.14, _mat_skin, Vector3(0.0, -0.05, 0.0)))
+	_neck_mesh = Art.capsule(0.06, 0.14, _mat_skin, Vector3(0.0, -0.05, 0.0))
+	_head_pivot.add_child(_neck_mesh)
 	# Cabeza apenas ovalada, no una pelota.
 	var head := Art.sphere(0.20, _mat_skin, Vector3(0.0, 0.11, 0.0))
 	head.scale = Vector3(0.95, 1.08, 0.95)
 	_head_pivot.add_child(head)
+	_head_mesh = head
 	_build_face()
 
 	# --- Brazos ---
@@ -767,6 +773,16 @@ func _build_costume(kind: StringName) -> void:
 		if is_instance_valid(node):
 			node.queue_free()
 	_costume.clear()
+	# La cabeza vuelve a ser de piel antes de vestir a nadie. Sin esto, pasar de Sonic a
+	# otro personaje —en el lobby, o por un bot rehecho— dejaba al humano con la cabeza
+	# azul de pelaje, porque el cambio de material no es parte del disfraz que se borra.
+	if is_instance_valid(_head_mesh):
+		_head_mesh.material_override = _mat_skin
+		_head_mesh.scale = Vector3(0.95, 1.08, 0.95)
+	if is_instance_valid(_neck_mesh):
+		_neck_mesh.material_override = _mat_skin
+	if is_instance_valid(_head_pivot):
+		_head_pivot.scale = Vector3.ONE
 
 	match kind:
 		&"antlers":
@@ -1276,7 +1292,18 @@ func _build_sonic() -> void:
 	# propósito.
 	_apply_expression(0.30, -0.008, 0.075)
 
-	var pua := Art.toon(Color(0.11, 0.35, 0.78), OUTLINE_WIDTH)
+	# PELAJE, NO PIEL. La cabeza entera es azul con textura de pelo; lo unico durazno es el
+	# hocico. Antes la cabeza salia del material de piel que usan los humanos, y Sonic
+	# quedaba con una cara de persona color carne con puas azules pegadas atras.
+	var pua := Art.pelaje(Color(0.11, 0.35, 0.78), OUTLINE_WIDTH)
+	var pelo_cabeza := Art.pelaje(Color(0.13, 0.40, 0.86), OUTLINE_WIDTH)
+	if is_instance_valid(_head_mesh):
+		_head_mesh.material_override = pelo_cabeza
+		# Un poco mas ancha que alta: la cabeza de Sonic es un ovalo acostado, no el
+		# huevo parado de un humano.
+		_head_mesh.scale = Vector3(1.04, 1.0, 1.0)
+	if is_instance_valid(_neck_mesh):
+		_neck_mesh.material_override = pelo_cabeza
 	var piel := Art.toon(Color(0.99, 0.79, 0.58), OUTLINE_WIDTH)
 	var guante := Art.toon(Color(0.97, 0.97, 0.98), OUTLINE_WIDTH)
 	var nariz := Art.toon(Color(0.10, 0.09, 0.11), OUTLINE_WIDTH)
@@ -1342,6 +1369,49 @@ func _build_sonic() -> void:
 		var dentro := Art.sphere(0.036, piel, Vector3(0.105 * lado, 0.245, -0.03))
 		dentro.scale = Vector3(1.0, 1.3, 0.5)
 		_costume_add(_head_pivot, dentro)
+
+	# --- MECHONES: rompen la esfera lisa ---
+	#
+	# Una bola perfecta se lee como una cabeza de muñeco aunque tenga textura. Unos
+	# mechones cortos arriba y a los costados, donde el pelo nace y se junta con las puas,
+	# le dan el borde irregular que tiene cualquier cosa con pelo.
+	var mechones: Array = [
+		[Vector3(0.00, 0.30, 0.02), Vector3(-30.0, 0.0, 0.0), 0.12],
+		[Vector3(-0.09, 0.28, 0.04), Vector3(-18.0, 0.0, 24.0), 0.10],
+		[Vector3(0.09, 0.28, 0.04), Vector3(-18.0, 0.0, -24.0), 0.10],
+		[Vector3(-0.18, 0.16, 0.06), Vector3(0.0, 0.0, 70.0), 0.09],
+		[Vector3(0.18, 0.16, 0.06), Vector3(0.0, 0.0, -70.0), 0.09],
+		[Vector3(-0.17, 0.05, 0.08), Vector3(20.0, 0.0, 95.0), 0.08],
+		[Vector3(0.17, 0.05, 0.08), Vector3(20.0, 0.0, -95.0), 0.08],
+	]
+	for m: Array in mechones:
+		var mechon := MeshInstance3D.new()
+		var malla_m := CylinderMesh.new()
+		malla_m.top_radius = 0.0
+		malla_m.bottom_radius = 0.045
+		malla_m.height = m[2]
+		mechon.mesh = malla_m
+		mechon.material_override = pelo_cabeza
+		mechon.position = m[0]
+		mechon.rotation_degrees = m[1]
+		_costume_add(_head_pivot, mechon)
+
+	# --- OJOS VERDES Y UNIDOS, como dice la ficha ---
+	#
+	# "Dos ojos unidos" y "verdes (antes negros)". Los ojos del rig son blancos con pupila
+	# oscura, como los de cualquiera: a Sonic le falta el iris verde, y el puente blanco
+	# que junta los dos en una sola mancha, que es lo mas reconocible de su cara.
+	var iris := Art.flat(Color(0.20, 0.72, 0.30))
+	var blanco := Art.flat(Color(0.97, 0.97, 1.0))
+	for ojo: Node3D in [_eye_l, _eye_r]:
+		if ojo == null:
+			continue
+		var anillo := Art.sphere(0.034, iris, Vector3(0.0, 0.004, -0.024))
+		anillo.scale = Vector3(1.0, 1.25, 0.55)
+		_costume_add(ojo, anillo)
+	var puente := Art.sphere(0.052, blanco, Vector3(0.0, 0.138, -0.150))
+	puente.scale = Vector3(1.25, 0.72, 0.55)
+	_costume_add(_head_pivot, puente)
 
 	# --- El hocico: ancho, abajo y bien saliente ---
 	#

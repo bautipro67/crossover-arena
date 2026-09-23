@@ -214,11 +214,21 @@ func _pick_target() -> Player:
 	var best: Player = null
 	var best_dist := detect_range()
 	var entre_bots: bool = Practica.bots_se_pelean
+	# EL HEROE SIMULADO: un maniqui que pelea como si fuera el jugador.
+	#
+	# Existe solo para medir el balance de los modos, y ningun codigo del juego pone esta
+	# marca: sin ella todo se comporta exactamente igual que antes. Hizo falta porque las
+	# dos formas obvias de simular a un jugador no funcionan — un BotBrain colgado de un
+	# jugador de verdad no mueve nada (_process_bot solo corre para maniquies), y un
+	# maniqui comun es ignorado por los demas bots. Con la marca, el heroe ataca a los
+	# bots y los bots lo atacan a el, que es la pelea que hay que medir.
+	var soy_heroe: bool = _body.get_meta(&"heroe", false)
 	for node: Node in get_tree().get_nodes_in_group("players"):
 		var other := node as Player
 		if other == null or other == _body:
 			continue
-		if other.is_dummy and not entre_bots:
+		var es_heroe: bool = other.get_meta(&"heroe", false)
+		if other.is_dummy and not entre_bots and not es_heroe and not soy_heroe:
 			continue
 		if not is_instance_valid(other) or other.health.is_dead:
 			continue
