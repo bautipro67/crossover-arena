@@ -19,6 +19,14 @@ var player_name: String = "Jugador"
 ## Correr sin tener que mantener nada apretado. Prendido por defecto: en un juego de
 ## arena estas corriendo el 95% del tiempo, obligarte a sostener una tecla es ruido.
 var auto_run: bool = true
+## Dibujar las cajas de colision: la capsula de cada jugador, el radio de cada proyectil
+## y el volumen de cada ataque en el momento en que consulta a quien toca.
+##
+## APAGADO POR DEFECTO, obviamente, pero es la clase de opcion que un juego de peleas
+## tiene que tener: "me pego sin tocarme" es la queja numero uno de cualquier juego de
+## combate, y sin poder VER el alcance no hay forma de saber si es cierto o si el que se
+## queja calculo mal. Tambien sirve para reportar un bug con algo mas que una impresion.
+var mostrar_hitboxes: bool = false
 
 
 func _ready() -> void:
@@ -36,6 +44,7 @@ func load_settings() -> void:
 	fullscreen = bool(cfg.get_value("video", "fullscreen", fullscreen))
 	player_name = String(cfg.get_value("game", "player_name", player_name))
 	auto_run = bool(cfg.get_value("game", "auto_run", auto_run))
+	mostrar_hitboxes = bool(cfg.get_value("game", "mostrar_hitboxes", mostrar_hitboxes))
 
 
 func save_settings() -> void:
@@ -46,6 +55,7 @@ func save_settings() -> void:
 	cfg.set_value("video", "fullscreen", fullscreen)
 	cfg.set_value("game", "player_name", player_name)
 	cfg.set_value("game", "auto_run", auto_run)
+	cfg.set_value("game", "mostrar_hitboxes", mostrar_hitboxes)
 	cfg.save(CONFIG_PATH)
 
 
@@ -88,6 +98,12 @@ func set_fullscreen(value: bool) -> void:
 
 func set_auto_run(value: bool) -> void:
 	auto_run = value
+	save_settings()
+	changed.emit()
+
+
+func set_mostrar_hitboxes(value: bool) -> void:
+	mostrar_hitboxes = value
 	save_settings()
 	changed.emit()
 

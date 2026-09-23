@@ -1087,6 +1087,31 @@ func _test_arena(arena: Arena) -> void:
 	girador.queue_free()
 	await get_tree().process_frame
 
+	# --- LAS CAJAS DE COLISION MUESTRAN LA DE VERDAD ---
+	#
+	# Una caja dibujada a mano al lado de la real es peor que no dibujar nada: muestra con
+	# total seguridad algo que no es cierto. Se comprueba que la capsula dibujada tenga las
+	# medidas EXACTAS de la de choque, y que siga a la opcion.
+	var con_caja := arena.get_local_player()
+	var marca := con_caja.get_node_or_null(^"CajaColision") as MeshInstance3D
+	_check(marca != null, "cada cuerpo tiene su caja de colision preparada")
+	if marca != null:
+		var real := con_caja.collision.shape as CapsuleShape3D
+		var dibujada := marca.mesh as CapsuleMesh
+		_check(real != null and dibujada != null
+			and is_equal_approx(real.radius, dibujada.radius)
+			and is_equal_approx(real.height, dibujada.height),
+			"y mide exactamente lo mismo que la de choque")
+		var antes_opcion := Settings.mostrar_hitboxes
+		Settings.mostrar_hitboxes = false
+		Settings.changed.emit()
+		_check(not marca.visible, "con la opcion apagada no se dibuja")
+		Settings.mostrar_hitboxes = true
+		Settings.changed.emit()
+		_check(marca.visible, "y con la opcion prendida si")
+		Settings.mostrar_hitboxes = antes_opcion
+		Settings.changed.emit()
+
 	# --- TODO PUNTO DE APARICION TIENE QUE ESTAR LIBRE ---
 	#
 	# Bug reportado: la aparicion se bugueaba. Eran tres de los ocho puntos, que al
@@ -1412,6 +1437,33 @@ func _test_sonic(player: Player, arena: Arena) -> void:
 	_check(not estado.esta_impulsado() and is_equal_approx(estado.get_move_speed_multiplier(), 1.0),
 		"y se apaga solo al vencer el tiempo")
 
+	# --- EL HOMING ENCADENA ---
+	#
+	# Es LA sensacion del personaje: en sus juegos rebota de un enemigo al siguiente sin
+	# tocar el piso. Acertar tiene que devolver casi todo el cooldown, y la cadena tiene
+	# tope, porque sin tope con suficiente stamina se cruza el mapa entero rebotando.
+	var homing: HomingAttack = kit[2]
+	player.caster.reset_state()
+	player.set_meta(&"homing_cadena", 0)
+	player.set_meta(&"homing_ultimo", -99.0)
+	player.caster._cooldowns[2] = homing.cooldown
+	homing._premiar_cadena(player)
+	_check(player.caster.get_cooldown_remaining(2) <= HomingAttack.COOLDOWN_AL_ACERTAR + 0.01,
+		"acertar un Homing devuelve casi todo el cooldown (quedan %.2f s)" %
+			player.caster.get_cooldown_remaining(2))
+	for _i: int in range(HomingAttack.CADENA_MAXIMA):
+		player.caster._cooldowns[2] = homing.cooldown
+		homing._premiar_cadena(player)
+	_check(player.caster.get_cooldown_remaining(2) > HomingAttack.COOLDOWN_AL_ACERTAR + 1.0,
+		"pero la cadena tiene tope: pasado el maximo el cooldown vuelve entero (%.1f s)" %
+			player.caster.get_cooldown_remaining(2))
+	# acortar_cooldown solo acorta: no puede usarse para castigar alargando.
+	player.caster._cooldowns[2] = 0.3
+	player.caster.acortar_cooldown(2, 5.0)
+	_check(player.caster.get_cooldown_remaining(2) <= 0.31,
+		"acortar un cooldown nunca lo alarga")
+	player.caster.reset_state()
+
 	# Sus skins.
 	var skins := SkinDB.de_personaje(&"sonic")
 	_check(skins.size() >= 3, "Sonic tiene skins propias (%d)" % skins.size())
@@ -1569,7 +1621,7 @@ func _check(condition: bool, description: String) -> void:
 ## corrutina sin que su llamador la esperara— y las tres se vieron igual: nada.
 ##
 ## Subir este numero al agregar chequeos es el precio de que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 190
+const CHEQUEOS_MINIMOS: int = 197
 
 
 func _finish() -> void:

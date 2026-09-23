@@ -104,6 +104,17 @@ func request_use(index: int) -> void:
 		_srv_request_use.rpc_id(1, index, origin, dir)
 
 
+## Acorta el cooldown de una habilidad. Lo usa el encadenado del Homing Attack.
+##
+## SOLO ACORTA, nunca alarga: `maxf(0.0, min(...))` evita que un llamador distraido use
+## esto para castigar a alguien poniendole un cooldown mas largo del que le toca. Es una
+## recompensa por acertar, y el unico sentido en el que puede mover el numero es a favor.
+func acortar_cooldown(index: int, restante: float) -> void:
+	if index < 0 or index >= _cooldowns.size():
+		return
+	_cooldowns[index] = maxf(0.0, minf(_cooldowns[index], restante))
+
+
 func get_cooldown_remaining(index: int) -> float:
 	if index < 0 or index >= _cooldowns.size():
 		return 0.0

@@ -18,6 +18,14 @@ const CONE_RANGE: float = 2.9
 const CONE_ANGLE: float = 70.0
 ## Casi nada: si empujara fuerte se alejaria solo del rival, y su juego es quedarse encima.
 const KNOCKBACK: float = 2.0
+## Cuanto avanza el propio Sonic al girar.
+##
+## UNA BOLA QUE GIRA SE MUEVE. Sin esto el golpe basico era un puñetazo con forma de bola:
+## el cuerpo quieto y el daño saliendo adelante. Es poco —medio metro— pero convierte
+## quedarse encima del rival en algo que pasa solo al atacar, que es como se juega a
+## Sonic: no se acorrala apuntando, se acorrala sin dejar de moverse.
+const AVANCE: float = 5.5
+const AVANCE_TIEMPO: float = 0.12
 
 
 func _init() -> void:
@@ -37,4 +45,9 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 		CombatUtils.deal_damage(target, DAMAGE, source_id)
 		CombatUtils.apply_knockback(target, target.global_position - origin, KNOCKBACK, 0.4)
 		FX.spawn_impact_burst(caster, target.global_position + Vector3.UP, Color(0.5, 0.8, 1.0, 0.95))
+	var caster3d := caster as Node3D
+	if caster3d != null:
+		var rumbo := Vector3(dir.x, 0.0, dir.z).normalized()
+		if not rumbo.is_zero_approx():
+			caster3d.call("launch_charge", rumbo, AVANCE, AVANCE_TIEMPO)
 	FX.spawn_spin_ball(caster, origin, dir, 0.22)

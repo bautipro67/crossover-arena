@@ -1277,20 +1277,34 @@ func _build_sonic() -> void:
 	_apply_expression(0.30, -0.008, 0.075)
 
 	var pua := Art.toon(Color(0.11, 0.35, 0.78), OUTLINE_WIDTH)
-	var piel := Art.toon(Color(0.99, 0.82, 0.64), OUTLINE_WIDTH)
+	var piel := Art.toon(Color(0.99, 0.79, 0.58), OUTLINE_WIDTH)
 	var guante := Art.toon(Color(0.97, 0.97, 0.98), OUTLINE_WIDTH)
+	var nariz := Art.toon(Color(0.10, 0.09, 0.11), OUTLINE_WIDTH)
+
+	# LA CABEZA MAS GRANDE. Sonic es de proporcion caricaturesca: la cabeza le ocupa como
+	# un tercio del cuerpo. Con la cabeza estandar quedaba un erizo de cabeza chica, que
+	# no se parece a el aunque todo lo demas este bien.
+	_head_pivot.scale = Vector3.ONE * 1.22
 
 	# --- LAS SEIS PUAS, hacia ATRAS (el frente del modelo es -Z) ---
 	#
 	# En abanico y con tres largos distintos: seis puas iguales se ven como un peine. Las
 	# del medio son las mas largas, que es como estan en cualquier dibujo de referencia.
+	# BARREN HACIA ATRAS, CASI HORIZONTALES. Estaban entre 52 y 84 grados, que las dejaba
+	# casi paradas: de frente se veian como una corona de pinches sobre la cabeza y de
+	# perfil como un mohawk. Las de Sonic salen de la NUCA y van para atras — ese abanico
+	# horizontal es su silueta, y parado o corriendo es lo primero que se reconoce.
+	#
+	# 96 a 118 grados: pasado de 90 la punta queda por DEBAJO de la horizontal, que es
+	# como cuelgan las de abajo en cualquier dibujo suyo. Y mas largas, porque la ficha
+	# las llama "puas LARGAS" y a 0.30 eran muñones.
 	var puas: Array = [
-		{"pos": Vector3(0.00, 0.20, 0.13), "rot": Vector3(58.0, 0.0, 0.0), "len": 0.46},
-		{"pos": Vector3(-0.09, 0.22, 0.12), "rot": Vector3(52.0, -16.0, 0.0), "len": 0.42},
-		{"pos": Vector3(0.09, 0.22, 0.12), "rot": Vector3(52.0, 16.0, 0.0), "len": 0.42},
-		{"pos": Vector3(-0.15, 0.13, 0.13), "rot": Vector3(70.0, -30.0, 0.0), "len": 0.34},
-		{"pos": Vector3(0.15, 0.13, 0.13), "rot": Vector3(70.0, 30.0, 0.0), "len": 0.34},
-		{"pos": Vector3(0.00, 0.06, 0.15), "rot": Vector3(84.0, 0.0, 0.0), "len": 0.30},
+		{"pos": Vector3(0.00, 0.14, 0.15), "rot": Vector3(96.0, 0.0, 0.0), "len": 0.66},
+		{"pos": Vector3(-0.10, 0.15, 0.13), "rot": Vector3(100.0, -20.0, 0.0), "len": 0.60},
+		{"pos": Vector3(0.10, 0.15, 0.13), "rot": Vector3(100.0, 20.0, 0.0), "len": 0.60},
+		{"pos": Vector3(-0.14, 0.05, 0.14), "rot": Vector3(112.0, -32.0, 0.0), "len": 0.50},
+		{"pos": Vector3(0.14, 0.05, 0.14), "rot": Vector3(112.0, 32.0, 0.0), "len": 0.50},
+		{"pos": Vector3(0.00, -0.02, 0.16), "rot": Vector3(118.0, 0.0, 0.0), "len": 0.44},
 	]
 	for p: Dictionary in puas:
 		var pivote := Node3D.new()
@@ -1303,7 +1317,9 @@ func _build_sonic() -> void:
 		var cono := MeshInstance3D.new()
 		var malla := CylinderMesh.new()
 		malla.top_radius = 0.0
-		malla.bottom_radius = 0.075
+		# Mas finas en la base: una pua termina en punta y arranca angosta. A 0.075 se
+		# veian como conos de trafico.
+		malla.bottom_radius = 0.058
 		malla.height = largo
 		cono.mesh = malla
 		cono.material_override = pua
@@ -1327,10 +1343,18 @@ func _build_sonic() -> void:
 		dentro.scale = Vector3(1.0, 1.3, 0.5)
 		_costume_add(_head_pivot, dentro)
 
-	# --- El hocico: adelante, durazno y saliente ---
-	var hocico := Art.sphere(0.115, piel, Vector3(0.0, -0.02, -0.15))
-	hocico.scale = Vector3(1.15, 0.85, 0.95)
+	# --- El hocico: ancho, abajo y bien saliente ---
+	#
+	# Era una bolita chica y centrada que no se leia. El hocico de Sonic es ANCHO y sale
+	# bastante: de frente es media cara, y es lo que lo separa de "un tipo azul".
+	var hocico := Art.sphere(0.145, piel, Vector3(0.0, -0.055, -0.155))
+	hocico.scale = Vector3(1.35, 0.78, 1.0)
 	_costume_add(_head_pivot, hocico)
+	# Y la nariz: un punto negro arriba del hocico. Es chiquito y hace la mitad del
+	# trabajo — sin el, el hocico es un bulto.
+	var punta := Art.sphere(0.042, nariz, Vector3(0.0, -0.012, -0.235))
+	punta.scale = Vector3(1.2, 0.9, 1.0)
+	_costume_add(_head_pivot, punta)
 
 	# --- Las DOS espinas de la espalda, aparte de las de la cabeza ---
 	for i: int in range(2):
@@ -1346,8 +1370,12 @@ func _build_sonic() -> void:
 		_costume_add(_torso, espina)
 
 	# --- La panza durazno, al frente ---
-	var panza := Art.sphere(0.20, piel, Vector3(0.0, -0.02, -0.16))
-	panza.scale = Vector3(1.0, 1.35, 0.42)
+	#
+	# Aplastada contra el pecho, no una pelota pegada encima: a 0.42 de profundidad se
+	# veia como una bola aparte. Es una MANCHA de color, tiene que seguir la curva del
+	# cuerpo.
+	var panza := Art.sphere(0.21, piel, Vector3(0.0, -0.03, -0.135))
+	panza.scale = Vector3(0.95, 1.30, 0.22)
 	_costume_add(_torso, panza)
 
 	# --- Guantes blancos ---

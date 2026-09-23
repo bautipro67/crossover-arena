@@ -87,6 +87,7 @@ var character_id: StringName = &"noelle"
 @onready var visual: PlayerVisual = $Visual
 @onready var name_label: Label3D = $NameLabel
 @onready var collision: CollisionShape3D = $CollisionShape3D
+var _caja_colision: MeshInstance3D = null
 
 var _gravity: float = 18.0
 var _dash_left: float = 0.0
@@ -118,6 +119,18 @@ func _ready() -> void:
 	# Al propio jugador no le mostramos su cartel en la cara.
 	name_label.visible = not is_local_player()
 	camera_pivot.set_active(is_local_player())
+
+	_caja_colision = FX.marcar_cuerpo(self, collision)
+	Settings.changed.connect(_actualizar_caja)
+
+
+## Muestra la capsula de choque solo si la opcion esta prendida Y el cuerpo la tiene.
+##
+## Muerto no se dibuja: la colision se apaga al morir, y una caja que se ve donde no hay
+## nada que golpear es exactamente la clase de mentira que esta opcion existe para evitar.
+func _actualizar_caja() -> void:
+	if is_instance_valid(_caja_colision):
+		_caja_colision.visible = Settings.mostrar_hitboxes and not health.is_dead
 
 
 ## Aplica los datos del personaje elegido. Lo llama la Arena al spawnear.
@@ -558,6 +571,7 @@ func _on_died(killer_id: int) -> void:
 	# de escritorio no aparecia. La consecuencia de no diferirlo es que el cadaver a
 	# veces se queda solido y sigue frenando embestidas.
 	collision.set_deferred("disabled", true)
+	_actualizar_caja()
 	name_label.visible = false
 	died.emit(killer_id)
 
@@ -690,6 +704,7 @@ func _apply_respawn(spawn_position: Vector3, yaw: float) -> void:
 	# morir, y ademas asi el par apagar/prender se aplica siempre en el mismo momento del
 	# frame. Mezclar uno directo con uno diferido es como se consiguen cadaveres solidos.
 	collision.set_deferred("disabled", false)
+	_actualizar_caja()
 	name_label.visible = not is_local_player()
 	if is_local_player() and is_instance_valid(camera_pivot):
 		camera_pivot.set_yaw(yaw)

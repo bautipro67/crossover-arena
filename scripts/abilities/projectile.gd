@@ -46,6 +46,21 @@ func _ready() -> void:
 
 	_build_visual()
 
+	# La esfera de choque, si la opcion esta prendida. Es la MISMA que usa _revisar_camino
+	# para decidir si pego —mismo hit_radius— asi que lo que se ve es lo que cuenta.
+	#
+	# Va tambien en las copias cosmeticas: en un cliente remoto todos los proyectiles son
+	# cosmeticos, y el que prendio la opcion ahi quiere ver los radios igual.
+	if Settings.mostrar_hitboxes:
+		var marca := MeshInstance3D.new()
+		var bola := SphereMesh.new()
+		bola.radius = hit_radius
+		bola.height = hit_radius * 2.0
+		marca.mesh = bola
+		marca.material_override = FX._material_hitbox(Color(1.0, 0.35, 0.35))
+		marca.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(marca)
+
 	# NO SE USA body_entered, y no es por gusto.
 	#
 	# Estuvo conectado desde siempre y NUNCA DISPARO. Medido: get_overlapping_bodies()

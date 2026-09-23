@@ -15,12 +15,18 @@ extends Ability
 
 const DAMAGE: float = 24.0
 const SPEED: float = 27.0
-const DURATION: float = 0.42
+# RUEDA MAS LEJOS Y SALE ANTES.
+#
+# Con 0.42 de recorrido y 0.34 de carga, el Spin Dash tardaba casi tanto en salir como en
+# llegar: once metros por un tercio de segundo parado. Un Spin Dash es una BOLA QUE RUEDA,
+# y lo que hace que valga la pena es que cruza medio campo. Ahora son 0.24 de carga y
+# 0.58 rodando: quince metros y medio, y se suelta antes de que el rival termine de leerlo.
+const DURATION: float = 0.58
 const HIT_RADIUS: float = 1.5
 const KNOCKBACK: float = 7.0
 const KNOCKBACK_LIFT: float = 2.0
 ## Lo que tarda enrollandose antes de salir. Sale de la carga del original.
-const CARGA: float = 0.34
+const CARGA: float = 0.24
 const ESTELA := Color(0.35, 0.62, 1.0, 0.55)
 
 

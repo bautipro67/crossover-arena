@@ -1041,6 +1041,109 @@ func spawn_super_sonic(caster: Node3D, duracion: float) -> void:
 	_auto_free(aura, duracion)
 
 
+# ------------------------------------------------------- Cajas de colision
+#
+# Se dibujan solo con la opcion prendida. Existen porque "me pego sin tocarme" es la queja
+# numero uno de cualquier juego de peleas, y sin poder VER el alcance no hay manera de
+# saber si es cierto o si el que se queja calculo mal.
+#
+# TODO SALE DE LA FORMA DE VERDAD, nunca de un numero copiado. La capsula se lee del
+# CollisionShape3D del jugador y los conos y esferas los dibuja el mismo codigo que los
+# consulta. Una caja de colision dibujada a mano al lado de la real es peor que no
+# dibujar nada: muestra con total seguridad algo que no es cierto.
+
+## Verde lo que se puede golpear, naranja lo que golpea. Con los dos del mismo color un
+## cono de ataque se confunde con la capsula del que lo tira, que es justo al lado.
+const HITBOX_COLOR := Color(0.25, 1.0, 0.45)
+const ATAQUE_COLOR := Color(1.0, 0.62, 0.18)
+
+
+func _material_hitbox(color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.22)
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 1.4
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	return mat
+
+
+## El volumen de un ataque en cono, en el instante en que pregunta a quien toca.
+func dibujar_cono(context: Node, origin: Vector3, dir: Vector3, alcance: float,
+		angulo_grados: float) -> void:
+	if not Settings.mostrar_hitboxes:
+		return
+	var world := _world_of(context)
+	if world == null:
+		return
+	var cono := MeshInstance3D.new()
+	var malla := CylinderMesh.new()
+	malla.top_radius = alcance * tan(deg_to_rad(angulo_grados * 0.5))
+	malla.bottom_radius = 0.05
+	malla.height = alcance
+	cono.mesh = malla
+	cono.material_override = _material_hitbox(ATAQUE_COLOR)
+	cono.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(cono)
+	# El cilindro nace con su eje en +Y, la boca ANCHA arriba, y el ataque sale hacia
+	# `dir`: hay que acostarlo con la boca hacia adelante.
+	#
+	# MENOS noventa grados, no mas. Con +90 el +Y local terminaba apuntando a +Z, que es
+	# ATRAS: la boca ancha quedaba del lado del que ataca, pegada a la camara, y el cono se
+	# veia como una cupula gigante tapando media pantalla. Con -90, +Y va a -Z, que es el
+	# frente del nodo despues del look_at.
+	cono.global_position = origin + dir.normalized() * (alcance * 0.5)
+	cono.look_at(origin + dir.normalized() * alcance, Vector3.UP)
+	cono.rotate_object_local(Vector3.RIGHT, -PI * 0.5)
+	_auto_free(cono, 0.45)
+
+
+## El volumen de un ataque en esfera.
+func dibujar_esfera(context: Node, origin: Vector3, radio: float) -> void:
+	if not Settings.mostrar_hitboxes:
+		return
+	var world := _world_of(context)
+	if world == null:
+		return
+	var bola := MeshInstance3D.new()
+	var malla := SphereMesh.new()
+	malla.radius = radio
+	malla.height = radio * 2.0
+	bola.mesh = malla
+	bola.material_override = _material_hitbox(ATAQUE_COLOR)
+	bola.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(bola)
+	bola.global_position = origin
+	_auto_free(bola, 0.45)
+
+
+## La capsula de un cuerpo. Se queda puesta y se prende o apaga con la opcion.
+##
+## Se lee del CollisionShape3D en vez de escribir las medidas a mano: si alguien cambia la
+## capsula del jugador, esto la sigue sin que nadie se acuerde de actualizar dos numeros.
+func marcar_cuerpo(cuerpo: Node3D, forma: CollisionShape3D) -> MeshInstance3D:
+	if not is_instance_valid(cuerpo) or forma == null:
+		return null
+	var capsula := forma.shape as CapsuleShape3D
+	if capsula == null:
+		return null
+	var marca := MeshInstance3D.new()
+	marca.name = &"CajaColision"
+	var malla := CapsuleMesh.new()
+	malla.radius = capsula.radius
+	malla.height = capsula.height
+	marca.mesh = malla
+	marca.material_override = _material_hitbox(HITBOX_COLOR)
+	marca.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	cuerpo.add_child(marca)
+	marca.position = forma.position
+	marca.visible = Settings.mostrar_hitboxes
+	return marca
+
+
 ## Numero de daño flotante.
 func spawn_damage_number(context: Node, position: Vector3, amount: float, is_execute: bool = false) -> void:
 	var world := _world_of(context)

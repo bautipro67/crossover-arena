@@ -24,11 +24,30 @@ const KNOCKBACK_LIFT: float = 3.4
 ## Donde frena respecto del rival, para no quedar adentro suyo.
 const FRENO: float = 1.5
 
+# ------------------------------------------------------------------ El encadenado
+#
+# ACERTAR DEVUELVE CASI TODO EL COOLDOWN, y eso no es un numero de balance: es LA
+# sensacion del personaje. En sus juegos el homing rebota de un enemigo al siguiente sin
+# tocar el piso, y una version donde pegas una vez y esperas cinco segundos tiene el
+# nombre del movimiento pero ninguna de sus propiedades.
+#
+# Lo que lo mantiene honesto es que la cadena se paga con STAMINA, no con cooldown: cada
+# salto cuesta lo mismo que el primero, asi que encadenar cuatro veces te deja sin barra y
+# sin nada para salir. La habilidad no se vuelve gratis, se vuelve RAPIDA, que es otra
+# cosa: premia acertar seguido y castiga igual de fuerte errar en el medio.
+const COOLDOWN_AL_ACERTAR: float = 0.45
+## Cuantos saltos seguidos antes de que el cooldown vuelva a ser el entero. Sin tope, con
+## suficiente stamina se cruza el mapa entero rebotando y nadie lo puede tocar.
+const CADENA_MAXIMA: int = 4
+## Cuanto dura la ventana de la cadena. Si te tomas mas tiempo, es un ataque nuevo.
+const VENTANA_CADENA: float = 2.2
+
 
 func _init() -> void:
 	id = &"homing_attack"
 	display_name = "Homing Attack"
-	description = "Se traba en el rival más cercano al frente y se lanza contra él (%d)." % int(DAMAGE)
+	description = "Se traba en el rival más cercano y se lanza (%d). Si acertás, vuelve casi al instante: encadena hasta %d veces." % [
+		int(DAMAGE), CADENA_MAXIMA]
 	stamina_cost = 22.0
 	cooldown = 5.0
 	channel_time = 0.0
@@ -88,12 +107,36 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	var source_id: int = caster.peer_id
 	var empuje: Vector3 = blanco.global_position - caster3d.global_position
 	CombatUtils.deal_damage(blanco, DAMAGE, source_id)
+	_premiar_cadena(caster)
 	CombatUtils.apply_knockback(blanco, empuje, KNOCKBACK, KNOCKBACK_LIFT)
 	# Y REBOTA HACIA ATRAS, como en los juegos: pegar te separa. Sin el rebote, el homing
 	# te deja pegado al rival y se vuelve un boton de "estoy encima tuyo gratis".
 	CombatUtils.apply_knockback(caster3d, -empuje, KNOCKBACK * 0.55, 3.0)
 	FX.spawn_impact_burst(caster, blanco.global_position + Vector3.UP, Color(0.6, 0.9, 1.0, 1.0))
 	FX.camera_shake(1.1)
+
+
+## Acorta el cooldown tras acertar, hasta el tope de la cadena.
+##
+## El contador vive en el propio caster con set_meta y no en esta clase: la instancia de
+## la habilidad es COMPARTIDA —CharacterDB la construye una vez— asi que un contador aca
+## seria el mismo para todos los Sonic de la partida, y la cadena de uno cortaria la del
+## otro.
+func _premiar_cadena(caster: Node) -> void:
+	var ahora := Time.get_ticks_msec() / 1000.0
+	var ultimo := float(caster.get_meta(&"homing_ultimo", -99.0))
+	var cuantos := int(caster.get_meta(&"homing_cadena", 0))
+	if ahora - ultimo > VENTANA_CADENA:
+		cuantos = 0
+	cuantos += 1
+	caster.set_meta(&"homing_ultimo", ahora)
+	caster.set_meta(&"homing_cadena", cuantos)
+	if cuantos > CADENA_MAXIMA:
+		return
+	var caster_node := caster.get_node_or_null("AbilityCaster") as AbilityCaster
+	if caster_node != null:
+		caster_node.acortar_cooldown(2, COOLDOWN_AL_ACERTAR)
+		FX.spawn_homing_lock(caster, (caster as Node3D).global_position)
 
 
 ## El rival mas cercano dentro del cono del frente. Null si no hay ninguno.

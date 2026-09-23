@@ -97,6 +97,22 @@ func _ready() -> void:
 
 	box.add_child(UITheme.make_spacer(6))
 
+	var hitboxes := CheckButton.new()
+	hitboxes.text = "Ver cajas de colisión"
+	hitboxes.button_pressed = Settings.mostrar_hitboxes
+	hitboxes.add_theme_font_size_override("font_size", 16)
+	hitboxes.toggled.connect(func(pressed: bool) -> void:
+		Settings.set_mostrar_hitboxes(pressed))
+	box.add_child(hitboxes)
+
+	var hitboxes_hint := UITheme.make_label(
+		"Dibuja la cápsula de cada jugador y bot, el radio de cada proyectil, y el área de cada ataque en el momento en que golpea.",
+		11, UITheme.TEXT_DIM)
+	hitboxes_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(hitboxes_hint)
+
+	box.add_child(UITheme.make_spacer(6))
+
 	# --- Pantalla completa ---
 	var fs := CheckButton.new()
 	fs.text = "Pantalla completa"

@@ -7,7 +7,14 @@ extends RefCounted
 ## Devuelve los jugadores vivos dentro de un cono frontal, con linea de vision libre.
 ## La linea de vision es lo que hace que las coberturas de la arena sirvan de verdad:
 ## si hay una pared en el medio, Snowgrave no te alcanza.
+## OJO: dibuja el volumen si la opcion esta prendida.
+##
+## Va ACA y no en cada habilidad a proposito. Por estas dos funciones pasa absolutamente
+## todo ataque de area del juego, asi que enganchando el dibujo en el consultante, las
+## veintitantas habilidades lo heredan sin tocar ninguna — y sobre todo, lo que se dibuja
+## es EXACTAMENTE lo que se consulta, no una copia que puede quedar desincronizada.
 static func get_players_in_cone(caster: Node3D, origin: Vector3, dir: Vector3, range_m: float, angle_deg: float) -> Array[Node3D]:
+	FX.dibujar_cono(caster, origin, dir, range_m, angle_deg)
 	var out: Array[Node3D] = []
 	if not is_instance_valid(caster):
 		return out
@@ -30,7 +37,9 @@ static func get_players_in_cone(caster: Node3D, origin: Vector3, dir: Vector3, r
 	return out
 
 
+## Idem: dibuja la esfera si la opcion esta prendida.
 static func get_players_in_sphere(caster: Node3D, origin: Vector3, radius: float) -> Array[Node3D]:
+	FX.dibujar_esfera(caster, origin, radius)
 	var out: Array[Node3D] = []
 	for target: Node3D in _living_targets(caster):
 		if origin.distance_to(target.global_position) <= radius:
