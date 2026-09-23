@@ -74,6 +74,44 @@ gente.
    Embestidas. Todo su kit es tirarse encima tuyo, y no para hasta que lo esquives.
    Pétalos · JARONA · Here I Come, San Francisco · LAST JARONA
 
+🧪 RICK SANCHEZ — Rick and Morty
+   El más lento de todos y de los que menos aguantan: lo compensa con aparatos y con
+   un portal a cualquier punto del mapa.
+   Pistola de Plasma · Pistola de Portales · Granada de Plasma · Caja de Meeseeks
+
+💨 SONIC — Sonic the Hedgehog
+   El más rápido y el más frágil. Entra, pega y se va antes de que le respondan.
+   Spin Attack · Spin Dash · Homing Attack · SUPER SONIC
+
+═══ MODOS ═══
+
+▸ ONLINE — Servidor público, entrás directo desde el menú. Sin cuenta, sin descargar
+  nada.
+
+▸ SIN CONEXIÓN — contra bots que pelean de verdad: te rodean, esquivan con dash, te
+  corren a cortarte el canalizado y usan su ultimate.
+  · Duelo — uno contra uno, parejo. El mejor lugar para aprender un personaje.
+  · Supervivencia — oleadas que crecen, y una sola vida.
+  · Contrarreloj — 12 bajas lo más rápido posible.
+  · Último en pie — 4 contra uno, todos a la vez, nadie reaparece.
+  · Torre de jefes — 5 enemigos de a uno, cada uno más duro que el anterior.
+  · Rey de la colina — aguantá 45 segundos dentro del círculo.
+  · Sala de práctica — ver abajo.
+
+═══ PASE DE TEMPORADA 0 Y SKINS ═══
+
+Jugar da experiencia y monedas: subís de nivel (del 1 al 60) y avanzás los 30 escalones
+del pase, con skins, monedas y experiencia de premio. El pase pro se desbloquea con
+monedas que se ganan peleando, fuera de la sala de práctica.
+
+19 skins entre el pase y la tienda. Cuanto más rara, más se nota: las raras recolorean
+el personaje entero, las épicas suman un acabado (metal, piedra, sombra) o un accesorio,
+y las legendarias un aura y ojos que brillan. En la tienda hay un probador para verla
+puesta antes de comprarla.
+
+Todo es cosmético: ni el nivel ni las skins cambian vida, daño, velocidad, hitbox ni
+silueta. Y las monedas no se compran con plata: solo se ganan jugando.
+
 ═══ CONTROLES ═══
 
 WASD ......... moverse          Click izq .... golpe básico
@@ -82,13 +120,7 @@ Shift ........ dash             E ............ habilidad 2
 Ctrl ......... correr           Q ............ ultimate
 Tab .......... marcador         P ............ panel de práctica
 
-═══ MODOS ═══
-
-▸ PRACTICAR SOLO — Tres bots que pelean de verdad: te rodean, esquivan con dash, te
-  corren a cortarte el canalizado y usan su ultimate. No son maniquíes.
-
-▸ ONLINE — Servidor público, entrás directo desde el menú. Sin cuenta, sin descargar
-  nada.
+Se pueden cambiar todos en Opciones → Controles.
 
 ═══ SALA DE PRÁCTICA CONFIGURABLE ═══
 
@@ -101,17 +133,20 @@ necesites sin volver al menú:
   · Stamina infinita, sin esperas entre habilidades, no poder morir
   · Curar todo, para volver al estado inicial sin esperar
 
+Y en Opciones se pueden ver las cajas de colisión de jugadores, bots y ataques.
+
 ═══ LA PRIMERA CONEXIÓN ONLINE TARDA ═══
 
 El servidor es gratuito y se duerme cuando no hay nadie jugando. La primera conexión
 después de un rato puede tardar hasta un minuto mientras despierta: el juego te avisa
 en pantalla y reintenta solo. A partir de ahí entra al instante.
 
-═══ HECHO ENTERAMENTE POR CÓDIGO ═══
+═══ HECHO POR CÓDIGO ═══
 
-No hay ni un solo archivo de imagen, sonido o música en el proyecto. La geometría, los
-efectos, los sonidos y la banda sonora se generan por código al arrancar. Por eso el
-juego pesa lo que pesa y carga rápido.
+No hay ni un solo modelo 3D ni una textura en el proyecto: los personajes, la arena, los
+efectos y la música se generan por código al arrancar. Por eso el juego pesa lo que pesa
+y carga rápido. Algunas frases y sonidos de los personajes son clips de sus obras
+originales.
 
 Hecho con Godot 4.
 
@@ -121,6 +156,9 @@ Fangame gratuito y sin fines de lucro, sin relación con los autores originales.
 
 Noelle Holiday y Flowery son de Deltarune, creación de Toby Fox.
 Dio Brando es de JoJo's Bizarre Adventure, creación de Hirohiko Araki (Shueisha).
+Rick Sanchez es de Rick and Morty, creación de Justin Roiland y Dan Harmon (Adult Swim).
+Sonic es de Sonic the Hedgehog, de SEGA.
+Los clips de voz y sonido pertenecen a sus respectivos dueños.
 
 Este juego no se vende, no acepta donaciones y no tiene publicidad. Si alguno de los
 titulares quiere que se baje, se baja.
@@ -134,7 +172,7 @@ titulares quiere que se baje, se baja.
 |---|---|
 | **Classification** | Games |
 | **Genre** | Action |
-| **Tags** | `3d`, `arena`, `fangame`, `fighting`, `multiplayer`, `pvp`, `singleplayer`, `third-person`, `deltarune`, `jojos-bizarre-adventure` |
+| **Tags** | `3d`, `arena`, `fangame`, `fighting`, `multiplayer`, `pvp`, `singleplayer`, `third-person`, `deltarune`, `jojos-bizarre-adventure`, `rick-and-morty`, `sonic-the-hedgehog` |
 | **Made with** | Godot |
 | **Inputs** | Keyboard, Mouse |
 | **Average session** | A few minutes |
