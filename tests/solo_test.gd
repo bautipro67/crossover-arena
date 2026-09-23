@@ -26,6 +26,8 @@ func _run() -> void:
 
 	await _test_audio()
 	await _test_progresion()
+	await _test_controles()
+	await _test_skins_visibles()
 	_test_siluetas()
 	await _test_music()
 	_test_settings()
@@ -462,6 +464,167 @@ func _test_progresion() -> void:
 	await get_tree().process_frame
 
 
+# ------------------------------------------------------------------- Controles
+
+func _tecla(codigo: int) -> InputEventKey:
+	var k := InputEventKey.new()
+	k.physical_keycode = codigo
+	k.pressed = true
+	return k
+
+
+func _test_controles() -> void:
+	# Contra un archivo propio: el real es el del jugador que corre esto.
+	Controles.ruta_archivo = "user://controles_prueba.cfg"
+	Controles.restablecer()
+
+	_check(Controles.nombre_tecla(&"attack_basic") == "Click izq"
+		and Controles.nombre_tecla(&"ability_1") == "Click der",
+		"de fabrica, los golpes van en los botones del mouse")
+	_check(Controles.nombre_tecla(&"dash") == "Shift", "y el dash en Shift (%s)" % Controles.nombre_tecla(&"dash"))
+
+	# --- Reasignar una tecla de verdad cambia la accion ---
+	Controles.reasignar(&"dash", _tecla(KEY_F))
+	_check(Controles.nombre_tecla(&"dash") == "F", "el dash pasa a F al reasignarlo")
+	_check(InputMap.event_is_action(_tecla(KEY_F), &"dash"),
+		"y apretar F dispara el dash de verdad, no solo cambia el cartel")
+	_check(not InputMap.event_is_action(_tecla(KEY_SHIFT), &"dash"),
+		"y Shift ya no")
+
+	# --- Si la tecla era de otra accion, se INTERCAMBIAN ---
+	#
+	# Duplicar haria que una tecla dispare dos cosas a la vez; rechazar obligaria a liberar
+	# la tecla en otra fila primero, que nadie entiende por que tiene que hacer.
+	var con := Controles.reasignar(&"jump", _tecla(KEY_F))
+	_check(con == Controles.nombre_accion(&"dash"),
+		"poner en Saltar la tecla del Dash avisa con quien se intercambio (%s)" % con)
+	_check(InputMap.event_is_action(_tecla(KEY_F), &"jump")
+		and not InputMap.event_is_action(_tecla(KEY_F), &"dash"),
+		"F queda en Saltar y no en las dos")
+	_check(InputMap.event_is_action(_tecla(KEY_SPACE), &"dash"),
+		"y el Dash se queda con la tecla vieja de Saltar: ninguna accion queda sin tecla")
+
+	# --- Lo que no puede ser un control ---
+	Controles.reasignar(&"dash", _tecla(KEY_ESCAPE))
+	_check(not InputMap.event_is_action(_tecla(KEY_ESCAPE), &"dash"),
+		"Escape no se puede asignar: es la salida de todos los menus")
+	var rueda := InputEventMouseButton.new()
+	rueda.button_index = MOUSE_BUTTON_WHEEL_UP
+	rueda.pressed = true
+	_check(not Controles.es_valido(rueda),
+		"la rueda del mouse tampoco: las acciones que se mantienen no se podrian usar")
+	var lateral := InputEventMouseButton.new()
+	lateral.button_index = MOUSE_BUTTON_XBUTTON1
+	lateral.pressed = true
+	Controles.reasignar(&"ability_2", lateral)
+	_check(Controles.nombre_tecla(&"ability_2") == "Mouse 4",
+		"pero los botones laterales del mouse si (%s)" % Controles.nombre_tecla(&"ability_2"))
+
+	# --- Se guarda y se vuelve a leer ---
+	Controles.reasignar(&"ability_ultimate", _tecla(KEY_R))
+	Controles.restablecer_sin_borrar_archivo_para_prueba()
+	_check(Controles.nombre_tecla(&"ability_ultimate") == "Q", "(control: la memoria volvio a fabrica)")
+	Controles.cargar()
+	_check(Controles.nombre_tecla(&"ability_ultimate") == "R",
+		"al volver a abrir el juego, las teclas elegidas siguen puestas")
+
+	# --- Restablecer vuelve todo a fabrica ---
+	Controles.restablecer()
+	_check(Controles.nombre_tecla(&"ability_ultimate") == "Q"
+		and Controles.nombre_tecla(&"dash") == "Shift"
+		and Controles.nombre_tecla(&"jump") == "Espacio",
+		"restablecer devuelve todas las de fabrica")
+
+	# Y de vuelta a las teclas reales del jugador.
+	Controles.ruta_archivo = Controles.RUTA
+	Controles.restablecer_sin_borrar_archivo_para_prueba()
+	Controles.cargar()
+	await get_tree().process_frame
+
+
+# ------------------------------------------------------- Skins que se notan
+
+## Todos los materiales de un visual, sin repetir.
+func _materiales(nodo: Node, salida: Array) -> void:
+	var malla := nodo as MeshInstance3D
+	if malla != null and malla.material_override is StandardMaterial3D:
+		if not salida.has(malla.material_override):
+			salida.append(malla.material_override)
+	for h: Node in nodo.get_children():
+		_materiales(h, salida)
+
+
+func _test_skins_visibles() -> void:
+	# --- Cuanto se nota depende de la rareza ---
+	var faltan := ""
+	for sid: StringName in SkinDB.todas():
+		var sk := SkinDB.get_skin(sid)
+		if sk.partes.size() < 2:
+			faltan += "%s(sin recoloreo) " % sid
+		if sk.rareza == &"legendaria" and sk.aura == &"":
+			faltan += "%s(legendaria sin aura) " % sid
+		if sk.rareza == &"epica" and sk.acabado == &"" and sk.accesorio == &"" and sk.aura == &"":
+			faltan += "%s(epica sin nada extra) " % sid
+	_check(faltan.is_empty(),
+		"cada skin recolorea el disfraz y suma lo que le toca por rareza %s" % faltan)
+
+	# --- EL BUG ORIGINAL: la skin tiene que recolorear el disfraz, no solo el torso ---
+	#
+	# Los disfraces tenian sus colores escritos a mano: "Sonic Dorado" salia con las puas y
+	# la cabeza AZULES, porque solo cambiaba lo que usaba la paleta de base. Se arma el
+	# visual de verdad y se busca el color de las puas entre sus materiales.
+	var visual := PlayerVisual.new()
+	add_child(visual)
+	await get_tree().process_frame
+	var dorado := SkinDB.get_skin(&"sonic_super")
+	visual.apply_character(SkinDB.aplicar(CharacterDB.get_character(&"sonic"), &"sonic_super"))
+	var mats: Array = []
+	_materiales(visual, mats)
+	var puas_doradas := false
+	var puas_azules := false
+	for m: StandardMaterial3D in mats:
+		if m.albedo_color.is_equal_approx(dorado.partes[&"pua"]):
+			puas_doradas = true
+		if m.albedo_color.is_equal_approx(Color(0.11, 0.35, 0.78)):
+			puas_azules = true
+	_check(puas_doradas and not puas_azules,
+		"Sonic Dorado tiene las puas doradas de verdad, no las azules de fabrica")
+
+	# --- Ninguna skin vuelve a nadie transparente ni lo esconde ---
+	#
+	# Una skin que te hace ver a traves, o que te camufla, es una ventaja comprada en un
+	# juego de PvP. Se prueban las diecinueve sobre el visual real.
+	var transparentes := ""
+	for sid: StringName in SkinDB.todas():
+		var sk := SkinDB.get_skin(sid)
+		visual.apply_character(SkinDB.aplicar(CharacterDB.get_character(sk.character_id), sid))
+		var ms: Array = []
+		_materiales(visual._root, ms)
+		for m: StandardMaterial3D in ms:
+			if m.diffuse_mode == BaseMaterial3D.DIFFUSE_TOON and 					m.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+				transparentes += "%s " % sid
+				break
+	_check(transparentes.is_empty(),
+		"ninguna skin deja el cuerpo transparente %s" % transparentes)
+
+	# --- Volver a la de fabrica limpia TODO ---
+	#
+	# Los materiales de base no se rehacen al cambiar de skin, asi que un acabado viejo se
+	# podia quedar pegado: de "Dio Dorado" a la de fabrica, Dio quedaba metalico.
+	visual.apply_character(SkinDB.aplicar(CharacterDB.get_character(&"dio"), &"dio_dorado"))
+	_check(visual._mat_body.metallic > 0.5, "(control: el Dorado es metalico)")
+	visual.apply_character(CharacterDB.get_character(&"dio"))
+	_check(is_zero_approx(visual._mat_body.metallic) and not visual._mat_body.emission_enabled,
+		"y al volver a la de fabrica, el cuerpo deja de ser metalico")
+	var auras := 0
+	for h: Node in visual.get_children():
+		if h.name.begins_with("AuraSkin") and not h.is_queued_for_deletion():
+			auras += 1
+	_check(auras == 0, "y no le queda colgando el aura de la skin anterior")
+	visual.queue_free()
+	await get_tree().process_frame
+
+
 func _test_audio() -> void:
 	# El audio se sintetiza por codigo al arrancar: no hay ni un archivo de sonido.
 	var expected: Array[StringName] = [
@@ -694,7 +857,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 133
+const CHEQUEOS_MINIMOS: int = 153
 
 
 func _finish() -> void:

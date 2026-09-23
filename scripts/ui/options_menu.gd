@@ -125,12 +125,16 @@ func _ready() -> void:
 
 	box.add_child(UITheme.make_spacer(10))
 
-	var hint := UITheme.make_label(
-		"Dash: Shift. Los controles se rebindean en la tabla BINDINGS de scripts/core/game_config.gd",
-		11, UITheme.TEXT_DIM)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(hint)
+	# Antes aca habia un renglon que decia que los controles se cambiaban editando una
+	# tabla del codigo fuente. Ahora se cambian aca, como en cualquier juego.
+	var controles := UITheme.make_button("CONTROLES…")
+	controles.pressed.connect(func() -> void:
+		var pantalla := ControlesMenu.new()
+		pantalla.cerrado.connect(func() -> void:
+			pantalla.queue_free()
+			_refresh_labels())
+		add_child(pantalla))
+	box.add_child(controles)
 
 	box.add_child(UITheme.make_spacer(6))
 	var close := UITheme.make_button("CERRAR", true)
@@ -168,4 +172,4 @@ func _refresh_labels() -> void:
 	if _auto_run_hint != null:
 		_auto_run_hint.text = ("Corres siempre sin apretar nada. Correr nunca gasta stamina."
 			if Settings.auto_run
-			else "Mantene Ctrl para correr. Correr nunca gasta stamina.")
+			else "Mantené %s para correr. Correr nunca gasta stamina." % Controles.nombre_tecla(&"sprint"))

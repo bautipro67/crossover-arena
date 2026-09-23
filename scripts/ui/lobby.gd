@@ -159,7 +159,10 @@ func _build_kit() -> void:
 	_kit_box.add_child(UITheme.make_label("De: %s" % data.origin_game, 13, UITheme.TEXT_DIM))
 	_kit_box.add_child(UITheme.make_spacer(4))
 
-	var keys: Array[String] = ["Click izq", "Click der", "E", "Q"]
+	# La tecla de cada una sale de Controles, no de una lista escrita aca.
+	var keys: Array[String] = []
+	for accion: StringName in HUD.ACCIONES_HABILIDAD:
+		keys.append(Controles.nombre_tecla(accion))
 	var abilities := CharacterDB.build_abilities_for(_selected_id)
 	for i: int in range(abilities.size()):
 		var ability := abilities[i]

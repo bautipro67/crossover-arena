@@ -96,6 +96,31 @@ static func pelaje(color: Color, outline_width: float = 0.012) -> StandardMateri
 	return m
 
 
+## Un punto redondo que se desvanece hacia el borde. Textura para particulas.
+##
+## Sin textura, una particula es el cuadrado de su malla y se ve como lo que es: la niebla
+## del Dio Vampiro salia como un monton de cuadraditos rojos, y las hojas del Flowery
+## Marchito como papel picado. Un degrade radial convierte el cuadrado en un punto blando.
+## Se genera por codigo —un GradientTexture2D— asi que sigue sin haber archivos.
+static var _punto: GradientTexture2D = null
+
+static func punto_suave() -> GradientTexture2D:
+	if _punto != null:
+		return _punto
+	var g := Gradient.new()
+	g.set_color(0, Color(1, 1, 1, 1))
+	g.set_color(1, Color(1, 1, 1, 0))
+	g.add_point(0.45, Color(1, 1, 1, 0.75))
+	_punto = GradientTexture2D.new()
+	_punto.gradient = g
+	_punto.fill = GradientTexture2D.FILL_RADIAL
+	_punto.fill_from = Vector2(0.5, 0.5)
+	_punto.fill_to = Vector2(1.0, 0.5)
+	_punto.width = 64
+	_punto.height = 64
+	return _punto
+
+
 ## Igual que toon pero emitiendo luz propia. Para los detalles que tienen que cantar:
 ## trims del mapa, proyectiles, acentos de personaje.
 static func glow(color: Color, energy: float = 2.0, outline_width: float = 0.0) -> StandardMaterial3D:

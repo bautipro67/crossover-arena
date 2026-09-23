@@ -16,6 +16,7 @@ var _orden: Array[StringName] = []
 
 func _ready() -> void:
 	_registrar_todas()
+	_detallar()
 
 
 func _registrar_todas() -> void:
@@ -116,6 +117,142 @@ func _registrar_todas() -> void:
 		Color(0.99, 0.80, 0.56), Color(0.07, 0.13, 0.55), &"rara", 900))
 
 
+# -------------------------------------------------------------- Los detalles
+#
+# CUANTO SE NOTA DEPENDE DE LA RAREZA, y es la unica forma de que la rareza signifique
+# algo mirando al personaje y no solo el marco de la tarjeta:
+#
+#   rara        recolorea el disfraz ENTERO (pelo, ropa, detalles), no solo el torso.
+#   epica       ademas, un acabado (metal, piedra, sombra) o un accesorio.
+#   legendaria  ademas, un aura de particulas y ojos que brillan.
+#
+# Las partes que no se nombran quedan de fabrica. Los nombres de las partes los define
+# cada personaje en su constructor de PlayerVisual.
+
+func _detallar() -> void:
+	# ---------------------------------------------------------------- Noelle
+	_det(&"noelle_snowgrave", {
+		&"pelo": Color(0.88, 0.95, 1.00), &"sueter_a": Color(0.55, 0.80, 1.00),
+		&"sueter_b": Color(0.20, 0.40, 0.72), &"oscuro": Color(0.16, 0.24, 0.38),
+		&"astas": Color(0.78, 0.94, 1.00)},
+		&"hielo", &"nieve", Color(0.85, 0.95, 1.0), Color(0.45, 0.90, 1.0), &"",
+		Color(0.55, 0.85, 1.0, 0.8))
+	_det(&"noelle_fiesta", {
+		&"sueter_a": Color(0.92, 0.20, 0.22), &"sueter_b": Color(0.18, 0.62, 0.30)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"gorro", Color(1.0, 0.35, 0.35, 0.75))
+	_det(&"noelle_sombra", {
+		&"pelo": Color(0.66, 0.68, 0.76), &"sueter_a": Color(0.36, 0.37, 0.44),
+		&"sueter_b": Color(0.22, 0.23, 0.29), &"oscuro": Color(0.10, 0.10, 0.13),
+		&"astas": Color(0.52, 0.53, 0.60)},
+		&"sombra", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.70, 0.60, 1.0, 0.75))
+	_det(&"noelle_reno", {
+		&"pelo": Color(0.60, 0.40, 0.26), &"sueter_a": Color(0.86, 0.30, 0.26),
+		&"sueter_b": Color(0.96, 0.94, 0.90), &"astas": Color(0.52, 0.36, 0.20)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"nariz_roja", Color(1.0, 0.45, 0.35, 0.75))
+
+	# ------------------------------------------------------------------- Dio
+	_det(&"dio_vampiro", {
+		&"pelo": Color(0.95, 0.92, 0.80), &"detalle": Color(0.72, 0.06, 0.12),
+		&"musculosa": Color(0.07, 0.05, 0.07), &"tela": Color(0.16, 0.03, 0.06),
+		&"joya": Color(0.95, 0.10, 0.15)},
+		&"sombra", &"niebla", Color(0.85, 0.08, 0.14), Color(1.0, 0.12, 0.12), &"",
+		Color(0.95, 0.12, 0.18, 0.8))
+	_det(&"dio_dorado", {
+		&"pelo": Color(1.00, 0.90, 0.45), &"detalle": Color(1.00, 0.78, 0.22),
+		&"musculosa": Color(0.84, 0.64, 0.14), &"tela": Color(0.74, 0.54, 0.12)},
+		&"metal", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.85, 0.30, 0.8))
+	_det(&"dio_noche", {
+		&"pelo": Color(0.86, 0.78, 1.00), &"detalle": Color(0.72, 0.44, 0.95),
+		&"musculosa": Color(0.14, 0.09, 0.22), &"tela": Color(0.20, 0.12, 0.34),
+		&"joya": Color(0.80, 0.55, 1.0)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.72, 0.50, 1.0, 0.75))
+	_det(&"dio_piedra", {
+		&"pelo": Color(0.64, 0.62, 0.58), &"detalle": Color(0.50, 0.48, 0.44),
+		&"musculosa": Color(0.38, 0.37, 0.34), &"tela": Color(0.46, 0.45, 0.42),
+		&"joya": Color(0.70, 0.68, 0.62)},
+		&"piedra", &"polvo", Color(0.62, 0.60, 0.55), Color(0, 0, 0, 0), &"",
+		Color(0.65, 0.63, 0.58, 0.7))
+
+	# --------------------------------------------------------------- Flowery
+	_det(&"flowery_omega", {
+		&"pelo": Color(1.00, 0.95, 0.62), &"chaleco_a": Color(1.00, 0.45, 0.72),
+		&"chaleco_b": Color(0.45, 0.85, 1.00), &"campera": Color(0.52, 0.30, 0.68),
+		&"camisa": Color(1.00, 1.00, 0.92)},
+		&"brillo", &"arcoiris", Color(1.0, 0.55, 0.75), Color(1.0, 0.85, 0.30), &"",
+		Color(1.0, 0.55, 0.80, 0.85))
+	_det(&"flowery_dorado", {
+		&"pelo": Color(1.00, 0.88, 0.35), &"chaleco_a": Color(0.95, 0.75, 0.20),
+		&"chaleco_b": Color(0.80, 0.55, 0.12), &"campera": Color(0.58, 0.42, 0.14),
+		&"camisa": Color(1.00, 0.96, 0.80)},
+		&"metal", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.85, 0.35, 0.8))
+	_det(&"flowery_nocturno", {
+		&"pelo": Color(0.20, 0.20, 0.27), &"chaleco_a": Color(0.36, 0.86, 0.62),
+		&"chaleco_b": Color(0.18, 0.48, 0.38), &"campera": Color(0.07, 0.07, 0.11),
+		&"camisa": Color(0.26, 0.27, 0.34)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.36, 0.90, 0.65, 0.75))
+	_det(&"flowery_marchito", {
+		&"pelo": Color(0.64, 0.57, 0.40), &"chaleco_a": Color(0.45, 0.40, 0.26),
+		&"chaleco_b": Color(0.52, 0.36, 0.20), &"campera": Color(0.30, 0.26, 0.20),
+		&"camisa": Color(0.70, 0.66, 0.55)},
+		&"", &"hojas", Color(0.60, 0.40, 0.18), Color(0, 0, 0, 0), &"",
+		Color(0.65, 0.48, 0.25, 0.7))
+
+	# ------------------------------------------------------------------ Rick
+	_det(&"rick_pickle", {
+		&"pelo": Color(0.34, 0.60, 0.20), &"guardapolvo": Color(0.48, 0.78, 0.30),
+		&"cinto": Color(0.24, 0.44, 0.14), &"hebilla": Color(0.72, 0.92, 0.40),
+		&"medias": Color(0.55, 0.80, 0.35)},
+		&"metal", &"burbujas", Color(0.60, 1.0, 0.45), Color(0.60, 1.0, 0.30), &"",
+		Color(0.55, 1.0, 0.35, 0.8))
+	_det(&"rick_maligno", {
+		&"pelo": Color(0.52, 0.55, 0.60), &"guardapolvo": Color(0.20, 0.22, 0.26),
+		&"cinto": Color(0.08, 0.08, 0.10), &"hebilla": Color(0.95, 0.74, 0.20)},
+		&"sombra", &"", Color.WHITE, Color(0, 0, 0, 0), &"parche",
+		Color(0.95, 0.74, 0.25, 0.75))
+	_det(&"rick_cosmico", {
+		&"pelo": Color(0.55, 0.92, 1.00), &"guardapolvo": Color(0.34, 0.26, 0.62),
+		&"cinto": Color(0.20, 0.14, 0.40), &"hebilla": Color(0.55, 0.92, 1.00)},
+		&"", &"estrellas", Color(0.60, 0.95, 1.0), Color(0, 0, 0, 0), &"",
+		Color(0.55, 0.92, 1.0, 0.8))
+	_det(&"rick_bata", {
+		&"pelo": Color(0.82, 0.90, 0.94), &"guardapolvo": Color(1.00, 1.00, 1.00),
+		&"cinto": Color(0.30, 0.52, 0.72), &"hebilla": Color(0.86, 0.88, 0.92)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"gafas", Color(0.60, 0.85, 1.0, 0.75))
+
+	# ----------------------------------------------------------------- Sonic
+	# Super Sonic tiene los ojos ROJOS, y no es un invento: es su rasgo mas reconocible
+	# transformado, junto con el dorado. Sonic Clasico los tiene NEGROS, como en 1991.
+	_det(&"sonic_super", {
+		&"pua": Color(1.00, 0.80, 0.16), &"pelo": Color(1.00, 0.86, 0.26),
+		&"piel": Color(1.00, 0.93, 0.70), &"ojos": Color(0.85, 0.10, 0.10)},
+		&"brillo", &"chispas", Color(1.0, 0.88, 0.30), Color(1.0, 0.15, 0.10), &"",
+		Color(1.0, 0.85, 0.25, 0.85))
+	_det(&"sonic_oscuro", {
+		&"pua": Color(0.12, 0.12, 0.15), &"pelo": Color(0.15, 0.15, 0.19),
+		&"piel": Color(0.90, 0.82, 0.74), &"ojos": Color(0.88, 0.12, 0.12)},
+		&"sombra", &"", Color.WHITE, Color(0.95, 0.15, 0.15), &"",
+		Color(0.95, 0.18, 0.18, 0.8))
+	_det(&"sonic_clasico", {
+		&"pua": Color(0.08, 0.16, 0.62), &"pelo": Color(0.09, 0.18, 0.66),
+		&"ojos": Color(0.05, 0.05, 0.07)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.30, 0.45, 1.0, 0.75))
+
+
+func _det(id: StringName, partes: Dictionary, acabado: StringName, aura: StringName,
+		aura_color: Color, ojos: Color, accesorio: StringName, estela: Color) -> void:
+	var sk := get_skin(id)
+	if sk == null:
+		push_warning("[skins] detalle para una skin que no existe: %s" % id)
+		return
+	sk.partes = partes
+	sk.acabado = acabado
+	sk.aura = aura
+	sk.aura_color = aura_color
+	sk.ojos_brillo = ojos
+	sk.accesorio = accesorio
+	sk.estela = estela
+
+
 func _hacer(id: StringName, personaje: StringName, nombre: String, desc: String,
 		cuerpo: Color, acento: Color, piel: Color, pantalon: Color,
 		rareza: StringName, precio: int) -> SkinData:
@@ -181,6 +318,7 @@ func aplicar(base: CharacterData, skin_id: StringName) -> CharacterData:
 	if skin == null or skin.character_id != base.id:
 		return base
 	var copia: CharacterData = base.duplicate()
+	copia.skin_id = skin.id
 	copia.body_color = skin.body_color
 	copia.accent_color = skin.accent_color
 	copia.skin_color = skin.skin_color

@@ -73,6 +73,9 @@ var _costume: Array[Node3D] = []
 ## La cabeza y el cuello, guardados para poder cambiarles el material. Todos los
 ## personajes tienen cabeza de piel salvo los que son bichos, y esos la necesitan de pelo.
 var _head_mesh: MeshInstance3D = null
+## La skin puesta, o null. Se fija ANTES de armar el disfraz, porque el disfraz le pide
+## los colores de cada parte.
+var _skin: SkinData = null
 var _neck_mesh: MeshInstance3D = null
 var _frost: CPUParticles3D = null
 var _freeze_shell: Node3D = null
@@ -763,7 +766,272 @@ func apply_character(data: CharacterData) -> void:
 	_mat_skin.albedo_color = skin_color
 	_mat_dark.albedo_color = trouser_color
 
+	_skin = SkinDB.get_skin(data.skin_id) if data.skin_id != &"" else null
 	_build_costume(data.silhouette)
+	_aplicar_extras()
+
+
+## El color de una parte del disfraz: el de la skin si lo nombra, si no el de fabrica.
+##
+## Todos los constructores de disfraz piden sus colores por aca y no los escriben a mano.
+## Escritos a mano, una skin cambiaba el torso y las piernas pero no el pelo, el sueter ni
+## el guardapolvo, que son justo lo que se mira: por eso las skins no se notaban.
+func _tono(parte: StringName, defecto: Color) -> Color:
+	if _skin != null and _skin.partes.has(parte):
+		return _skin.partes[parte]
+	return defecto
+
+
+# --------------------------------------------------------- Extras de la skin
+#
+# Todo lo que se crea aca va a _costume, asi que al cambiar de skin o de personaje se
+# borra junto con el disfraz y no queda un aura vieja colgando.
+
+## Los cuatro materiales de base vuelven a toon comun antes de aplicar nada.
+##
+## Hace falta porque, a diferencia de los del disfraz, estos NO se rehacen al cambiar de
+## skin: son del cuerpo y viven lo mismo que el. Sin esto, pasar de "Dio Dorado" a la de
+## fabrica lo dejaba metalico, y de una skin con brillo a otra sin brillo, brillando.
+func _restaurar_base() -> void:
+	for m: StandardMaterial3D in [_mat_body, _mat_accent, _mat_skin, _mat_dark]:
+		if m == null:
+			continue
+		m.metallic = 0.0
+		m.metallic_specular = 0.5
+		m.roughness = 0.9
+		m.rim_enabled = true
+		m.rim = 0.45 if m == _mat_accent else 0.5
+		m.rim_tint = 0.25
+		m.emission_enabled = false
+		m.normal_enabled = false
+		m.specular_mode = BaseMaterial3D.SPECULAR_TOON
+
+
+func _aplicar_extras() -> void:
+	_restaurar_base()
+	if _skin == null:
+		return
+	if _skin.acabado != &"":
+		_aplicar_acabado(_skin.acabado)
+	if _skin.aura != &"":
+		_crear_aura(_skin.aura, _skin.aura_color)
+	if _skin.ojos_brillo.a > 0.0:
+		_ojos_que_brillan(_skin.ojos_brillo)
+	if _skin.accesorio != &"":
+		_crear_accesorio(_skin.accesorio)
+
+
+## Cambia la terminacion de todo el cuerpo y el disfraz.
+##
+## SOLO LOS MATERIALES TOON QUE NO BRILLAN. Lo que ya emite luz —el joyero de Dio, los
+## ojos— es un detalle luminoso a proposito, y el acabado le cambiaria la luz: el "brillo"
+## en particular le BAJARIA la emision a algo que ya brillaba mas.
+func _aplicar_acabado(tipo: StringName) -> void:
+	var vistos: Dictionary = {}
+	var pendientes: Array[Node] = [_root]
+	while not pendientes.is_empty():
+		var nodo: Node = pendientes.pop_back()
+		pendientes.append_array(nodo.get_children())
+		var malla := nodo as MeshInstance3D
+		if malla == null:
+			continue
+		var m := malla.material_override as StandardMaterial3D
+		if m == null or vistos.has(m):
+			continue
+		vistos[m] = true
+		if m.diffuse_mode != BaseMaterial3D.DIFFUSE_TOON or m.emission_enabled:
+			continue
+		match tipo:
+			&"metal":
+				m.metallic = 0.72
+				m.metallic_specular = 0.85
+				m.roughness = 0.28
+				m.rim = 0.35
+			&"brillo":
+				# Luz propia, pero poca: tiene que leerse como algo cargado de energia, no
+				# como una lampara que encandila al que tiene enfrente.
+				m.emission_enabled = true
+				m.emission = m.albedo_color
+				m.emission_energy_multiplier = 0.42
+				m.rim = 0.65
+			&"hielo":
+				m.metallic = 0.25
+				m.roughness = 0.16
+				m.rim = 1.0
+				m.rim_tint = 0.6
+				m.emission_enabled = true
+				m.emission = m.albedo_color.lerp(Color(0.85, 0.95, 1.0), 0.6)
+				m.emission_energy_multiplier = 0.12
+			&"piedra":
+				m.roughness = 1.0
+				m.metallic = 0.0
+				m.rim = 0.05
+				m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+				# El mismo ruido del pelaje, con las celdas sin estirar: redondas se leen
+				# como granito, que es lo que tiene que parecer.
+				if Art._normal_pelo == null:
+					Art.pelaje(Color.WHITE)
+				m.normal_enabled = true
+				m.normal_texture = Art._normal_pelo
+				m.normal_scale = 1.4
+				m.uv1_scale = Vector3(2.2, 2.2, 1.0)
+			&"sombra":
+				# OSCURO Y RECORTADO, NUNCA CAMUFLADO. El borde claro al maximo hace que el
+				# cuerpo se lea contra cualquier fondo, mas que el de fabrica: una skin que
+				# te esconde contra el piso seria una ventaja comprada.
+				m.rim = 1.0
+				m.rim_tint = 0.0
+				m.roughness = 0.6
+
+
+## Particulas alrededor del cuerpo. POCAS Y CHICAS: son decoracion, y no pueden tapar a
+## nadie ni esconder el cuerpo que tienen adentro.
+func _crear_aura(tipo: StringName, color: Color) -> void:
+	var p := CPUParticles3D.new()
+	p.name = &"AuraSkin"
+	p.amount = 18
+	p.lifetime = 1.4
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(0.42, 0.85, 0.42)
+	p.spread = 30.0
+	p.gravity = Vector3.ZERO
+	p.initial_velocity_min = 0.1
+	p.initial_velocity_max = 0.4
+	p.scale_amount_min = 0.5
+	p.scale_amount_max = 1.0
+	p.color = color
+	var tam := 0.07
+	var energia := 1.6
+	match tipo:
+		&"nieve":
+			p.direction = Vector3.DOWN
+			p.gravity = Vector3(0.0, -0.5, 0.0)
+			tam = 0.05
+		&"chispas":
+			p.direction = Vector3.UP
+			p.gravity = Vector3(0.0, 1.4, 0.0)
+			p.initial_velocity_max = 1.0
+			p.lifetime = 0.9
+			tam = 0.045
+			energia = 3.0
+		&"niebla":
+			# Abajo y grande: una bruma que sale de los pies, no una nube que tapa la cara.
+			p.emission_box_extents = Vector3(0.55, 0.25, 0.55)
+			p.direction = Vector3.UP
+			p.gravity = Vector3(0.0, 0.25, 0.0)
+			p.amount = 12
+			tam = 0.22
+			energia = 0.8
+		&"estrellas":
+			p.direction = Vector3.UP
+			p.initial_velocity_max = 0.15
+			tam = 0.05
+			energia = 3.2
+		&"arcoiris":
+			p.direction = Vector3.UP
+			p.gravity = Vector3(0.0, 0.4, 0.0)
+			p.hue_variation_min = -1.0
+			p.hue_variation_max = 1.0
+			tam = 0.07
+			energia = 2.2
+		&"polvo":
+			p.direction = Vector3.DOWN
+			p.gravity = Vector3(0.0, -1.2, 0.0)
+			tam = 0.05
+			energia = 0.6
+		&"hojas":
+			p.direction = Vector3(0.3, -1.0, 0.0)
+			p.gravity = Vector3(0.25, -0.7, 0.0)
+			p.angular_velocity_min = -180.0
+			p.angular_velocity_max = 180.0
+			tam = 0.08
+			energia = 0.7
+		&"burbujas":
+			p.direction = Vector3.UP
+			p.gravity = Vector3(0.0, 0.8, 0.0)
+			tam = 0.06
+			energia = 1.8
+	var quad := QuadMesh.new()
+	quad.size = Vector2(tam, tam)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = Art.punto_suave()
+	# La emision tambien pasa por la textura: si no, el cuadrado entero brilla aunque el
+	# punto se vea redondo, y el halo cuadrado lo delata igual.
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = energia
+	mat.emission_texture = Art.punto_suave()
+	quad.material = mat
+	p.mesh = quad
+	p.position = Vector3(0.0, 0.95, 0.0)
+	p.emitting = true
+	add_child(p)
+	_costume.append(p)
+
+
+## Los ojos emitiendo luz: una pupila luminosa encima de la de fabrica.
+func _ojos_que_brillan(color: Color) -> void:
+	for ojo: Node3D in [_eye_l, _eye_r]:
+		if ojo == null:
+			continue
+		var luz := Art.sphere(0.024, Art.glow(color, 3.4), Vector3(0.0, 0.004, -0.034))
+		luz.scale = Vector3(1.0, 1.2, 0.5)
+		_costume_add(ojo, luz)
+
+
+## Un adorno chico en la cabeza. Chico a proposito: tiene que notarse de cerca sin
+## cambiar la silueta de lejos, que es como se reconoce a quien tenes enfrente.
+func _crear_accesorio(tipo: StringName) -> void:
+	match tipo:
+		&"gorro":
+			var rojo := Art.toon(Color(0.86, 0.14, 0.16), OUTLINE_WIDTH)
+			var blanco := Art.toon(Color(0.98, 0.98, 0.98), OUTLINE_WIDTH)
+			var gorro := MeshInstance3D.new()
+			var cono := CylinderMesh.new()
+			cono.top_radius = 0.0
+			cono.bottom_radius = 0.15
+			cono.height = 0.26
+			gorro.mesh = cono
+			gorro.material_override = rojo
+			gorro.position = Vector3(0.0, 0.40, 0.02)
+			gorro.rotation_degrees = Vector3(-18.0, 0.0, 0.0)
+			_costume_add(_head_pivot, gorro)
+			_costume_add(_head_pivot, Art.cylinder(0.16, 0.05, blanco, Vector3(0.0, 0.29, 0.0)))
+			_costume_add(_head_pivot, Art.sphere(0.045, blanco, Vector3(0.0, 0.52, 0.07)))
+		&"nariz_roja":
+			var nariz := Art.sphere(0.05, Art.glow(Color(1.0, 0.12, 0.10), 2.4),
+				Vector3(0.0, 0.07, -0.205))
+			_costume_add(_head_pivot, nariz)
+		&"parche":
+			var negro := Art.toon(Color(0.05, 0.05, 0.06), OUTLINE_WIDTH)
+			if _eye_l != null:
+				var tapa := Art.sphere(0.058, negro, Vector3(0.0, 0.0, -0.022))
+				tapa.scale = Vector3(1.1, 1.0, 0.45)
+				_costume_add(_eye_l, tapa)
+			# La tira alrededor de la cabeza: sin ella el parche parece pintado en la cara.
+			var tira := MeshInstance3D.new()
+			var toro := TorusMesh.new()
+			toro.inner_radius = 0.205
+			toro.outer_radius = 0.222
+			tira.mesh = toro
+			tira.material_override = negro
+			tira.position = Vector3(0.0, 0.14, 0.0)
+			tira.rotation_degrees = Vector3(12.0, 0.0, 14.0)
+			_costume_add(_head_pivot, tira)
+		&"gafas":
+			var marco := Art.toon(Color(0.22, 0.22, 0.26), OUTLINE_WIDTH)
+			var vidrio := Art.glow(Color(0.55, 0.85, 1.0), 1.2)
+			for lado: float in [-1.0, 1.0]:
+				var aro := Art.cylinder(0.052, 0.04, marco, Vector3(0.07 * lado, 0.25, -0.155))
+				aro.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+				_costume_add(_head_pivot, aro)
+				var lente := Art.cylinder(0.04, 0.045, vidrio, Vector3(0.07 * lado, 0.25, -0.16))
+				lente.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+				_costume_add(_head_pivot, lente)
 
 
 ## Lo que distingue a un personaje de otro a 20 metros. Es lo mas importante que
@@ -828,13 +1096,13 @@ func _build_flowery() -> void:
 	# Sonrisa ancha y cejas apenas caidas: la cordialidad que no termina de cerrar.
 	_apply_expression(-0.10, 0.008, 0.082)
 
-	var oro := Art.toon(Color(0.99, 0.80, 0.16), OUTLINE_WIDTH)
+	var oro := Art.toon(_tono(&"pelo", Color(0.99, 0.80, 0.16)), OUTLINE_WIDTH)
 	# Las raices. Casi negro, no gris: tiene que leerse como "teñido", no como sombra.
 	var raiz := Art.toon(Color(0.09, 0.09, 0.12), OUTLINE_WIDTH)
-	var verde := Art.toon(Color(0.29, 0.49, 0.27), OUTLINE_WIDTH)
-	var naranja := Art.toon(Color(0.93, 0.52, 0.15), OUTLINE_WIDTH)
-	var campera := Art.toon(Color(0.12, 0.12, 0.16), OUTLINE_WIDTH)
-	var camisa := Art.toon(Color(0.97, 0.97, 0.95), OUTLINE_WIDTH)
+	var verde := Art.toon(_tono(&"chaleco_a", Color(0.29, 0.49, 0.27)), OUTLINE_WIDTH)
+	var naranja := Art.toon(_tono(&"chaleco_b", Color(0.93, 0.52, 0.15)), OUTLINE_WIDTH)
+	var campera := Art.toon(_tono(&"campera", Color(0.12, 0.12, 0.16)), OUTLINE_WIDTH)
+	var camisa := Art.toon(_tono(&"camisa", Color(0.97, 0.97, 0.95)), OUTLINE_WIDTH)
 
 	# --- Pelo ---
 	#
@@ -969,10 +1237,10 @@ func _build_rick() -> void:
 	# parece una perdida de tiempo.
 	_apply_expression(0.06, -0.010, 0.050)
 
-	var pelo := Art.toon(Color(0.66, 0.80, 0.86), OUTLINE_WIDTH)
-	var guardapolvo := Art.toon(Color(0.95, 0.96, 0.97), OUTLINE_WIDTH)
-	var cinto := Art.toon(Color(0.28, 0.19, 0.12), OUTLINE_WIDTH)
-	var hebilla := Art.toon(Color(0.85, 0.70, 0.25), OUTLINE_WIDTH)
+	var pelo := Art.toon(_tono(&"pelo", Color(0.66, 0.80, 0.86)), OUTLINE_WIDTH)
+	var guardapolvo := Art.toon(_tono(&"guardapolvo", Color(0.95, 0.96, 0.97)), OUTLINE_WIDTH)
+	var cinto := Art.toon(_tono(&"cinto", Color(0.28, 0.19, 0.12)), OUTLINE_WIDTH)
+	var hebilla := Art.toon(_tono(&"hebilla", Color(0.85, 0.70, 0.25)), OUTLINE_WIDTH)
 
 	# --- Pelo: tupe arriba, entradas ATRAS ---
 	#
@@ -1053,7 +1321,7 @@ func _build_rick() -> void:
 	# --- Medias blancas ---
 	# El pantalon le queda corto y se le ven: es un detalle chico y es de los que mas
 	# dicen del personaje, porque nadie mas del juego tiene la ropa mal puesta.
-	var media := Art.toon(Color(0.93, 0.93, 0.90), OUTLINE_WIDTH)
+	var media := Art.toon(_tono(&"medias", Color(0.93, 0.93, 0.90)), OUTLINE_WIDTH)
 	for rodilla: Node3D in [_knee_l, _knee_r]:
 		if is_instance_valid(rodilla):
 			_costume_add(rodilla, Art.capsule(0.082, 0.13, media, Vector3(0.0, -0.335, 0.0)))
@@ -1078,10 +1346,10 @@ func _build_noelle() -> void:
 	# exactamente Noelle.
 	_apply_expression(-0.06, 0.012, 0.044)
 
-	var pelo := Art.toon(Color(0.96, 0.84, 0.44), OUTLINE_WIDTH)
-	var rojo := Art.toon(Color(0.72, 0.17, 0.19), OUTLINE_WIDTH)
-	var verde := Art.toon(Color(0.16, 0.44, 0.25), OUTLINE_WIDTH)
-	var negro := Art.toon(Color(0.14, 0.14, 0.18), OUTLINE_WIDTH)
+	var pelo := Art.toon(_tono(&"pelo", Color(0.96, 0.84, 0.44)), OUTLINE_WIDTH)
+	var rojo := Art.toon(_tono(&"sueter_a", Color(0.72, 0.17, 0.19)), OUTLINE_WIDTH)
+	var verde := Art.toon(_tono(&"sueter_b", Color(0.16, 0.44, 0.25)), OUTLINE_WIDTH)
+	var negro := Art.toon(_tono(&"oscuro", Color(0.14, 0.14, 0.18)), OUTLINE_WIDTH)
 
 	# --- Pelo rubio: casquete, melena y flequillo ---
 	var cap := Art.sphere(0.212, pelo, Vector3(0.0, 0.14, 0.015))
@@ -1125,7 +1393,7 @@ func _build_noelle() -> void:
 				Vector3((0.115 + f * 0.030) * side, 0.072 - f * 0.014, -0.176)))
 
 	# --- Astas: tres segmentos por lado, en angulos distintos ---
-	var antler := Art.toon(Color(0.95, 0.92, 0.85), OUTLINE_WIDTH)
+	var antler := Art.toon(_tono(&"astas", Color(0.95, 0.92, 0.85)), OUTLINE_WIDTH)
 	for side: float in [-1.0, 1.0]:
 		var base := Node3D.new()
 		base.position = Vector3(0.10 * side, 0.26, 0.0)
@@ -1197,7 +1465,7 @@ func _build_noelle() -> void:
 func _build_dio() -> void:
 	# Cejas bajas y muy inclinadas hacia adentro, boca ancha: ceño de superioridad.
 	_apply_expression(0.42, -0.014, 0.070)
-	var hair := Art.toon(Art.GOLD.lightened(0.10), OUTLINE_WIDTH)
+	var hair := Art.toon(_tono(&"pelo", Art.GOLD.lightened(0.10)), OUTLINE_WIDTH)
 
 	var cap := Art.sphere(0.212, hair, Vector3(0.0, 0.15, 0.01))
 	_costume_add(_head_pivot, cap)
@@ -1224,7 +1492,7 @@ func _build_dio() -> void:
 	# En la Parte 3 la banda es verde y lleva un corazon: el corazon es EL motivo de su
 	# diseño —se repite en la banda, en las rodilleras y en el pantalon— y no estaba en
 	# ninguna parte. Es lo que lo separa de "un rubio de amarillo".
-	var verde_dio := Art.toon(Color(0.20, 0.52, 0.32), OUTLINE_WIDTH)
+	var verde_dio := Art.toon(_tono(&"detalle", Color(0.20, 0.52, 0.32)), OUTLINE_WIDTH)
 	_costume_add(_head_pivot, Art.box(Vector3(0.43, 0.085, 0.43), verde_dio, Vector3(0.0, 0.20, 0.0)))
 	_corazon(_head_pivot, verde_dio, Vector3(0.0, 0.205, -0.216), 0.055)
 
@@ -1245,7 +1513,7 @@ func _build_dio() -> void:
 
 	# Musculosa negra debajo de la campera: la franja oscura en el medio del pecho es lo
 	# que le da el contraste que el amarillo entero no tiene.
-	var musculosa := Art.toon(Color(0.11, 0.11, 0.14), OUTLINE_WIDTH)
+	var musculosa := Art.toon(_tono(&"musculosa", Color(0.11, 0.11, 0.14)), OUTLINE_WIDTH)
 	_costume_add(_torso, Art.box(Vector3(0.17, 0.44, 0.10), musculosa, Vector3(0.0, 0.40, -0.175)))
 
 	# Corazones en las rodilleras, el otro lugar donde el motivo se repite.
@@ -1255,7 +1523,7 @@ func _build_dio() -> void:
 
 	# Capa: dos tramos que se angostan y se separan del cuerpo. Un solo bloque plano
 	# se lee como una tabla pegada a la espalda, no como tela.
-	var cloth := Art.toon(Color(0.09, 0.10, 0.19), OUTLINE_WIDTH)
+	var cloth := Art.toon(_tono(&"tela", Color(0.09, 0.10, 0.19)), OUTLINE_WIDTH)
 	var cape_top := Art.box(Vector3(0.50, 0.46, 0.07), cloth, Vector3(0.0, 0.40, 0.19))
 	cape_top.rotation_degrees = Vector3(-6.0, 0.0, 0.0)
 	_costume_add(_torso, cape_top)
@@ -1264,7 +1532,7 @@ func _build_dio() -> void:
 	_costume_add(_torso, cape_bottom)
 
 	# Corazon en el pecho, guiño a su diseño.
-	_costume_add(_torso, Art.box(Vector3(0.13, 0.13, 0.05), Art.glow(Art.GOLD, 1.2), Vector3(0.0, 0.42, -0.17)))
+	_costume_add(_torso, Art.box(Vector3(0.13, 0.13, 0.05), Art.glow(_tono(&"joya", Art.GOLD), 1.2), Vector3(0.0, 0.42, -0.17)))
 
 
 ## Sonic: el erizo.
@@ -1295,8 +1563,8 @@ func _build_sonic() -> void:
 	# PELAJE, NO PIEL. La cabeza entera es azul con textura de pelo; lo unico durazno es el
 	# hocico. Antes la cabeza salia del material de piel que usan los humanos, y Sonic
 	# quedaba con una cara de persona color carne con puas azules pegadas atras.
-	var pua := Art.pelaje(Color(0.11, 0.35, 0.78), OUTLINE_WIDTH)
-	var pelo_cabeza := Art.pelaje(Color(0.13, 0.40, 0.86), OUTLINE_WIDTH)
+	var pua := Art.pelaje(_tono(&"pua", Color(0.11, 0.35, 0.78)), OUTLINE_WIDTH)
+	var pelo_cabeza := Art.pelaje(_tono(&"pelo", Color(0.13, 0.40, 0.86)), OUTLINE_WIDTH)
 	if is_instance_valid(_head_mesh):
 		_head_mesh.material_override = pelo_cabeza
 		# Un poco mas ancha que alta: la cabeza de Sonic es un ovalo acostado, no el
@@ -1304,8 +1572,8 @@ func _build_sonic() -> void:
 		_head_mesh.scale = Vector3(1.04, 1.0, 1.0)
 	if is_instance_valid(_neck_mesh):
 		_neck_mesh.material_override = pelo_cabeza
-	var piel := Art.toon(Color(0.99, 0.79, 0.58), OUTLINE_WIDTH)
-	var guante := Art.toon(Color(0.97, 0.97, 0.98), OUTLINE_WIDTH)
+	var piel := Art.toon(_tono(&"piel", Color(0.99, 0.79, 0.58)), OUTLINE_WIDTH)
+	var guante := Art.toon(_tono(&"guante", Color(0.97, 0.97, 0.98)), OUTLINE_WIDTH)
 	var nariz := Art.toon(Color(0.10, 0.09, 0.11), OUTLINE_WIDTH)
 
 	# LA CABEZA MAS GRANDE. Sonic es de proporcion caricaturesca: la cabeza le ocupa como
@@ -1401,7 +1669,7 @@ func _build_sonic() -> void:
 	# "Dos ojos unidos" y "verdes (antes negros)". Los ojos del rig son blancos con pupila
 	# oscura, como los de cualquiera: a Sonic le falta el iris verde, y el puente blanco
 	# que junta los dos en una sola mancha, que es lo mas reconocible de su cara.
-	var iris := Art.flat(Color(0.20, 0.72, 0.30))
+	var iris := Art.flat(_tono(&"ojos", Color(0.20, 0.72, 0.30)))
 	var blanco := Art.flat(Color(0.97, 0.97, 1.0))
 	for ojo: Node3D in [_eye_l, _eye_r]:
 		if ojo == null:
@@ -1553,7 +1821,9 @@ func play_dash_trail() -> void:
 	trail.gravity = Vector3.ZERO
 	trail.scale_amount_min = 0.04
 	trail.scale_amount_max = 0.15
-	trail.color = Color(0.9, 0.97, 1.0, 0.7)
+	# La estela del dash lleva el color de la skin: es lo que se ve pasar a toda velocidad,
+	# y un Dio Dorado que deja una estela blanca pierde la mitad del efecto.
+	trail.color = _skin.estela if _skin != null and _skin.estela.a > 0.0 else Color(0.9, 0.97, 1.0, 0.7)
 	trail.position = Vector3(0.0, 0.9, 0.0)
 	add_child(trail)
 	var timer := get_tree().create_timer(1.0)

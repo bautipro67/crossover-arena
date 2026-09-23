@@ -13,7 +13,12 @@ extends CanvasLayer
 ## El dash y el sprint NO aparecen en la barra de stamina porque no la consumen:
 ## el dash tiene su propio indicador de cooldown aparte, para que quede claro.
 
-const KEY_HINTS: Array[String] = ["Click izq", "Click der", "E", "Q"]
+## Las acciones de cada casilla de habilidad, en orden. La tecla que se MUESTRA sale de
+## Controles cada vez: estaba escrita a mano ("Click izq", "E"...) y con teclas
+## reasignables eso se vuelve mentira en cuanto alguien cambia una.
+const ACCIONES_HABILIDAD: Array[StringName] = [&"attack_basic", &"ability_1", &"ability_2",
+	&"ability_ultimate"]
+var _etiquetas_tecla: Array[Label] = []
 
 var _player: Player = null
 
@@ -110,6 +115,9 @@ func _build_progreso(root: Control) -> void:
 
 	_monedas_previas = Progreso.monedas
 	Progreso.monedas_cambiaron.connect(_on_monedas)
+	# Opciones se puede abrir desde la pausa en plena partida: si se cambia una tecla ahi,
+	# las casillas de abajo tienen que enterarse sin esperar a la proxima partida.
+	Controles.cambio.connect(_on_controles_cambio)
 	Progreso.subio_nivel.connect(_on_subio_nivel)
 
 
@@ -118,6 +126,8 @@ func _exit_tree() -> void:
 		Progreso.monedas_cambiaron.disconnect(_on_monedas)
 	if Progreso.subio_nivel.is_connected(_on_subio_nivel):
 		Progreso.subio_nivel.disconnect(_on_subio_nivel)
+	if Controles.cambio.is_connected(_on_controles_cambio):
+		Controles.cambio.disconnect(_on_controles_cambio)
 
 
 func _on_monedas(total: int) -> void:
@@ -349,7 +359,7 @@ func _build_dash(root: Control) -> void:
 	_dash_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_dash_panel)
 
-	_dash_label = UITheme.make_label("DASH  [Shift]  listo", 14, UITheme.ACCENT)
+	_dash_label = UITheme.make_label("DASH  [%s]  listo" % Controles.nombre_tecla(&"dash"), 14, UITheme.ACCENT)
 	_dash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_dash_panel.add_child(_dash_label)
 
@@ -516,7 +526,10 @@ func _build_ability_widgets() -> void:
 		cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card.add_child(cost_label)
 
-		var key_label := UITheme.make_label(KEY_HINTS[i] if i < KEY_HINTS.size() else "-", 11, UITheme.TEXT_DIM)
+		var key_label := UITheme.make_label(
+			Controles.nombre_tecla(ACCIONES_HABILIDAD[i]) if i < ACCIONES_HABILIDAD.size() else "-",
+			11, UITheme.TEXT_DIM)
+		_etiquetas_tecla.append(key_label)
 		key_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 		key_label.offset_top = -21
 		key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -585,6 +598,12 @@ func _build_stamina_markers() -> void:
 
 
 # ----------------------------------------------------------------------- Update
+
+func _on_controles_cambio() -> void:
+	for i: int in range(_etiquetas_tecla.size()):
+		if is_instance_valid(_etiquetas_tecla[i]) and i < ACCIONES_HABILIDAD.size():
+			_etiquetas_tecla[i].text = Controles.nombre_tecla(ACCIONES_HABILIDAD[i])
+
 
 func _actualizar_modo() -> void:
 	if not is_instance_valid(_modo_label):
@@ -699,10 +718,11 @@ func _update_abilities() -> void:
 func _update_dash() -> void:
 	var ratio := _player.get_dash_cooldown_ratio()
 	if ratio <= 0.0:
-		_dash_label.text = "DASH  [Shift]  listo"
+		_dash_label.text = "DASH  [%s]  listo" % Controles.nombre_tecla(&"dash")
 		_dash_label.add_theme_color_override("font_color", UITheme.ACCENT)
 	else:
-		_dash_label.text = "DASH  [Shift]  %.1f s" % (ratio * _player.dash_cooldown)
+		_dash_label.text = "DASH  [%s]  %.1f s" % [Controles.nombre_tecla(&"dash"),
+			ratio * _player.dash_cooldown]
 		_dash_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 
 

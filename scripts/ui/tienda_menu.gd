@@ -16,6 +16,17 @@ signal cerrado()
 var _grilla: VBoxContainer = null
 var _aviso: Label = null
 
+# --- El probador ---
+#
+# LA SKIN SE VE PUESTA ANTES DE COMPRARLA. Tres cuadraditos de color no dicen como queda
+# un personaje con pelo nuevo, un acabado de metal, un aura o un gorro: la mitad de lo que
+# hace una skin no entra en una muestra de paleta. Con el probador, pasar el mouse por una
+# tarjeta la muestra en el personaje, girando.
+var _probador_pivote: Node3D = null
+var _probador_visual: PlayerVisual = null
+var _probador_nombre: Label = null
+var _probando: String = ""
+
 
 func _ready() -> void:
 	UITheme.fill_viewport(self)
@@ -51,10 +62,17 @@ func _ready() -> void:
 	_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_aviso)
 
+	var cuerpo := HBoxContainer.new()
+	cuerpo.add_theme_constant_override("separation", 14)
+	cuerpo.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(cuerpo)
+	cuerpo.add_child(_armar_probador())
+
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	col.add_child(scroll)
+	cuerpo.add_child(scroll)
 
 	_grilla = VBoxContainer.new()
 	_grilla.add_theme_constant_override("separation", 12)
@@ -63,6 +81,126 @@ func _ready() -> void:
 
 	Progreso.cambio.connect(_refrescar)
 	_refrescar()
+	# Arranca mostrando al primer personaje con lo que tiene puesto.
+	var primero: StringName = CharacterDB.get_all_ids()[0]
+	_probar(primero, Progreso.skin_de(primero))
+
+
+## Un mundo 3D propio, chico, con su luz: el personaje girando en un pedestal.
+##
+## own_world_3d en true: sin eso el visor mostraria el mundo del juego que haya detras —en
+## la pausa, la arena entera— en vez de un fondo limpio.
+func _armar_probador() -> Control:
+	var caja := UITheme.make_panel(UITheme.PANEL_SOFT)
+	caja.custom_minimum_size = Vector2(300, 0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	caja.add_child(v)
+
+	v.add_child(UITheme.make_label("PROBADOR", 13, UITheme.TEXT_DIM))
+	var contenedor := SubViewportContainer.new()
+	contenedor.stretch = true
+	contenedor.custom_minimum_size = Vector2(0, 380)
+	contenedor.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(contenedor)
+
+	var vista := SubViewport.new()
+	vista.own_world_3d = true
+	vista.transparent_bg = false
+	vista.msaa_3d = Viewport.MSAA_2X
+	contenedor.add_child(vista)
+
+	var ent := Environment.new()
+	ent.background_mode = Environment.BG_COLOR
+	ent.background_color = Color(0.07, 0.08, 0.13)
+	ent.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	ent.ambient_light_color = Color(0.55, 0.60, 0.75)
+	ent.ambient_light_energy = 0.6
+	# Resplandor bajo: el probador esta a dos metros del personaje y en el juego la camara
+	# va mucho mas lejos. Con el mismo resplandor que la arena, las skins que brillan se
+	# quemaban en una mancha blanca y no se veia la skin, que es lo unico que importa aca.
+	ent.glow_enabled = true
+	ent.glow_intensity = 0.22
+	ent.tonemap_mode = Environment.TONE_MAPPER_ACES
+	var mundo := WorldEnvironment.new()
+	mundo.environment = ent
+	vista.add_child(mundo)
+
+	var sol := DirectionalLight3D.new()
+	sol.light_energy = 1.15
+	sol.rotation_degrees = Vector3(-35.0, 30.0, 0.0)
+	vista.add_child(sol)
+	# Un contraluz: sin el, el costado en sombra se funde con el fondo oscuro y no se ve
+	# el borde del personaje, que es justo donde se lucen los acabados.
+	var contra := DirectionalLight3D.new()
+	contra.light_energy = 0.55
+	contra.light_color = Color(0.55, 0.70, 1.0)
+	contra.rotation_degrees = Vector3(-20.0, -150.0, 0.0)
+	vista.add_child(contra)
+
+	var camara := Camera3D.new()
+	# Encuadra al mas alto con aire arriba: Flowery mide casi dos metros y Sonic uno, y
+	# el mismo encuadre tiene que servir para los dos sin cortarle la cabeza a nadie.
+	camara.fov = 32.0
+	vista.add_child(camara)
+	camara.position = Vector3(0.0, 1.05, 5.4)
+	camara.look_at(Vector3(0.0, 0.95, 0.0), Vector3.UP)
+
+	var piso := MeshInstance3D.new()
+	var disco := CylinderMesh.new()
+	disco.top_radius = 0.9
+	disco.bottom_radius = 0.9
+	disco.height = 0.05
+	piso.mesh = disco
+	piso.material_override = Art.toon(Color(0.16, 0.18, 0.26), 0.0)
+	vista.add_child(piso)
+	piso.position = Vector3(0.0, -0.03, 0.0)
+
+	_probador_pivote = Node3D.new()
+	vista.add_child(_probador_pivote)
+
+	_probador_nombre = UITheme.make_label("", 15)
+	_probador_nombre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_probador_nombre.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_probador_nombre)
+	return caja
+
+
+func _process(delta: float) -> void:
+	if is_instance_valid(_probador_pivote):
+		_probador_pivote.rotation.y += delta * 0.8
+
+
+## Pone al personaje con esa skin en el probador. &"" = la de fabrica.
+func _probar(cid: StringName, sid: StringName) -> void:
+	var clave := "%s/%s" % [cid, sid]
+	if clave == _probando or not is_instance_valid(_probador_pivote):
+		return
+	_probando = clave
+	if is_instance_valid(_probador_visual):
+		_probador_visual.queue_free()
+	var base := CharacterDB.get_character(cid)
+	if base == null:
+		return
+	# Un visual nuevo cada vez y no uno recoloreado: es la misma receta que usa el juego
+	# de verdad al aparecer, asi que lo que se ve aca es exactamente lo que se va a ver en
+	# la partida, acabado y aura incluidos.
+	_probador_visual = PlayerVisual.new()
+	_probador_pivote.add_child(_probador_visual)
+	_probador_visual.apply_character(SkinDB.aplicar(base, sid))
+	var skin := SkinDB.get_skin(sid)
+	if skin == null:
+		_probador_nombre.text = "%s — original" % base.display_name
+		_probador_nombre.add_theme_color_override("font_color", UITheme.TEXT)
+	else:
+		_probador_nombre.text = "%s\n%s" % [skin.display_name, SkinData.nombre_rareza(skin.rareza)]
+		_probador_nombre.add_theme_color_override("font_color", SkinData.color_rareza(skin.rareza))
+
+
+## Pasar el mouse por una tarjeta la prueba. Se engancha a la tarjeta Y a su boton: el
+## boton tapa la tarjeta, y sobre el la tarjeta no recibe el aviso de que el mouse entro.
+func _hover(nodo: Control, cid: StringName, sid: StringName) -> void:
+	nodo.mouse_entered.connect(func() -> void: _probar(cid, sid))
 
 
 func _exit_tree() -> void:
@@ -102,7 +240,7 @@ func _refrescar() -> void:
 
 func _marco(borde: Color, resaltado: bool) -> PanelContainer:
 	var caja := PanelContainer.new()
-	caja.custom_minimum_size = Vector2(212, 0)
+	caja.custom_minimum_size = Vector2(196, 0)
 	var estilo := UITheme.panel_style(
 		Color(0.13, 0.16, 0.24, 0.95) if not resaltado else Color(0.12, 0.22, 0.18, 0.97), 10, 6)
 	estilo.border_color = borde
@@ -120,6 +258,7 @@ func _muestra(cuerpo: Color, acento: Color, pantalon: Color) -> Control:
 		var r := ColorRect.new()
 		r.color = c
 		r.custom_minimum_size = Vector2(0, 26)
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		fila.add_child(r)
 	return fila
@@ -139,6 +278,8 @@ func _tarjeta_original(p: CharacterData) -> Control:
 	b.disabled = puesta
 	b.pressed.connect(func() -> void: _equipar(p.id, &""))
 	v.add_child(b)
+	_hover(caja, p.id, &"")
+	_hover(b, p.id, &"")
 	return caja
 
 
@@ -194,6 +335,8 @@ func _tarjeta(s: SkinData) -> Control:
 		b.disabled = not Progreso.alcanza(s.precio)
 		b.pressed.connect(func() -> void: _comprar(s))
 	v.add_child(b)
+	_hover(caja, s.character_id, s.id)
+	_hover(b, s.character_id, s.id)
 	return caja
 
 

@@ -29,6 +29,37 @@ extends Resource
 @export var precio: int = 0
 
 
+# ------------------------------------------------------------ Lo que se nota
+#
+# LOS CUATRO COLORES DE ARRIBA NO ALCANZABAN, y no por pocos: los disfraces de cada
+# personaje tenian sus colores escritos a mano y no leian la skin. Una skin recoloreaba el
+# torso y las piernas, pero el pelo de Dio, el sueter de Noelle, el guardapolvo de Rick y
+# las puas de Sonic quedaban iguales — "Sonic Dorado" tenia la cabeza azul. Por eso no se
+# notaban.
+#
+# LO QUE NINGUN CAMPO DE ACA PUEDE HACER: cambiar la silueta, la hitbox, ni volverte menos
+# visible. Una skin oscura que te camufla contra el piso seria una ventaja comprada. Por
+# eso el acabado "sombra" oscurece Y prende un borde claro: el cuerpo queda recortado,
+# mas visible que el de fabrica, no menos.
+
+## Color por parte del disfraz: &"pelo", &"sueter_a", &"guardapolvo", &"pua"... Cada
+## personaje nombra las suyas en su constructor. La que no este aca queda de fabrica.
+@export var partes: Dictionary = {}
+## Terminacion de la superficie: &"" (toon comun), &"metal", &"brillo", &"hielo",
+## &"piedra" o &"sombra".
+@export var acabado: StringName = &""
+## Particulas alrededor del cuerpo: &"" (ninguna), &"nieve", &"chispas", &"niebla",
+## &"estrellas", &"arcoiris", &"polvo", &"hojas", &"burbujas".
+@export var aura: StringName = &""
+@export var aura_color: Color = Color.WHITE
+## Ojos que emiten luz, y de que color. Con alfa 0 no brillan.
+@export var ojos_brillo: Color = Color(0, 0, 0, 0)
+## Un adorno chico: &"" (ninguno), &"gorro", &"nariz_roja", &"parche", &"gafas".
+@export var accesorio: StringName = &""
+## Color de la estela del dash. Con alfa 0, la de fabrica.
+@export var estela: Color = Color(0, 0, 0, 0)
+
+
 ## El color del marco segun la rareza. Es lo unico que hace que una lista de veinte
 ## recuadros se pueda leer de un vistazo en vez de tener que leerlos uno por uno.
 static func color_rareza(r: StringName) -> Color:

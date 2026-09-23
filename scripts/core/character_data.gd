@@ -30,5 +30,12 @@ extends Resource
 ## Es lo que hace que reconozcas al personaje de lejos sin tener modelos de verdad.
 @export var silhouette: StringName = &"none"
 
+## Que skin lleva puesta esta copia. &"" = la de fabrica.
+##
+## Solo lo llena SkinDB.aplicar, sobre una COPIA: el original de CharacterDB lo comparten
+## todos los jugadores y nunca lleva skin. Lo lee PlayerVisual para dibujar lo que la skin
+## agrega ademas de los cuatro colores.
+@export var skin_id: StringName = &""
+
 ## Se llena en CharacterDB.build_abilities_for(). Orden: 0 = golpe basico, 1 = habilidad, 2 = ultimate.
 var abilities: Array[Ability] = []

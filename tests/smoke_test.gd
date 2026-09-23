@@ -1581,20 +1581,44 @@ func _test_practica(player: Player, arena: Arena) -> void:
 	uno.global_position = arena.find_clear_spot(claro + Vector3(9.0, 0.0, 0.0), 1.2)
 	uno.bot_move_dir = Vector3.ZERO
 	uno.bot_wants_run = false
+	# El bot se resetea antes de medirlo. El bloque de arriba pone a los bots a pelear
+	# entre ellos, y un bot congelado o aturdido por el otro no se moveria por una razon
+	# que no tiene nada que ver con lo que se mide aca. (No era la causa del fallo
+	# intermitente de abajo —se comprobo: el bot podia actuar, estaba vivo y tenia blanco—,
+	# pero es un estado ajeno que no tiene por que entrar en la medicion.)
+	uno.health.revive_full()
+	uno.status.clear_all()
+	uno.caster.reset_state()
 	player.stamina.restore_full()
 	player.ultimate.current = UltimateCharge.MAX_CHARGE
 	player.caster.reset_state()
 	player.caster.request_use(3)
 	await get_tree().process_frame
 	_check(player.caster.is_channeling, "el jugador esta canalizando para el chequeo")
-	# 24 frames y no 4: el cerebro reevalua cada THINK_INTERVAL (0.2s), asi que con
-	# cuatro frames se lo estaba midiendo antes de que pensara una sola vez.
-	for _i: int in range(24):
-		await get_tree().process_frame
+	# SE ESPERA TIEMPO DE JUEGO, NO FRAMES, y esta era la causa del fallo intermitente.
+	#
+	# El cerebro piensa cada THINK_INTERVAL (0.2 s de juego). Esto esperaba 24 frames
+	# dando por sentado que eran 0.4 s, o sea sesenta por segundo — pero sin pantalla Godot
+	# dibuja tan rapido como puede, y medido, 24 frames eran 0.163 s: MENOS que un ciclo de
+	# pensamiento. Si el ultimo pensamiento del bot habia caido justo antes de que la prueba
+	# le pusiera la direccion en cero, no volvia a pensar dentro de la ventana y el chequeo
+	# daba 0.00 exacto; si caia despues, 0.99. Todo o nada, y segun cuanto pesara cada frame,
+	# que es por lo que cualquier cambio en otro lado del juego lo destapaba.
+	#
+	# Un temporizador cuenta tiempo de juego y no frames: dos ciclos y medio de pensamiento
+	# pasan siempre, a cualquier velocidad de dibujo. Y el canalizado de la definitiva que
+	# este usando el jugador dura mas que eso, asi que sigue cargando cuando se mide.
+	await get_tree().create_timer(BotBrain.THINK_INTERVAL * 2.5).timeout
 	var hacia_vos := (player.global_position - uno.global_position).normalized()
 	var va_hacia := uno.bot_move_dir.dot(hacia_vos)
 	_check(uno.bot_wants_run and va_hacia > 0.4,
-		"el bot corre a cortarte el canalizado (alineacion %.2f)" % va_hacia)
+		"el bot corre a cortarte el canalizado (alineacion %.2f%s)" % [va_hacia,
+			"" if va_hacia > 0.4 else ", puede actuar: %s, muerto: %s, a %.1f m, global: %s, activos: %s, blanco: %s, piensa en: %.2f, canaliza: %s" % [
+				uno.status.can_act(), uno.health.is_dead,
+				uno.global_position.distance_to(player.global_position),
+				BotBrain.globally_enabled, Practica.bots_activos,
+				str(cerebro._pick_target().name) if cerebro._pick_target() != null else "NINGUNO",
+				cerebro._think_left, player.caster.is_channeling]])
 	player.caster.cancel_channel()
 
 	uno.queue_free()
