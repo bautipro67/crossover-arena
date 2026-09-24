@@ -64,6 +64,7 @@ func _run() -> void:
 	Arena.set_bots_active(true)
 	await _test_rick(player, arena)
 	await _test_sonic(player, arena)
+	await _test_goku(player, arena)
 	await _test_practica(player, arena)
 	await _test_arena(arena)
 
@@ -1475,6 +1476,162 @@ func _test_sonic(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+# -------------------------------------------------------------------- Goku
+
+func _test_goku(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	_check(CharacterDB.has_character(&"goku"), "Goku esta registrado")
+	var data := CharacterDB.get_character(&"goku")
+	_check(data != null and data.origin_game == "Dragon Ball" and data.silhouette == &"gi",
+		"Goku viene de Dragon Ball y tiene silueta propia: el pelo en puntas")
+	_check(data != null and data.requiere_desbloqueo,
+		"Goku NO viene de fabrica: se gana con el pase pro")
+
+	# ES UN PREMIO Y NO PUEDE SER EL MAS FUERTE. Un personaje que se gana jugando y que
+	# ademas le gana a los otros convertiria el pase en un requisito para competir.
+	var vida_max := 0.0
+	var vel_max := 0.0
+	for otro_id: StringName in CharacterDB.get_all_ids():
+		if otro_id == &"goku":
+			continue
+		var otro := CharacterDB.get_character(otro_id)
+		vida_max = maxf(vida_max, otro.max_health)
+		vel_max = maxf(vel_max, otro.move_speed)
+	_check(data.max_health <= vida_max and data.move_speed < vel_max,
+		"y no aguanta mas que nadie ni es el mas rapido (%.0f de vida, %.1f de velocidad)" % [
+			data.max_health, data.move_speed])
+
+	var kit := CharacterDB.build_abilities_for(&"goku")
+	_check(kit.size() == 4, "Goku tiene 4 habilidades (tiene %d)" % kit.size())
+	if kit.size() < 4:
+		return
+	_check(kit[0] is GokuCombo and kit[1] is KiBlast and kit[2] is Teletransportacion
+		and kit[3] is Kamehameha,
+		"su kit: combo de golpes, rafaga de ki, teletransportacion y Kamehameha")
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+	_check(kit[3].stamina_cost == 100.0 and kit[3].requires_charge and kit[3].channel_time > 0.0,
+		"el Kamehameha cuesta la barra entera, pide el medidor y se CARGA a la vista")
+
+	player.setup_character(data)
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, -30.0), 1.5)
+	var rumbo := _carril_libre(player, puesto, 20.0)
+	var yaw := atan2(-rumbo.x, -rumbo.z)
+	player.respawn_at(puesto, yaw)
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	for _i: int in range(24):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+
+	# --- TELETRANSPORTACION: sin blanco no sale, y no cobra ---
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	var antes_stamina := player.stamina.current
+	var antes_pos := player.global_position
+	player.caster.request_use(2)
+	for _i: int in range(20):
+		await get_tree().physics_frame
+	_check(player.stamina.current >= antes_stamina - 1.0
+		and player.global_position.distance_to(antes_pos) < 0.5,
+		"sin nadie a tiro la teletransportacion no sale y devuelve la stamina (%.0f de %.0f)" % [
+			player.stamina.current, antes_stamina])
+
+	# --- Con blanco: aparece DETRAS DE SU ESPALDA y queda mirandolo ---
+	var blanco := _spawn_dummy(arena, puesto + rumbo * 10.0)
+	blanco.health.set_max(3000.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var frente := -blanco.global_transform.basis.z
+	frente.y = 0.0
+	frente = frente.normalized()
+	var esperado := blanco.global_position - frente * Teletransportacion.DETRAS
+	var vida := blanco.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	for _i: int in range(30):
+		await get_tree().physics_frame
+	var llegada := Vector3(player.global_position.x, 0.0, player.global_position.z)
+	var donde := Vector3(esperado.x, 0.0, esperado.z)
+	_check(llegada.distance_to(donde) < 1.0,
+		"la teletransportacion te deja detras de la espalda del rival (a %.2f m del punto)" % llegada.distance_to(donde))
+	var mira := -player.global_transform.basis.z
+	var hacia := blanco.global_position - player.global_position
+	hacia.y = 0.0
+	_check(Vector3(mira.x, 0.0, mira.z).normalized().dot(hacia.normalized()) > 0.8,
+		"y quedas MIRANDOLO, no de espaldas a el")
+	_check(blanco.health.current < vida, "y le pega el rodillazo (%.0f)" % (vida - blanco.health.current))
+
+	# --- RAFAGA DE KI: tres esferas, y llegan ---
+	var lugar := arena.find_clear_spot(Vector3(-30.0, 0.6, -30.0), 1.5)
+	player.respawn_at(lugar, yaw)
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	blanco.global_position = lugar + rumbo * 8.0
+	blanco.velocity = Vector3.ZERO
+	blanco.health.revive_full()
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = blanco.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	for _i: int in range(90):
+		await get_tree().physics_frame
+	var daño_ki := vida - blanco.health.current
+	_check(daño_ki >= KiBlast.DAMAGE * 2.0,
+		"la rafaga de ki le pega varias veces al que tiene enfrente (%.0f de %.0f posibles)" % [
+			daño_ki, KiBlast.DAMAGE * KiBlast.DISPAROS])
+
+	# --- KAMEHAMEHA: pega en la linea, no al costado ---
+	var costado := _spawn_dummy(arena, lugar + rumbo * 12.0 + Vector3(-rumbo.z, 0.0, rumbo.x) * 6.0)
+	costado.peer_id = -78
+	costado.health.set_max(3000.0)
+	blanco.global_position = lugar + rumbo * 12.0
+	blanco.velocity = Vector3.ZERO
+	blanco.health.revive_full()
+	player.respawn_at(lugar, yaw)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	var vida_linea := blanco.health.current
+	var vida_costado := costado.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.request_use(3)
+	await get_tree().physics_frame
+	_check(player.caster.is_channeling, "el Kamehameha arranca cargando (ka... me... ha... me...)")
+	await get_tree().create_timer(Kamehameha.new().channel_time + 0.6).timeout
+	_check(blanco.health.current <= vida_linea - Kamehameha.DAMAGE * 0.9,
+		"el rayo le pega fuerte al que esta en la linea (%.0f)" % (vida_linea - blanco.health.current))
+	_check(is_equal_approx(costado.health.current, vida_costado),
+		"y NO al que esta a seis metros al costado: es un rayo, no una explosion")
+	_check(player.ultimate.current < 1.0,
+		"y su propio daño no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
+
+	# Sus skins: las tres transformaciones, todas en la tienda y ninguna en el pase.
+	var suyas := SkinDB.de_personaje(&"goku")
+	var en_tienda := 0
+	for sid: StringName in suyas:
+		if SkinDB.get_skin(sid).precio > 0:
+			en_tienda += 1
+	_check(suyas.size() >= 3 and en_tienda == suyas.size(),
+		"Goku tiene sus skins y estan todas en la tienda (%d de %d)" % [en_tienda, suyas.size()])
+
+	player.aim_override = Vector3.ZERO
+	blanco.queue_free()
+	costado.queue_free()
+	# De vuelta a Sonic, que es con quien venian las pruebas de despues.
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.status.clear_all()
+	Arena.set_bots_active(true)
+
+
 func _test_practica(player: Player, arena: Arena) -> void:
 	Practica.restablecer()
 	_check(Practica.bots == 3 and not Practica.invulnerable,
@@ -1645,7 +1802,7 @@ func _check(condition: bool, description: String) -> void:
 ## corrutina sin que su llamador la esperara— y las tres se vieron igual: nada.
 ##
 ## Subir este numero al agregar chequeos es el precio de que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 197
+const CHEQUEOS_MINIMOS: int = 215
 
 
 func _finish() -> void:

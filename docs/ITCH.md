@@ -83,6 +83,10 @@ gente.
    El más rápido y el más frágil. Entra, pega y se va antes de que le respondan.
    Spin Attack · Spin Dash · Homing Attack · SUPER SONIC
 
+🔥 GOKU — Dragon Ball  (se gana completando el pase pro de la Temporada 1)
+   El todoterreno. Aparece detrás de tu espalda y carga el rayo a la vista de todos.
+   Combo de Golpes · Ráfaga de Ki · Teletransportación · KAMEHAMEHA
+
 ═══ MODOS ═══
 
 ▸ ONLINE — Servidor público, entrás directo desde el menú. Sin cuenta, sin descargar
@@ -98,15 +102,19 @@ gente.
   · Rey de la colina — aguantá 45 segundos dentro del círculo.
   · Sala de práctica — ver abajo.
 
-═══ PASE DE TEMPORADA 0 Y SKINS ═══
+═══ TEMPORADA 1: TORNEO DE ARTES MARCIALES ═══
 
 Jugar da experiencia y monedas: subís de nivel (del 1 al 60) y avanzás los 30 escalones
 del pase, con skins, monedas y experiencia de premio. El pase pro se desbloquea con
 monedas que se ganan peleando, fuera de la sala de práctica.
 
-19 skins entre el pase y la tienda. Cuanto más rara, más se nota: las raras recolorean
-el personaje entero, las épicas suman un acabado (metal, piedra, sombra) o un accesorio,
-y las legendarias un aura y ojos que brillan. En la tienda hay un probador para verla
+El último escalón del pase pro es GOKU: no se vende ni sale de otro lado. Los
+escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
+tarda subirlo jugando.
+
+31 skins entre el pase y la tienda, 12 nuevas en esta temporada. Cuanto más rara, más
+se nota: las raras recolorean el personaje entero, las épicas suman un acabado (metal,
+piedra, sombra) o un accesorio, y las legendarias un aura y ojos que brillan. En la tienda hay un probador para verla
 puesta antes de comprarla.
 
 Todo es cosmético: ni el nivel ni las skins cambian vida, daño, velocidad, hitbox ni
@@ -165,6 +173,7 @@ Noelle Holiday y Flowery son de Deltarune, creación de Toby Fox.
 Dio Brando es de JoJo's Bizarre Adventure, creación de Hirohiko Araki (Shueisha).
 Rick Sanchez es de Rick and Morty, creación de Justin Roiland y Dan Harmon (Adult Swim).
 Sonic es de Sonic the Hedgehog, de SEGA.
+Goku es de Dragon Ball, creación de Akira Toriyama (Bird Studio / Shueisha, Toei Animation).
 Los clips de voz y sonido pertenecen a sus respectivos dueños.
 
 Este juego no se vende, no acepta donaciones y no tiene publicidad. Si alguno de los
@@ -179,7 +188,7 @@ titulares quiere que se baje, se baja.
 |---|---|
 | **Classification** | Games |
 | **Genre** | Action |
-| **Tags** | `3d`, `arena`, `fangame`, `fighting`, `multiplayer`, `pvp`, `singleplayer`, `third-person`, `deltarune`, `jojos-bizarre-adventure`, `rick-and-morty`, `sonic-the-hedgehog` |
+| **Tags** | `3d`, `arena`, `fangame`, `fighting`, `multiplayer`, `pvp`, `singleplayer`, `third-person`, `deltarune`, `jojos-bizarre-adventure`, `rick-and-morty`, `sonic-the-hedgehog`, `dragon-ball` |
 | **Made with** | Godot |
 | **Inputs** | Keyboard, Mouse, Gamepad (any), Touchscreen |
 | **Average session** | A few minutes |

@@ -47,6 +47,55 @@ static func get_players_in_sphere(caster: Node3D, origin: Vector3, radius: float
 	return out
 
 
+## El rival vivo mas cercano dentro de un cono, con linea de vision. Null si no hay.
+##
+## Para las habilidades que se traban en UNA persona —la teletransportacion de Goku—: el
+## cono es el que estas mirando, asi que elegis a quien apuntando, no por descarte.
+static func mas_cercano_en_cono(caster: Node3D, origin: Vector3, dir: Vector3,
+		alcance: float, angulo: float) -> Node3D:
+	var rumbo := Vector3(dir.x, 0.0, dir.z).normalized()
+	if rumbo.is_zero_approx():
+		rumbo = -caster.global_transform.basis.z
+	var mejor: Node3D = null
+	var mejor_dist := alcance + 1.0
+	for t: Node3D in get_players_in_cone(caster, origin, rumbo, alcance, angulo):
+		var d := origin.distance_to(t.global_position)
+		if d < mejor_dist:
+			mejor_dist = d
+			mejor = t
+	return mejor
+
+
+## Los jugadores vivos a lo largo de un rayo recto: un cilindro de `radio` desde `origin`
+## hasta `largo` metros en `dir`. Dibuja el volumen si la opcion esta prendida.
+##
+## NO CHEQUEA PAREDES POR SI MISMA: el que llama ya corta el largo donde el rayo pega
+## contra el mundo, que es lo que hace el Kamehameha. Asi el rayo atraviesa gente —como
+## en la serie— pero no paredes.
+##
+## La distancia se mide al CENTRO DEL PECHO (un metro arriba de los pies), no a los pies:
+## un rayo a la altura del pecho que pasa rozando la cabeza de alguien bajo como Sonic no
+## lo tiene que errar por medir contra el piso.
+static func get_players_in_line(caster: Node3D, origin: Vector3, dir: Vector3,
+		largo: float, radio: float) -> Array[Node3D]:
+	FX.dibujar_rayo(caster, origin, dir, largo, radio)
+	var out: Array[Node3D] = []
+	if not is_instance_valid(caster):
+		return out
+	var rumbo := dir.normalized()
+	if rumbo.is_zero_approx():
+		return out
+	for target: Node3D in _living_targets(caster):
+		var pecho := target.global_position + Vector3.UP * 1.0
+		var t := (pecho - origin).dot(rumbo)
+		if t < 0.0 or t > largo:
+			continue
+		var cercano := origin + rumbo * t
+		if cercano.distance_to(pecho) <= radio:
+			out.append(target)
+	return out
+
+
 ## Raycast contra el mundo solido. Ignora jugadores y proyectiles.
 static func has_line_of_sight(from_node: Node3D, origin: Vector3, target: Node3D) -> bool:
 	var world := from_node.get_world_3d()

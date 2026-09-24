@@ -27,6 +27,9 @@ extends Resource
 @export var rareza: StringName = &"comun"
 ## Cuanto sale en la tienda. 0 = no se vende, solo sale del pase.
 @export var precio: int = 0
+## De que temporada es. Las del pase de una temporada que ya termino no se consiguen mas:
+## la tienda lo dice en vez de mostrar un candado sin explicacion.
+@export var temporada: int = 0
 
 
 # ------------------------------------------------------------ Lo que se nota

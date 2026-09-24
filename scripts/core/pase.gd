@@ -1,6 +1,10 @@
 extends Node
 ## Autoload: Pase
-## Pase de Temporada 0. Treinta escalones, dos vias: la gratuita y la pro.
+## El pase de temporada. Treinta escalones, dos vias: la gratuita y la pro.
+##
+## TEMPORADA 1. La 0 termino: al abrir el juego con un archivo de la 0, lo que se habia
+## alcanzado y no se habia cobrado se cobra solo, y el pase arranca de cero. Ver
+## _cerrar_temporada_vieja().
 ##
 ## LAS DOS VIAS AVANZAN CON LA MISMA EXPERIENCIA. Comprar el pro no acelera nada: abre la
 ## fila de abajo, incluidas las recompensas de los escalones que ya pasaste. Es lo que
@@ -11,8 +15,8 @@ extends Node
 ## compran mas skins, y la experiencia solo mueve estas mismas barras. Un circuito cerrado
 ## que empieza y termina en lo cosmetico, a proposito.
 
-const TEMPORADA: int = 0
-const NOMBRE: String = "TEMPORADA 0 — APERTURA"
+const TEMPORADA: int = 1
+const NOMBRE: String = "TEMPORADA 1 — TORNEO DE ARTES MARCIALES"
 const ESCALONES: int = 30
 ## Experiencia por escalon. 250 x 30 = 7500 para el pase entero, que a unos 170 por
 ## partida son unas 45 partidas. Una temporada tiene que durar, pero tiene que terminarse.
@@ -22,7 +26,12 @@ const EXP_POR_ESCALON: int = 250
 const MONEDAS: StringName = &"monedas"
 const EXP: StringName = &"exp"
 const SKIN: StringName = &"skin"
+## Un personaje entero. Hoy, solo Goku en el ultimo escalon del pro.
+const PERSONAJE: StringName = &"personaje"
 const NADA: StringName = &"nada"
+
+## El aviso de que termino la temporada anterior, para mostrarlo una vez. Ver tomar_aviso().
+var aviso_cierre: String = ""
 
 ## escalon -> [recompensa gratuita, recompensa pro].
 ## Cada recompensa es [tipo, valor]. El valor es una cantidad o un id de skin.
@@ -34,45 +43,129 @@ const NADA: StringName = &"nada"
 var _tabla: Dictionary = {}
 
 
+## La tabla de la temporada 0. Solo se usa para cerrarla: cobrar lo que alguien alcanzo
+## y no llego a reclamar antes de que terminara.
+var _tabla_t0: Dictionary = {}
+
+
 func _ready() -> void:
-	_armar_tabla()
+	_tabla_t0 = _armar_temporada_0()
+	_tabla = _armar_temporada_1()
+	_cerrar_temporada_vieja()
 
 
-func _armar_tabla() -> void:
-	# Por defecto: monedas en la gratuita, mas monedas en la pro.
+## Monedas en casi todos los escalones y experiencia cada cinco. Es igual en las dos
+## temporadas: lo que cambia entre una y otra son las skins de encima.
+func _base() -> Dictionary:
+	var t: Dictionary = {}
 	for i: int in range(1, ESCALONES + 1):
 		var gratis: Array = [MONEDAS, 40 + (i / 5) * 10]
 		var pro: Array = [MONEDAS, 90 + (i / 5) * 20]
 		# Cada cinco escalones, un empujon de experiencia en vez de monedas.
 		if i % 5 == 0:
 			gratis = [EXP, 150]
-		_tabla[i] = [gratis, pro]
+		t[i] = [gratis, pro]
+	return t
 
-	# Las skins, repartidas para que siempre haya una cerca.
-	#
+
+func _armar_temporada_0() -> Dictionary:
+	var t := _base()
 	# La primera de la via pro esta en el escalon 3 y no en el 30: el que compra tiene que
 	# recibir algo enseguida, porque si su primera recompensa esta a veinte partidas, lo
 	# que compro se parece demasiado a nada.
-	_poner(3, null, [SKIN, "dio_dorado"])
-	_poner(7, [SKIN, "flowery_nocturno"], null)
-	_poner(10, null, [SKIN, "noelle_snowgrave"])
-	_poner(14, null, [SKIN, "rick_maligno"])
-	_poner(18, [SKIN, "rick_cosmico"], null)
-	_poner(22, null, [SKIN, "flowery_omega"])
-	_poner(26, null, [SKIN, "dio_vampiro"])
-	_poner(24, null, [SKIN, "rick_pickle"])
-	# El ultimo escalon es Sonic dorado: es la transformacion que cierra sus juegos, asi
-	# que cierra el pase. Una recompensa final tiene que ser reconocible de lejos.
-	_poner(30, [MONEDAS, 500], [SKIN, "sonic_super"])
+	_poner(t, 3, null, [SKIN, "dio_dorado"])
+	_poner(t, 7, [SKIN, "flowery_nocturno"], null)
+	_poner(t, 10, null, [SKIN, "noelle_snowgrave"])
+	_poner(t, 14, null, [SKIN, "rick_maligno"])
+	_poner(t, 18, [SKIN, "rick_cosmico"], null)
+	_poner(t, 22, null, [SKIN, "flowery_omega"])
+	_poner(t, 26, null, [SKIN, "dio_vampiro"])
+	_poner(t, 24, null, [SKIN, "rick_pickle"])
+	_poner(t, 30, [MONEDAS, 500], [SKIN, "sonic_super"])
+	return t
 
 
-func _poner(escalon: int, gratis: Variant, pro: Variant) -> void:
-	var fila: Array = _tabla.get(escalon, [[NADA, 0], [NADA, 0]])
+func _armar_temporada_1() -> Dictionary:
+	var t := _base()
+	# Mismo reparto que la 0: la primera pro enseguida, las legendarias al final, y dos
+	# skins en la via gratuita para que el que no paga igual se lleve algo propio.
+	_poner(t, 3, null, [SKIN, "sonic_metal"])
+	_poner(t, 7, [SKIN, "noelle_otono"], null)
+	_poner(t, 10, null, [SKIN, "flowery_primavera"])
+	_poner(t, 14, null, [SKIN, "rick_toxico"])
+	_poner(t, 18, [SKIN, "dio_blanco"], null)
+	_poner(t, 22, null, [SKIN, "noelle_aurora"])
+	_poner(t, 26, null, [SKIN, "dio_cielo"])
+	# EL ULTIMO ESCALON DEL PRO ES GOKU, y es lo UNICO que lo desbloquea: no se vende ni
+	# sale de ningun otro lado. Completar el pase pro entero es la condicion, tal cual.
+	_poner(t, 30, [MONEDAS, 500], [PERSONAJE, "goku"])
+	return t
+
+
+func _poner(t: Dictionary, escalon: int, gratis: Variant, pro: Variant) -> void:
+	var fila: Array = t.get(escalon, [[NADA, 0], [NADA, 0]])
 	if gratis != null:
 		fila[0] = gratis
 	if pro != null:
 		fila[1] = pro
-	_tabla[escalon] = fila
+	t[escalon] = fila
+
+
+# ---------------------------------------------------------- Cierre de temporada
+
+## Si el archivo es de una temporada anterior, la cierra.
+##
+## LO QUE SE ALCANZO Y NO SE COBRO, SE COBRA SOLO. Es lo unico justo: esas recompensas ya
+## estaban ganadas —el jugador llego al escalon, y si era pro, pago el pase—, y que una
+## temporada termine no puede ser la forma de quitarselas. Despues el pase arranca de cero:
+## la experiencia, el pro y lo reclamado son de una temporada, no del jugador.
+##
+## LO QUE NO SE TOCA: nivel, monedas, skins, personajes. Eso es del jugador.
+func _cerrar_temporada_vieja() -> void:
+	if Progreso.temporada < 0:
+		# Instalacion nueva: no hay nada viejo que cerrar.
+		Progreso.temporada = TEMPORADA
+		return
+	if Progreso.temporada >= TEMPORADA:
+		return
+	var cobradas := cobrar_pendientes(_tabla_t0)
+	var tenia_pro := Progreso.pase_pro
+	Progreso.pase_exp = 0
+	Progreso.pase_pro = false
+	Progreso.reclamados = {}
+	Progreso.temporada = TEMPORADA
+	Progreso.guardar()
+	Progreso.cambio.emit()
+	aviso_cierre = "Terminó la Temporada 0 y empezó la Temporada %d: Torneo de Artes Marciales." % TEMPORADA
+	if cobradas > 0:
+		aviso_cierre += " Se cobraron solas %d recompensas que tenías pendientes." % cobradas
+	if tenia_pro:
+		aviso_cierre += " El pase pro es por temporada: el de la 1 se compra aparte."
+
+
+## Cobra lo alcanzado y no reclamado de una tabla. Devuelve cuantas cobro.
+func cobrar_pendientes(tabla: Dictionary) -> int:
+	var hasta := clampi(Progreso.pase_exp / EXP_POR_ESCALON, 0, ESCALONES)
+	var n := 0
+	for i: int in range(1, hasta + 1):
+		for pro: bool in [false, true]:
+			if pro and not Progreso.pase_pro:
+				continue
+			if Progreso.reclamados.get(_clave(i, pro), false):
+				continue
+			var fila: Array = tabla.get(i, [[NADA, 0], [NADA, 0]])
+			if _dar(fila[1] if pro else fila[0]).is_empty():
+				continue
+			Progreso.reclamados[_clave(i, pro)] = true
+			n += 1
+	return n
+
+
+## El aviso de cierre, una sola vez: el que lo muestra se lo lleva.
+func tomar_aviso() -> String:
+	var a := aviso_cierre
+	aviso_cierre = ""
+	return a
 
 
 # ----------------------------------------------------------------- Consultas
@@ -115,33 +208,68 @@ func se_puede_reclamar(escalon: int, pro: bool) -> bool:
 	return (recompensa(escalon, pro)[0] as StringName) != NADA
 
 
+## Cuantos escalones faltan para el final.
+func escalones_restantes() -> int:
+	return ESCALONES - escalon_actual()
+
+
+## Compra un escalon: el pase sube uno, como si se hubiera jugado.
+##
+## SUBE EL PASE Y NADA MAS. El nivel del jugador no se toca: es el numero de lo que jugo,
+## y comprarlo le haria mentir. Tampoco cobra nada solo: el escalon queda alcanzado y se
+## reclama como cualquier otro, asi el jugador ve que le toco.
+func comprar_escalon() -> bool:
+	if escalon_actual() >= ESCALONES:
+		return false
+	if not Progreso.gastar_monedas(Progreso.PRECIO_ESCALON):
+		return false
+	# Sobre la experiencia que ya habia, no redondeando al escalon: si ibas por la mitad
+	# del 5, quedas en la mitad del 6. Redondear para abajo te cobraria media partida.
+	Progreso.pase_exp = mini(Progreso.pase_exp + EXP_POR_ESCALON, ESCALONES * EXP_POR_ESCALON)
+	Progreso.subio_pase.emit(escalon_actual())
+	Progreso.guardar()
+	Progreso.cambio.emit()
+	return true
+
+
 ## Cobra una recompensa. Devuelve un texto para mostrar, o "" si no se pudo.
 func reclamar(escalon: int, pro: bool) -> String:
 	if not se_puede_reclamar(escalon, pro):
 		return ""
-	var r := recompensa(escalon, pro)
-	var tipo := r[0] as StringName
-	var texto := ""
-	match tipo:
+	var texto := _dar(recompensa(escalon, pro))
+	if texto.is_empty():
+		return ""
+	Progreso.reclamados[_clave(escalon, pro)] = true
+	Progreso.guardar()
+	Progreso.cambio.emit()
+	return texto
+
+
+## Entrega una recompensa. Devuelve el texto de lo que dio, o "" si no dio nada.
+func _dar(r: Array) -> String:
+	match r[0] as StringName:
 		MONEDAS:
 			Progreso.sumar_monedas(int(r[1]))
-			texto = "+%d monedas" % int(r[1])
+			return "+%d monedas" % int(r[1])
 		EXP:
 			# OJO: sumar_exp tambien suma al pase, asi que una recompensa de experiencia
 			# empuja el propio pase. Es a proposito —se siente bien— pero no puede ser la
 			# recompensa de TODOS los escalones o el pase se cobraria solo.
 			Progreso.sumar_exp(int(r[1]))
-			texto = "+%d de experiencia" % int(r[1])
+			return "+%d de experiencia" % int(r[1])
 		SKIN:
 			var skin := SkinDB.get_skin(StringName(r[1]))
 			if skin == null:
 				return ""
 			Progreso.desbloquear_skin(skin.id)
-			texto = skin.display_name
-	Progreso.reclamados[_clave(escalon, pro)] = true
-	Progreso.guardar()
-	Progreso.cambio.emit()
-	return texto
+			return skin.display_name
+		PERSONAJE:
+			var id := StringName(r[1])
+			if not CharacterDB.has_character(id):
+				return ""
+			Progreso.desbloquear_personaje(id)
+			return "¡%s desbloqueado!" % CharacterDB.get_character(id).display_name
+	return ""
 
 
 ## Cobra todo lo que este disponible de una. Devuelve cuantas cosas cobro.
@@ -187,4 +315,9 @@ func describir(escalon: int, pro: bool) -> String:
 		SKIN:
 			var s := SkinDB.get_skin(StringName(r[1]))
 			return s.display_name if s != null else "?"
+		PERSONAJE:
+			var id := StringName(r[1])
+			if not CharacterDB.has_character(id):
+				return "?"
+			return "PERSONAJE: %s" % CharacterDB.get_character(id).display_name.to_upper()
 	return "—"

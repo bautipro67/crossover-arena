@@ -227,7 +227,10 @@ func _refrescar() -> void:
 		if ids.is_empty():
 			continue
 
-		_grilla.add_child(UITheme.make_label(personaje.display_name.to_upper(), 17, UITheme.ACCENT))
+		var titulo := personaje.display_name.to_upper()
+		if not Progreso.puede_usar_personaje(cid):
+			titulo += "   🔒 se gana completando el pase pro de la temporada %d" % Pase.TEMPORADA
+		_grilla.add_child(UITheme.make_label(titulo, 17, UITheme.ACCENT))
 
 		var fila := HFlowContainer.new()
 		fila.add_theme_constant_override("h_separation", 10)
@@ -331,8 +334,18 @@ func _tarjeta(s: SkinData) -> Control:
 			_avisar("%s desbloqueada (modo desarrollador)" % s.display_name))
 	elif s.precio <= 0:
 		# Del pase. El boton no se puede apretar pero dice de donde sale: un candado
-		# mudo hace que la gente piense que es un error del juego.
-		b = UITheme.make_button("SOLO EN EL PASE")
+		# mudo hace que la gente piense que es un error del juego. Y si es de una
+		# temporada que ya termino, lo dice tambien: "solo en el pase" de un pase que ya no
+		# esta es una promesa que no se puede cumplir.
+		if s.temporada < Pase.TEMPORADA:
+			b = UITheme.make_button("TEMPORADA %d · YA NO SE CONSIGUE" % s.temporada)
+		else:
+			b = UITheme.make_button("EN EL PASE DE LA TEMPORADA %d" % s.temporada)
+		b.disabled = true
+	elif not Progreso.puede_usar_personaje(s.character_id):
+		# La skin de un personaje que todavia no tenes: comprarla seria pagar por algo que
+		# no se puede usar.
+		b = UITheme.make_button("PRIMERO GANATE A %s" % CharacterDB.get_character(s.character_id).display_name.to_upper())
 		b.disabled = true
 	else:
 		b = UITheme.make_button("COMPRAR — %d ◆" % s.precio, true)
@@ -348,6 +361,8 @@ func _comprar(s: SkinData) -> void:
 	# El gasto y el desbloqueo van en este orden y con el resultado mirado: gastar_monedas
 	# devuelve false si no alcanza, y desbloquear antes de cobrar regalaria la skin si el
 	# boton llega a apretarse dos veces antes de que la pantalla se refresque.
+	if not Progreso.puede_usar_personaje(s.character_id):
+		return
 	if not Progreso.gastar_monedas(s.precio):
 		_avisar("No te alcanzan las monedas.")
 		return

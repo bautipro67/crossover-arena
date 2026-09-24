@@ -157,6 +157,15 @@ func _ready() -> void:
 	_message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_message_label)
 
+	# El aviso de fin de temporada, una sola vez y en dorado: no es un error, es una
+	# noticia. Se lo lleva el primer menu que lo muestra.
+	var aviso := Pase.tomar_aviso()
+	if not aviso.is_empty():
+		var aviso_label := UITheme.make_label(aviso, 12, UITheme.GOLD)
+		aviso_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		aviso_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(aviso_label)
+
 	box.add_child(HSeparator.new())
 
 	var bottom := HBoxContainer.new()

@@ -81,6 +81,8 @@ var _frost: CPUParticles3D = null
 var _freeze_shell: Node3D = null
 var _time_marker: Node3D = null
 var _channel_fx: Node3D = null
+## Un segundo efecto de canalizado, propio de la habilidad: la esfera del Kamehameha.
+var _channel_fx_extra: Node3D = null
 
 var _status: StatusEffects = null
 var _caster: AbilityCaster = null
@@ -399,6 +401,17 @@ func _pose_targets() -> Dictionary:
 				"spread_l": -0.55, "spread_r": 0.55,
 				"torso": 0.42,
 			}
+		&"kame":
+			# KAMEHAMEHA, CARGANDO: las dos manos juntas al costado derecho, a la altura de
+			# la cadera, con el brazo izquierdo cruzado por delante del cuerpo. Es la pose
+			# que cualquiera reconoce de lejos, y la que avisa que el rayo viene: al soltar
+			# pasa a "release", los dos brazos al frente, que es justo el "¡HA!".
+			return {
+				"arm_l": 0.55, "arm_r": -0.30,
+				"elbow_l": -1.35, "elbow_r": -1.25,
+				"spread_l": -0.80, "spread_r": 0.10,
+				"torso": 0.14,
+			}
 		&"release":
 			# Al soltar: los dos brazos al frente, torso volcado hacia adelante.
 			return {
@@ -467,9 +480,15 @@ func _on_channel_started(index: int, _duration: float) -> void:
 	match ability.id:
 		&"za_warudo":
 			_pose = &"channel_point"
+		&"kamehameha":
+			_pose = &"kame"
 		_:
 			_pose = &"channel_up"
 	_channel_fx = FX.spawn_channel_ritual(self, ability.icon_color)
+	# La esfera entre las manos, ademas del circulo de siempre: el circulo dice "viene una
+	# definitiva" igual para todos, la esfera dice CUAL y cuanto le falta.
+	if ability.id == &"kamehameha":
+		_channel_fx_extra = FX.spawn_kame_carga(self, ability.channel_time)
 
 	# OMEGA FLOWERY: la transformacion va DURANTE el canalizado, no despues.
 	#
@@ -502,6 +521,9 @@ func _clear_channel_fx() -> void:
 	if is_instance_valid(_channel_fx):
 		_channel_fx.queue_free()
 	_channel_fx = null
+	if is_instance_valid(_channel_fx_extra):
+		_channel_fx_extra.queue_free()
+	_channel_fx_extra = null
 
 
 func _on_health_changed(current: float, _max_value: float) -> void:
@@ -1063,6 +1085,8 @@ func _build_costume(kind: StringName) -> void:
 			_build_rick()
 		&"quills":
 			_build_sonic()
+		&"gi":
+			_build_goku()
 		_:
 			pass
 
@@ -1743,6 +1767,200 @@ func _build_sonic() -> void:
 			continue
 		var correa := Art.box(Vector3(0.17, 0.045, 0.10), guante, Vector3(0.0, -0.40, -0.11))
 		_costume_add(rodilla, correa)
+
+
+## Goku, con la ropa de Dragon Ball Z / Super.
+##
+## DE LA REFERENCIA, NO DE MEMORIA: gi naranja arriba y abajo, camiseta azul oscura debajo
+## —se ve en el cuello en V y en las mangas cortas—, muñequeras y faja azules, botas azul
+## oscuro con cordones amarillos, y el kanji en un circulo blanco a la izquierda del pecho
+## y en la espalda. Los colores de base salen del CharacterData: el cuerpo es el gi, el
+## pantalon tambien, y el acento son las botas, porque el motor pinta los pies con el.
+##
+## LA SILUETA ES EL PELO. Negro, en puntas duras para arriba y a los costados, con un
+## flequillo de mechones que caen sobre la frente. Es lo primero que se reconoce de Goku a
+## cualquier distancia, y lo que lo separa de todos los demas: nadie mas del juego tiene
+## la cabeza mas ancha que los hombros vista de frente.
+##
+## EL PELO TRANSFORMADO BRILLA SOLO. Con una skin de pelo claro —dorado, celeste, plata—
+## el material emite luz propia, como el ki en la serie; el negro de fabrica no.
+func _build_goku() -> void:
+	# Cejas bajas y firmes, boca chica: concentrado, no enojado.
+	_apply_expression(0.24, -0.006, 0.058)
+
+	var color_pelo := _tono(&"pelo", Color(0.07, 0.07, 0.09))
+	var pelo := Art.toon(color_pelo, OUTLINE_WIDTH)
+	if color_pelo.get_luminance() > 0.45:
+		pelo.emission_enabled = true
+		pelo.emission = color_pelo
+		pelo.emission_energy_multiplier = 0.55
+		pelo.rim = 0.7
+	var azul := Art.toon(_tono(&"camiseta", Color(0.12, 0.17, 0.42)), OUTLINE_WIDTH)
+	var muñequera := Art.toon(_tono(&"munequeras", Color(0.13, 0.20, 0.52)), OUTLINE_WIDTH)
+	var faja := Art.toon(_tono(&"faja", Color(0.14, 0.22, 0.56)), OUTLINE_WIDTH)
+	var cordon := Art.toon(_tono(&"cordones", Color(0.95, 0.80, 0.30)), OUTLINE_WIDTH)
+	var circulo := Art.flat(_tono(&"simbolo", Color(0.97, 0.97, 0.95)))
+	var tinta := Art.flat(Color(0.08, 0.08, 0.10))
+	var gi := Art.toon(body_color, OUTLINE_WIDTH)
+	var gi_pantalon := Art.toon(trouser_color, OUTLINE_WIDTH)
+
+	# --- EL PELO ---
+	#
+	# Un casquete para tapar el craneo —si no, entre las puntas se ve la piel— y encima las
+	# puntas. El casquete va corrido hacia ATRAS y arriba: centrado, tapaba las cejas.
+	var casquete := Art.sphere(0.20, pelo, Vector3(0.0, 0.19, 0.06))
+	casquete.scale = Vector3(1.03, 0.78, 1.02)
+	_costume_add(_head_pivot, casquete)
+
+	# Las puntas grandes: arriba, a los costados y atras, en abanico. Conos y no capsulas,
+	# igual que las puas de Sonic: una punta de pelo termina en punta.
+	#
+	# EL SENTIDO DE LAS ROTACIONES: el cono nace apuntando a +Y. Girar en X positivo lo
+	# tira hacia ATRAS (+Z, porque el frente es -Z); girar en Z positivo lo tira hacia -X,
+	# que es el costado izquierdo del personaje.
+	#
+	# MECHONES GRUESOS QUE SE ABREN PARA ARRIBA, no puas parejas en todas direcciones. La
+	# primera version tenia trece conos finos repartidos como los rayos de un sol —algunos
+	# apuntando para abajo a la altura de las orejas— y de frente se veia un erizo. El pelo
+	# de Goku es una masa que se abre en abanico HACIA ARRIBA y a los costados, con las
+	# puntas anchas en la base: de lejos se lee como una corona, no como una estrella.
+	var puntas: Array = [
+		# El abanico de arriba, de frente.
+		{"pos": Vector3(0.00, 0.27, 0.03), "rot": Vector3(14.0, 0.0, 0.0), "len": 0.34, "r": 0.10},
+		{"pos": Vector3(-0.08, 0.26, 0.03), "rot": Vector3(8.0, 0.0, 30.0), "len": 0.36, "r": 0.10},
+		{"pos": Vector3(0.08, 0.26, 0.03), "rot": Vector3(8.0, 0.0, -30.0), "len": 0.36, "r": 0.10},
+		{"pos": Vector3(-0.14, 0.22, 0.02), "rot": Vector3(5.0, 0.0, 56.0), "len": 0.32, "r": 0.095},
+		{"pos": Vector3(0.14, 0.22, 0.02), "rot": Vector3(5.0, 0.0, -56.0), "len": 0.32, "r": 0.095},
+		# Las de los costados, a la altura de la sien y todavia subiendo apenas.
+		{"pos": Vector3(-0.18, 0.14, 0.03), "rot": Vector3(10.0, 0.0, 78.0), "len": 0.24, "r": 0.08},
+		{"pos": Vector3(0.18, 0.14, 0.03), "rot": Vector3(10.0, 0.0, -78.0), "len": 0.24, "r": 0.08},
+		# Atras: una para arriba y atras, y las de la nuca cayendo. Se leen de espaldas, que
+		# es como se lo ve casi toda la partida.
+		{"pos": Vector3(0.00, 0.20, 0.14), "rot": Vector3(70.0, 0.0, 0.0), "len": 0.30, "r": 0.10},
+		{"pos": Vector3(-0.10, 0.14, 0.14), "rot": Vector3(100.0, -25.0, 0.0), "len": 0.26, "r": 0.09},
+		{"pos": Vector3(0.10, 0.14, 0.14), "rot": Vector3(100.0, 25.0, 0.0), "len": 0.26, "r": 0.09},
+		{"pos": Vector3(0.00, 0.06, 0.16), "rot": Vector3(120.0, 0.0, 0.0), "len": 0.22, "r": 0.08},
+		# EL FLEQUILLO: un mechon grande que cae sobre la frente y dos mas chicos. Sin
+		# ellos la cabeza es una corona; con ellos es Goku.
+		{"pos": Vector3(-0.04, 0.27, -0.14), "rot": Vector3(-155.0, 0.0, 22.0), "len": 0.22, "r": 0.06},
+		{"pos": Vector3(0.07, 0.27, -0.13), "rot": Vector3(-145.0, 0.0, -28.0), "len": 0.17, "r": 0.05},
+		{"pos": Vector3(-0.12, 0.25, -0.10), "rot": Vector3(-135.0, 0.0, 40.0), "len": 0.16, "r": 0.05},
+	]
+	for p: Dictionary in puntas:
+		var pivote := Node3D.new()
+		pivote.position = p["pos"]
+		pivote.rotation_degrees = p["rot"]
+		_head_pivot.add_child(pivote)
+		_costume.append(pivote)
+		var largo: float = p["len"]
+		var cono := MeshInstance3D.new()
+		var malla := CylinderMesh.new()
+		malla.top_radius = 0.0
+		malla.bottom_radius = p["r"]
+		malla.height = largo
+		cono.mesh = malla
+		cono.material_override = pelo
+		cono.position = Vector3(0.0, largo * 0.5, 0.0)
+		pivote.add_child(cono)
+
+	# Ojos: con una skin que los nombre (el celeste del Super Saiyajin, el plata del Ultra
+	# Instinto), un iris de ese color. Los de fabrica son negros, que es lo que ya son.
+	if _skin != null and _skin.partes.has(&"ojos"):
+		var iris := Art.flat(_skin.partes[&"ojos"])
+		for ojo: Node3D in [_eye_l, _eye_r]:
+			if ojo == null:
+				continue
+			var anillo := Art.sphere(0.030, iris, Vector3(0.0, 0.004, -0.026))
+			anillo.scale = Vector3(1.0, 1.25, 0.55)
+			_costume_add(ojo, anillo)
+
+	# --- EL TORSO: la camiseta azul se ve en el cuello en V ---
+	#
+	# CHICA Y ARRIBA: es la camiseta asomando entre las solapas, no una prenda. Mas grande
+	# y mas baja se leia como una corbata azul.
+	var cuello := Art.box(Vector3(0.085, 0.085, 0.015), azul, Vector3(0.0, 0.645, -0.156))
+	cuello.rotation_degrees = Vector3(-8.0, 0.0, 45.0)
+	_costume_add(_torso, cuello)
+	# Las solapas del gi cruzando por encima de la V: dos franjas naranjas en diagonal,
+	# PEGADAS al pecho. Con un dedo de separacion se veian de costado como dos aletas.
+	for lado: float in [-1.0, 1.0]:
+		var solapa := Art.box(Vector3(0.07, 0.30, 0.012), gi, Vector3(0.07 * lado, 0.52, -0.166))
+		solapa.rotation_degrees = Vector3(0.0, 0.0, -24.0 * lado)
+		_costume_add(_torso, solapa)
+
+	# --- EL KANJI: circulo blanco a la izquierda del pecho y grande en la espalda ---
+	#
+	# La izquierda DEL PERSONAJE, que mirando al frente (-Z) es -X. El trazo es una
+	# aproximacion de tres rayas: a esta distancia lo que se lee es el circulo blanco con
+	# algo negro adentro, que es exactamente lo que se lee del de la serie.
+	_kanji(circulo, tinta, Vector3(-0.11, 0.50, -0.195), 0.058, false)
+	_kanji(circulo, tinta, Vector3(0.0, 0.46, 0.192), 0.12, true)
+
+	# --- LA FAJA AZUL, con el nudo colgando al costado ---
+	var banda := Art.box(Vector3(0.43, 0.10, 0.29), faja, Vector3(0.0, 0.04, 0.0))
+	_costume_add(_torso, banda)
+	# Las puntas del nudo: angostas y al costado. Anchas y al medio parecian un taparrabos.
+	for i: int in range(2):
+		var punta_faja := Art.box(Vector3(0.045, 0.13, 0.025), faja,
+			Vector3(0.13 + float(i) * 0.045, -0.06, -0.15))
+		punta_faja.rotation_degrees = Vector3(0.0, 0.0, 10.0 - float(i) * 18.0)
+		_costume_add(_torso, punta_faja)
+
+	# --- LOS BRAZOS: manga corta azul, y el brazo desnudo hasta la muñequera ---
+	#
+	# El brazo del rig es del color del cuerpo entero, o sea naranja. El gi de Goku no tiene
+	# mangas: lo que se ve es la manga corta de la camiseta y despues el brazo. Una capsula
+	# de piel apenas mas gruesa tapa el naranja, y encima va la manga.
+	for hombro: Node3D in [_shoulder_l, _shoulder_r]:
+		if hombro == null:
+			continue
+		var brazo := Art.capsule(0.078, 0.30, _mat_skin, Vector3(0.0, -0.17, 0.0))
+		_costume_add(hombro, brazo)
+		var manga := Art.capsule(0.090, 0.16, azul, Vector3(0.0, -0.05, 0.0))
+		_costume_add(hombro, manga)
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo == null:
+			continue
+		var banda_m := Art.cylinder(0.074, 0.09, muñequera, Vector3(0.0, -0.22, 0.0))
+		_costume_add(codo, banda_m)
+
+	# --- EL PANTALON ANCHO y las botas ---
+	#
+	# El pantalon del gi es holgado: una capsula mas gruesa sobre el muslo. Las botas suben
+	# hasta media canilla, con los cordones amarillos cruzados adelante.
+	for cadera: Node3D in [_hip_l, _hip_r]:
+		if cadera == null:
+			continue
+		var muslo := Art.capsule(0.112, 0.40, gi_pantalon, Vector3(0.0, -0.20, 0.0))
+		_costume_add(cadera, muslo)
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla == null:
+			continue
+		var caña := Art.cylinder(0.088, 0.22, _mat_accent, Vector3(0.0, -0.30, 0.0))
+		_costume_add(rodilla, caña)
+		for k: int in range(2):
+			var cruce := Art.box(Vector3(0.10, 0.018, 0.02), cordon,
+				Vector3(0.0, -0.26 - float(k) * 0.07, -0.088))
+			cruce.rotation_degrees = Vector3(0.0, 0.0, 22.0 if k == 0 else -22.0)
+			_costume_add(rodilla, cruce)
+
+
+## El circulo blanco con el kanji. En la espalda va mirando para atras.
+func _kanji(circulo: StandardMaterial3D, tinta: StandardMaterial3D, pos: Vector3,
+		radio: float, espalda: bool) -> void:
+	var disco := Art.cylinder(radio, 0.012, circulo, pos)
+	disco.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	_costume_add(_torso, disco)
+	var hacia := 1.0 if espalda else -1.0
+	var trazos: Array = [
+		[Vector3(0.0, radio * 0.35, 0.0), Vector3(radio * 1.1, radio * 0.16, 0.01), 0.0],
+		[Vector3(0.0, -radio * 0.05, 0.0), Vector3(radio * 0.16, radio * 1.2, 0.01), 0.0],
+		[Vector3(0.0, -radio * 0.40, 0.0), Vector3(radio * 1.0, radio * 0.16, 0.01), -14.0],
+	]
+	for t: Array in trazos:
+		var trazo := Art.box(t[1], tinta, pos + (t[0] as Vector3) + Vector3(0.0, 0.0, 0.008 * hacia))
+		trazo.rotation_degrees = Vector3(0.0, 0.0, t[2])
+		_costume_add(_torso, trazo)
 
 
 func _costume_add(parent: Node3D, node: MeshInstance3D) -> void:

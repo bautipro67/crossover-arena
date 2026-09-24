@@ -367,6 +367,17 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 		&"last_jarona":
 			# Es una embestida larga: sale de lejos, pero no de punta a punta del mapa.
 			return dist < 20.0
+		&"ki_blast":
+			# Tres esferas que viajan: de media distancia, donde un basico no llega.
+			return dist > 3.0 and dist < 24.0
+		&"teletransportacion":
+			# Para cerrar distancia: de cerca no le hace falta, y pasado el alcance no
+			# encuentra blanco y no sale.
+			return dist > 5.0 and dist < 22.0
+		&"kamehameha":
+			# Un rayo recto de 42 m, pero hay que embocarlo: de muy lejos lo esquiva
+			# cualquiera caminando de costado durante la carga.
+			return dist < 26.0
 		_:
 			return dist <= MELEE_RANGE + 0.6
 

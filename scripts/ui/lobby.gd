@@ -24,6 +24,11 @@ func _ready() -> void:
 	# pasar por apretar el boton equivocado.
 	Mando.anotar(self)
 	_selected_id = StringName(Net.local_character_id)
+	# Uno que todavia no se gano no puede quedar elegido de antes —por un archivo tocado a
+	# mano, o por el arnes—: se vuelve al de fabrica.
+	if not Progreso.puede_usar_personaje(_selected_id):
+		_selected_id = CharacterDB.get_default_id()
+		Net.set_local_character(String(_selected_id))
 
 	UITheme.build_background(self)
 
@@ -139,12 +144,22 @@ func _build_character_list() -> void:
 		child.queue_free()
 	for id: StringName in CharacterDB.get_all_ids():
 		var data := CharacterDB.get_character(id)
+		# BLOQUEADO SE MUESTRA IGUAL, y diciendo como se gana. Esconderlo haria que nadie
+		# supiera que existe, y un premio que no se ve no motiva a nadie.
+		if not Progreso.puede_usar_personaje(id):
+			var cerrado := UITheme.make_button("🔒  %s  ·  completá el pase pro de la temporada %d" % [
+				data.display_name, Pase.TEMPORADA])
+			cerrado.disabled = true
+			_character_list.add_child(cerrado)
+			continue
 		var button := UITheme.make_button("%s  ·  %s" % [data.display_name, data.origin_game], id == _selected_id)
 		button.pressed.connect(_on_character_picked.bind(id))
 		_character_list.add_child(button)
 
 
 func _on_character_picked(id: StringName) -> void:
+	if not Progreso.puede_usar_personaje(id):
+		return
 	_selected_id = id
 	Net.set_local_character(String(id))
 	_build_character_list()

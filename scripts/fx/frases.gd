@@ -39,6 +39,18 @@ const LINEAS: Dictionary = {
 	&"stand_barrage": [["¡MUDAMUDAMUDAMUDA!", 0.0, &"voz_muda"]],
 	&"za_warudo": [["¡ZA WARUDO!", 0.0, &"voz_za_warudo"],
 		["¡TOKI YO TOMARE!", 0.75, &"voz_toki"]],
+	# --- GOKU (Dragon Ball) ---
+	# El "¡HA!" final: sale junto con el rayo. El resto del nombre va en LINEAS_CARGA.
+	&"kamehameha": [["¡HAAA!", 0.0, &"voz_ha"]],
+}
+
+## Frases que salen AL EMPEZAR a canalizar, no al soltar.
+##
+## EXISTE POR EL KAMEHAMEHA, que en la serie se dice MIENTRAS se carga: "ka... me... ha...
+## me..." con las manos juntas, y recien el "¡HA!" con el rayo. Dicho entero al soltar, el
+## nombre llegaria despues del golpe, y el anuncio no anunciaria nada.
+const LINEAS_CARGA: Dictionary = {
+	&"kamehameha": [["KA... ME... HA... ME...", 0.0, &"voz_kamehameha"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el
@@ -67,9 +79,17 @@ static func tiene(ability_id: StringName) -> bool:
 ## tiene que verse en las dos pantallas. Si la dijera solo el que ataca, el que la
 ## necesita —el otro— seria justo el que no la escucha.
 static func decir(caster: Node, ability_id: StringName) -> void:
+	_decir_lineas(caster, LINEAS.get(ability_id, []))
+
+
+## La frase de cuando empieza a cargar. Ver LINEAS_CARGA.
+static func decir_al_cargar(caster: Node, ability_id: StringName) -> void:
+	_decir_lineas(caster, LINEAS_CARGA.get(ability_id, []))
+
+
+static func _decir_lineas(caster: Node, lineas: Array) -> void:
 	if not is_instance_valid(caster) or not caster.has_method("avisar_grito"):
 		return
-	var lineas: Array = LINEAS.get(ability_id, [])
 	for i: int in range(lineas.size()):
 		var linea: Array = lineas[i]
 		var texto := linea[0] as String

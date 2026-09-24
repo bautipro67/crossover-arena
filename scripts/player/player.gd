@@ -666,19 +666,33 @@ func _impacto_embestida() -> void:
 ##
 ## Por eso viaja como RPC a todos, incluido el dueño: el que manda su posicion aplica el
 ## salto primero y despues reporta el lugar nuevo. Es el mismo camino que usa respawn_at.
-func teleport_to(destino: Vector3) -> void:
+##
+## `yaw` es opcional: hacia donde queda mirando al llegar. Lo usa la teletransportacion de
+## Goku, que aparece detras de alguien y tiene que quedar mirandolo; el portal de Rick no
+## lo pasa y conserva la direccion con la que entro. NAN = no girar.
+func teleport_to(destino: Vector3, yaw: float = NAN) -> void:
 	if not Net.is_server():
 		return
-	Net.rpc_ready(self, &"_net_teleport", [destino])
-	_apply_teleport(destino)
+	# Siempre los dos argumentos por la red, aunque el yaw no se use: un RPC con un
+	# parametro opcional que a veces llega y a veces no es como se arman los "numero de
+	# argumentos equivocado" que solo aparecen en linea.
+	Net.rpc_ready(self, &"_net_teleport", [destino, yaw])
+	_apply_teleport(destino, yaw)
 
 
 @rpc("authority", "call_remote", "reliable")
-func _net_teleport(destino: Vector3) -> void:
-	_apply_teleport(destino)
+func _net_teleport(destino: Vector3, yaw: float) -> void:
+	_apply_teleport(destino, yaw)
 
 
-func _apply_teleport(destino: Vector3) -> void:
+func _apply_teleport(destino: Vector3, yaw: float = NAN) -> void:
+	if not is_nan(yaw):
+		rotation.y = yaw
+		_target_yaw = yaw
+		# La camara manda la rotacion del cuerpo del jugador local: si no se la gira a
+		# ella, el proximo frame el cuerpo vuelve a mirar para donde miraba la camara.
+		if is_local_player() and is_instance_valid(camera_pivot):
+			camera_pivot.set_yaw(yaw)
 	global_position = destino
 	# El objetivo de interpolacion tambien, o los clientes remotos ven al cuerpo
 	# DESLIZARSE hasta el destino en vez de aparecer ahi.

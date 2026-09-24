@@ -1041,6 +1041,165 @@ func spawn_super_sonic(caster: Node3D, duracion: float) -> void:
 	_auto_free(aura, duracion)
 
 
+# ------------------------------------------------------------------- Goku
+
+## Teletransportacion: el destello donde desaparece o aparece.
+##
+## UNA COLUMNA DE LUZ QUE SE CIERRA, no una explosion: en la serie la tecnica no hace ruido
+## ni humo, el cuerpo se va como una imagen que se apaga. Una explosion se leeria como un
+## ataque, y lo que tiene que decir es "estaba aca y ya no".
+func spawn_teletransporte(context: Node, pos: Vector3) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var columna := MeshInstance3D.new()
+	var malla := CylinderMesh.new()
+	malla.top_radius = 0.55
+	malla.bottom_radius = 0.55
+	malla.height = 2.2
+	columna.mesh = malla
+	var mat := Art.glow(Color(0.85, 0.95, 1.0), 3.5)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mat.albedo_color.a = 0.55
+	columna.material_override = mat
+	columna.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(columna)
+	columna.global_position = pos + Vector3.UP * 1.1
+
+	var tw := columna.create_tween()
+	tw.set_parallel(true)
+	# Se afina hasta desaparecer: el cuerpo "se va" por el medio.
+	tw.tween_property(columna, "scale", Vector3(0.05, 1.15, 0.05), 0.28).from(Vector3.ONE)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.28)
+	tw.chain().tween_callback(columna.queue_free)
+	spawn_impact_burst(context, pos + Vector3.UP, Color(0.85, 0.95, 1.0, 0.9))
+
+
+## La esfera de energia entre las manos mientras carga el Kamehameha.
+##
+## CRECE CON LA CARGA: arranca chica y llega a su tamaño justo al soltar. Es el reloj del
+## ataque para el que lo esta viendo venir: cuanto mas grande, menos falta.
+func spawn_kame_carga(caster: Node3D, duracion: float) -> Node3D:
+	if not is_instance_valid(caster):
+		return null
+	var carga := Node3D.new()
+	carga.name = &"CargaKame"
+	caster.add_child(carga)
+	# Al costado del cuerpo, a la altura de la cadera: donde Goku junta las manos.
+	carga.position = Vector3(0.42, 0.95, 0.10)
+
+	var bola := MeshInstance3D.new()
+	var esfera := SphereMesh.new()
+	esfera.radius = 0.22
+	esfera.height = 0.44
+	bola.mesh = esfera
+	bola.material_override = Art.glow(Color(0.60, 0.88, 1.0), 4.5)
+	bola.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	carga.add_child(bola)
+
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.amount = 30
+	chispas.lifetime = 0.45
+	chispas.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	chispas.emission_sphere_radius = 0.7
+	# Hacia adentro: la energia se junta en las manos, no sale de ellas.
+	chispas.radial_accel_min = -9.0
+	chispas.radial_accel_max = -6.0
+	chispas.gravity = Vector3.ZERO
+	chispas.scale_amount_min = 0.03
+	chispas.scale_amount_max = 0.08
+	chispas.color = Color(0.70, 0.92, 1.0, 0.9)
+	carga.add_child(chispas)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(0.55, 0.85, 1.0)
+	luz.light_energy = 2.2
+	luz.omni_range = 5.0
+	luz.shadow_enabled = false
+	carga.add_child(luz)
+
+	var tw := bola.create_tween()
+	tw.tween_property(bola, "scale", Vector3.ONE * 1.25, maxf(0.1, duracion)).from(Vector3.ONE * 0.2)
+	return carga
+
+
+## El rayo del Kamehameha, del largo que llego (el entero, o hasta la pared).
+##
+## UN CILINDRO QUE SE ENSANCHA DE GOLPE Y SE APAGA DESPACIO. El pico de ancho al salir es
+## el "¡HA!"; el apagado lento es lo que deja ver POR DONDE paso, que es lo que el que lo
+## esquivo por poco necesita ver para entender que estuvo cerca.
+func spawn_kamehameha(caster: Node, origin: Vector3, dir: Vector3, largo: float) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var rumbo := dir.normalized()
+	if rumbo.is_zero_approx() or largo <= 0.1:
+		return
+	var rayo := Node3D.new()
+	world.add_child(rayo)
+	rayo.global_position = origin + rumbo * (largo * 0.5)
+	rayo.look_at(origin + rumbo * largo, Vector3.UP if absf(rumbo.y) < 0.98 else Vector3.RIGHT)
+
+	# El nucleo blanco y el borde celeste: dos cilindros, como el ki de las esferas.
+	var capas: Array = [[0.45, Color(0.95, 0.99, 1.0), 1.0], [0.95, Color(0.45, 0.80, 1.0), 0.55]]
+	var mats: Array[StandardMaterial3D] = []
+	for capa: Array in capas:
+		var tubo := MeshInstance3D.new()
+		var malla := CylinderMesh.new()
+		malla.top_radius = capa[0]
+		malla.bottom_radius = capa[0]
+		malla.height = largo
+		tubo.mesh = malla
+		var mat := Art.glow(capa[1], 4.0)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		mat.albedo_color.a = capa[2]
+		tubo.material_override = mat
+		tubo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# El cilindro nace parado en +Y; se lo acuesta sobre el -Z del look_at.
+		tubo.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+		rayo.add_child(tubo)
+		mats.append(mat)
+
+	# La bola de la punta, donde el rayo choca.
+	var punta := MeshInstance3D.new()
+	var bola := SphereMesh.new()
+	bola.radius = 1.3
+	bola.height = 2.6
+	punta.mesh = bola
+	var mat_punta := Art.glow(Color(0.75, 0.93, 1.0), 4.0)
+	mat_punta.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat_punta.albedo_color.a = 0.7
+	punta.material_override = mat_punta
+	punta.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(punta)
+	punta.global_position = origin + rumbo * largo
+	mats.append(mat_punta)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(0.55, 0.85, 1.0)
+	luz.light_energy = 5.0
+	luz.omni_range = 12.0
+	luz.shadow_enabled = false
+	world.add_child(luz)
+	luz.global_position = origin + rumbo * minf(largo, 6.0)
+	_fade_light(luz, 0.9)
+
+	var tw := rayo.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(rayo, "scale", Vector3(1.0, 1.0, 1.0), 0.08).from(Vector3(0.2, 0.2, 1.0))
+	for m: StandardMaterial3D in mats:
+		tw.tween_property(m, "albedo_color:a", 0.0, 0.75).set_delay(0.25)
+	tw.tween_property(punta, "scale", Vector3.ONE * 1.6, 0.9)
+	tw.chain().tween_callback(func() -> void:
+		rayo.queue_free()
+		if is_instance_valid(punta):
+			punta.queue_free())
+	spawn_impact_burst(caster, origin + rumbo * largo, Color(0.75, 0.93, 1.0, 1.0))
+
+
 # ------------------------------------------------------- Cajas de colision
 #
 # Se dibujan solo con la opcion prendida. Existen porque "me pego sin tocarme" es la queja
@@ -1118,6 +1277,32 @@ func dibujar_esfera(context: Node, origin: Vector3, radio: float) -> void:
 	world.add_child(bola)
 	bola.global_position = origin
 	_auto_free(bola, 0.45)
+
+
+## El volumen de un rayo recto: un cilindro del largo y el radio que consulta
+## CombatUtils.get_players_in_line.
+func dibujar_rayo(context: Node, origin: Vector3, dir: Vector3, largo: float, radio: float) -> void:
+	if not Settings.mostrar_hitboxes:
+		return
+	var world := _world_of(context)
+	if world == null:
+		return
+	var rumbo := dir.normalized()
+	if rumbo.is_zero_approx() or largo <= 0.0:
+		return
+	var tubo := MeshInstance3D.new()
+	var malla := CylinderMesh.new()
+	malla.top_radius = radio
+	malla.bottom_radius = radio
+	malla.height = largo
+	tubo.mesh = malla
+	tubo.material_override = _material_hitbox(ATAQUE_COLOR)
+	tubo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(tubo)
+	tubo.global_position = origin + rumbo * (largo * 0.5)
+	tubo.look_at(origin + rumbo * largo, Vector3.UP if absf(rumbo.y) < 0.98 else Vector3.RIGHT)
+	tubo.rotate_object_local(Vector3.RIGHT, PI * 0.5)
+	_auto_free(tubo, 0.45)
 
 
 ## La capsula de un cuerpo. Se queda puesta y se prende o apaga con la opcion.
@@ -1450,6 +1635,19 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 			spawn_stand_barrage(caster, origin, dir, StandBarrage.TICKS, StandBarrage.TICK_INTERVAL)
 		&"petal_shot":
 			PetalShot.spawn_cosmetic(caster, origin, dir)
+		&"goku_combo":
+			spawn_melee_arc(caster, origin, dir)
+		&"ki_blast":
+			KiBlast.spawn_cosmetic(caster, origin, dir)
+		&"teletransportacion":
+			# La salida nada mas. La llegada la replica _net_teleport, y el cliente no sabe
+			# a donde va el servidor hasta que el cuerpo aparece.
+			spawn_teletransporte(caster, origin - Vector3.UP * 1.2)
+		&"kamehameha":
+			if caster is Node3D:
+				var rumbo := dir.normalized()
+				spawn_kamehameha(caster, origin, rumbo,
+					Kamehameha.largo_hasta_pared(caster as Node3D, origin, rumbo))
 		&"plasma_shot":
 			PlasmaShot.spawn_cosmetic(caster, origin, dir)
 		&"plasma_grenade":

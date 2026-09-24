@@ -353,6 +353,84 @@ func _test_progresion() -> void:
 	_check(pendientes > 0, "reclamar todo cobra lo que haya (%d)" % pendientes)
 	_check(not Pase.hay_algo_para_reclamar(), "y despues no queda nada pendiente")
 
+	# --- Comprar escalones ---
+	Progreso.borrar_todo()
+	_check(not Pase.comprar_escalon(), "sin monedas no se compra un escalon")
+	Progreso.monedas = Progreso.PRECIO_ESCALON * 2
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON / 2
+	_check(Pase.comprar_escalon(), "con monedas si")
+	_check(Pase.escalon_actual() == 1 and Progreso.pase_exp == Pase.EXP_POR_ESCALON + Pase.EXP_POR_ESCALON / 2,
+		"sube UN escalon y conserva lo que ya llevabas del siguiente (exp %d)" % Progreso.pase_exp)
+	_check(Progreso.monedas == Progreso.PRECIO_ESCALON, "y cuesta lo que dice")
+	_check(Progreso.nivel == 1,
+		"el nivel del jugador NO sube: es lo que jugo, y comprarlo lo haria mentir")
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
+	_check(not Pase.comprar_escalon() and Progreso.monedas == Progreso.PRECIO_ESCALON,
+		"con el pase completo no se puede comprar mas, ni se cobra")
+
+	# --- GOKU: solo con el pase pro COMPLETO ---
+	#
+	# Es la condicion que se pidio, tal cual: completar todo el pase pro. Ni la via
+	# gratuita completa, ni el pro a medias, ni la tienda.
+	Progreso.borrar_todo()
+	_check(Pase.TEMPORADA == 1, "estamos en la temporada 1")
+	var final_pro := Pase.recompensa(Pase.ESCALONES, true)
+	_check(final_pro[0] == Pase.PERSONAJE and StringName(final_pro[1]) == &"goku",
+		"el ultimo escalon del pase pro es Goku")
+	_check(not Progreso.puede_usar_personaje(&"goku"), "de entrada Goku esta bloqueado")
+	_check(Progreso.puede_usar_personaje(&"noelle") and Progreso.puede_usar_personaje(&"sonic"),
+		"y los demas no: vienen de fabrica")
+	var goku_en_otro_lado := false
+	for i: int in range(1, Pase.ESCALONES + 1):
+		for pro: bool in [false, true]:
+			var r := Pase.recompensa(i, pro)
+			if r[0] == Pase.PERSONAJE and (i != Pase.ESCALONES or not pro):
+				goku_en_otro_lado = true
+	_check(not goku_en_otro_lado, "y no aparece en ningun otro escalon ni en la via gratuita")
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
+	Pase.reclamar_todo()
+	_check(not Progreso.puede_usar_personaje(&"goku"),
+		"con toda la via gratuita cobrada, Goku sigue bloqueado")
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON * (Pase.ESCALONES - 1)
+	Progreso.pase_pro = true
+	Pase.reclamar_todo()
+	_check(not Progreso.puede_usar_personaje(&"goku"), "con el pro a un escalon del final, tampoco")
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
+	_check(not Pase.reclamar(Pase.ESCALONES, true).is_empty() and Progreso.puede_usar_personaje(&"goku"),
+		"completando el pase pro, Goku queda desbloqueado")
+
+	# --- El cierre de la temporada 0 ---
+	#
+	# Se arma un archivo de la 0 a mano: el pro comprado, diez escalones alcanzados y solo
+	# el primero cobrado. Al cerrarla, lo alcanzado se tiene que cobrar solo y el pase
+	# tiene que arrancar de cero, sin tocar ni el nivel, ni las monedas, ni las skins.
+	Progreso.borrar_todo()
+	Progreso.nivel = 7
+	Progreso.monedas = 300
+	Progreso.temporada = 0
+	Progreso.pase_pro = true
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON * 10
+	Progreso.reclamados = {"1": true}
+	Progreso.skins = {"sonic_clasico": true}
+	Pase._cerrar_temporada_vieja()
+	_check(Progreso.tiene_skin(&"dio_dorado") and Progreso.tiene_skin(&"flowery_nocturno")
+		and Progreso.tiene_skin(&"noelle_snowgrave"),
+		"al cerrar la temporada 0 se cobran solas las skins que ya habias alcanzado")
+	_check(not Progreso.tiene_skin(&"rick_maligno"),
+		"pero no las de escalones a los que no llegaste")
+	_check(Progreso.tiene_skin(&"sonic_clasico") and Progreso.nivel >= 7 and Progreso.monedas > 300,
+		"y lo tuyo queda: skins, nivel, y las monedas pendientes se suman (%d)" % Progreso.monedas)
+	_check(Progreso.pase_exp == 0 and not Progreso.pase_pro and Progreso.reclamados.is_empty()
+		and Progreso.temporada == Pase.TEMPORADA,
+		"y el pase de la temporada 1 arranca de cero, pro incluido")
+	var aviso := Pase.tomar_aviso()
+	_check(aviso.contains("Temporada 0") and aviso.contains("pendientes"),
+		"y avisa que termino y cuanto se cobro solo: %s" % aviso)
+	_check(Pase.tomar_aviso().is_empty(), "el aviso se muestra una sola vez")
+	var antes_cierre := Progreso.monedas
+	Pase._cerrar_temporada_vieja()
+	_check(Progreso.monedas == antes_cierre, "cerrar una temporada ya cerrada no da nada de nuevo")
+
 	# --- Modos ---
 	#
 	# TODOS TIENEN QUE SER GANABLES, y esa es la queja que los origino: la primera version
@@ -905,6 +983,7 @@ func _test_audio() -> void:
 		# exactamente el sintoma que hubo que arreglar: se leia "¡JARONA!" y no se oia.
 		&"voz_jarona", &"voz_here_i_come", &"voz_last_jarona",
 		&"voz_muda", &"voz_za_warudo", &"voz_toki",
+		&"voz_kamehameha", &"voz_ha",
 	]
 	# EL BANCO SE ARMA REPARTIDO ENTRE FRAMES, asi que hay que esperarlo.
 	#
@@ -932,11 +1011,13 @@ func _test_audio() -> void:
 	# cartel. Es exactamente el sintoma que hubo que arreglar, y no lo detectaba ningun
 	# chequeo: uno miraba el banco, otro miraba el cartel, y nadie miraba el hilo.
 	var sin_voz: Array[String] = []
-	for id: StringName in Frases.LINEAS:
-		for linea: Array in Frases.LINEAS[id]:
-			var voz := linea[2] as StringName
-			if not Sfx._bank.has(voz):
-				sin_voz.append("%s->%s" % [id, voz])
+	# Las dos tablas: la de al soltar y la de al empezar a cargar (el Kamehameha).
+	for tabla: Dictionary in [Frases.LINEAS, Frases.LINEAS_CARGA]:
+		for id: StringName in tabla:
+			for linea: Array in tabla[id]:
+				var voz := linea[2] as StringName
+				if not Sfx._bank.has(voz):
+					sin_voz.append("%s->%s" % [id, voz])
 	_check(sin_voz.is_empty(), "toda frase tiene su voz en el banco (rotas: %s)" % ", ".join(sin_voz))
 
 	# --- Y que cada uno tenga el CARACTER que se supone que tiene ---
@@ -1123,7 +1204,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 194
+const CHEQUEOS_MINIMOS: int = 215
 
 
 func _finish() -> void:

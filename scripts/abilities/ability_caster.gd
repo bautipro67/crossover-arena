@@ -219,6 +219,8 @@ func _srv_request_use(index: int, origin: Vector3, dir: Vector3) -> void:
 		_channel_dir = safe_dir
 		_begin_channel_local(index, ability.channel_time)
 		Net.rpc_ready(self, &"_net_begin_channel", [index, ability.channel_time])
+		# Solo el servidor grita: avisar_grito ya lo replica a todos.
+		Frases.decir_al_cargar(_caster, ability.id)
 	else:
 		_fire(index, origin, safe_dir)
 

@@ -116,6 +116,76 @@ func _registrar_todas() -> void:
 		Color(0.09, 0.16, 0.66), Color(0.90, 0.18, 0.16),
 		Color(0.99, 0.80, 0.56), Color(0.07, 0.13, 0.55), &"rara", 900))
 
+	_registrar_temporada_1()
+
+
+# ------------------------------------------------------------- Temporada 1
+#
+# SIETE EN EL PASE Y CINCO EN LA TIENDA, como en la temporada 0: el que no compra el pase
+# igual tiene de donde elegir, y el pase tiene lo que no se consigue en otro lado.
+#
+# LAS DE GOKU VAN TODAS EN LA TIENDA, y no por olvido: Goku es el premio del ULTIMO
+# escalon del pase pro, asi que una skin suya en el pase caeria antes de tenerlo y no se
+# podria usar. En la tienda se compran recien cuando ya lo ganaste.
+func _registrar_temporada_1() -> void:
+	var nuevas: Array[SkinData] = [
+		# --- El pase ---
+		_hacer(&"sonic_metal", &"sonic", "Sonic Metálico",
+			"Hecho en una fábrica que no aparece en ningún mapa.",
+			Color(0.16, 0.20, 0.42), Color(0.85, 0.12, 0.12),
+			Color(0.72, 0.76, 0.84), Color(0.14, 0.18, 0.38), &"epica", 0),
+		_hacer(&"noelle_otono", &"noelle", "Noelle de Otoño",
+			"Hojas secas y chocolate caliente.",
+			Color(0.86, 0.46, 0.18), Color(0.95, 0.70, 0.30),
+			Color(0.95, 0.87, 0.76), Color(0.30, 0.18, 0.10), &"rara", 0),
+		_hacer(&"flowery_primavera", &"flowery", "Flowery Primavera",
+			"Florece. Literalmente.",
+			Color(0.98, 0.95, 0.92), Color(0.98, 0.55, 0.72),
+			Color(0.74, 0.84, 0.42), Color(0.50, 0.72, 0.45), &"epica", 0),
+		_hacer(&"rick_toxico", &"rick", "Rick Tóxico",
+			"Toda la toxicidad de un Rick, separada en uno solo.",
+			Color(0.45, 0.75, 0.25), Color(0.20, 0.35, 0.10),
+			Color(0.78, 0.88, 0.58), Color(0.30, 0.45, 0.15), &"epica", 0),
+		_hacer(&"dio_blanco", &"dio", "Dio de Blanco",
+			"Blanco de pies a cabeza, para que se note la sangre.",
+			Color(0.95, 0.95, 0.92), Color(0.85, 0.70, 0.30),
+			Color(0.94, 0.86, 0.82), Color(0.92, 0.90, 0.85), &"rara", 0),
+		_hacer(&"noelle_aurora", &"noelle", "Noelle Aurora",
+			"El cielo del norte, en un suéter.",
+			Color(0.35, 0.90, 0.75), Color(0.55, 0.35, 0.95),
+			Color(0.95, 0.90, 0.86), Color(0.12, 0.14, 0.30), &"legendaria", 0),
+		_hacer(&"dio_cielo", &"dio", "Dio del Cielo",
+			"Más allá del cielo. Más allá de todo.",
+			Color(0.97, 0.97, 0.95), Color(1.00, 0.82, 0.30),
+			Color(0.96, 0.90, 0.86), Color(0.92, 0.90, 0.86), &"legendaria", 0),
+		# --- La tienda ---
+		# Las tres transformaciones de Goku, con los colores de la serie: dorado con ojos
+		# turquesa, celeste, y plateado de pies a cabeza.
+		_hacer(&"goku_ssj", &"goku", "Goku Super Saiyajin",
+			"Dorado, y con los ojos turquesa. El enojo, hecho luz.",
+			Color(0.98, 0.50, 0.12), Color(0.13, 0.20, 0.52),
+			Color(0.98, 0.83, 0.68), Color(0.96, 0.47, 0.11), &"legendaria", 2600),
+		_hacer(&"goku_blue", &"goku", "Goku Super Saiyajin Blue",
+			"El ki de un dios, con el cuerpo de un Saiyajin.",
+			Color(0.96, 0.48, 0.12), Color(0.12, 0.30, 0.62),
+			Color(0.98, 0.83, 0.68), Color(0.94, 0.45, 0.11), &"epica", 1800),
+		_hacer(&"goku_ui", &"goku", "Goku Ultra Instinto",
+			"El cuerpo se mueve solo. El pelo se vuelve plata.",
+			Color(0.94, 0.46, 0.14), Color(0.20, 0.22, 0.40),
+			Color(0.97, 0.84, 0.72), Color(0.92, 0.44, 0.13), &"legendaria", 2600),
+		_hacer(&"noelle_menta", &"noelle", "Noelle Menta",
+			"Fresca, como una mañana de invierno.",
+			Color(0.62, 0.92, 0.80), Color(0.30, 0.70, 0.60),
+			Color(0.95, 0.87, 0.76), Color(0.18, 0.34, 0.32), &"rara", 900),
+		_hacer(&"rick_gala", &"rick", "Rick de Gala",
+			"Traje, moño y ninguna intención de quedarse a la cena.",
+			Color(0.96, 0.96, 0.96), Color(0.60, 0.10, 0.15),
+			Color(0.90, 0.78, 0.63), Color(0.08, 0.08, 0.10), &"rara", 900),
+	]
+	for sk: SkinData in nuevas:
+		sk.temporada = 1
+		_add(sk)
+
 
 # -------------------------------------------------------------- Los detalles
 #
@@ -236,6 +306,65 @@ func _detallar() -> void:
 		&"pua": Color(0.08, 0.16, 0.62), &"pelo": Color(0.09, 0.18, 0.66),
 		&"ojos": Color(0.05, 0.05, 0.07)},
 		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.30, 0.45, 1.0, 0.75))
+
+	# ------------------------------------------------------------ Temporada 1
+	_det(&"sonic_metal", {
+		&"pua": Color(0.18, 0.24, 0.50), &"pelo": Color(0.20, 0.27, 0.55),
+		&"piel": Color(0.72, 0.76, 0.84), &"guante": Color(0.60, 0.64, 0.72),
+		&"ojos": Color(0.90, 0.10, 0.10)},
+		&"metal", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.20, 0.20, 0.8))
+	_det(&"noelle_otono", {
+		&"sueter_a": Color(0.86, 0.46, 0.18), &"sueter_b": Color(0.55, 0.30, 0.14),
+		&"oscuro": Color(0.30, 0.18, 0.10), &"astas": Color(0.62, 0.44, 0.28)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.60, 0.25, 0.75))
+	_det(&"flowery_primavera", {
+		&"pelo": Color(1.00, 0.92, 0.55), &"chaleco_a": Color(0.98, 0.62, 0.78),
+		&"chaleco_b": Color(0.55, 0.88, 0.60), &"campera": Color(0.95, 0.95, 0.90),
+		&"camisa": Color(1.00, 1.00, 1.00)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.65, 0.80, 0.8))
+	_det(&"rick_toxico", {
+		&"pelo": Color(0.65, 0.95, 0.40), &"guardapolvo": Color(0.55, 0.85, 0.25),
+		&"cinto": Color(0.25, 0.45, 0.10), &"hebilla": Color(0.85, 1.00, 0.30)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.65, 1.0, 0.25, 0.8))
+	_det(&"dio_blanco", {
+		&"musculosa": Color(0.95, 0.95, 0.92), &"tela": Color(0.90, 0.88, 0.82),
+		&"detalle": Color(0.85, 0.70, 0.30), &"joya": Color(0.30, 0.80, 0.50)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.90, 0.70, 0.75))
+	_det(&"noelle_aurora", {
+		&"pelo": Color(0.85, 0.95, 1.00), &"sueter_a": Color(0.35, 0.95, 0.75),
+		&"sueter_b": Color(0.55, 0.35, 0.95), &"oscuro": Color(0.12, 0.14, 0.30),
+		&"astas": Color(0.70, 0.95, 0.95)},
+		&"hielo", &"estrellas", Color(0.60, 1.0, 0.85), Color(0.50, 1.0, 0.80), &"",
+		Color(0.50, 0.95, 0.85, 0.85))
+	_det(&"dio_cielo", {
+		&"pelo": Color(1.00, 0.93, 0.65), &"musculosa": Color(0.97, 0.97, 0.95),
+		&"tela": Color(0.92, 0.90, 0.86), &"detalle": Color(1.00, 0.82, 0.30),
+		&"joya": Color(0.95, 0.30, 0.35)},
+		&"brillo", &"chispas", Color(1.0, 0.90, 0.45), Color(1.0, 0.30, 0.30), &"",
+		Color(1.0, 0.88, 0.45, 0.85))
+	# Goku: el pelo claro brilla solo (lo decide el constructor del disfraz), asi que las
+	# tres se notan sin acabado. La Blue lleva brillo porque es epica y no tiene aura.
+	_det(&"goku_ssj", {
+		&"pelo": Color(1.00, 0.86, 0.25), &"ojos": Color(0.20, 0.72, 0.62)},
+		&"", &"chispas", Color(1.0, 0.90, 0.40), Color(0.30, 0.95, 0.80), &"",
+		Color(1.0, 0.88, 0.35, 0.85))
+	_det(&"goku_blue", {
+		&"pelo": Color(0.35, 0.80, 1.00), &"ojos": Color(0.30, 0.70, 0.95),
+		&"munequeras": Color(0.10, 0.28, 0.62), &"faja": Color(0.10, 0.30, 0.66)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.40, 0.80, 1.0, 0.85))
+	_det(&"goku_ui", {
+		&"pelo": Color(0.86, 0.89, 0.96), &"ojos": Color(0.82, 0.86, 0.96),
+		&"camiseta": Color(0.14, 0.16, 0.34)},
+		&"", &"niebla", Color(0.80, 0.86, 1.0), Color(0.85, 0.90, 1.0), &"",
+		Color(0.85, 0.90, 1.0, 0.85))
+	_det(&"noelle_menta", {
+		&"sueter_a": Color(0.62, 0.92, 0.80), &"sueter_b": Color(0.30, 0.70, 0.60),
+		&"oscuro": Color(0.18, 0.34, 0.32)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.55, 0.95, 0.80, 0.75))
+	_det(&"rick_gala", {
+		&"guardapolvo": Color(0.10, 0.10, 0.12), &"cinto": Color(0.05, 0.05, 0.06),
+		&"hebilla": Color(0.90, 0.80, 0.40), &"medias": Color(0.08, 0.08, 0.10)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.75, 0.20, 0.25, 0.75))
 
 
 func _det(id: StringName, partes: Dictionary, acabado: StringName, aura: StringName,

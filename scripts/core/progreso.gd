@@ -39,6 +39,14 @@ const EXP_POR_VICTORIA: int = 100
 const EXP_POR_PARTIDA: int = 20
 ## Lo que cuesta el pase pro.
 const PRECIO_PASE_PRO: int = 2500
+## Lo que cuesta subir un escalon del pase sin jugarlo.
+##
+## 200 ES LO QUE SE GANA EN UNA PARTIDA Y MEDIA, que es lo que tarda en subirse un escalon
+## jugando (250 de experiencia a unos 170 por partida). A ese precio comprar no es un
+## atajo sobre jugar: es cambiar monedas que ya ganaste por avance en vez de por skins.
+## Mas barato, el pase se compraria entero con lo que sobra de una semana y dejaria de
+## ser algo que se juega.
+const PRECIO_ESCALON: int = 200
 ## Tope de nivel. No es un limite real de nada, es para que la barra signifique algo.
 const NIVEL_MAXIMO: int = 60
 
@@ -53,6 +61,15 @@ var reclamados: Dictionary = {}
 var skins: Dictionary = {}
 ## character_id -> skin_id equipada
 var equipadas: Dictionary = {}
+## Los personajes que hubo que ganarse y ya estan ganados: character_id -> true. Los de
+## fabrica no figuran aca; ver puede_usar_personaje().
+var personajes: Dictionary = {}
+## De que temporada es el pase guardado. -1 = no habia archivo (instalacion nueva).
+##
+## Hace falta para cerrar una temporada: si el archivo es de la 0 y el juego ya va por la
+## 1, Pase cobra lo pendiente de la vieja y arranca la nueva de cero. Sin este numero no
+## hay forma de distinguir "avance de esta temporada" de "avance de la anterior".
+var temporada: int = -1
 ## Cuando esta en false, guardar() no escribe nada.
 ##
 ## EXISTE PARA EL ARNES, y no es un lujo: los tests suben de nivel, gastan monedas y
@@ -226,6 +243,25 @@ func equipar_skin(character_id: StringName, skin_id: StringName) -> void:
 	guardar()
 
 
+# ------------------------------------------------------------------ Personajes
+
+## Se puede elegir este personaje? Los de fabrica siempre; los que hay que ganarse, solo
+## si ya se ganaron.
+func puede_usar_personaje(character_id: StringName) -> bool:
+	if not CharacterDB.has_character(character_id):
+		return false
+	var data := CharacterDB.get_character(character_id)
+	return not data.requiere_desbloqueo or personajes.get(String(character_id), false)
+
+
+func desbloquear_personaje(character_id: StringName) -> void:
+	if not CharacterDB.has_character(character_id):
+		return
+	personajes[String(character_id)] = true
+	cambio.emit()
+	guardar()
+
+
 # ------------------------------------------------------------------ Guardado
 
 func cargar() -> void:
@@ -240,6 +276,9 @@ func cargar() -> void:
 	reclamados = cfg.get_value("pase", "reclamados", {}) as Dictionary
 	skins = cfg.get_value("skins", "desbloqueadas", {}) as Dictionary
 	equipadas = cfg.get_value("skins", "equipadas", {}) as Dictionary
+	personajes = cfg.get_value("personajes", "desbloqueados", {}) as Dictionary
+	# Un archivo sin temporada es de la 0: es la unica que existio antes de este campo.
+	temporada = int(cfg.get_value("pase", "temporada", 0))
 	bajas_totales = maxi(0, int(cfg.get_value("stats", "bajas", 0)))
 	partidas_jugadas = maxi(0, int(cfg.get_value("stats", "partidas", 0)))
 	victorias = maxi(0, int(cfg.get_value("stats", "victorias", 0)))
@@ -257,6 +296,8 @@ func guardar() -> void:
 	cfg.set_value("pase", "reclamados", reclamados)
 	cfg.set_value("skins", "desbloqueadas", skins)
 	cfg.set_value("skins", "equipadas", equipadas)
+	cfg.set_value("personajes", "desbloqueados", personajes)
+	cfg.set_value("pase", "temporada", temporada)
 	cfg.set_value("stats", "bajas", bajas_totales)
 	cfg.set_value("stats", "partidas", partidas_jugadas)
 	cfg.set_value("stats", "victorias", victorias)
@@ -273,6 +314,8 @@ func borrar_todo() -> void:
 	reclamados = {}
 	skins = {}
 	equipadas = {}
+	personajes = {}
+	temporada = Pase.TEMPORADA
 	bajas_totales = 0
 	partidas_jugadas = 0
 	victorias = 0

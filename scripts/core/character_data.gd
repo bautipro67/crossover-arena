@@ -37,5 +37,10 @@ extends Resource
 ## agrega ademas de los cuatro colores.
 @export var skin_id: StringName = &""
 
+## Si hace falta ganarselo para poder elegirlo. Hoy solo Goku, que es la recompensa final
+## del pase pro de la temporada 1. Lo que cuenta si ya se lo gano es Progreso, no esto:
+## esto solo dice que NO viene de fabrica.
+@export var requiere_desbloqueo: bool = false
+
 ## Se llena en CharacterDB.build_abilities_for(). Orden: 0 = golpe basico, 1 = habilidad, 2 = ultimate.
 var abilities: Array[Ability] = []

@@ -20,6 +20,7 @@ var _progreso_pase: Label = null
 var _barra_pase: Panel = null
 var _boton_pro: Button = null
 var _boton_todo: Button = null
+var _boton_escalon: Button = null
 var _aviso: Label = null
 var _scroll: ScrollContainer = null
 
@@ -68,6 +69,11 @@ func _ready() -> void:
 	_boton_pro.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_boton_pro.pressed.connect(_comprar_pro)
 	acciones.add_child(_boton_pro)
+
+	_boton_escalon = UITheme.make_button("")
+	_boton_escalon.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_boton_escalon.pressed.connect(_comprar_escalon)
+	acciones.add_child(_boton_escalon)
 
 	_boton_todo = UITheme.make_button("RECLAMAR TODO")
 	_boton_todo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -127,6 +133,12 @@ func _refrescar() -> void:
 		_boton_pro.text = "COMPRAR PASE PRO — %d ◆" % Progreso.PRECIO_PASE_PRO
 		_boton_pro.disabled = not Progreso.alcanza(Progreso.PRECIO_PASE_PRO)
 	_boton_todo.disabled = not Pase.hay_algo_para_reclamar()
+	if Pase.escalones_restantes() <= 0:
+		_boton_escalon.text = "PASE COMPLETO"
+		_boton_escalon.disabled = true
+	else:
+		_boton_escalon.text = "COMPRAR ESCALÓN — %d ◆" % Progreso.PRECIO_ESCALON
+		_boton_escalon.disabled = not Progreso.alcanza(Progreso.PRECIO_ESCALON)
 
 	for hijo: Node in _tira.get_children():
 		hijo.queue_free()
@@ -193,14 +205,21 @@ func _tarjeta(i: int, pro: bool, alcanzado: bool) -> Control:
 	# Las skins llevan el color de su rareza en el borde: es lo que distingue "500
 	# monedas" de "una legendaria" antes de leer el renglon.
 	var borde := UITheme.BORDER
+	var grosor := 1
 	if (r[0] as StringName) == Pase.SKIN:
 		var sk := SkinDB.get_skin(StringName(r[1]))
 		if sk != null:
 			borde = SkinData.color_rareza(sk.rareza)
+			grosor = 2
+	elif (r[0] as StringName) == Pase.PERSONAJE:
+		# El premio mayor, con el borde mas grueso de la tira: es la razon por la que se
+		# juega el pase entero, y tiene que verse desde el escalon 1.
+		borde = UITheme.GOLD
+		grosor = 3
 
 	var estilo := UITheme.panel_style(fondo, 8, 4)
 	estilo.border_color = borde
-	estilo.set_border_width_all(2 if (r[0] as StringName) == Pase.SKIN else 1)
+	estilo.set_border_width_all(grosor)
 	boton.add_theme_stylebox_override("normal", estilo)
 	boton.add_theme_stylebox_override("hover", estilo)
 	boton.add_theme_stylebox_override("pressed", estilo)
@@ -223,6 +242,14 @@ func _tarjeta(i: int, pro: bool, alcanzado: bool) -> Control:
 func _comprar_pro() -> void:
 	if Pase.comprar_pro():
 		_mostrar_aviso("¡Pase Pro activado! Se desbloquearon los escalones que ya pasaste.")
+	else:
+		_mostrar_aviso("No te alcanzan las monedas.")
+	Sfx.play_2d(&"ui_click")
+
+
+func _comprar_escalon() -> void:
+	if Pase.comprar_escalon():
+		_mostrar_aviso("Subiste al escalón %d." % Pase.escalon_actual())
 	else:
 		_mostrar_aviso("No te alcanzan las monedas.")
 	Sfx.play_2d(&"ui_click")

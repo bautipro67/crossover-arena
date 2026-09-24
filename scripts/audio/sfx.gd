@@ -327,7 +327,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 28
+const TOTAL_SONIDOS: int = 30
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -357,6 +357,8 @@ func _build_combate() -> void:
 		[&"voz_muda", _synth_voz_muda],
 		[&"voz_za_warudo", _synth_voz_za_warudo],
 		[&"voz_toki", _synth_voz_toki],
+		[&"voz_kamehameha", _synth_voz_kamehameha],
+		[&"voz_ha", _synth_voz_ha],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -808,6 +810,30 @@ func _synth_voz_toki() -> PackedFloat32Array:
 	return _voz([["o", 0.12, "golpe"], ["i", 0.12, "golpe"], ["o", 0.14, ""],
 		["o", 0.12, "golpe"], ["a", 0.15, "nasal"], ["e", 0.26, ""]],
 		D_TONO - 6.0, D_CUERPO, 0.13, D_DRAMA - 0.15, D_BRILLO, D_RASGADO + 0.06)
+
+
+# --- GOKU ---
+#
+# Un tipo joven con la voz arriba y abierta: ni la garganta grande de Dio ni el declamado
+# de Flowery. Cuando grita, grita con todo el cuerpo, y por eso el "¡HA!" lleva rasgado:
+# es la garganta al limite, soltando algo que venia aguantando.
+const G_TONO: float = 158.0
+const G_CUERPO: float = 0.98
+const G_DRAMA: float = 1.25
+const G_BRILLO: float = 1.15
+
+
+## "KA... ME... HA... ME..." — la carga. Lento y separado, una silaba por tramo: es el
+## reloj del ataque, y el que lo escucha tiene que poder contar cuanto falta.
+func _synth_voz_kamehameha() -> PackedFloat32Array:
+	return _voz([["a", 0.22, "golpe"], ["e", 0.22, "nasal"], ["a", 0.24, "aire"],
+		["e", 0.30, "nasal"]], G_TONO - 10.0, G_CUERPO, 0.11, G_DRAMA - 0.2, G_BRILLO)
+
+
+## "¡HAAA!" — el disparo. Una sola vocal larga, mas aguda y raspando.
+func _synth_voz_ha() -> PackedFloat32Array:
+	return _voz([["a", 0.55, "aire"]], G_TONO + 22.0, G_CUERPO, 0.16, G_DRAMA + 0.3,
+		G_BRILLO, 0.26)
 
 
 # ------------------------------------------------------------------- Deltarune

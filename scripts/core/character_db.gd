@@ -146,6 +146,37 @@ func _register_all() -> void:
 	_add(sonic)
 
 
+	# ---------------------------------------------------------------- Goku
+	#
+	# LA RECOMPENSA FINAL DEL PASE PRO DE LA TEMPORADA 1, y por eso mismo NO es el mas
+	# fuerte. Es un PvP: un personaje que se gana jugando y que ademas le gana a los otros
+	# convertiria el pase en un requisito para competir. Es el todoterreno —vida y stamina
+	# de fabrica, velocidad del medio— y lo que lo hace distinto es el kit, no los numeros.
+	#
+	# La ropa sale de la referencia de Dragon Ball Z / Super: gi NARANJA arriba y abajo,
+	# camiseta AZUL OSCURA debajo, muñequeras y faja azules, botas azul oscuro con
+	# cordones amarillos, y el kanji en un circulo blanco en el pecho y en la espalda. El
+	# acento es el azul porque el motor pinta los zapatos con ese color: las botas salen
+	# bien sin tocar nada.
+	var goku := CharacterData.new()
+	goku.id = &"goku"
+	goku.display_name = "Goku"
+	goku.origin_game = "Dragon Ball"
+	goku.body_color = Color(0.98, 0.50, 0.12)
+	goku.accent_color = Color(0.13, 0.20, 0.52)
+	goku.skin_color = Color(0.98, 0.83, 0.68)
+	goku.trouser_color = Color(0.96, 0.47, 0.11)
+	# Mediano y ancho de espaldas: un artista marcial, no un gigante como Dio ni un flaco
+	# como Rick.
+	goku.build_scale = Vector3(1.06, 1.00, 1.04)
+	goku.max_health = 100.0
+	goku.max_stamina = 100.0
+	goku.move_speed = 6.4
+	goku.silhouette = &"gi"
+	goku.requiere_desbloqueo = true
+	_add(goku)
+
+
 func _add(data: CharacterData) -> void:
 	_characters[data.id] = data
 	if not _order.has(data.id):
@@ -207,6 +238,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(SpinDash.new())
 			list.append(HomingAttack.new())
 			list.append(SuperSonic.new())
+		&"goku":
+			list.append(GokuCombo.new())
+			list.append(KiBlast.new())
+			list.append(Teletransportacion.new())
+			list.append(Kamehameha.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list
