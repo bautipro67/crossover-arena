@@ -140,40 +140,15 @@ func show_historia() -> void:
 	pantalla.cerrado.connect(func() -> void: pantalla.queue_free())
 	pantalla.capitulo_elegido.connect(func(i: int) -> void:
 		pantalla.queue_free()
-		_empezar_capitulo(i))
+		jugar_capitulo(i))
 	add_child(pantalla)
 
 
-## Un dialogo encima de todo. Al terminar, `despues`.
-func mostrar_dialogo(lineas: Array, despues: Callable) -> DialogoHistoria:
-	var d := DialogoHistoria.new()
-	d.lineas = lineas
-	d.terminado.connect(func() -> void:
-		d.queue_free()
-		despues.call())
-	add_child(d)
-	return d
-
-
-## La charla de antes, y despues la pelea.
-##
-## EL CONSEJO VA COMO ULTIMA LINEA DEL NARRADOR, y no en un cartel aparte: es lo ultimo
-## que se lee antes de pelear, que es justo cuando sirve.
-func _empezar_capitulo(i: int) -> void:
-	var cap := Historia.capitulo(i)
-	if cap.is_empty() or not Progreso.capitulo_disponible(i):
-		return
-	var lineas: Array = (cap["antes"] as Array).duplicate()
-	if cap.has("pista"):
-		lineas.append([Historia.NARRADOR, "CONSEJO: " + String(cap["pista"])])
-	mostrar_dialogo(lineas, func() -> void: jugar_capitulo(i))
-
-
-## Arranca la pelea de un capitulo, directo, sin sala de espera: el personaje lo elige la
-## historia, no hay nada que elegir.
+## Arranca un capitulo: la arena, la escena de entrada y la pelea, todo en el mismo lugar.
+## Sin sala de espera: el personaje lo elige la historia, no hay nada que elegir.
 func jugar_capitulo(i: int) -> void:
 	var cap := Historia.capitulo(i)
-	if cap.is_empty():
+	if cap.is_empty() or not Progreso.capitulo_disponible(i):
 		return
 	_capitulo_en_juego = i
 	if _personaje_previo.is_empty():
@@ -185,6 +160,19 @@ func jugar_capitulo(i: int) -> void:
 	Net.start_match()
 
 
+## La mision del capitulo, colgada de la arena. La arrancan _on_match_started cuando la
+## partida es de la historia.
+func _armar_mision() -> void:
+	var m := MisionHistoria.new()
+	m.name = "Mision"
+	m.capitulo = Modos.capitulo
+	m.datos = Historia.capitulo(Modos.capitulo)
+	m.arena = _arena
+	m.hud = _hud
+	m.dijo.connect(_hud.decir_en_batalla)
+	_arena.add_child(m)
+
+
 func _devolver_personaje() -> void:
 	if _personaje_previo.is_empty():
 		return
@@ -192,18 +180,16 @@ func _devolver_personaje() -> void:
 	_personaje_previo = ""
 
 
-## Termino la pelea de un capitulo: si gano, la charla de despues; si no, de vuelta a la
-## lista, donde se puede reintentar.
+## Termino un capitulo. La escena final ya se vio en la arena: aca solo se cobra y se
+## vuelve a la lista, donde se puede seguir o reintentar.
 func _terminar_capitulo(gano: bool) -> void:
 	var i := _capitulo_en_juego
 	_capitulo_en_juego = -1
 	Net.leave_game()
 	show_main_menu()
-	if not gano:
-		show_historia()
-		return
-	Progreso.completar_capitulo(i)
-	mostrar_dialogo(Historia.capitulo(i).get("despues", []), show_historia)
+	if gano:
+		Progreso.completar_capitulo(i)
+	show_historia()
 
 
 func show_lobby() -> void:
@@ -332,6 +318,8 @@ func _on_match_started() -> void:
 		_practica.name = "PracticePanel"
 		add_child(_practica)
 
+	if Modos.actual == Modos.HISTORIA:
+		_armar_mision()
 	_arena.local_player_spawned.connect(_hud.bind_player)
 	_arena.local_player_spawned.connect(_tactil.bind_player)
 	# Si el jugador local ya existia cuando se armo el HUD, lo enganchamos igual.

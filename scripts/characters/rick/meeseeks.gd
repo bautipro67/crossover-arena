@@ -105,6 +105,8 @@ func _buscar() -> Node3D:
 		var otro := nodo as Node3D
 		if otro == null or otro == shooter or _muerto(otro):
 			continue
+		if CombatUtils.son_aliados(shooter, otro):
+			continue
 		var d := global_position.distance_to(otro.global_position)
 		if d < mejor_dist:
 			mejor_dist = d

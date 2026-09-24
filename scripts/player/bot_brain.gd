@@ -228,7 +228,13 @@ func _pick_target() -> Player:
 		if other == null or other == _body:
 			continue
 		var es_heroe: bool = other.get_meta(&"heroe", false)
-		if other.is_dummy and not entre_bots and not es_heroe and not soy_heroe:
+		# CON EQUIPOS (el modo historia) manda el equipo: los del mismo lado nunca son
+		# blanco, y los del otro siempre, sean bots o no. Asi un aliado pelea contra los
+		# enemigos en vez de ignorarlos por ser bots, que es lo que haria la regla de abajo.
+		if CombatUtils.son_aliados(_body, other):
+			continue
+		var equipos := _body.equipo >= 0 and other.equipo >= 0
+		if not equipos and other.is_dummy and not entre_bots and not es_heroe and not soy_heroe:
 			continue
 		if not is_instance_valid(other) or other.health.is_dead:
 			continue

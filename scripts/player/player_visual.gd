@@ -120,6 +120,12 @@ var _yaw_previo: float = 0.0
 var _giro_suave: float = 0.0
 ## Fase del ciclo de caminata en el frame anterior, para saber cuando cae un pie.
 var _paso_previo: float = 0.0
+## La pose que pide una cinematica. &"" = ninguna. Ver actuar().
+var _pose_guion: StringName = &""
+## Cuanto le queda. Negativo = hasta que otra la reemplace.
+var _pose_guion_t: float = -1.0
+## Que tan acostado esta: 0 parado, 1 tirado en el piso. Solo lo mueve la pose "tirado".
+var _tirado: float = 0.0
 
 
 func _ready() -> void:
@@ -190,16 +196,31 @@ func _process(delta: float) -> void:
 	# no hay forma de distinguir una embestida que conecto de una que paso al aire.
 	# PRIORIDAD DE POSES, de mas urgente a menos: el impacto de una embestida tapa todo,
 	# despues el dolor de recibir un golpe, despues el dash, y al final el aire.
+	if _pose_guion_t > 0.0:
+		_pose_guion_t = maxf(0.0, _pose_guion_t - delta)
+		if is_zero_approx(_pose_guion_t):
+			if _pose == _pose_guion:
+				_pose = &""
+			_pose_guion = &""
+			_pose_guion_t = -1.0
 	if _impacto_t > 0.0:
 		_pose = &"impacto"
 	elif _dolor_t > 0.0:
 		_pose = &"dolor"
+	elif _pose_guion != &"":
+		# La de la cinematica, por encima del dash y del aire: la escena manda.
+		_pose = _pose_guion
 	elif _body.is_dashing():
 		_pose = &"embiste"
 	elif en_aire:
 		_pose = &"salto" if _body.velocity.y > 0.5 else &"caida"
 	elif _pose == &"embiste" or _pose == &"impacto" or _pose == &"dolor" 			or _pose == &"salto" or _pose == &"caida":
 		_pose = &""
+
+	# TIRADO EN EL PISO: el cuerpo entero se acuesta, no solo los brazos. Es la unica pose
+	# que mueve la raiz, y por eso va aparte de la tabla de poses.
+	var quiere_tirado := 1.0 if _pose_guion == &"tirado" else 0.0
+	_tirado = move_toward(_tirado, quiere_tirado, delta * 3.0)
 
 	# La pose entra y sale suave: sin esto los brazos se teletransportan.
 	var wants_pose := _pose != &""
@@ -327,6 +348,16 @@ func _process(delta: float) -> void:
 	_root.rotation.z = lerpf(_root.rotation.z, banqueo * clampf(amount, 0.0, 1.0), delta * 9.0)
 	# Hacia adelante al correr. Poco: pasado de rosca el personaje parece que se cae.
 	_root.rotation.x = lerpf(_root.rotation.x, -0.085 * clampf(speed / 8.0, 0.0, 1.0), delta * 6.0)
+	# TIRADO, AL FINAL DE TODO: el balanceo de la caminata y la inclinacion de arriba
+	# escriben la altura y el giro del cuerpo cada frame, y aplicado antes lo pisaban. El
+	# personaje nunca llegaba a acostarse.
+	#
+	# BOCA ARRIBA y no boca abajo: el giro es sobre los pies, y hacia atras deja la cara
+	# mirando al cielo, que es lo que la camara de una escena necesita ver. Un poco
+	# levantado, porque acostado sobre los pies el torso quedaria medio hundido en el piso.
+	if _tirado > 0.0:
+		_root.rotation.x = 1.45 * _tirado
+		_root.position.y = 0.18 * _tirado
 
 	_animate_face(delta)
 	# Y la cabeza mira levemente hacia donde va.
@@ -412,6 +443,63 @@ func _pose_targets() -> Dictionary:
 				"spread_l": -0.80, "spread_r": 0.10,
 				"torso": 0.14,
 			}
+		# --- Las de las cinematicas: gestos, no ataques ---
+		&"brazos_cruzados":
+			# Esperando, desafiante. Lo que hace Dio cuando no piensa moverse.
+			return {
+				"arm_l": 1.25, "arm_r": 1.25,
+				"elbow_l": -1.9, "elbow_r": -1.9,
+				"spread_l": -0.95, "spread_r": 0.95,
+				"torso": 0.06,
+			}
+		&"senalar":
+			# El brazo derecho estirado al frente: "vos".
+			return {
+				"arm_l": 0.10, "arm_r": 1.55,
+				"elbow_l": -0.20, "elbow_r": -0.05,
+				"spread_l": 0.05, "spread_r": 0.0,
+				"torso": -0.06,
+			}
+		&"saludo":
+			# La mano arriba, abierta. Goku llegando, Sonic de lejos.
+			return {
+				"arm_l": 0.0, "arm_r": 2.85,
+				"elbow_l": -0.15, "elbow_r": -0.65,
+				"spread_l": 0.0, "spread_r": -0.35,
+				"torso": 0.04,
+			}
+		&"victoria":
+			# El puño arriba.
+			return {
+				"arm_l": 0.25, "arm_r": 2.95,
+				"elbow_l": -0.30, "elbow_r": -0.10,
+				"spread_l": 0.10, "spread_r": -0.15,
+				"torso": 0.14,
+			}
+		&"pensar":
+			# Una mano al menton y el otro brazo debajo del codo: Rick calculando.
+			return {
+				"arm_l": 0.90, "arm_r": 1.10,
+				"elbow_l": -1.60, "elbow_r": -2.25,
+				"spread_l": -0.60, "spread_r": 0.35,
+				"torso": -0.05,
+			}
+		&"desafio":
+			# En guardia: los puños arriba, el cuerpo apenas adelante.
+			return {
+				"arm_l": 1.20, "arm_r": 1.00,
+				"elbow_l": -1.60, "elbow_r": -1.80,
+				"spread_l": -0.30, "spread_r": 0.30,
+				"torso": -0.15,
+			}
+		&"tirado":
+			# El cuerpo se acuesta aparte (ver _tirado); los brazos, abiertos y sueltos.
+			return {
+				"arm_l": 0.40, "arm_r": 0.40,
+				"elbow_l": -0.20, "elbow_r": -0.20,
+				"spread_l": 0.70, "spread_r": -0.70,
+				"torso": 0.0,
+			}
 		&"release":
 			# Al soltar: los dos brazos al frente, torso volcado hacia adelante.
 			return {
@@ -427,6 +515,23 @@ func _pose_targets() -> Dictionary:
 				"spread_l": 0.0, "spread_r": 0.0,
 				"torso": 0.0,
 			}
+
+
+## Una pose pedida por una cinematica: &"brazos_cruzados", &"senalar", &"saludo",
+## &"victoria", &"pensar", &"desafio", &"tirado", o cualquiera de las de habilidad
+## (&"channel_up", &"kame", &"release"...). `duracion` < 0 la deja puesta hasta otra.
+##
+## SOLO LAS CINEMATICAS. En una pelea las poses salen del estado del cuerpo —si pega, si
+## canaliza, si le pegan— y una pose puesta a mano ahi mentiria sobre lo que esta pasando.
+func actuar(pose: StringName, duracion: float = -1.0) -> void:
+	_pose_guion = pose
+	_pose_guion_t = duracion if duracion > 0.0 else -1.0
+	if pose == &"":
+		_pose = &""
+
+
+func dejar_de_actuar() -> void:
+	actuar(&"")
 
 
 ## Una embestida acaba de conectar. Lo llama Player cuando el servidor lo avisa.

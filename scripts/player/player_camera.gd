@@ -69,7 +69,8 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not _active:
+	# En una cinematica la camara es la de la escena: mover el mouse no gira nada.
+	if not _active or Cinematica.activa:
 		return
 	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		return
@@ -107,7 +108,7 @@ func _factor_sensibilidad() -> float:
 ## no tiene por que moverse mientras tanto.
 func _girar_con_stick(delta: float) -> void:
 	var v := Input.get_vector(&"mirar_izquierda", &"mirar_derecha", &"mirar_arriba", &"mirar_abajo")
-	if v.is_zero_approx() or Mando.hay_menu_abierto():
+	if v.is_zero_approx() or Mando.hay_menu_abierto() or Cinematica.activa:
 		return
 	var giro := v * v.length() * GIRO_MANDO * _factor_sensibilidad() * delta
 	_girar(giro.x, giro.y)

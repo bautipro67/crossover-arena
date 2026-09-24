@@ -119,6 +119,9 @@ func _revisar_camino(desde: Vector3, hasta: Vector3) -> bool:
 		var cuerpo := golpe.get("collider") as Node3D
 		if cuerpo == null or cuerpo == shooter or not cuerpo.is_in_group("players"):
 			continue
+		# Un aliado no frena el disparo: lo atraviesa, como si no estuviera.
+		if CombatUtils.son_aliados(shooter, cuerpo):
+			continue
 		var health := cuerpo.get_node_or_null("Health") as Health
 		if health == null or health.is_dead:
 			continue

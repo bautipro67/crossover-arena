@@ -94,7 +94,7 @@ static func bots_en_oleada(n: int) -> int:
 ##   jefe y pasaba ese umbral en el segundo, asi que el jefe 1 se ganaba y el 2 no.
 func vida_bot(id: int = 0) -> float:
 	if actual == HISTORIA:
-		return float(_enemigo(id).get("vida", 60.0))
+		return mision.vida_de(id) if is_instance_valid(mision) else 60.0
 	match actual:
 		PRACTICA: return 170.0
 		DUELO: return 150.0
@@ -113,7 +113,7 @@ func vida_bot(id: int = 0) -> float:
 ## distinto: un eco no pega como Dio.
 func daño_bot(id: int = 0) -> float:
 	if actual == HISTORIA:
-		return float(_enemigo(id).get("daño", 0.3))
+		return mision.daño_de(id) if is_instance_valid(mision) else 0.4
 	match actual:
 		PRACTICA: return GameConfig.BOT_DAMAGE_SCALE
 		DUELO: return 0.72
@@ -137,32 +137,10 @@ var colina_dentro: bool = false
 var _terminado: bool = false
 ## El capitulo que se esta jugando en el modo historia. -1 = ninguno.
 var capitulo: int = -1
-
-
-## El enemigo de la historia que le toca a un bot, por su peer (-1 es el primero).
-func _enemigo(id: int) -> Dictionary:
-	var lista: Array = Historia.capitulo(capitulo).get("enemigos", [])
-	var i := absi(id) - 1
-	if i < 0 or i >= lista.size():
-		return {}
-	return lista[i]
-
-
-## El personaje de un bot. En la historia lo dice el capitulo; afuera, no aplica.
-func personaje_bot(indice: int) -> StringName:
-	var lista: Array = Historia.capitulo(capitulo).get("enemigos", [])
-	if actual != HISTORIA or indice < 0 or indice >= lista.size():
-		return &""
-	return StringName(lista[indice]["personaje"])
-
-
-## Como se llama un bot arriba de la cabeza, y si es un eco. Solo en la historia.
-func nombre_bot(id: int) -> String:
-	return String(_enemigo(id).get("nombre", "")) if actual == HISTORIA else ""
-
-
-func es_eco(id: int) -> bool:
-	return actual == HISTORIA and bool(_enemigo(id).get("eco", false))
+## La pelea del capitulo, mientras dura. EN LA HISTORIA MANDA ELLA: quien aparece, de que
+## lado, cuanto aguanta y pega cada uno, y cuando se gana o se pierde. Este archivo solo
+## le pregunta. Ver MisionHistoria.
+var mision: Node = null
 
 
 ## Arranca un capitulo de la historia.
@@ -235,7 +213,8 @@ func bots_iniciales() -> int:
 		DUELO: return 1
 		JEFES: return 1
 		COLINA: return BOTS_COLINA
-		HISTORIA: return (Historia.capitulo(capitulo).get("enemigos", []) as Array).size()
+		# La arena no pone a nadie: los pone la mision, cada uno con su lado y su papel.
+		HISTORIA: return 0
 	return 0
 
 
@@ -315,10 +294,7 @@ func bot_murio(vivos_restantes: int) -> int:
 			_finalizar(true, "¡GANASTE EL DUELO!", "En %s" % reloj())
 			return 0
 		HISTORIA:
-			# Nadie reaparece: el capitulo se gana cuando no queda ninguno en pie.
-			if vivos_restantes <= 0:
-				_finalizar(true, "¡CAPÍTULO %d COMPLETADO!" % (capitulo + 1),
-					String(Historia.capitulo(capitulo).get("titulo", "")))
+			# Quien gana lo decide la mision, con su objetivo: no siempre es "no queda nadie".
 			return 0
 		JEFES:
 			if bajas >= JEFES_TOTAL:
@@ -364,7 +340,15 @@ func jugador_murio() -> void:
 		ULTIMO_EN_PIE:
 			_finalizar(false, "TE GANARON", "%d de %d" % [bajas, BOTS_ULTIMO_EN_PIE])
 		HISTORIA:
-			_finalizar(false, "CAÍSTE", "El capítulo se puede volver a intentar cuando quieras.")
+			# Tambien la mision: escucha la muerte del jugador por su cuenta.
+			pass
+
+
+## El final de un capitulo. Lo llama la mision.
+func terminar_historia(gano: bool, titulo: String, detalle: String) -> void:
+	if actual != HISTORIA:
+		return
+	_finalizar(gano, titulo, detalle)
 
 
 func _finalizar(gano: bool, titulo: String, detalle: String) -> void:
@@ -398,7 +382,7 @@ func marcador() -> String:
 		JEFES:
 			return "JEFE %d / %d    %s" % [mini(bajas + 1, JEFES_TOTAL), JEFES_TOTAL, reloj()]
 		HISTORIA:
-			return "CAPÍTULO %d    QUEDAN %d" % [capitulo + 1, maxi(0, bots_iniciales() - bajas)]
+			return mision.texto_objetivo() if is_instance_valid(mision) else ""
 		COLINA:
 			# Dice tambien si el reloj esta corriendo: sin eso, estar afuera se ve igual que
 			# estar adentro y no se entiende por que no avanza.

@@ -60,6 +60,22 @@ var _combo_daño_label: Label = null
 var _combo_golpes: int = 0
 var _combo_daño: float = 0.0
 var _combo_ultimo: float = -10.0
+
+# --- Lo del modo historia ---
+var _anuncio: Label = null
+var _charla: PanelContainer = null
+var _charla_retrato: Control = null
+var _charla_nombre: Label = null
+var _charla_texto: Label = null
+var _charla_fila: HBoxContainer = null
+## Lineas esperando turno: [quien, texto]. Una por vez, para que se lean.
+var _charla_cola: Array = []
+var _charla_t: float = 0.0
+var _aliados_caja: VBoxContainer = null
+var _aliados_barras: Dictionary = {}
+var _jefe_caja: VBoxContainer = null
+var _jefe_nombre: Label = null
+var _jefe_barra: Panel = null
 var _ability_widgets: Array[Dictionary] = []
 
 var _channel_box: Control = null
@@ -107,6 +123,7 @@ func _build() -> void:
 	_build_modo(root)
 	_build_progreso(root)
 	_build_combo(root)
+	_build_historia(root)
 	_aplicar_dispositivo()
 
 
@@ -153,6 +170,169 @@ func _build_combo(root: Control) -> void:
 	_combo_daño_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_combo_caja.add_child(_combo_daño_label)
 	FX.golpe_propio.connect(_on_golpe_propio)
+
+
+## Lo que agrega el modo historia: el anuncio del objetivo, las lineas en plena pelea con
+## su retrato, las barras de los aliados y la del jefe. Fuera de la historia, todo oculto.
+func _build_historia(root: Control) -> void:
+	_anuncio = UITheme.make_label("", 34, UITheme.GOLD)
+	_anuncio.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_anuncio.offset_left = -520.0
+	_anuncio.offset_right = 520.0
+	_anuncio.offset_top = 150.0
+	_anuncio.offset_bottom = 200.0
+	_anuncio.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_anuncio.add_theme_constant_override("outline_size", 9)
+	_anuncio.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_anuncio.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_anuncio.modulate.a = 0.0
+	root.add_child(_anuncio)
+
+	# LA LINEA EN PLENA PELEA va a la izquierda, arriba de las barras: como en Xenoverse, el
+	# que habla aparece en un recuadro con su cara y la pelea no se corta.
+	_charla = UITheme.make_panel(Color(0.06, 0.08, 0.13, 0.88))
+	_charla.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	_charla.offset_left = 22.0
+	_charla.offset_right = 470.0
+	_charla.offset_top = 236.0
+	_charla.offset_bottom = 346.0
+	_charla.anchor_bottom = 0.0
+	_charla.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_charla.modulate.a = 0.0
+	root.add_child(_charla)
+	_charla_fila = HBoxContainer.new()
+	_charla_fila.add_theme_constant_override("separation", 10)
+	_charla_fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_charla.add_child(_charla_fila)
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_charla_fila.add_child(col)
+	_charla_nombre = UITheme.make_label("", 15, UITheme.GOLD)
+	_charla_nombre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(_charla_nombre)
+	_charla_texto = UITheme.make_label("", 15, UITheme.TEXT)
+	_charla_texto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_charla_texto.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(_charla_texto)
+
+	_aliados_caja = VBoxContainer.new()
+	_aliados_caja.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_aliados_caja.offset_left = 28.0
+	_aliados_caja.offset_right = 260.0
+	_aliados_caja.offset_top = -300.0
+	_aliados_caja.offset_bottom = -182.0
+	_aliados_caja.alignment = BoxContainer.ALIGNMENT_END
+	_aliados_caja.add_theme_constant_override("separation", 3)
+	_aliados_caja.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_aliados_caja)
+
+	_jefe_caja = VBoxContainer.new()
+	_jefe_caja.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_jefe_caja.offset_left = -300.0
+	_jefe_caja.offset_right = 300.0
+	_jefe_caja.offset_top = 66.0
+	_jefe_caja.offset_bottom = 110.0
+	_jefe_caja.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_jefe_caja.visible = false
+	root.add_child(_jefe_caja)
+	_jefe_nombre = UITheme.make_label("", 16, UITheme.DANGER)
+	_jefe_nombre.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_jefe_nombre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_jefe_caja.add_child(_jefe_nombre)
+	var partes := UITheme.make_bar(UITheme.DANGER, UITheme.HEALTH_TRACK, 12)
+	_jefe_caja.add_child(partes[0])
+	_jefe_barra = partes[1]
+
+
+## Un cartel grande en el centro de arriba, que se va solo: el objetivo al arrancar.
+func anunciar(texto: String, duracion: float = 2.0) -> void:
+	if not is_instance_valid(_anuncio):
+		return
+	_anuncio.text = texto
+	var tw := _anuncio.create_tween()
+	tw.tween_property(_anuncio, "modulate:a", 1.0, 0.25)
+	tw.tween_interval(duracion)
+	tw.tween_property(_anuncio, "modulate:a", 0.0, 0.5)
+
+
+## Una linea dicha en plena pelea. Si hay otra en pantalla, espera su turno.
+func decir_en_batalla(quien: StringName, texto: String) -> void:
+	_charla_cola.append([quien, texto])
+	if _charla_t <= 0.0:
+		_siguiente_charla()
+
+
+func _siguiente_charla() -> void:
+	if _charla_cola.is_empty():
+		var tw := _charla.create_tween()
+		tw.tween_property(_charla, "modulate:a", 0.0, 0.4)
+		return
+	var linea: Array = _charla_cola.pop_front()
+	var quien := StringName(linea[0])
+	# El que habla puede ser un participante con id propio (un eco, "eco1"): se busca que
+	# personaje es para el retrato y el color.
+	var personaje := quien
+	if is_instance_valid(Modos.mision):
+		var b := (Modos.mision.participantes as Dictionary).get(quien) as Player
+		if b != null:
+			personaje = b.character_id
+	if is_instance_valid(_charla_retrato):
+		_charla_retrato.queue_free()
+		_charla_retrato = null
+	if quien != Historia.NARRADOR and CharacterDB.has_character(personaje):
+		_charla_retrato = Retrato.crear(personaje, Vector2(92, 92))
+		_charla_fila.add_child(_charla_retrato)
+		_charla_fila.move_child(_charla_retrato, 0)
+	_charla_nombre.text = Historia.nombre_de(personaje).to_upper() if quien != Historia.NARRADOR else ""
+	_charla_nombre.add_theme_color_override("font_color", Frases.color_de(personaje))
+	_charla_texto.text = String(linea[1])
+	_charla.modulate.a = 1.0
+	# Lo que tarda en leerse, con un minimo: una linea larga no puede irse antes de leerla.
+	_charla_t = clampf(1.6 + float(String(linea[1]).length()) * 0.045, 2.5, 6.0)
+
+
+func _actualizar_historia(delta: float) -> void:
+	if _charla_t > 0.0:
+		_charla_t -= delta
+		if _charla_t <= 0.0:
+			_siguiente_charla()
+	var mision := Modos.mision if Modos.actual == Modos.HISTORIA else null
+	if not is_instance_valid(mision):
+		if is_instance_valid(_jefe_caja):
+			_jefe_caja.visible = false
+		for n: Node in _aliados_caja.get_children():
+			n.queue_free()
+		_aliados_barras.clear()
+		return
+	# --- Los aliados: nombre y vida, chiquito ---
+	var vivos: Array = mision.aliados()
+	for b: Player in vivos:
+		if not _aliados_barras.has(b):
+			var fila := VBoxContainer.new()
+			fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var nom := UITheme.make_label(b.player_name, 11, Color(0.6, 1.0, 0.65))
+			nom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			fila.add_child(nom)
+			var partes := UITheme.make_bar(UITheme.HEALTH, UITheme.HEALTH_TRACK, 7)
+			fila.add_child(partes[0])
+			_aliados_caja.add_child(fila)
+			_aliados_barras[b] = [fila, partes[1]]
+	for b: Variant in _aliados_barras.keys():
+		var par: Array = _aliados_barras[b]
+		if not is_instance_valid(b) or not vivos.has(b):
+			if is_instance_valid(par[0]):
+				par[0].queue_free()
+			_aliados_barras.erase(b)
+			continue
+		var bot := b as Player
+		(par[1] as Panel).anchor_right = clampf(bot.health.current / maxf(1.0, bot.health.max_health), 0.0, 1.0)
+	# --- El jefe ---
+	var jefe: Player = mision.jefe()
+	_jefe_caja.visible = jefe != null
+	if jefe != null:
+		_jefe_nombre.text = jefe.player_name
+		_jefe_barra.anchor_right = clampf(jefe.health.current / maxf(1.0, jefe.health.max_health), 0.0, 1.0)
 
 
 ## Cuanto puede pasar entre un golpe y el siguiente para que siga siendo el mismo combo:
@@ -727,6 +907,7 @@ func _actualizar_modo() -> void:
 func _process(delta: float) -> void:
 	_actualizar_modo()
 	_actualizar_combo()
+	_actualizar_historia(delta)
 	_update_chip(delta)
 	_update_stamina_pulse(delta)
 

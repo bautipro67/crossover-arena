@@ -57,80 +57,68 @@ func _correr() -> void:
 	get_tree().quit()
 
 
-## Los capitulos de la historia: cada uno con SU personaje contra SUS enemigos.
-##
-## Los enemigos van con ids -1, -2... porque asi es como Modos encuentra la vida y el
-## daño de cada uno en el capitulo. Los de los modos libres usan otra numeracion.
+## Los capitulos de la historia, con su MISION DE VERDAD: aliados, objetivo, eventos,
+## refuerzos. Un bot hace de jugador (MisionHistoria.heroe) y las escenas se saltean.
 func _medir_historia() -> void:
+	MisionHistoria.sin_cinematicas = true
+	var args := OS.get_cmdline_user_args()
 	for c in range(Historia.cantidad()):
 		var cap := Historia.capitulo(c)
 		var ganadas := 0
 		var detalle := ""
 		for _prueba in range(PRUEBAS):
 			Modos.iniciar_historia(c)
-			var r: Array = await _pelea_historia(cap)
+			var r: Array = await _pelea_mision(c, cap, StringName(args[1]) if args.size() > 1 else &"")
 			if r[0]:
 				ganadas += 1
 			detalle += "%s(%.0fs) " % ["G" if r[0] else "p", r[1]]
-		print("historia %d %-10s %d/%d   %s" % [c + 1, String(cap["personaje"]), ganadas, PRUEBAS, detalle])
+		print("historia %2d %-10s %2d/%d   %s" % [c + 1, String(cap["personaje"]), ganadas, PRUEBAS, detalle])
+	MisionHistoria.sin_cinematicas = false
 
 
-func _pelea_historia(cap: Dictionary) -> Array:
+## Una pelea de capitulo. Con `heroe` se juega con ese personaje en vez del del capitulo:
+## sirve para separar la dificultad del capitulo de lo bien que un bot maneja al personaje
+## (el bot de Rick, por ejemplo, solo dispara de cerca).
+func _pelea_mision(c: int, cap: Dictionary, heroe: StringName) -> Array:
 	for id in _arena._players.keys().duplicate():
 		if id == Net.local_id():
 			continue
 		var b = _arena._players[id]
 		if is_instance_valid(b): b.queue_free()
 		_arena._players.erase(id)
+	for hijo in _arena.get_children():
+		if hijo is MisionHistoria:
+			hijo.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
 
 	var base: Vector3 = _arena.get_free_spawn_point().origin
-	var personaje := StringName(cap["personaje"])
-	# Con un segundo argumento se juegan todos los capitulos con ESE heroe. Sirve para medir
-	# la dificultad del capitulo aparte de lo bien que un bot maneja al personaje: el bot de
-	# Rick, por ejemplo, solo dispara de cerca, y un capitulo de Rick medido con el daria la
-	# nota del bot y no la del capitulo.
-	var args := OS.get_cmdline_user_args()
-	if args.size() > 1:
-		personaje = StringName(args[1])
+	var personaje := heroe if heroe != &"" else StringName(cap["personaje"])
 	var heroe_id := _siguiente_id; _siguiente_id += 1
 	_arena._crear_bot(heroe_id, base, personaje)
-	var heroe: Player = _arena._players[heroe_id]
-	heroe.set_meta(&"heroe", true)
-	heroe.health.set_max(CharacterDB.get_character(personaje).max_health)
-	heroe.health.revive_full()
-	for c in heroe.died.get_connections():
-		heroe.died.disconnect(c["callable"])
+	var h: Player = _arena._players[heroe_id]
+	h.set_meta(&"heroe", true)
+	h.health.set_max(CharacterDB.get_character(personaje).max_health)
+	h.health.revive_full()
+	for conexion in h.died.get_connections():
+		h.died.disconnect(conexion["callable"])
 
-	var enemigos: Array = cap["enemigos"]
-	var malos: Array = []
-	for i in range(enemigos.size()):
-		var ang := TAU * float(i) / float(maxi(1, enemigos.size())) + 0.4
-		var id := -(i + 1)
-		_arena._crear_bot(id, _arena.find_clear_spot(base + Vector3(cos(ang), 0, sin(ang)) * 11.0, 1.0),
-			StringName(enemigos[i]["personaje"]))
-		var b: Player = _arena._players[id]
-		b.health.set_max(Modos.vida_bot(id))
-		b.health.revive_full()
-		for c in b.died.get_connections():
-			b.died.disconnect(c["callable"])
-		malos.append(b)
-	Arena.set_bots_active(true)
-
+	var m := MisionHistoria.new()
+	m.capitulo = c
+	m.datos = cap
+	m.arena = _arena
+	m.heroe = h
+	var fin := [null]
+	var al_terminar := func(g: bool, _t: String, _d: String) -> void: fin[0] = g
+	Modos.termino.connect(al_terminar)
+	_arena.add_child(m)
 	var t := 0.0
-	while t < TOPE_PELEA:
+	while fin[0] == null and t < 200.0:
 		await get_tree().physics_frame
 		t += 1.0 / 60.0
-		if heroe.health.is_dead:
-			return [false, t]
-		var vivos := 0
-		for b in malos:
-			if is_instance_valid(b) and not b.health.is_dead:
-				vivos += 1
-		if vivos == 0:
-			return [true, t]
-	return [false, t]
+	Modos.termino.disconnect(al_terminar)
+	m.queue_free()
+	return [fin[0] == true, t]
 
 
 ## Una pelea: el héroe contra `enemigos` bots con la vida y el daño que diga el modo.

@@ -96,6 +96,18 @@ static func get_players_in_line(caster: Node3D, origin: Vector3, dir: Vector3,
 	return out
 
 
+## Pelean del mismo lado? Solo si los dos tienen equipo y es el mismo.
+##
+## Sin equipo (-1) nadie es aliado de nadie, que es el todos contra todos de siempre: por
+## eso esto no cambia nada fuera del modo historia.
+static func son_aliados(a: Node, b: Node) -> bool:
+	if not is_instance_valid(a) or not is_instance_valid(b) or a == b:
+		return false
+	var ea: int = int(a.get("equipo")) if a.get("equipo") != null else -1
+	var eb: int = int(b.get("equipo")) if b.get("equipo") != null else -1
+	return ea >= 0 and ea == eb
+
+
 ## Raycast contra el mundo solido. Ignora jugadores y proyectiles.
 static func has_line_of_sight(from_node: Node3D, origin: Vector3, target: Node3D) -> bool:
 	var world := from_node.get_world_3d()
@@ -149,6 +161,12 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 	# atacante igual que unas lineas mas abajo para los recursos, asi que no agrega una
 	# busqueda que no estuviera pasando ya.
 	var atacante := find_player_by_peer(target, source_id)
+	# UN ALIADO NO SE PEGA, venga el golpe por donde venga. Las consultas de area ya los
+	# dejan afuera, pero esto es la ultima puerta: cualquier habilidad que llegue aca con un
+	# blanco de su propio equipo —una nueva, o una que busque blancos a su manera— no le
+	# saca vida a nadie de su lado.
+	if atacante != null and son_aliados(atacante, target):
+		return 0.0
 	if atacante != null:
 		var est := atacante.get_node_or_null("StatusEffects") as StatusEffects
 		if est != null:
@@ -247,6 +265,9 @@ static func _living_targets(caster: Node) -> Array[Node3D]:
 		return out
 	for node: Node in tree.get_nodes_in_group("players"):
 		if node == caster or not is_instance_valid(node):
+			continue
+		# Los del mismo lado no son blanco: un aliado no te puede pegar ni vos a el.
+		if son_aliados(caster, node):
 			continue
 		var n3d := node as Node3D
 		if n3d == null:

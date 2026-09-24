@@ -77,6 +77,14 @@ var bot_wants_run: bool = false
 ## saldrian para cualquier lado.
 var aim_override: Vector3 = Vector3.ZERO
 var character_id: StringName = &"noelle"
+## De que lado pelea. -1 = de ninguno: todos contra todos, que es como se juega en linea.
+##
+## Solo lo usa el modo historia, donde hay ALIADOS: con equipo, los golpes, los
+## proyectiles y los bots no tocan a los del mismo lado. Ver CombatUtils.son_aliados.
+var equipo: int = -1
+## Hacia donde lo hace caminar una cinematica (cero = quieto). Solo mientras hay una
+## cinematica: ahi el teclado no manda, manda la escena.
+var guion_dir: Vector3 = Vector3.ZERO
 
 @onready var health: Health = $Health
 @onready var stamina: Stamina = $Stamina
@@ -302,6 +310,9 @@ func _physics_process(delta: float) -> void:
 
 
 func _handle_local_movement(delta: float) -> void:
+	if Cinematica.activa:
+		_mover_por_guion(delta)
+		return
 	var frozen := not status.can_act()
 	var channeling: bool = caster.is_channeling
 
@@ -368,7 +379,7 @@ func _handle_local_movement(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_local_player() or health.is_dead:
+	if not is_local_player() or health.is_dead or Cinematica.activa:
 		return
 	if not status.can_act():
 		return
@@ -389,6 +400,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		# mismo que el del HUD a proposito: si no coincidieran, cada vez que alguien
 		# agregue una habilidad tendria que acordarse de la excepcion.
 		caster.request_use(3)
+
+
+## El jugador en una cinematica: camina hacia guion_dir y mira hacia donde la escena puso
+## la camara del jugador. Sin correr: en una escena se camina, no se pelea.
+func _mover_por_guion(delta: float) -> void:
+	if not is_on_floor():
+		velocity.y -= _gravity * delta
+	var plano := Vector3(guion_dir.x, 0.0, guion_dir.z)
+	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	var objetivo := plano.normalized() * walk_speed if not plano.is_zero_approx() else Vector3.ZERO
+	horizontal = horizontal.move_toward(objetivo, acceleration * delta * walk_speed)
+	velocity.x = horizontal.x
+	velocity.z = horizontal.z
+	rotation.y = camera_pivot.get_yaw()
+	move_and_slide()
 
 
 ## Con un mando, un menu abierto encima de la partida se maneja con el mismo stick y los

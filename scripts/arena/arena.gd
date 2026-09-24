@@ -904,11 +904,7 @@ func _spawn_dummies() -> void:
 		cuantos = Modos.bots_iniciales() if Modos.es_offline() else Practica.bots
 	for i: int in range(cuantos):
 		var base: Vector3 = puestos[i] if i < puestos.size() else Vector3(float(i) * 8.0, 0.0, -30.0)
-		# En la historia cada enemigo es el que dice el capitulo; si no, se van alternando.
-		var quien := Modos.personaje_bot(i)
-		if quien == &"":
-			quien = ids[i % ids.size()]
-		_crear_bot(-(i + 1), find_clear_spot(base, 1.0), quien)
+		_crear_bot(-(i + 1), find_clear_spot(base, 1.0), ids[i % ids.size()])
 
 
 ## Un bot mas, en caliente. Lo usan las oleadas de supervivencia y el goteo de
@@ -942,9 +938,6 @@ func _crear_bot(id: int, pos: Vector3, character_id: StringName) -> void:
 	bot.peer_id = id
 	bot.is_dummy = true
 	bot.player_name = "Bot %s" % data.display_name.split(" ")[0]
-	# En la historia se llaman como los llama el capitulo: "Rick", "DIO", "Eco".
-	if not Modos.nombre_bot(id).is_empty():
-		bot.player_name = Modos.nombre_bot(id)
 	add_child(bot)
 	bot.global_position = pos
 	bot.home_position = pos
@@ -955,9 +948,6 @@ func _crear_bot(id: int, pos: Vector3, character_id: StringName) -> void:
 	# mientras ensayas— y en un modo que se puede perder estaba al reves: medido, un
 	# jugador de habilidad de bot no mataba ni uno en cuarenta segundos.
 	bot.health.set_max(Modos.vida_bot(id) if Net.solo_mode else DUMMY_HEALTH)
-	# Los ecos de la historia: la misma forma, oscura y sin cara.
-	if Modos.es_eco(id):
-		bot.visual.volverse_eco()
 
 	# El servidor es el dueño de las habilidades del bot.
 	#

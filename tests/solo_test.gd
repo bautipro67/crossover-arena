@@ -581,109 +581,186 @@ func _test_historia(main: Node) -> void:
 	Progreso.historia = {}
 
 	# --- Los datos: que todo lo que nombra la historia exista ---
-	_check(Historia.cantidad() == 5, "la parte 1 tiene cinco capitulos (%d)" % Historia.cantidad())
+	_check(Historia.cantidad() == 10, "la parte 1 tiene diez capitulos (%d)" % Historia.cantidad())
+	var pasos_validos := ["decir", "narrar", "plano", "colocar", "mover", "mirar", "pose", "grito",
+		"habilidad", "aparecer", "desaparecer", "temblor", "esperar", "fundido", "titulo"]
 	var roto := ""
+	var hay_aliados := false
+	var tipos: Dictionary = {}
 	for i: int in range(Historia.cantidad()):
 		var cap := Historia.capitulo(i)
 		var pj := StringName(cap.get("personaje", ""))
-		if not CharacterDB.has_character(pj):
+		if not CharacterDB.has_character(pj) or CharacterDB.get_character(pj).requiere_desbloqueo:
 			roto += "cap%d:personaje " % i
-		elif CharacterDB.get_character(pj).requiere_desbloqueo:
-			# Un capitulo que se juega con alguien que hay que ganarse dejaria la historia
-			# cerrada detras del pase.
-			roto += "cap%d:personaje-bloqueado " % i
-		if (cap.get("enemigos", []) as Array).is_empty():
-			roto += "cap%d:sin-enemigos " % i
-		for e: Dictionary in cap.get("enemigos", []):
-			if not CharacterDB.has_character(StringName(e["personaje"])):
-				roto += "cap%d:enemigo " % i
-		for parte: String in ["antes", "despues"]:
-			if (cap.get(parte, []) as Array).is_empty():
-				roto += "cap%d:%s-vacio " % [i, parte]
-			for linea: Array in cap.get(parte, []):
-				var quien := StringName(linea[0])
-				if quien != Historia.NARRADOR and not CharacterDB.has_character(quien):
-					roto += "cap%d:hablante-%s " % [i, quien]
-	_check(roto.is_empty(), "cada capitulo nombra personajes que existen y tiene sus dos charlas %s" % roto)
+		var ids: Dictionary = {pj: true}
+		for lado: String in ["aliados", "enemigos"]:
+			for d: Dictionary in cap.get(lado, []):
+				if not CharacterDB.has_character(StringName(d["personaje"])):
+					roto += "cap%d:%s " % [i, d["id"]]
+				ids[StringName(d["id"])] = true
+				if lado == "aliados":
+					hay_aliados = true
+		tipos[String((cap["objetivo"] as Dictionary)["tipo"])] = true
+		# Los refuerzos tambien son ids validos para los eventos.
+		for ev: Array in cap.get("eventos", []):
+			for acc: Array in ev[1]:
+				if String(acc[0]) == "refuerzos":
+					for d: Dictionary in acc[1]:
+						ids[StringName(d["id"])] = true
+		for escena: String in ["intro", "outro"]:
+			var conocidos := ids.duplicate()
+			for paso: Array in cap.get(escena, []):
+				if not pasos_validos.has(String(paso[0])):
+					roto += "cap%d:%s:paso-%s " % [i, escena, paso[0]]
+				if String(paso[0]) == "aparecer":
+					conocidos[StringName(paso[1])] = true
+				if String(paso[0]) in ["decir", "colocar", "mover", "pose", "grito", "habilidad", "desaparecer"]:
+					if not conocidos.has(StringName(paso[1])):
+						roto += "cap%d:%s:actor-%s " % [i, escena, paso[1]]
+				if String(paso[0]) == "grito" and paso.size() > 3 and not Sfx._bank.has(StringName(paso[3])):
+					roto += "cap%d:voz-%s " % [i, paso[3]]
+		if (cap.get("intro", []) as Array).is_empty() or (cap.get("outro", []) as Array).is_empty():
+			roto += "cap%d:sin-escenas " % i
+	_check(roto.is_empty(), "cada capitulo nombra personajes, actores y voces que existen %s" % roto)
+	_check(hay_aliados and tipos.size() >= 5,
+		"hay capitulos con aliados, y objetivos de %d tipos distintos (%s)" % [tipos.size(), ", ".join(tipos.keys())])
 
-	# --- Se abren en orden ---
+	# --- Los equipos: un aliado no te pega ni vos a el ---
 	_check(Progreso.capitulo_disponible(0) and not Progreso.capitulo_disponible(1),
 		"de entrada solo se puede jugar el capitulo 1")
 
-	# --- El cuadro de dialogo: completa, pasa y termina ---
-	var d := DialogoHistoria.new()
-	d.lineas = [[&"noelle", "Hola."], [Historia.NARRADOR, "Una linea bastante mas larga que la primera."]]
-	var terminados := [0]
-	d.terminado.connect(func() -> void: terminados[0] += 1)
-	add_child(d)
-	await get_tree().process_frame
-	d._texto.visible_characters = 0
-	d.avanzar()
-	_check(d._i == 0 and d._texto.visible_characters == -1,
-		"el primer toque completa la linea que se estaba escribiendo, no la saltea")
-	d.avanzar()
-	_check(d._i == 1 and not d._marco_retrato.visible,
-		"el segundo pasa a la siguiente, y el narrador no tiene retrato")
-	d.avanzar()
-	d.avanzar()
-	d.avanzar()
-	_check(terminados[0] == 1, "al pasar la ultima linea termina, una sola vez (%d)" % terminados[0])
-	d.queue_free()
-
-	# --- Un capitulo entero, de punta a punta ---
+	# --- TODOS LOS CAPITULOS DE PUNTA A PUNTA, con sus escenas ---
+	#
+	# Las escenas pasan solas (Cinematica.automatica) y la pelea se fuerza: lo que se prueba
+	# es que cada escena y cada evento corran sin romperse, y que ganar lleve a la
+	# siguiente. Lo que tarda o cuesta cada pelea lo mide la simulacion de balance.
+	Cinematica.automatica = true
 	var antes_pj := Net.local_character_id
 	Net.set_local_character("dio")
-	main.jugar_capitulo(0)
-	for _i: int in range(20):
-		await get_tree().process_frame
-	var arena: Arena = main.get_node_or_null("Arena") as Arena
-	_check(arena != null and Modos.actual == Modos.HISTORIA, "el capitulo arranca una partida de historia")
-	if arena == null:
-		Progreso.guardado_activo = true
-		Progreso.cargar()
-		return
-	var jugador := arena.get_local_player()
-	_check(jugador != null and jugador.character_id == &"noelle",
-		"y se juega con el personaje del capitulo, no con el que tenias elegido (%s)" % [
-			jugador.character_id if jugador != null else &"?"])
-	var ecos: Array[Player] = []
-	for hijo: Node in arena.get_children():
-		var p := hijo as Player
-		if p != null and p.is_dummy:
-			ecos.append(p)
-	var esperados := (Historia.capitulo(0)["enemigos"] as Array).size()
-	var bien := ecos.size() == esperados
-	for e: Player in ecos:
-		var dato: Dictionary = Historia.capitulo(0)["enemigos"][absi(e.peer_id) - 1]
-		bien = bien and e.character_id == StringName(dato["personaje"]) \
-			and is_equal_approx(e.health.max_health, float(dato["vida"])) \
-			and e.player_name == String(dato["nombre"])
-	_check(bien, "los enemigos son los del capitulo, con su vida y su nombre (%d de %d)" % [ecos.size(), esperados])
-	_check(not ecos.is_empty() and not ecos[0].visual._eye_l.visible,
-		"y los ecos no tienen cara")
+	var fallas := ""
+	for i: int in range(Historia.cantidad()):
+		main.jugar_capitulo(i)
+		var mision: MisionHistoria = null
+		var espera := 0.0
+		while espera < 25.0:
+			await get_tree().create_timer(0.1).timeout
+			espera += 0.1
+			mision = Modos.mision as MisionHistoria
+			if mision != null and mision._en_pelea:
+				break
+		if mision == null or not mision._en_pelea:
+			fallas += "cap%d:no-arranco " % (i + 1)
+			continue
+		var p := mision.jugador()
+		if i == 0:
+			_check(p != null and p.character_id == &"noelle" and p.equipo == 0,
+				"el capitulo se juega con su personaje, no con el que tenias elegido")
+			var ecos := 0
+			for id: StringName in mision.participantes:
+				var b := mision.participantes[id] as Player
+				if b != p and b.equipo == 1 and b.player_name == "Eco" and not b.visual._eye_l.visible:
+					ecos += 1
+			_check(ecos == 3, "los ecos del capitulo 1 son tres, del otro equipo y sin cara (%d)" % ecos)
+		if i == 2:
+			var rick := mision.participantes.get(&"rick") as Player
+			var antes := rick.health.current if rick != null else 0.0
+			if rick != null:
+				CombatUtils.deal_damage(rick, 30.0, p.peer_id)
+			_check(rick != null and CombatUtils.son_aliados(p, rick) and is_equal_approx(rick.health.current, antes)
+				and not CombatUtils._living_targets(p).has(rick),
+				"un aliado no es blanco: los golpes del jugador no lo tocan")
+		# Los eventos de vida: se lleva a cada uno a su umbral para que corra su escena.
+		for ev: Array in Historia.capitulo(i).get("eventos", []):
+			var cond: Array = ev[0]
+			if String(cond[0]) != "vida":
+				continue
+			var b := mision.participantes.get(StringName(cond[1])) as Player
+			if b == null or b.health.is_dead:
+				continue
+			var objetivo := b.health.max_health * float(cond[2]) - 1.0
+			if b.health.current > objetivo:
+				b.health.apply_damage(b.health.current - objetivo, 1)
+			var t := 0.0
+			await get_tree().create_timer(0.2).timeout
+			while (Cinematica.activa or not mision._en_pelea) and t < 20.0 and not mision.terminada:
+				await get_tree().create_timer(0.1).timeout
+				t += 0.1
+		var gano := [false]
+		var al_terminar := func(g: bool, _t: String, _d: String) -> void: gano[0] = g
+		Modos.termino.connect(al_terminar)
+		mision._ganar()
+		espera = 0.0
+		while not gano[0] and espera < 30.0:
+			await get_tree().create_timer(0.1).timeout
+			espera += 0.1
+		Modos.termino.disconnect(al_terminar)
+		if not gano[0]:
+			fallas += "cap%d:no-termino " % (i + 1)
+		# El menu vuelve a los 3 s del resultado.
+		await get_tree().create_timer(3.4).timeout
+		if not Progreso.capitulo_completado(i):
+			fallas += "cap%d:no-se-guardo " % (i + 1)
+		for hijo: Node in main.get_children():
+			if hijo is HistoriaMenu:
+				hijo.queue_free()
+	_check(fallas.is_empty(),
+		"los diez capitulos corren enteros: escena de entrada, eventos, pelea y escena final %s" % fallas)
+	_check(Progreso.capitulo_completado(9) and Net.local_character_id == "dio",
+		"ganar el ultimo cierra la parte 1, y te devuelve el personaje que tenias elegido")
+	Cinematica.automatica = false
 
-	for e: Player in ecos:
-		e.health.apply_damage(99999.0, 1)
-	await get_tree().create_timer(3.6).timeout
-	var dialogo: DialogoHistoria = null
+	# --- Perder: caer ---
+	Progreso.historia = {}
+	MisionHistoria.sin_cinematicas = true
+	main.jugar_capitulo(0)
+	var mm: MisionHistoria = null
+	var ee := 0.0
+	while ee < 10.0:
+		await get_tree().create_timer(0.1).timeout
+		ee += 0.1
+		mm = Modos.mision as MisionHistoria
+		if mm != null and mm._en_pelea:
+			break
+	var cayo := [false]
+	var al_caer := func(g: bool, _t: String, _d: String) -> void: cayo[0] = not g
+	Modos.termino.connect(al_caer)
+	if mm != null and mm.jugador() != null:
+		mm.jugador().health.apply_damage(9999.0, -1)
+	await get_tree().create_timer(0.3).timeout
+	Modos.termino.disconnect(al_caer)
+	_check(cayo[0], "si cae el jugador, se pierde el capitulo")
+	await get_tree().create_timer(3.4).timeout
 	for hijo: Node in main.get_children():
-		if hijo is DialogoHistoria:
-			dialogo = hijo
-	_check(Progreso.capitulo_completado(0) and Progreso.capitulo_disponible(1),
-		"ganar el capitulo lo marca y abre el siguiente")
-	_check(dialogo != null, "y al ganar viene la charla de despues")
-	if dialogo != null:
-		dialogo._terminar()
-		await get_tree().process_frame
-	var lista: HistoriaMenu = null
+		if hijo is HistoriaMenu:
+			hijo.queue_free()
+
+	# --- Perder: proteger a alguien que cae ---
+	Progreso.historia = {"0": true, "1": true}
+	MisionHistoria.sin_cinematicas = true
+	main.jugar_capitulo(2)
+	var m: MisionHistoria = null
+	var e := 0.0
+	while e < 10.0:
+		await get_tree().create_timer(0.1).timeout
+		e += 0.1
+		m = Modos.mision as MisionHistoria
+		if m != null and m._en_pelea:
+			break
+	var perdio := [false]
+	var al_perder := func(g: bool, _t: String, _d: String) -> void: perdio[0] = not g
+	Modos.termino.connect(al_perder)
+	var protegido := m.participantes.get(&"rick") as Player if m != null else null
+	if protegido != null:
+		protegido.health.apply_damage(9999.0, -2)
+	await get_tree().create_timer(0.3).timeout
+	Modos.termino.disconnect(al_perder)
+	_check(perdio[0], "si cae el que habia que proteger, se pierde el capitulo")
+	await get_tree().create_timer(3.4).timeout
 	for hijo: Node in main.get_children():
-		if hijo is HistoriaMenu and not hijo.is_queued_for_deletion():
-			lista = hijo
-	_check(lista != null, "y despues de la charla, de vuelta a la lista de capitulos")
-	_check(Net.local_character_id == "dio",
-		"y te devuelve el personaje que tenias elegido (%s)" % Net.local_character_id)
-	if lista != null:
-		lista.queue_free()
+		if hijo is HistoriaMenu:
+			hijo.queue_free()
+	_check(not Progreso.capitulo_completado(2), "y perder no lo marca como ganado")
+	MisionHistoria.sin_cinematicas = false
 
 	# Todo como estaba: el modo, el personaje y el archivo del jugador.
 	Modos.iniciar(Modos.ONLINE)
@@ -1337,7 +1414,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 229
+const CHEQUEOS_MINIMOS: int = 227
 
 
 func _finish() -> void:

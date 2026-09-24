@@ -90,9 +90,12 @@ gente.
 ═══ MODO HISTORIA — PARTE 1: LA GRIETA ═══
 
 Un experimento de Rick rompe la pared entre los mundos, y todo lo que cae por la grieta
-termina en la Arena. Cinco capítulos con diálogos y una pelea en cada uno: jugás con
-Noelle, con Sonic y con Rick, contra los ecos que fabrica la Arena y contra quien la
-quiere para él.
+termina en la Arena: un coliseo entre mundos que vive de las peleas. Diez capítulos con
+escenas cinematográficas hechas en el propio juego —planos, primeros planos, técnicas en
+pantalla— y peleas con objetivos: proteger a Rick mientras arma un rastreador, aguantar
+en una zona, sobrevivir frente a DIO, pelear junto a aliados que se suman en el medio.
+Jugás con Noelle, Sonic, Rick y Flowery, contra los ecos que fabrica la Arena y contra
+quien la quiere para él.
 
 ═══ COMBOS ═══
 
