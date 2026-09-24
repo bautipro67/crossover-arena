@@ -46,6 +46,8 @@ var _charge_fill: Panel = null
 var _charge_label: Label = null
 
 var _ability_row: HBoxContainer = null
+## Las barras de vida, stamina y ultimate. Guardadas para moverlas con el dedo.
+var _barras: Control = null
 var _ability_widgets: Array[Dictionary] = []
 
 var _channel_box: Control = null
@@ -92,6 +94,7 @@ func _build() -> void:
 	_build_scoreboard(root)
 	_build_modo(root)
 	_build_progreso(root)
+	_aplicar_dispositivo()
 
 
 ## Los avisos de progreso: monedas ganadas y subidas de nivel.
@@ -118,6 +121,7 @@ func _build_progreso(root: Control) -> void:
 	# Opciones se puede abrir desde la pausa en plena partida: si se cambia una tecla ahi,
 	# las casillas de abajo tienen que enterarse sin esperar a la proxima partida.
 	Controles.cambio.connect(_on_controles_cambio)
+	Controles.dispositivo_cambio.connect(_on_dispositivo_cambio)
 	Progreso.subio_nivel.connect(_on_subio_nivel)
 
 
@@ -128,6 +132,8 @@ func _exit_tree() -> void:
 		Progreso.subio_nivel.disconnect(_on_subio_nivel)
 	if Controles.cambio.is_connected(_on_controles_cambio):
 		Controles.cambio.disconnect(_on_controles_cambio)
+	if Controles.dispositivo_cambio.is_connected(_on_dispositivo_cambio):
+		Controles.dispositivo_cambio.disconnect(_on_dispositivo_cambio)
 
 
 func _on_monedas(total: int) -> void:
@@ -232,6 +238,7 @@ func _build_bars(root: Control) -> void:
 	holder.add_theme_constant_override("separation", 6)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(holder)
+	_barras = holder
 
 	# --- Vida ---
 	_health_label = UITheme.make_label("VIDA  100 / 100", 13, UITheme.TEXT_DIM)
@@ -603,6 +610,40 @@ func _on_controles_cambio() -> void:
 	for i: int in range(_etiquetas_tecla.size()):
 		if is_instance_valid(_etiquetas_tecla[i]) and i < ACCIONES_HABILIDAD.size():
 			_etiquetas_tecla[i].text = Controles.nombre_tecla(ACCIONES_HABILIDAD[i])
+	# La barra del ultimate tambien nombra su tecla cuando esta lista.
+	if is_instance_valid(_player):
+		_on_charge_changed(_player.ultimate.current, UltimateCharge.MAX_CHARGE)
+
+
+func _on_dispositivo_cambio() -> void:
+	_on_controles_cambio()
+	_aplicar_dispositivo()
+
+
+## Con el dedo, el HUD le deja lugar a los botones de la pantalla.
+##
+## LAS CARTAS DE HABILIDADES Y EL DASH SE ESCONDEN: quedaban exactamente debajo de los
+## botones táctiles, y cada boton ya muestra su propio cooldown. Las barras se mudan al
+## centro de abajo, que es lo unico libre entre el stick y los botones: abajo a la
+## izquierda, donde estaban, es donde se apoya el pulgar para caminar.
+func _aplicar_dispositivo() -> void:
+	var tactil := Controles.dispositivo == &"tactil"
+	if is_instance_valid(_ability_row):
+		_ability_row.visible = not tactil
+	if is_instance_valid(_dash_panel):
+		_dash_panel.visible = not tactil
+	if not is_instance_valid(_barras):
+		return
+	if tactil:
+		_barras.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		_barras.offset_left = -180
+		_barras.offset_right = 180
+	else:
+		_barras.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_barras.offset_left = 28
+		_barras.offset_right = 388
+	_barras.offset_top = -172
+	_barras.offset_bottom = -28
 
 
 func _actualizar_modo() -> void:
@@ -849,7 +890,7 @@ func _on_charge_changed(current: float, max_value: float) -> void:
 	var ratio := clampf(current / max_value, 0.0, 1.0) if max_value > 0.0 else 0.0
 	_charge_fill.anchor_right = ratio
 	if ratio >= 0.999:
-		_charge_label.text = "ULTIMATE  LISTO  [Q]"
+		_charge_label.text = "ULTIMATE  LISTO  [%s]" % Controles.nombre_tecla(&"ability_ultimate")
 		_charge_label.add_theme_color_override("font_color", UITheme.GOLD)
 	else:
 		_charge_label.text = "ULTIMATE  %d%%  (se carga pegando)" % int(floor(ratio * 100.0))

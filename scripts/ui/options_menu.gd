@@ -140,6 +140,7 @@ func _ready() -> void:
 	var close := UITheme.make_button("CERRAR", true)
 	close.pressed.connect(func() -> void: closed.emit())
 	box.add_child(close)
+	Mando.anotar(self, close)
 
 	_refresh_labels()
 

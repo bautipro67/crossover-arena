@@ -20,6 +20,9 @@ var _selected_id: StringName = &"noelle"
 func _ready() -> void:
 	UITheme.fill_viewport(self)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# Sin boton de volver para B: en la sala, volver es irse de la partida, y eso no puede
+	# pasar por apretar el boton equivocado.
+	Mando.anotar(self)
 	_selected_id = StringName(Net.local_character_id)
 
 	UITheme.build_background(self)

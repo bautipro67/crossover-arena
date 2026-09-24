@@ -17,6 +17,29 @@ extends Node
 const RUTA: String = "user://controles.cfg"
 
 signal cambio()
+## Paso de teclado a mando, de mando a pantalla tactil, etc. El HUD lo escucha para que
+## los carteles digan "RT" y no "Click izq" a quien esta jugando con un mando.
+signal dispositivo_cambio()
+
+## Con que se esta jugando AHORA: &"teclado" (teclado y mouse), &"mando" o &"tactil".
+##
+## Lo decide el ultimo evento que llego, no lo que haya conectado: un mando enchufado que
+## nadie toca no cambia nada, y quien tiene las dos cosas pasa de una a otra sin tocar
+## ninguna opcion.
+var dispositivo: StringName = &"teclado"
+
+## Como se llaman los botones de la pantalla tactil. Son los que dice cada boton en la
+## pantalla, asi que el HUD, al nombrarlos, nombra algo que el jugador tiene a la vista.
+const ETIQUETA_TACTIL: Dictionary = {
+	&"attack_basic": "GOLPE",
+	&"ability_1": "H1",
+	&"ability_2": "H2",
+	&"ability_ultimate": "ULT",
+	&"dash": "DASH",
+	&"jump": "SALTO",
+	&"scoreboard": "TABLA",
+	&"practice_panel": "PANEL",
+}
 
 ## Las acciones que se pueden cambiar, en el orden en que se muestran, con su nombre.
 ##
@@ -51,8 +74,78 @@ func _ready() -> void:
 	# La cache se borra ANTES que cualquier otro que escuche `cambio` pregunte: conectada
 	# primero, corre primero.
 	cambio.connect(func() -> void: _cache_nombres.clear())
+	dispositivo_cambio.connect(func() -> void: _cache_nombres.clear())
 	# GameConfig es autoload y arranca antes: las de fabrica ya estan puestas.
 	cargar()
+	# En un celular se arranca en tactil: el primer menu ya tiene que servir sin haber
+	# tocado nada, y el juego no puede esperar a un toque para saber que no hay teclado.
+	if es_celular():
+		dispositivo = &"tactil"
+
+
+## Un celular o una tablet. En el navegador, Godot lo sabe por el sistema operativo.
+static func es_celular() -> bool:
+	return OS.has_feature("web_android") or OS.has_feature("web_ios") \
+		or OS.has_feature("android") or OS.has_feature("ios")
+
+
+## Cambia el dispositivo y avisa, solo si de verdad cambio.
+func usar(nuevo: StringName) -> void:
+	if nuevo == dispositivo:
+		return
+	dispositivo = nuevo
+	dispositivo_cambio.emit()
+
+
+## Mira cada evento para saber con que se esta jugando. No consume nada.
+##
+## EL MOUSE QUE EN REALIDAD ES UN DEDO NO CUENTA. Godot convierte cada toque en un click
+## de mouse para que los botones de los menus respondan al dedo, y esos clicks llegan con
+## device -1. Si contaran, cada toque haria "tactil -> teclado" en el mismo instante y los
+## botones de la pantalla aparecerian y desaparecerian.
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		usar(&"tactil")
+		return
+	if event.device == InputEvent.DEVICE_ID_EMULATION:
+		return
+	var jb := event as InputEventJoypadButton
+	if jb != null:
+		if jb.pressed:
+			usar(&"mando")
+		return
+	var jm := event as InputEventJoypadMotion
+	if jm != null:
+		# Un stick en reposo manda ruido chico todo el tiempo: solo cuenta si se movio.
+		if absf(jm.axis_value) > 0.5:
+			usar(&"mando")
+		return
+	var k := event as InputEventKey
+	if k != null and k.pressed:
+		usar(&"teclado")
+		return
+	var mb := event as InputEventMouseButton
+	if mb != null and mb.pressed:
+		usar(&"teclado")
+		return
+	# Mover el mouse vuelve del mando al teclado, pero NO de la pantalla tactil: en una
+	# computadora con pantalla tactil el mouse se mueve solo con rozarlo, y apagaria los
+	# botones del dedo que se estan usando.
+	var mm := event as InputEventMouseMotion
+	if mm != null and dispositivo == &"mando" and mm.relative.length() > 4.0:
+		usar(&"teclado")
+
+
+## Captura el mouse para la camara, salvo jugando con el dedo.
+##
+## TODO LO QUE CAPTURA EL MOUSE PASA POR ACA. En un celular no hay mouse que capturar: el
+## navegador rechaza el pedido, y en una computadora con pantalla tactil esconderia el
+## cursor mientras se juega con el dedo.
+func capturar_mouse() -> void:
+	if dispositivo == &"tactil":
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		return
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func es_reasignable(accion: StringName) -> bool:
@@ -69,12 +162,41 @@ func nombre_accion(accion: StringName) -> String:
 	return String(accion)
 
 
-## El evento principal de una accion: el primero de su lista.
+## La tecla de una accion: su primer evento de teclado o de mouse.
+##
+## NO "el primero de la lista" a secas: la lista tambien tiene los del mando, y despues de
+## reasignar una tecla la nueva queda al final, detras de ellos.
 func evento_de(accion: StringName) -> InputEvent:
 	if not InputMap.has_action(accion):
 		return null
-	var eventos := InputMap.action_get_events(accion)
-	return eventos[0] if not eventos.is_empty() else null
+	for ev: InputEvent in InputMap.action_get_events(accion):
+		if _es_de_teclado(ev):
+			return ev
+	return null
+
+
+## El boton del mando de una accion, si tiene.
+func evento_mando_de(accion: StringName) -> InputEvent:
+	if not InputMap.has_action(accion):
+		return null
+	for ev: InputEvent in InputMap.action_get_events(accion):
+		if ev is InputEventJoypadButton or ev is InputEventJoypadMotion:
+			return ev
+	return null
+
+
+static func _es_de_teclado(ev: InputEvent) -> bool:
+	return ev is InputEventKey or ev is InputEventMouseButton
+
+
+## Borra las teclas de una accion y deja las del mando.
+##
+## Hace falta porque InputMap.action_erase_events borra TODO: cambiar el dash de Shift a F
+## le sacaba tambien el boton B, y el mando dejaba de esquivar sin que nadie lo tocara.
+func _borrar_teclas(accion: StringName) -> void:
+	for ev: InputEvent in InputMap.action_get_events(accion):
+		if _es_de_teclado(ev):
+			InputMap.action_erase_event(accion, ev)
 
 
 ## Los nombres ya calculados. Se borran con cada cambio de tecla.
@@ -84,11 +206,26 @@ func evento_de(accion: StringName) -> InputEvent:
 var _cache_nombres: Dictionary = {}
 
 
-## Como se llama, para mostrarla, la tecla de una accion.
+## Como se llama, para mostrarla, la tecla de una accion — en lo que se este usando.
+##
+## Con un mando dice "RT"; con el dedo, lo que dice el boton de la pantalla. La cache se
+## borra al cambiar de dispositivo, asi que guardar solo por accion alcanza.
 func nombre_tecla(accion: StringName) -> String:
 	if not _cache_nombres.has(accion):
-		_cache_nombres[accion] = nombre_evento(evento_de(accion))
+		match dispositivo:
+			&"mando":
+				_cache_nombres[accion] = nombre_mando(accion)
+			&"tactil":
+				_cache_nombres[accion] = ETIQUETA_TACTIL.get(accion, "—")
+			_:
+				_cache_nombres[accion] = nombre_evento(evento_de(accion))
 	return _cache_nombres[accion]
+
+
+## El boton del mando de una accion, siempre, se este usando o no. Para la pantalla de
+## controles, que muestra las dos columnas.
+func nombre_mando(accion: StringName) -> String:
+	return nombre_evento(evento_mando_de(accion))
 
 
 ## Se puede preguntar la distribucion del teclado aca?
@@ -114,6 +251,17 @@ static func _puede_leer_distribucion() -> bool:
 static func nombre_evento(ev: InputEvent) -> String:
 	if ev == null:
 		return "—"
+	var jb := ev as InputEventJoypadButton
+	if jb != null:
+		return _nombre_boton_mando(jb.button_index)
+	var jm := ev as InputEventJoypadMotion
+	if jm != null:
+		match jm.axis:
+			JOY_AXIS_TRIGGER_LEFT: return "LT"
+			JOY_AXIS_TRIGGER_RIGHT: return "RT"
+			JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y: return "Stick izq"
+			JOY_AXIS_RIGHT_X, JOY_AXIS_RIGHT_Y: return "Stick der"
+		return "Eje %d" % jm.axis
 	var mb := ev as InputEventMouseButton
 	if mb != null:
 		match mb.button_index:
@@ -148,6 +296,27 @@ static func nombre_evento(ev: InputEvent) -> String:
 		"Left": return "←"
 		"Right": return "→"
 	return nombre if not nombre.is_empty() else "?"
+
+
+## Los nombres de un mando de Xbox, que es el que copian casi todos los de PC. Un mando de
+## PlayStation dice cruz y circulo, pero esta en el mismo lugar: A es el de abajo.
+static func _nombre_boton_mando(boton: int) -> String:
+	match boton:
+		JOY_BUTTON_A: return "A"
+		JOY_BUTTON_B: return "B"
+		JOY_BUTTON_X: return "X"
+		JOY_BUTTON_Y: return "Y"
+		JOY_BUTTON_LEFT_SHOULDER: return "LB"
+		JOY_BUTTON_RIGHT_SHOULDER: return "RB"
+		JOY_BUTTON_LEFT_STICK: return "L3"
+		JOY_BUTTON_RIGHT_STICK: return "R3"
+		JOY_BUTTON_BACK: return "Select"
+		JOY_BUTTON_START: return "Start"
+		JOY_BUTTON_DPAD_UP: return "Cruceta ↑"
+		JOY_BUTTON_DPAD_DOWN: return "Cruceta ↓"
+		JOY_BUTTON_DPAD_LEFT: return "Cruceta ←"
+		JOY_BUTTON_DPAD_RIGHT: return "Cruceta →"
+	return "Botón %d" % boton
 
 
 ## Se acepta este evento como tecla? Filtra lo que no puede ser un control.
@@ -220,14 +389,14 @@ func reasignar(accion: StringName, ev: InputEvent) -> String:
 			continue
 		for e: InputEvent in InputMap.action_get_events(otra):
 			if _mismo(e, nuevo):
-				InputMap.action_erase_events(otra)
+				_borrar_teclas(otra)
 				if viejo != null:
 					InputMap.action_add_event(otra, viejo)
 				intercambiada = fila[1]
 				break
 		if not intercambiada.is_empty():
 			break
-	InputMap.action_erase_events(accion)
+	_borrar_teclas(accion)
 	InputMap.action_add_event(accion, nuevo)
 	guardar()
 	cambio.emit()
@@ -259,6 +428,8 @@ func restablecer() -> void:
 			var mb := InputEventMouseButton.new()
 			mb.button_index = GameConfig.MOUSE_BINDINGS[String(accion)]
 			InputMap.action_add_event(accion, mb)
+		for ev: InputEvent in GameConfig.eventos_mando(String(accion)):
+			InputMap.action_add_event(accion, ev)
 	if guardado_activo:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(ruta_archivo))
 	cambio.emit()
@@ -307,6 +478,6 @@ func cargar() -> void:
 		# queda la de fabrica en vez de dejar la accion sin tecla.
 		if ev == null or (ev is InputEventKey and (ev as InputEventKey).physical_keycode == KEY_ESCAPE):
 			continue
-		InputMap.action_erase_events(accion)
+		_borrar_teclas(accion)
 		InputMap.action_add_event(accion, ev)
 	cambio.emit()

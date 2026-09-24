@@ -27,6 +27,7 @@ func _run() -> void:
 	await _test_audio()
 	await _test_progresion()
 	await _test_controles()
+	await _test_mando_en_menus(main)
 	await _test_skins_visibles()
 	_test_siluetas()
 	await _test_music()
@@ -56,6 +57,7 @@ func _run() -> void:
 		return
 
 	await _test_dummies(arena, player)
+	await _test_mando_y_tactil(main, player)
 	_finish()
 
 
@@ -466,6 +468,216 @@ func _test_progresion() -> void:
 
 # ------------------------------------------------------------------- Controles
 
+func _joy(boton: int, device: int, apretado: bool = true) -> InputEventJoypadButton:
+	var j := InputEventJoypadButton.new()
+	j.device = device
+	j.button_index = boton
+	j.pressed = apretado
+	return j
+
+
+## Aprieta y suelta un boton del mando de verdad, por Input, como llega de un mando.
+func _apretar_mando(boton: int) -> void:
+	Input.parse_input_event(_joy(boton, 0, true))
+	await get_tree().process_frame
+	Input.parse_input_event(_joy(boton, 0, false))
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _eje(eje: int, valor: float) -> void:
+	var m := InputEventJoypadMotion.new()
+	m.device = 0
+	m.axis = eje
+	m.axis_value = valor
+	Input.parse_input_event(m)
+
+
+# ------------------------------------------------------ El mando en los menus
+
+func _test_mando_en_menus(main: Node) -> void:
+	get_viewport().gui_release_focus()
+	var menu := Mando.capa_de_arriba()
+	_check(menu is MainMenu, "con el juego recien abierto, el menu de arriba es el principal (%s)" % menu)
+
+	await _apretar_mando(JOY_BUTTON_DPAD_DOWN)
+	var foco := get_viewport().gui_get_focus_owner()
+	_check(foco is BaseButton and menu != null and menu.is_ancestor_of(foco),
+		"el primer toque de cruceta pone el foco en un boton del menu (%s)" % foco)
+	_check(Controles.dispositivo == &"mando", "y el juego pasa a mando")
+
+	# --- Un menu encima: el foco entra y no se escapa ---
+	main.show_tienda()
+	await get_tree().process_frame
+	var tienda := Mando.capa_de_arriba()
+	_check(tienda is TiendaMenu, "con la tienda abierta, la de arriba es la tienda")
+	await _apretar_mando(JOY_BUTTON_DPAD_DOWN)
+	foco = get_viewport().gui_get_focus_owner()
+	_check(tienda != null and foco != null and tienda.is_ancestor_of(foco),
+		"el foco salta del menu de atras a la tienda (%s)" % foco)
+	var escapes := 0
+	for i: int in range(24):
+		await _apretar_mando(JOY_BUTTON_DPAD_DOWN if i < 12 else JOY_BUTTON_DPAD_LEFT)
+		foco = get_viewport().gui_get_focus_owner()
+		if foco == null or not tienda.is_ancestor_of(foco):
+			escapes += 1
+	_check(escapes == 0,
+		"recorriendo la tienda con la cruceta el foco nunca se va al menu de atras (%d escapes)" % escapes)
+
+	# --- B vuelve ---
+	await _apretar_mando(JOY_BUTTON_B)
+	await get_tree().process_frame
+	_check(not is_instance_valid(tienda) or tienda.is_queued_for_deletion(),
+		"B cierra la tienda: aprieta su boton de volver")
+	_check(Mando.capa_de_arriba() is MainMenu, "y queda el menu principal")
+
+	get_viewport().gui_release_focus()
+	Controles.usar(&"teclado")
+
+
+# ------------------------------------------------- Mando y dedo en la partida
+
+func _test_mando_y_tactil(main: Node, player: Player) -> void:
+	# Sin bots: uno que te empuja o te congela en medio de la medicion la arruina.
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	var camara := player.camera_pivot
+
+	# --- El stick derecho gira la camara ---
+	Controles.usar(&"mando")
+	var antes := camara.get_yaw()
+	_eje(JOY_AXIS_RIGHT_X, 1.0)
+	await get_tree().create_timer(0.3).timeout
+	_eje(JOY_AXIS_RIGHT_X, 0.0)
+	await get_tree().process_frame
+	var giro := antes - camara.get_yaw()
+	_check(giro > 0.3, "el stick derecho a fondo gira la camara a la derecha (%.2f rad en 0.3 s)" % giro)
+
+	# --- B es el dash, no la pausa ---
+	var pausa: PauseMenu = main._pause
+	var espera := 0.0
+	while player.get_dash_cooldown_ratio() > 0.0 and espera < 3.0:
+		await get_tree().create_timer(0.1).timeout
+		espera += 0.1
+	await _apretar_mando(JOY_BUTTON_B)
+	_check(player.get_dash_cooldown_ratio() > 0.0, "B del mando dashea")
+	_check(not pausa.esta_abierto(), "y NO abre la pausa")
+
+	# --- Start pausa, y con la pausa abierta el stick no camina ---
+	await _apretar_mando(JOY_BUTTON_START)
+	_check(pausa.esta_abierto(), "Start abre la pausa")
+	await get_tree().create_timer(0.5).timeout
+	var desde := player.global_position
+	_eje(JOY_AXIS_LEFT_Y, -1.0)
+	await get_tree().create_timer(0.4).timeout
+	var camino := Vector2(player.global_position.x - desde.x, player.global_position.z - desde.z).length()
+	_eje(JOY_AXIS_LEFT_Y, 0.0)
+	_check(camino < 0.15,
+		"con la pausa abierta, el stick recorre el menu y el personaje no camina (%.2f m)" % camino)
+	await _apretar_mando(JOY_BUTTON_B)
+	_check(not pausa.esta_abierto(), "B cierra la pausa, igual que Escape")
+	desde = player.global_position
+	_eje(JOY_AXIS_LEFT_Y, -1.0)
+	await get_tree().create_timer(0.4).timeout
+	camino = Vector2(player.global_position.x - desde.x, player.global_position.z - desde.z).length()
+	_eje(JOY_AXIS_LEFT_Y, 0.0)
+	_check(camino > 1.0, "y cerrada, el mismo stick camina (%.2f m)" % camino)
+	get_viewport().gui_release_focus()
+
+	# --- El dedo ---
+	var tactil: ControlesTactiles = main._tactil
+	var hud: HUD = main._hud
+	_check(tactil != null and not tactil.esta_activo(), "con mando, los botones del dedo no estan")
+	Controles.usar(&"tactil")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(tactil.esta_activo(), "con el dedo aparecen")
+	_check(not hud._ability_row.visible and not hud._dash_panel.visible,
+		"y el HUD esconde las cartas de habilidades y el dash, que quedaban debajo de los botones")
+
+	var tam := get_viewport().get_visible_rect().size
+	var pulgar := Vector2(200.0, tam.y - 200.0)
+	_toque(tactil, 0, pulgar, true)
+	_arrastre(tactil, 0, pulgar + Vector2(80.0, 0.0), Vector2(80.0, 0.0))
+	_check(Input.get_action_strength(&"move_right") > 0.7,
+		"arrastrar el pulgar en el stick camina (%.2f)" % Input.get_action_strength(&"move_right"))
+
+	# Otro dedo a la vez: el dash, sin soltar el stick.
+	while player.get_dash_cooldown_ratio() > 0.0 and espera < 6.0:
+		await get_tree().create_timer(0.1).timeout
+		espera += 0.1
+	var dash := tactil.centro(tactil.indice_de(&"dash"))
+	_toque(tactil, 1, dash, true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_toque(tactil, 1, dash, false)
+	_check(player.get_dash_cooldown_ratio() > 0.0, "el boton DASH dashea")
+	_check(Input.get_action_strength(&"move_right") > 0.7,
+		"y el pulgar del stick sigue caminando mientras el otro dedo aprieta: multitouch de verdad")
+
+	_toque(tactil, 0, pulgar, false)
+	_check(is_zero_approx(Input.get_action_strength(&"move_right")), "soltar el stick deja de caminar")
+
+	# Arrastrar en cualquier otro lado gira la camara.
+	antes = camara.get_yaw()
+	var libre := Vector2(tam.x * 0.62, tam.y * 0.35)
+	_toque(tactil, 2, libre, true)
+	_arrastre(tactil, 2, libre + Vector2(120.0, 0.0), Vector2(120.0, 0.0))
+	_toque(tactil, 2, libre + Vector2(120.0, 0.0), false)
+	_check(antes - camara.get_yaw() > 0.2,
+		"arrastrar el dedo por la pantalla gira la camara (%.2f rad)" % (antes - camara.get_yaw()))
+
+	# El toque que Godot convierte en click NO pega: el golpe se pega con su boton.
+	var t := InputEventScreenTouch.new()
+	t.index = 0
+	t.position = libre
+	t.pressed = true
+	Input.parse_input_event(t)
+	await get_tree().process_frame
+	_check(not Input.is_action_pressed(&"attack_basic"),
+		"tocar la pantalla para girar no dispara el golpe basico (el click inventado no cuenta)")
+	t.pressed = false
+	Input.parse_input_event(t)
+	await get_tree().process_frame
+
+	# La pausa desde su boton: los botones se apagan y sueltan todo.
+	_toque(tactil, 0, pulgar, true)
+	_arrastre(tactil, 0, pulgar + Vector2(0.0, -80.0), Vector2(0.0, -80.0))
+	var boton_pausa := tactil.centro(tactil.indice_de(&"pausa"))
+	_toque(tactil, 1, boton_pausa, true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(pausa.esta_abierto(), "el boton II abre la pausa")
+	_check(not tactil.esta_activo() and is_zero_approx(Input.get_action_strength(&"move_forward")),
+		"y con la pausa abierta los botones se apagan y sueltan el stick: nadie queda caminando solo")
+	pausa.close()
+	await get_tree().process_frame
+
+	# --- De vuelta al teclado ---
+	Controles.usar(&"teclado")
+	await get_tree().process_frame
+	_check(not tactil.esta_activo() and hud._ability_row.visible,
+		"con el teclado se van los botones y vuelven las cartas")
+	Arena.set_bots_active(true)
+
+
+func _toque(t: ControlesTactiles, dedo: int, pos: Vector2, apretado: bool) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = dedo
+	e.position = pos
+	e.pressed = apretado
+	t.procesar(e)
+
+
+func _arrastre(t: ControlesTactiles, dedo: int, pos: Vector2, relativo: Vector2) -> void:
+	var e := InputEventScreenDrag.new()
+	e.index = dedo
+	e.position = pos
+	e.relative = relativo
+	t.procesar(e)
+
+
 func _tecla(codigo: int) -> InputEventKey:
 	var k := InputEventKey.new()
 	k.physical_keycode = codigo
@@ -534,6 +746,60 @@ func _test_controles() -> void:
 		and Controles.nombre_tecla(&"dash") == "Shift"
 		and Controles.nombre_tecla(&"jump") == "Espacio",
 		"restablecer devuelve todas las de fabrica")
+
+	# --- El mando ---
+	#
+	# Con device 5 a proposito: un evento de mando creado por codigo nace con device 0 y el
+	# InputMap solo lo aceptaba del mando 0. Probando con otro numero se ve si quedo en -1.
+	_check(InputMap.event_is_action(_joy(JOY_BUTTON_A, 5), &"jump"),
+		"A del mando salta, venga del mando que venga (no solo del numero 0)")
+	_check(InputMap.event_is_action(_joy(JOY_BUTTON_A, 0), &"ui_accept")
+		and InputMap.event_is_action(_joy(JOY_BUTTON_B, 0), &"ui_cancel"),
+		"y en los menus A acepta y B vuelve: Godot los trae sin mando")
+	_check(InputMap.event_is_action(_joy(JOY_BUTTON_START, 0), &"pausa")
+		and not InputMap.event_is_action(_joy(JOY_BUTTON_B, 0), &"pausa"),
+		"la pausa es Start y NO B: B es el dash, y cada esquive abriria el menu")
+	_check(InputMap.event_is_action(_tecla(KEY_ESCAPE), &"pausa"), "Escape sigue abriendo la pausa")
+
+	Controles.reasignar(&"dash", _tecla(KEY_F))
+	_check(InputMap.event_is_action(_joy(JOY_BUTTON_B, 0), &"dash"),
+		"cambiar la tecla del dash NO le saca el B del mando")
+	_check(Controles.nombre_tecla(&"dash") == "F",
+		"y el cartel dice la tecla nueva, no el boton del mando que quedo primero (%s)" % Controles.nombre_tecla(&"dash"))
+	Controles.restablecer_sin_borrar_archivo_para_prueba()
+	Controles.cargar()
+	_check(InputMap.event_is_action(_joy(JOY_BUTTON_B, 0), &"dash")
+		and Controles.nombre_tecla(&"dash") == "F",
+		"cargar las teclas guardadas tampoco se lleva el mando puesto")
+	Controles.restablecer()
+	_check(InputMap.event_is_action(_joy(JOY_BUTTON_B, 0), &"dash")
+		and InputMap.event_is_action(_joy(JOY_BUTTON_A, 0), &"jump"),
+		"y restablecer devuelve el mando junto con las teclas")
+
+	# --- Los carteles dicen lo que se esta usando ---
+	Controles.usar(&"mando")
+	_check(Controles.nombre_tecla(&"attack_basic") == "RT" and Controles.nombre_tecla(&"dash") == "B",
+		"con el mando, los carteles dicen RT y B (%s, %s)" % [
+			Controles.nombre_tecla(&"attack_basic"), Controles.nombre_tecla(&"dash")])
+	Controles.usar(&"tactil")
+	_check(Controles.nombre_tecla(&"attack_basic") == "GOLPE",
+		"con el dedo, lo que dice el boton de la pantalla (%s)" % Controles.nombre_tecla(&"attack_basic"))
+	Controles.usar(&"teclado")
+	_check(Controles.nombre_tecla(&"attack_basic") == "Click izq", "y de vuelta al teclado, Click izq")
+
+	# --- Que decide el dispositivo ---
+	Controles._input(_joy(JOY_BUTTON_X, 0))
+	_check(Controles.dispositivo == &"mando", "apretar un boton del mando pasa a mando")
+	var falso := InputEventMouseButton.new()
+	falso.device = InputEvent.DEVICE_ID_EMULATION
+	falso.button_index = MOUSE_BUTTON_LEFT
+	falso.pressed = true
+	Controles.usar(&"tactil")
+	Controles._input(falso)
+	_check(Controles.dispositivo == &"tactil",
+		"el click que Godot inventa a partir de un toque NO pasa a teclado: si no, los botones del dedo parpadearian")
+	Controles._input(_tecla(KEY_W))
+	_check(Controles.dispositivo == &"teclado", "una tecla vuelve al teclado")
 
 	# Y de vuelta a las teclas reales del jugador.
 	Controles.ruta_archivo = Controles.RUTA
@@ -857,7 +1123,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 153
+const CHEQUEOS_MINIMOS: int = 194
 
 
 func _finish() -> void:

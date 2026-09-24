@@ -1,6 +1,6 @@
 class_name PauseMenu
 extends CanvasLayer
-## Pausa con ESC. No pausa el juego de verdad (es multijugador, el mundo sigue),
+## Pausa con ESC o Start. No pausa el juego de verdad (es multijugador, el mundo sigue),
 ## solo libera el mouse y te deja salir.
 
 signal resume_requested()
@@ -48,6 +48,8 @@ func _build() -> void:
 	var resume := UITheme.make_button("REANUDAR", true)
 	resume.pressed.connect(close)
 	box.add_child(resume)
+	# B del mando reanuda, igual que Escape.
+	Mando.anotar(_root, resume)
 
 	var options_button := UITheme.make_button("OPCIONES")
 	options_button.pressed.connect(_open_options)
@@ -64,13 +66,19 @@ func _open_options() -> void:
 	_root.add_child(options)
 
 
+## Abre y cierra con "pausa" (Escape, Start). NO con ui_cancel para abrir: en el mando,
+## ui_cancel es B, y B es el dash. Cerrar con B lo hace Mando, por el boton de reanudar.
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("pausa"):
 		if _is_open:
 			close()
 		else:
 			open()
 		get_viewport().set_input_as_handled()
+
+
+func esta_abierto() -> bool:
+	return _is_open
 
 
 func open() -> void:
@@ -82,5 +90,5 @@ func open() -> void:
 func close() -> void:
 	_is_open = false
 	_root.visible = false
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	Controles.capturar_mouse()
 	resume_requested.emit()

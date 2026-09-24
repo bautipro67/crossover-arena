@@ -26,6 +26,7 @@ SkinDB="*res://scripts/core/skin_db.gd"
 Pase="*res://scripts/core/pase.gd"
 Modos="*res://scripts/core/modos.gd"
 Controles="*res://scripts/core/controles.gd"
+Mando="*res://scripts/core/mando.gd"
 
 [display]
 

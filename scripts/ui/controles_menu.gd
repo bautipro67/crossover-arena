@@ -37,7 +37,7 @@ func _ready() -> void:
 	add_child(center)
 
 	var panel := UITheme.make_panel()
-	panel.custom_minimum_size = Vector2(520, 0)
+	panel.custom_minimum_size = Vector2(620, 0)
 	center.add_child(panel)
 
 	var box := VBoxContainer.new()
@@ -49,7 +49,7 @@ func _ready() -> void:
 	box.add_child(title)
 
 	var ayuda := UITheme.make_label(
-		"Apretá el botón de una acción y después la tecla o el botón del mouse que quieras. Escape cancela. Si la tecla ya era de otra acción, se intercambian.",
+		"Apretá el botón de una acción y después la tecla o el botón del mouse que quieras. Escape cancela. Si la tecla ya era de otra acción, se intercambian. La columna del mando es fija, y con el mando el stick derecho mueve la cámara.",
 		11, UITheme.TEXT_DIM)
 	ayuda.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ayuda.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -87,6 +87,7 @@ func _ready() -> void:
 		_cancelar()
 		cerrado.emit())
 	abajo.add_child(volver)
+	Mando.anotar(self, volver)
 
 	Controles.cambio.connect(_armar)
 	_armar()
@@ -102,6 +103,17 @@ func _armar() -> void:
 		return
 	for hijo: Node in _filas.get_children():
 		hijo.queue_free()
+	var cabecera := HBoxContainer.new()
+	cabecera.add_theme_constant_override("separation", 8)
+	_filas.add_child(cabecera)
+	var vacio := Control.new()
+	vacio.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cabecera.add_child(vacio)
+	for par_titulo: Array in [["TECLADO Y MOUSE", 160], ["MANDO", 96]]:
+		var t := UITheme.make_label(par_titulo[0], 11, UITheme.TEXT_DIM)
+		t.custom_minimum_size = Vector2(par_titulo[1], 0)
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cabecera.add_child(t)
 	for par: Array in Controles.ACCIONES:
 		var accion := StringName(par[0])
 		var fila := HBoxContainer.new()
@@ -112,11 +124,20 @@ func _armar() -> void:
 		nombre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		fila.add_child(nombre)
 
-		var boton := UITheme.make_button(Controles.nombre_tecla(accion))
+		# La tecla de TECLADO, aunque se este usando el mando: esta columna es la que se
+		# reasigna, y tiene que decir lo que se va a cambiar.
+		var boton := UITheme.make_button(Controles.nombre_evento(Controles.evento_de(accion)))
 		boton.custom_minimum_size = Vector2(160, 34)
 		boton.focus_mode = Control.FOCUS_NONE
 		boton.pressed.connect(func() -> void: _empezar(accion, boton))
 		fila.add_child(boton)
+
+		# El mando se muestra y no se cambia: es la disposicion de los shooters de heroes,
+		# la que ya sabe quien viene de cualquiera de ellos.
+		var mando := UITheme.make_label(Controles.nombre_mando(accion), 13, UITheme.TEXT_DIM)
+		mando.custom_minimum_size = Vector2(96, 0)
+		mando.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		fila.add_child(mando)
 
 
 func _empezar(accion: StringName, boton: Button) -> void:
@@ -133,7 +154,7 @@ func _empezar(accion: StringName, boton: Button) -> void:
 
 func _cancelar() -> void:
 	if is_instance_valid(_boton_esperando) and _esperando != &"":
-		_boton_esperando.text = Controles.nombre_tecla(_esperando)
+		_boton_esperando.text = Controles.nombre_evento(Controles.evento_de(_esperando))
 	_esperando = &""
 	_boton_esperando = null
 	_listo_para_escuchar = false
@@ -157,12 +178,16 @@ func _input(event: InputEvent) -> void:
 	_boton_esperando = null
 	var con := Controles.reasignar(accion, event)
 	if con.is_empty():
-		_avisar("%s: %s" % [Controles.nombre_accion(accion), Controles.nombre_tecla(accion)])
+		_avisar("%s: %s" % [Controles.nombre_accion(accion), _tecla(accion)])
 	else:
 		# Se avisa el intercambio: si no, la otra accion cambia de tecla sin que nadie se
 		# entere y la proxima partida "deja de andar" el salto.
 		_avisar("%s ahora es %s. %s pasó a la tecla anterior." % [
-			Controles.nombre_accion(accion), Controles.nombre_tecla(accion), con])
+			Controles.nombre_accion(accion), _tecla(accion), con])
+
+
+func _tecla(accion: StringName) -> String:
+	return Controles.nombre_evento(Controles.evento_de(accion))
 
 
 func _avisar(texto: String) -> void:

@@ -78,6 +78,7 @@ func _ready() -> void:
 	volver.custom_minimum_size = Vector2(150, 0)
 	volver.pressed.connect(func() -> void: cerrado.emit())
 	acciones.add_child(volver)
+	Mando.anotar(self, volver)
 
 	_aviso = UITheme.make_label("", 13, UITheme.GOLD)
 	_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -163,7 +164,10 @@ func _tarjeta(i: int, pro: bool, alcanzado: bool) -> Control:
 
 	var boton := Button.new()
 	boton.custom_minimum_size = Vector2(0, 74)
-	boton.focus_mode = Control.FOCUS_NONE
+	# Con foco, para que el mando pueda cobrar. Sin foco, la unica forma de cobrar una
+	# recompensa suelta era el mouse. El recuadro no se marca al hacerle click: Godot solo
+	# muestra el foco cuando llega con el teclado o el mando.
+	boton.focus_mode = Control.FOCUS_ALL
 	boton.disabled = not se_puede
 	boton.clip_text = true
 	boton.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

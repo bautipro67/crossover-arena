@@ -320,8 +320,9 @@ func _handle_local_movement(delta: float) -> void:
 		return
 
 	var input_dir := Vector2.ZERO
+	var en_menu := _mando_en_menu()
 	# Congelado o canalizando Snowgrave: no te moves. La camara sigue libre.
-	if not frozen and not channeling:
+	if not frozen and not channeling and not en_menu:
 		input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 
 	var basis := camera_pivot.get_movement_basis()
@@ -354,7 +355,8 @@ func _handle_local_movement(delta: float) -> void:
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 
-	if Input.is_action_just_pressed("jump") and is_on_floor() and not frozen and not channeling:
+	var puede_saltar := is_on_floor() and not frozen and not channeling and not en_menu
+	if Input.is_action_just_pressed("jump") and puede_saltar:
 		velocity.y = jump_velocity
 
 	# El cuerpo mira hacia donde apunta la camara.
@@ -369,6 +371,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not is_local_player() or health.is_dead:
 		return
 	if not status.can_act():
+		return
+	if _mando_en_menu() and (event is InputEventJoypadButton or event is InputEventJoypadMotion):
 		return
 
 	# Dash: SIN COSTO DE STAMINA. Solo cooldown.
@@ -385,6 +389,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		# mismo que el del HUD a proposito: si no coincidieran, cada vez que alguien
 		# agregue una habilidad tendria que acordarse de la excepcion.
 		caster.request_use(3)
+
+
+## Con un mando, un menu abierto encima de la partida se maneja con el mismo stick y los
+## mismos botones que el personaje: el stick izquierdo recorre la pausa, A aprieta. Si el
+## personaje tambien los leyera, navegar la pausa lo haria caminar, y reanudar lo haria
+## saltar. Con teclado no pasa: el menu se usa con el mouse, que no mueve a nadie.
+func _mando_en_menu() -> bool:
+	return Controles.dispositivo == &"mando" and Mando.hay_menu_abierto()
 
 
 func _try_dash() -> void:

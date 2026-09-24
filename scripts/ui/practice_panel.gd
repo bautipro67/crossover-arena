@@ -23,6 +23,7 @@ const ANCHO: float = 330.0
 
 var _root: Control = null
 var _abierto: bool = false
+var _pista: Label = null
 var _contador_bots: Label = null
 var _botones_daño: Array[Button] = []
 ## Interruptor -> como leer su valor. Se relee entero en _refrescar().
@@ -44,6 +45,7 @@ func _build() -> void:
 	_root.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	Mando.anotar(_root)
 
 	var marco := UITheme.make_panel()
 	marco.set_anchors_preset(Control.PRESET_LEFT_WIDE)
@@ -68,8 +70,8 @@ func _build() -> void:
 
 	var titulo := UITheme.make_label("SALA DE PRACTICA", 20)
 	caja.add_child(titulo)
-	var pista := UITheme.make_label("P para cerrar", 11, UITheme.TEXT_DIM)
-	caja.add_child(pista)
+	_pista = UITheme.make_label("", 11, UITheme.TEXT_DIM)
+	caja.add_child(_pista)
 	caja.add_child(UITheme.make_spacer(6))
 
 	# --- Los bots ---
@@ -105,6 +107,15 @@ func _build() -> void:
 	var reiniciar := UITheme.make_button("VALORES DE FABRICA")
 	reiniciar.pressed.connect(func() -> void: Practica.restablecer())
 	caja.add_child(reiniciar)
+
+	# UN BOTON PARA CERRAR, que antes no hacia falta: se cerraba con la misma tecla que lo
+	# abre. Con el dedo no hay tecla —y los botones de la pantalla se esconden mientras el
+	# panel esta abierto—, asi que sin esto quedaba abierto para siempre. B del mando
+	# tambien lo aprieta.
+	var cerrar_boton := UITheme.make_button("CERRAR")
+	cerrar_boton.pressed.connect(cerrar)
+	caja.add_child(cerrar_boton)
+	cerrar_boton.set_meta(Mando.META_VOLVER, true)
 
 
 ## Fila de "Bots: [-] 3 [+]".
@@ -232,10 +243,14 @@ func abrir() -> void:
 	_abierto = true
 	_root.visible = true
 	_refrescar()
+	# La tecla la dice Controles: con un mando es la cruceta, y con el dedo no hay tecla
+	# (esta el boton de cerrar).
+	_pista.text = "%s para cerrar" % Controles.nombre_tecla(&"practice_panel")
+	_pista.visible = Controles.dispositivo != &"tactil"
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func cerrar() -> void:
 	_abierto = false
 	_root.visible = false
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	Controles.capturar_mouse()

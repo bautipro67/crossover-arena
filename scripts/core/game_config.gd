@@ -90,12 +90,84 @@ const MOUSE_BINDINGS: Dictionary = {
 	"ability_1": MOUSE_BUTTON_RIGHT,
 }
 
+## El mando: accion -> lista de botones (un entero) o de ejes ([eje, signo]).
+##
+## LA DISPOSICION ES LA DE LOS SHOOTERS DE HEROES, no una inventada: gatillo derecho el
+## golpe, gatillo izquierdo la segunda arma, bumper derecho la otra habilidad, Y la
+## definitiva, A saltar. Quien viene de cualquier juego de ese tipo ya la sabe. El dash va
+## en B, que es donde esta el esquive en los juegos de accion en tercera persona: se usa
+## con la direccion del stick izquierdo, asi que soltar el derecho para apretarlo no
+## cuesta nada.
+##
+## "pausa" es Escape Y Start, y no ui_cancel: ui_cancel es B en el mando, y B es el dash.
+## Si la pausa saliera de ui_cancel, cada esquive abriria el menu.
+const JOY_BINDINGS: Dictionary = {
+	"move_forward": [[JOY_AXIS_LEFT_Y, -1]],
+	"move_back": [[JOY_AXIS_LEFT_Y, 1]],
+	"move_left": [[JOY_AXIS_LEFT_X, -1]],
+	"move_right": [[JOY_AXIS_LEFT_X, 1]],
+	"mirar_izquierda": [[JOY_AXIS_RIGHT_X, -1]],
+	"mirar_derecha": [[JOY_AXIS_RIGHT_X, 1]],
+	"mirar_arriba": [[JOY_AXIS_RIGHT_Y, -1]],
+	"mirar_abajo": [[JOY_AXIS_RIGHT_Y, 1]],
+	"jump": [JOY_BUTTON_A],
+	"dash": [JOY_BUTTON_B],
+	"sprint": [JOY_BUTTON_LEFT_STICK],
+	"attack_basic": [[JOY_AXIS_TRIGGER_RIGHT, 1]],
+	"ability_1": [[JOY_AXIS_TRIGGER_LEFT, 1]],
+	"ability_2": [JOY_BUTTON_RIGHT_SHOULDER],
+	"ability_ultimate": [JOY_BUTTON_Y],
+	"scoreboard": [JOY_BUTTON_BACK],
+	"practice_panel": [JOY_BUTTON_DPAD_UP],
+	"pausa": [JOY_BUTTON_START],
+	# Los menus de Godot vienen sin mando para aceptar y volver: solo teclas. Sin esto, con
+	# un mando en la mano se puede recorrer un menu pero no apretar nada.
+	"ui_accept": [JOY_BUTTON_A],
+	"ui_cancel": [JOY_BUTTON_B],
+}
+
+
+## Los eventos de mando de una accion, listos para el InputMap.
+##
+## DEVICE -1, Y ES LO QUE HACE QUE ANDE: un evento creado por codigo nace con device 0, y el
+## InputMap entonces solo lo acepta del mando numero 0. Lo medi: el mismo boton A llegando
+## del mando 3 no disparaba la accion. -1 es "cualquier mando".
+static func eventos_mando(accion: String) -> Array[InputEvent]:
+	var lista: Array[InputEvent] = []
+	for dato: Variant in JOY_BINDINGS.get(accion, []):
+		if dato is Array:
+			var eje := InputEventJoypadMotion.new()
+			eje.axis = (dato as Array)[0]
+			eje.axis_value = float((dato as Array)[1])
+			eje.device = -1
+			lista.append(eje)
+		else:
+			var boton := InputEventJoypadButton.new()
+			boton.button_index = int(dato)
+			boton.device = -1
+			lista.append(boton)
+	return lista
+
 
 func _ready() -> void:
 	_register_input_actions()
 
 
 func _register_input_actions() -> void:
+	if not InputMap.has_action("pausa"):
+		InputMap.add_action("pausa", 0.5)
+		var esc := InputEventKey.new()
+		esc.physical_keycode = KEY_ESCAPE
+		InputMap.action_add_event("pausa", esc)
+
+	# Primero el mando y despues el teclado da igual: Controles nombra la tecla buscando
+	# el primer evento de TECLADO de la lista, no el primero a secas.
+	for action_name: String in JOY_BINDINGS.keys():
+		if not InputMap.has_action(action_name):
+			InputMap.add_action(action_name, 0.2)
+		for ev: InputEvent in eventos_mando(action_name):
+			InputMap.action_add_event(action_name, ev)
+
 	for action_name: String in BINDINGS.keys():
 		if not InputMap.has_action(action_name):
 			InputMap.add_action(action_name, 0.2)

@@ -112,7 +112,7 @@ static func make_button(text: String, accent: bool = false) -> Button:
 	b.add_theme_stylebox_override("hover", _button_style(base.lightened(0.14), accent))
 	b.add_theme_stylebox_override("pressed", _button_style(base.lightened(0.26), accent))
 	b.add_theme_stylebox_override("disabled", _button_style(base.darkened(0.35), false))
-	b.add_theme_stylebox_override("focus", _button_style(base.lightened(0.14), accent))
+	b.add_theme_stylebox_override("focus", _foco())
 	b.add_theme_color_override("font_color", TEXT if accent else TEXT_DIM.lightened(0.25))
 	b.add_theme_color_override("font_hover_color", TEXT)
 	b.add_theme_color_override("font_pressed_color", TEXT)
@@ -156,6 +156,22 @@ static func _button_style(bg: Color, accent: bool) -> StyleBoxFlat:
 	sb.content_margin_right = 14
 	sb.content_margin_top = 10
 	sb.content_margin_bottom = 10
+	return sb
+
+
+## El marco del boton elegido con el mando.
+##
+## UN BORDE Y NO UN COLOR: Godot dibuja el foco ENCIMA del estilo del boton, asi que uno
+## relleno tapaba si el boton era el principal o no, y uno apenas mas claro —el que habia—
+## no se distinguia del resto al recorrer un menu con la cruceta. El mouse no lo ve nunca:
+## Godot muestra el foco solo cuando llega con el teclado o el mando.
+static func _foco() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.draw_center = false
+	sb.set_corner_radius_all(8)
+	sb.set_border_width_all(2)
+	sb.border_color = ACCENT.lightened(0.25)
+	sb.set_expand_margin_all(3.0)
 	return sb
 
 

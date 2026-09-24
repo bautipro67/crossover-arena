@@ -6,6 +6,7 @@ extends Node
 var _screen: Control = null
 var _arena: Arena = null
 var _hud: HUD = null
+var _tactil: ControlesTactiles = null
 var _pause: PauseMenu = null
 var _practica: PracticePanel = null
 
@@ -148,6 +149,9 @@ func _clear_match() -> void:
 	if is_instance_valid(_hud):
 		_hud.queue_free()
 	_hud = null
+	if is_instance_valid(_tactil):
+		_tactil.queue_free()
+	_tactil = null
 	if is_instance_valid(_pause):
 		_pause.queue_free()
 	_pause = null
@@ -224,6 +228,12 @@ func _on_match_started() -> void:
 	Music.play_combat()
 	_hud = HUD.new()
 	add_child(_hud)
+	# Los botones para el dedo existen en toda partida, no solo en un celular: una
+	# computadora con pantalla tactil puede pasar al dedo en medio de la pelea. Apagados
+	# no dibujan ni leen nada.
+	_tactil = ControlesTactiles.new()
+	_tactil.name = "ControlesTactiles"
+	add_child(_tactil)
 	if not Modos.termino.is_connected(_on_modo_termino):
 		Modos.termino.connect(_on_modo_termino)
 
@@ -242,10 +252,12 @@ func _on_match_started() -> void:
 		add_child(_practica)
 
 	_arena.local_player_spawned.connect(_hud.bind_player)
+	_arena.local_player_spawned.connect(_tactil.bind_player)
 	# Si el jugador local ya existia cuando se armo el HUD, lo enganchamos igual.
 	var local := _arena.get_local_player()
 	if local != null:
 		_hud.bind_player(local)
+		_tactil.bind_player(local)
 
 
 ## Un modo offline llego a su final: se muestra el resultado y se vuelve al menu.
@@ -301,7 +313,7 @@ func _return_to_lobby_after(delay: float) -> void:
 
 
 func _on_resume_requested() -> void:
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	Controles.capturar_mouse()
 
 
 func _on_leave_match_requested() -> void:

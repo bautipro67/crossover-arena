@@ -15,7 +15,7 @@ son los campos que, mal puestos, hacen que el juego no arranque en el navegador.
 | **Viewport dimensions** | `1280` × `720` | Es la resolución de diseño del juego. Con otra, la interfaz queda cortada o diminuta. |
 | **Fullscreen button** | ✅ Activado | Es un juego en tercera persona; a 1280×720 embebido se juega incómodo. |
 | **SharedArrayBuffer support** | ❌ **DEJAR DESMARCADO** | Ver abajo. Es el que más problemas da. |
-| **Mobile friendly** | ❌ Desactivado | Necesita mouse con captura de puntero y teclado. En celular no se puede jugar. |
+| **Mobile friendly** | ✅ Activado, orientación **Landscape** | Tiene controles táctiles: stick a la izquierda y botones a la derecha, pensados para el celular acostado. Parado, la pantalla de 1280×720 queda diminuta. |
 | **Pricing** | `No payments` | Ver la sección de aviso legal. |
 | **Release status** | `Released` | |
 
@@ -122,6 +122,13 @@ Tab .......... marcador         P ............ panel de práctica
 
 Se pueden cambiar todos en Opciones → Controles.
 
+CON MANDO: stick izquierdo moverse, stick derecho cámara, RT golpe, LT habilidad 1,
+RB habilidad 2, Y ultimate, A saltar, B dash, Start pausa. Los menús también se usan
+con el mando.
+
+EN EL CELULAR: stick a la izquierda (aparece donde apoyás el pulgar), botones a la
+derecha, y arrastrando el dedo por la pantalla girás la cámara.
+
 ═══ SALA DE PRÁCTICA CONFIGURABLE ═══
 
 Adentro del modo práctica, la tecla P abre un panel para armar el entrenamiento que
@@ -174,7 +181,7 @@ titulares quiere que se baje, se baja.
 | **Genre** | Action |
 | **Tags** | `3d`, `arena`, `fangame`, `fighting`, `multiplayer`, `pvp`, `singleplayer`, `third-person`, `deltarune`, `jojos-bizarre-adventure`, `rick-and-morty`, `sonic-the-hedgehog` |
 | **Made with** | Godot |
-| **Inputs** | Keyboard, Mouse |
+| **Inputs** | Keyboard, Mouse, Gamepad (any), Touchscreen |
 | **Average session** | A few minutes |
 | **Languages** | Spanish (español) |
 | **Accessibility** | Dejar vacío (el juego no tiene opciones de accesibilidad todavía) |

@@ -33,6 +33,7 @@ var _detalle: Label = null
 func _ready() -> void:
 	UITheme.fill_viewport(self)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	Mando.anotar(self)
 	UITheme.build_background(self)
 
 	var margin := MarginContainer.new()
@@ -97,6 +98,8 @@ func _ready() -> void:
 		# Al pasar el mouse, el detalle abajo. Evita cuatro renglones de explicacion
 		# permanentes, que es justo lo que no entra en la pantalla.
 		boton.mouse_entered.connect(func() -> void: _mostrar_detalle(id))
+		# Con el mando no hay mouse que pase por encima: el detalle sigue al foco.
+		boton.focus_entered.connect(func() -> void: _mostrar_detalle(id))
 		grilla.add_child(boton)
 
 	_detalle = UITheme.make_label("Pasá el mouse por un modo para ver de qué se trata.",

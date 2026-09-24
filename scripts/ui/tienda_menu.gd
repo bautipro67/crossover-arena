@@ -57,6 +57,7 @@ func _ready() -> void:
 	volver.custom_minimum_size = Vector2(150, 0)
 	volver.pressed.connect(func() -> void: cerrado.emit())
 	fila.add_child(volver)
+	Mando.anotar(self, volver)
 
 	_aviso = UITheme.make_label("", 13, UITheme.GOLD)
 	_aviso.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -143,8 +144,11 @@ func _armar_probador() -> Control:
 	# el mismo encuadre tiene que servir para los dos sin cortarle la cabeza a nadie.
 	camara.fov = 32.0
 	vista.add_child(camara)
-	camara.position = Vector3(0.0, 1.05, 5.4)
-	camara.look_at(Vector3(0.0, 0.95, 0.0), Vector3.UP)
+	# La orientacion armada a mano y no con look_at: look_at necesita el nodo DENTRO del
+	# arbol, y el probador se arma antes de que la tienda lo agregue. Fallaba con un error
+	# cada vez que se abria la tienda y la camara quedaba sin la inclinacion.
+	var ojo := Vector3(0.0, 1.05, 5.4)
+	camara.transform = Transform3D(Basis.looking_at(Vector3(0.0, 0.95, 0.0) - ojo, Vector3.UP), ojo)
 
 	var piso := MeshInstance3D.new()
 	var disco := CylinderMesh.new()

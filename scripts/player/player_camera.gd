@@ -9,6 +9,12 @@ extends SpringArm3D
 ## camara SI sigue girando. Canalizas y reapuntas.
 
 @export var mouse_sensitivity: float = 0.0025
+
+## Stick derecho a fondo: cuantos radianes por segundo gira, con la sensibilidad de fabrica.
+## 2.6 es media vuelta en poco mas de un segundo, la velocidad tipica de un shooter.
+const GIRO_MANDO: float = 2.6
+## Arrastrar el dedo: radianes por pixel. Cruzar media pantalla es girar unos 90 grados.
+const GIRO_TACTIL: float = 0.0045
 @export var min_pitch_deg: float = -75.0
 @export var max_pitch_deg: float = 75.0
 @export var arm_length: float = 3.8
@@ -45,12 +51,13 @@ func set_active(active: bool) -> void:
 	set_process_input(active)
 	if active:
 		FX.register_camera(camera)
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		Controles.capturar_mouse()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not _active or not is_instance_valid(_owner_body):
 		return
+	_girar_con_stick(delta)
 	# El brazo sigue al jugador manualmente porque es top_level.
 	# El corrimiento lateral va aca: deja el cuerpo del jugador a un costado en vez de
 	# tapar el centro de la pantalla justo donde esta la mira.
@@ -69,11 +76,47 @@ func _input(event: InputEvent) -> void:
 	var motion := event as InputEventMouseMotion
 	if motion == null:
 		return
+	# Un dedo arrastrando tambien llega como mouse, y lo gira ControlesTactiles. Si
+	# contara aca, cada arrastre giraria la camara dos veces.
+	if motion.device == InputEvent.DEVICE_ID_EMULATION:
+		return
 	# La sensibilidad sale de las opciones del jugador, no del export.
 	var sens := Settings.mouse_sensitivity if Settings != null else mouse_sensitivity
-	_yaw -= motion.relative.x * sens
-	_pitch -= motion.relative.y * sens
+	_girar(motion.relative.x * sens, motion.relative.y * sens)
+
+
+func _girar(dx: float, dy: float) -> void:
+	_yaw -= dx
+	_pitch -= dy
 	_pitch = clampf(_pitch, deg_to_rad(min_pitch_deg), deg_to_rad(max_pitch_deg))
+
+
+## Cuanto de la sensibilidad de fabrica eligio el jugador. El deslizador de opciones es
+## uno solo y vale para las tres formas de mirar: mouse, stick y dedo.
+func _factor_sensibilidad() -> float:
+	return Settings.mouse_sensitivity / 0.0025 if Settings != null else 1.0
+
+
+## El stick derecho.
+##
+## LA RESPUESTA ES CUADRATICA: el giro crece con el cuadrado de cuanto se inclina. Con una
+## lineal, apuntar fino es imposible —el primer milimetro ya gira rapido— y es la razon
+## por la que casi todos los juegos de mando la usan.
+##
+## CON UN MENU ABIERTO NO GIRA: en la pausa se navega con el mando, y la camara de atras
+## no tiene por que moverse mientras tanto.
+func _girar_con_stick(delta: float) -> void:
+	var v := Input.get_vector(&"mirar_izquierda", &"mirar_derecha", &"mirar_arriba", &"mirar_abajo")
+	if v.is_zero_approx() or Mando.hay_menu_abierto():
+		return
+	var giro := v * v.length() * GIRO_MANDO * _factor_sensibilidad() * delta
+	_girar(giro.x, giro.y)
+
+
+## Un dedo arrastrando sobre la pantalla. Lo llama ControlesTactiles.
+func girar_por_toque(relativo: Vector2) -> void:
+	var k := GIRO_TACTIL * _factor_sensibilidad()
+	_girar(relativo.x * k, relativo.y * k)
 
 
 func get_yaw() -> float:
