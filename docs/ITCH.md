@@ -87,6 +87,18 @@ gente.
    El todoterreno. Aparece detrás de tu espalda y carga el rayo a la vista de todos.
    Combo de Golpes · Ráfaga de Ki · Teletransportación · KAMEHAMEHA
 
+═══ MODO HISTORIA — PARTE 1: LA GRIETA ═══
+
+Un experimento de Rick rompe la pared entre los mundos, y todo lo que cae por la grieta
+termina en la Arena. Cinco capítulos con diálogos y una pelea en cada uno: jugás con
+Noelle, con Sonic y con Rick, contra los ecos que fabrica la Arena y contra quien la
+quiere para él.
+
+═══ COMBOS ═══
+
+Cada golpe deja al rival tambaleando un instante: alcanza para encadenar el golpe básico
+con tus habilidades antes de que se reponga. El contador de combo cuenta la cadena.
+
 ═══ MODOS ═══
 
 ▸ ONLINE — Servidor público, entrás directo desde el menú. Sin cuenta, sin descargar

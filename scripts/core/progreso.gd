@@ -70,6 +70,8 @@ var personajes: Dictionary = {}
 ## 1, Pase cobra lo pendiente de la vieja y arranca la nueva de cero. Sin este numero no
 ## hay forma de distinguir "avance de esta temporada" de "avance de la anterior".
 var temporada: int = -1
+## Capitulos del modo historia ya ganados: "0" -> true.
+var historia: Dictionary = {}
 ## Cuando esta en false, guardar() no escribe nada.
 ##
 ## EXISTE PARA EL ARNES, y no es un lujo: los tests suben de nivel, gastan monedas y
@@ -262,6 +264,23 @@ func desbloquear_personaje(character_id: StringName) -> void:
 	guardar()
 
 
+# ------------------------------------------------------------------- Historia
+
+func capitulo_completado(i: int) -> bool:
+	return historia.get(str(i), false)
+
+
+## Se puede jugar? El primero siempre; los demas, con el anterior ganado.
+func capitulo_disponible(i: int) -> bool:
+	return i == 0 or capitulo_completado(i - 1)
+
+
+func completar_capitulo(i: int) -> void:
+	historia[str(i)] = true
+	cambio.emit()
+	guardar()
+
+
 # ------------------------------------------------------------------ Guardado
 
 func cargar() -> void:
@@ -277,6 +296,7 @@ func cargar() -> void:
 	skins = cfg.get_value("skins", "desbloqueadas", {}) as Dictionary
 	equipadas = cfg.get_value("skins", "equipadas", {}) as Dictionary
 	personajes = cfg.get_value("personajes", "desbloqueados", {}) as Dictionary
+	historia = cfg.get_value("historia", "capitulos", {}) as Dictionary
 	# Un archivo sin temporada es de la 0: es la unica que existio antes de este campo.
 	temporada = int(cfg.get_value("pase", "temporada", 0))
 	bajas_totales = maxi(0, int(cfg.get_value("stats", "bajas", 0)))
@@ -297,6 +317,7 @@ func guardar() -> void:
 	cfg.set_value("skins", "desbloqueadas", skins)
 	cfg.set_value("skins", "equipadas", equipadas)
 	cfg.set_value("personajes", "desbloqueados", personajes)
+	cfg.set_value("historia", "capitulos", historia)
 	cfg.set_value("pase", "temporada", temporada)
 	cfg.set_value("stats", "bajas", bajas_totales)
 	cfg.set_value("stats", "partidas", partidas_jugadas)
@@ -315,6 +336,7 @@ func borrar_todo() -> void:
 	skins = {}
 	equipadas = {}
 	personajes = {}
+	historia = {}
 	temporada = Pase.TEMPORADA
 	bajas_totales = 0
 	partidas_jugadas = 0

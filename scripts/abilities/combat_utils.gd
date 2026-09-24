@@ -143,7 +143,7 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 		# 0.45 era el numero de la practica, donde los bots tienen que pegar flojo para
 		# poder ensayar sin morirse. En un duelo eso convierte al rival en un muñeco, y en
 		# supervivencia hace que la oleada 9 pegue igual que la 1.
-		mult *= Modos.daño_bot() * Practica.daño_bots
+		mult *= Modos.daño_bot(source_id) * Practica.daño_bots
 	# Y lo que multiplique EL QUE PEGA. Hoy solo lo mueve Super Sonic, que canonicamente
 	# hace que "todas sus habilidades superen ampliamente a las normales". Se busca al
 	# atacante igual que unas lineas mas abajo para los recursos, asi que no agrega una
@@ -155,7 +155,16 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 			mult *= est.get_damage_dealt_multiplier()
 	var final_amount := amount * mult
 	var was_alive := not health.is_dead
+	var vida_antes := health.current
 	health.apply_damage(final_amount, source_id)
+
+	# EL TAMBALEO DEL COMBO, en el unico camino por el que pasa todo el daño del juego: asi
+	# lo heredan las treinta y pico habilidades sin tocar ninguna.
+	#
+	# Solo si el golpe LLEGO A LA VIDA. Un golpe que se come entero el escudo de hielo no
+	# pego, y no puede trabar a nadie: el escudo existe justamente para cortar combos.
+	if status != null and (health.current < vida_antes or (was_alive and health.is_dead)):
+		status.tambalear(StatusEffects.TAMBALEO)
 
 	# LOS RECURSOS SE PAGAN SOBRE EL DAÑO SIN LA REBAJA DE LOS BOTS.
 	#
@@ -168,7 +177,7 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 	# daño del modo practica. Cobrando los recursos sobre el golpe sin rebajar, el bot
 	# junta su ultimate al mismo ritmo que lo juntaria un rival de verdad —que es contra
 	# lo que uno quiere practicar— y sigue pegando flojo.
-	var para_recursos := amount * (mult / maxf(0.01, Modos.daño_bot() * Practica.daño_bots)) if source_id < 0 else final_amount
+	var para_recursos := amount * (mult / maxf(0.01, Modos.daño_bot(source_id) * Practica.daño_bots)) if source_id < 0 else final_amount
 
 	if feeds_resources:
 		var attacker := find_player_by_peer(target, source_id)

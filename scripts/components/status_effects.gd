@@ -36,6 +36,40 @@ var _slow_left: float = 0.0
 ## de un solo boton que mata a todo el mundo.
 var _stun_left: float = 0.0
 
+## TAMBALEO: el aturdimiento corto que deja cada golpe. Es lo que hace posible un combo.
+##
+## Sin esto, despues de un golpe el rival podia moverse, dashear o tirar una habilidad en
+## el mismo instante, asi que cualquier cadena se cortaba en el primer eslabon: el
+## segundo golpe ya no encontraba a nadie. Con el tambaleo, el que recibe queda clavado
+## lo justo para que el siguiente golpe —el basico otra vez, o una habilidad— entre.
+##
+## ES OTRA COSA QUE EL ATURDIMIENTO DE ZA WARUDO, y a proposito no reusa stun_for: el de
+## Dio es largo, tiene su efecto de tiempo detenido y cambia como se juega contra el. Este
+## dura menos de medio segundo y no se ve como nada mas que un respingo. Y tampoco es
+## congelar: Snowgrave no ejecuta a un tambaleado.
+##
+## Se RENUEVA con cada golpe (maxf, no suma): cada golpe deja al rival clavado TAMBALEO
+## segundos a partir de ese golpe.
+const TAMBALEO: float = 0.40
+var _tamb_left: float = 0.0
+
+## LA SALIDA DEL COMBO: despues de COMBO_MAXIMO segundos seguidos tambaleando, el que
+## recibe se suelta y queda INMUNE_TRAS_COMBO sin poder ser tambaleado.
+##
+## Sin esto habia trabas infinitas, medidas (tests/combos_diag.tscn): el basico de Sonic
+## sale cada 0.32 s —mas rapido que el tambaleo— y el de Dio cada 0.40, justo lo que dura,
+## asi que spameando el basico dejaban al otro sin moverse para siempre. Y en los modos
+## contra varios, los bots se turnaban para pegar y el jugador no salia nunca: Rey de la
+## colina bajo de 60% a 27% de victorias y la torre de jefes a cero.
+##
+## El combo sigue igual —un segundo y medio de cadena da para basico, habilidades y otra
+## vez basico— pero tiene final, y el que lo recibe tiene un segundo para escaparse.
+const COMBO_MAXIMO: float = 1.5
+const INMUNE_TRAS_COMBO: float = 1.0
+## Cuanto lleva tambaleando sin cortarse.
+var _combo_acumulado: float = 0.0
+var _inmune_left: float = 0.0
+
 ## VULNERABLE: recibe mas daño por un rato.
 ##
 ## Lo deja "Here I Come, San Francisco" al terminar la carga. Es el precio de tirarse de
@@ -71,6 +105,21 @@ func _process(delta: float) -> void:
 		_stun_left = maxf(0.0, _stun_left - delta)
 		if is_zero_approx(_stun_left):
 			unstunned.emit()
+
+	if _tamb_left > 0.0:
+		_tamb_left = maxf(0.0, _tamb_left - delta)
+		_combo_acumulado += delta
+		# Solo el servidor suelta: es el que decide el estado, y se lo avisa a todos.
+		if _is_server() and _combo_acumulado >= COMBO_MAXIMO:
+			_tamb_left = 0.0
+			_combo_acumulado = 0.0
+			_inmune_left = INMUNE_TRAS_COMBO
+			_avisar_tambaleo()
+	else:
+		# Se corto la cadena antes del tope: el proximo combo empieza de cero.
+		_combo_acumulado = 0.0
+	if _inmune_left > 0.0:
+		_inmune_left = maxf(0.0, _inmune_left - delta)
 
 	if _slow_left > 0.0:
 		_slow_left = maxf(0.0, _slow_left - delta)
@@ -137,6 +186,48 @@ func stun_for(duration: float) -> void:
 	_broadcast()
 
 
+## SOLO SERVIDOR. El tambaleo de un golpe. Ver TAMBALEO.
+func tambalear(duracion: float) -> void:
+	if not _is_server() or duracion <= 0.0:
+		return
+	# Recien salido de un combo: el segundo de escape no se puede cortar.
+	if _inmune_left > 0.0:
+		return
+	_tamb_left = maxf(_tamb_left, duracion)
+	_avisar_tambaleo()
+
+
+## EL TAMBALEO VIAJA A TODOS, y le importa sobre todo al que lo recibe: el movimiento lo
+## decide el cliente de cada uno, asi que si su maquina no se entera de que esta
+## tambaleando, sigue caminando y el combo se le escapa igual que antes.
+##
+## EN UN MENSAJE PROPIO, y no sumado a _push_state. Un RPC con un argumento de mas es
+## incompatible con la version anterior del juego: el servidor se actualiza solo con cada
+## push y la pagina de itch no, y un cliente viejo que recibe _push_state con doce
+## argumentos cuando espera once lo descarta entero — dejaria de ver congelados y
+## aturdidos, no solo el tambaleo. Separado, al cliente viejo solo le falta lo nuevo.
+func _avisar_tambaleo() -> void:
+	Net.rpc_ready(self, &"_push_tambaleo", [_tamb_left])
+
+
+@rpc("authority", "call_remote", "reliable")
+func _push_tambaleo(tamb_left: float) -> void:
+	_tamb_left = tamb_left
+
+
+## Recien salido de un combo largo, y por eso sin poder ser tambaleado.
+func esta_inmune_al_tambaleo() -> bool:
+	return _inmune_left > 0.0
+
+
+func esta_tambaleando() -> bool:
+	return _tamb_left > 0.0
+
+
+func get_tambaleo_remaining() -> float:
+	return _tamb_left
+
+
 ## SOLO SERVIDOR. Se queda con el slow mas fuerte que este activo.
 func apply_slow(percent: float, duration: float) -> void:
 	if not _is_server() or percent <= 0.0 or duration <= 0.0:
@@ -188,13 +279,14 @@ func is_stunned() -> bool:
 	return _stun_left > 0.0
 
 
-## Congelado o aturdido = no podes moverte, atacar, dashear ni tirar habilidades.
+## Congelado, aturdido o tambaleando = no podes moverte, atacar, dashear ni tirar
+## habilidades.
 func can_act() -> bool:
-	return not is_frozen() and not is_stunned()
+	return not is_frozen() and not is_stunned() and not esta_tambaleando()
 
 
 func get_move_speed_multiplier() -> float:
-	if is_frozen() or is_stunned():
+	if is_frozen() or is_stunned() or esta_tambaleando():
 		return 0.0
 	# EL TECHO SUBE A 2.5, pero el frenado se sigue aplicando encima del impulso: estar
 	# acelerado no te vuelve inmune a que te frenen, solo hace que te frenen desde mas
@@ -230,6 +322,9 @@ func clear_all() -> void:
 	_slow_percent = 0.0
 	_slow_left = 0.0
 	_stun_left = 0.0
+	_tamb_left = 0.0
+	_combo_acumulado = 0.0
+	_inmune_left = 0.0
 	_vuln_mult = 1.0
 	_vuln_left = 0.0
 	chill_changed.emit(0)
@@ -238,6 +333,9 @@ func clear_all() -> void:
 	if was_stunned:
 		unstunned.emit()
 	_broadcast()
+	# El tambaleo va aparte (ver _avisar_tambaleo): sin esto, un cliente que reaparece en
+	# medio de un combo seguiria clavado lo que le quedaba.
+	_avisar_tambaleo()
 	_imp_vel = 1.0
 	_imp_resist = 1.0
 	_imp_daño = 1.0

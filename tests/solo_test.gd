@@ -28,6 +28,7 @@ func _run() -> void:
 	await _test_progresion()
 	await _test_controles()
 	await _test_mando_en_menus(main)
+	await _test_historia(main)
 	await _test_skins_visibles()
 	_test_siluetas()
 	await _test_music()
@@ -571,6 +572,127 @@ func _eje(eje: int, valor: float) -> void:
 	Input.parse_input_event(m)
 
 
+# --------------------------------------------------------------- Historia
+
+func _test_historia(main: Node) -> void:
+	# SIN TOCAR EL ARCHIVO DEL JUGADOR: jugar un capitulo guarda que lo ganaste, y quien
+	# corre esto no lo gano.
+	Progreso.guardado_activo = false
+	Progreso.historia = {}
+
+	# --- Los datos: que todo lo que nombra la historia exista ---
+	_check(Historia.cantidad() == 5, "la parte 1 tiene cinco capitulos (%d)" % Historia.cantidad())
+	var roto := ""
+	for i: int in range(Historia.cantidad()):
+		var cap := Historia.capitulo(i)
+		var pj := StringName(cap.get("personaje", ""))
+		if not CharacterDB.has_character(pj):
+			roto += "cap%d:personaje " % i
+		elif CharacterDB.get_character(pj).requiere_desbloqueo:
+			# Un capitulo que se juega con alguien que hay que ganarse dejaria la historia
+			# cerrada detras del pase.
+			roto += "cap%d:personaje-bloqueado " % i
+		if (cap.get("enemigos", []) as Array).is_empty():
+			roto += "cap%d:sin-enemigos " % i
+		for e: Dictionary in cap.get("enemigos", []):
+			if not CharacterDB.has_character(StringName(e["personaje"])):
+				roto += "cap%d:enemigo " % i
+		for parte: String in ["antes", "despues"]:
+			if (cap.get(parte, []) as Array).is_empty():
+				roto += "cap%d:%s-vacio " % [i, parte]
+			for linea: Array in cap.get(parte, []):
+				var quien := StringName(linea[0])
+				if quien != Historia.NARRADOR and not CharacterDB.has_character(quien):
+					roto += "cap%d:hablante-%s " % [i, quien]
+	_check(roto.is_empty(), "cada capitulo nombra personajes que existen y tiene sus dos charlas %s" % roto)
+
+	# --- Se abren en orden ---
+	_check(Progreso.capitulo_disponible(0) and not Progreso.capitulo_disponible(1),
+		"de entrada solo se puede jugar el capitulo 1")
+
+	# --- El cuadro de dialogo: completa, pasa y termina ---
+	var d := DialogoHistoria.new()
+	d.lineas = [[&"noelle", "Hola."], [Historia.NARRADOR, "Una linea bastante mas larga que la primera."]]
+	var terminados := [0]
+	d.terminado.connect(func() -> void: terminados[0] += 1)
+	add_child(d)
+	await get_tree().process_frame
+	d._texto.visible_characters = 0
+	d.avanzar()
+	_check(d._i == 0 and d._texto.visible_characters == -1,
+		"el primer toque completa la linea que se estaba escribiendo, no la saltea")
+	d.avanzar()
+	_check(d._i == 1 and not d._marco_retrato.visible,
+		"el segundo pasa a la siguiente, y el narrador no tiene retrato")
+	d.avanzar()
+	d.avanzar()
+	d.avanzar()
+	_check(terminados[0] == 1, "al pasar la ultima linea termina, una sola vez (%d)" % terminados[0])
+	d.queue_free()
+
+	# --- Un capitulo entero, de punta a punta ---
+	var antes_pj := Net.local_character_id
+	Net.set_local_character("dio")
+	main.jugar_capitulo(0)
+	for _i: int in range(20):
+		await get_tree().process_frame
+	var arena: Arena = main.get_node_or_null("Arena") as Arena
+	_check(arena != null and Modos.actual == Modos.HISTORIA, "el capitulo arranca una partida de historia")
+	if arena == null:
+		Progreso.guardado_activo = true
+		Progreso.cargar()
+		return
+	var jugador := arena.get_local_player()
+	_check(jugador != null and jugador.character_id == &"noelle",
+		"y se juega con el personaje del capitulo, no con el que tenias elegido (%s)" % [
+			jugador.character_id if jugador != null else &"?"])
+	var ecos: Array[Player] = []
+	for hijo: Node in arena.get_children():
+		var p := hijo as Player
+		if p != null and p.is_dummy:
+			ecos.append(p)
+	var esperados := (Historia.capitulo(0)["enemigos"] as Array).size()
+	var bien := ecos.size() == esperados
+	for e: Player in ecos:
+		var dato: Dictionary = Historia.capitulo(0)["enemigos"][absi(e.peer_id) - 1]
+		bien = bien and e.character_id == StringName(dato["personaje"]) \
+			and is_equal_approx(e.health.max_health, float(dato["vida"])) \
+			and e.player_name == String(dato["nombre"])
+	_check(bien, "los enemigos son los del capitulo, con su vida y su nombre (%d de %d)" % [ecos.size(), esperados])
+	_check(not ecos.is_empty() and not ecos[0].visual._eye_l.visible,
+		"y los ecos no tienen cara")
+
+	for e: Player in ecos:
+		e.health.apply_damage(99999.0, 1)
+	await get_tree().create_timer(3.6).timeout
+	var dialogo: DialogoHistoria = null
+	for hijo: Node in main.get_children():
+		if hijo is DialogoHistoria:
+			dialogo = hijo
+	_check(Progreso.capitulo_completado(0) and Progreso.capitulo_disponible(1),
+		"ganar el capitulo lo marca y abre el siguiente")
+	_check(dialogo != null, "y al ganar viene la charla de despues")
+	if dialogo != null:
+		dialogo._terminar()
+		await get_tree().process_frame
+	var lista: HistoriaMenu = null
+	for hijo: Node in main.get_children():
+		if hijo is HistoriaMenu and not hijo.is_queued_for_deletion():
+			lista = hijo
+	_check(lista != null, "y despues de la charla, de vuelta a la lista de capitulos")
+	_check(Net.local_character_id == "dio",
+		"y te devuelve el personaje que tenias elegido (%s)" % Net.local_character_id)
+	if lista != null:
+		lista.queue_free()
+
+	# Todo como estaba: el modo, el personaje y el archivo del jugador.
+	Modos.iniciar(Modos.ONLINE)
+	Net.set_local_character(antes_pj)
+	Progreso.guardado_activo = true
+	Progreso.cargar()
+	await get_tree().process_frame
+
+
 # ------------------------------------------------------ El mando en los menus
 
 func _test_mando_en_menus(main: Node) -> void:
@@ -638,8 +760,18 @@ func _test_mando_y_tactil(main: Node, player: Player) -> void:
 	while player.get_dash_cooldown_ratio() > 0.0 and espera < 3.0:
 		await get_tree().create_timer(0.1).timeout
 		espera += 0.1
+	# LIMPIO JUSTO ANTES DE APRETAR: con el tambaleo de los combos, un proyectil que un bot
+	# habia tirado antes de apagarse y que llega en este instante deja al jugador clavado
+	# 0.4 s, y en ese rato no dashea nadie. Es la regla nueva funcionando, no un error.
+	player.status.clear_all()
+	var quieto := 0
+	while not player.status.can_act() and quieto < 60:
+		await get_tree().physics_frame
+		quieto += 1
+	var tambaleo_antes := player.status.get_tambaleo_remaining()
 	await _apretar_mando(JOY_BUTTON_B)
-	_check(player.get_dash_cooldown_ratio() > 0.0, "B del mando dashea")
+	_check(player.get_dash_cooldown_ratio() > 0.0,
+		"B del mando dashea (tambaleo antes de apretar: %.2f)" % tambaleo_antes)
 	_check(not pausa.esta_abierto(), "y NO abre la pausa")
 
 	# --- Start pausa, y con la pausa abierta el stick no camina ---
@@ -666,7 +798,8 @@ func _test_mando_y_tactil(main: Node, player: Player) -> void:
 	# --- El dedo ---
 	var tactil: ControlesTactiles = main._tactil
 	var hud: HUD = main._hud
-	_check(tactil != null and not tactil.esta_activo(), "con mando, los botones del dedo no estan")
+	_check(tactil != null and not tactil.esta_activo() and not tactil._lienzo.visible,
+		"con mando, los botones del dedo no estan, ni siquiera dibujados")
 	Controles.usar(&"tactil")
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -1204,7 +1337,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 215
+const CHEQUEOS_MINIMOS: int = 229
 
 
 func _finish() -> void:

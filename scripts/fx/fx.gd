@@ -175,8 +175,13 @@ func spawn_hit_impact(context: Node, position: Vector3, amount: float, color: Co
 ## Va aparte de spawn_hit_impact porque el impacto lo ve todo el mundo y el temblor
 ## solo lo siente el autor: si temblara la camara de todos, cada golpe en la otra punta
 ## del mapa te sacudiria la pantalla.
-func hit_feedback_for_attacker(amount: float) -> void:
+## El jugador local le pego a alguien. Lo escucha el contador de combo del HUD.
+signal golpe_propio(victima: Node, cantidad: float)
+
+
+func hit_feedback_for_attacker(amount: float, victima: Node = null) -> void:
 	camera_shake(clampf(0.18 + amount * 0.012, 0.18, 1.1))
+	golpe_propio.emit(victima, amount)
 
 
 ## Arco de un golpe cuerpo a cuerpo: una media luna que barre y se desvanece.

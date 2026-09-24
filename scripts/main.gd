@@ -7,6 +7,11 @@ var _screen: Control = null
 var _arena: Arena = null
 var _hud: HUD = null
 var _tactil: ControlesTactiles = null
+## El personaje que el jugador tenia elegido antes de entrar a un capitulo. La historia le
+## presta otro —el capitulo 3 se juega con Sonic— y al salir se le devuelve el suyo.
+var _personaje_previo: String = ""
+## El capitulo que se esta jugando, para saber que dialogo va al terminar.
+var _capitulo_en_juego: int = -1
 var _pause: PauseMenu = null
 var _practica: PracticePanel = null
 
@@ -93,6 +98,7 @@ func show_main_menu(message: String = "") -> void:
 	_clear_match()
 	_clear_screen()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	_devolver_personaje()
 	var menu := MainMenu.new()
 	menu.message = message
 	menu.host_requested.connect(_on_host_requested)
@@ -100,6 +106,7 @@ func show_main_menu(message: String = "") -> void:
 	menu.modo_requested.connect(_on_modo_requested)
 	menu.pase_requested.connect(show_pase)
 	menu.tienda_requested.connect(show_tienda)
+	menu.historia_requested.connect(func(_nombre: String) -> void: show_historia())
 	menu.quit_requested.connect(_on_quit_requested)
 	_screen = menu
 	add_child(menu)
@@ -123,6 +130,80 @@ func show_tienda() -> void:
 	var pantalla := TiendaMenu.new()
 	pantalla.cerrado.connect(func() -> void: pantalla.queue_free())
 	add_child(pantalla)
+
+
+# ---------------------------------------------------------------------- Historia
+
+## La pantalla de capitulos, encima del menu, como la tienda.
+func show_historia() -> void:
+	var pantalla := HistoriaMenu.new()
+	pantalla.cerrado.connect(func() -> void: pantalla.queue_free())
+	pantalla.capitulo_elegido.connect(func(i: int) -> void:
+		pantalla.queue_free()
+		_empezar_capitulo(i))
+	add_child(pantalla)
+
+
+## Un dialogo encima de todo. Al terminar, `despues`.
+func mostrar_dialogo(lineas: Array, despues: Callable) -> DialogoHistoria:
+	var d := DialogoHistoria.new()
+	d.lineas = lineas
+	d.terminado.connect(func() -> void:
+		d.queue_free()
+		despues.call())
+	add_child(d)
+	return d
+
+
+## La charla de antes, y despues la pelea.
+##
+## EL CONSEJO VA COMO ULTIMA LINEA DEL NARRADOR, y no en un cartel aparte: es lo ultimo
+## que se lee antes de pelear, que es justo cuando sirve.
+func _empezar_capitulo(i: int) -> void:
+	var cap := Historia.capitulo(i)
+	if cap.is_empty() or not Progreso.capitulo_disponible(i):
+		return
+	var lineas: Array = (cap["antes"] as Array).duplicate()
+	if cap.has("pista"):
+		lineas.append([Historia.NARRADOR, "CONSEJO: " + String(cap["pista"])])
+	mostrar_dialogo(lineas, func() -> void: jugar_capitulo(i))
+
+
+## Arranca la pelea de un capitulo, directo, sin sala de espera: el personaje lo elige la
+## historia, no hay nada que elegir.
+func jugar_capitulo(i: int) -> void:
+	var cap := Historia.capitulo(i)
+	if cap.is_empty():
+		return
+	_capitulo_en_juego = i
+	if _personaje_previo.is_empty():
+		_personaje_previo = Net.local_character_id
+	Practica.restablecer()
+	Modos.iniciar_historia(i)
+	Net.set_local_character(String(cap["personaje"]))
+	Net.start_solo(Settings.player_name)
+	Net.start_match()
+
+
+func _devolver_personaje() -> void:
+	if _personaje_previo.is_empty():
+		return
+	Net.set_local_character(_personaje_previo)
+	_personaje_previo = ""
+
+
+## Termino la pelea de un capitulo: si gano, la charla de despues; si no, de vuelta a la
+## lista, donde se puede reintentar.
+func _terminar_capitulo(gano: bool) -> void:
+	var i := _capitulo_en_juego
+	_capitulo_en_juego = -1
+	Net.leave_game()
+	show_main_menu()
+	if not gano:
+		show_historia()
+		return
+	Progreso.completar_capitulo(i)
+	mostrar_dialogo(Historia.capitulo(i).get("despues", []), show_historia)
 
 
 func show_lobby() -> void:
@@ -266,8 +347,13 @@ func _on_modo_termino(gano: bool, titulo: String, detalle: String) -> void:
 		_hud.show_match_result("%s
 %s" % [titulo, detalle])
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	await get_tree().create_timer(5.0).timeout
+	# En la historia el resultado dura menos: lo que importa viene despues, en la charla.
+	var historia := Modos.actual == Modos.HISTORIA and _capitulo_en_juego >= 0
+	await get_tree().create_timer(3.0 if historia else 5.0).timeout
 	if not Net.solo_mode:
+		return
+	if historia:
+		_terminar_capitulo(gano)
 		return
 	Net.leave_game()
 	show_main_menu()

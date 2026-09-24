@@ -48,6 +48,18 @@ var _charge_label: Label = null
 var _ability_row: HBoxContainer = null
 ## Las barras de vida, stamina y ultimate. Guardadas para moverlas con el dedo.
 var _barras: Control = null
+
+# --- El contador de combo ---
+#
+# Cuenta los golpes que entran MIENTRAS EL RIVAL SIGUE TAMBALEANDO del anterior: eso es un
+# combo, una cadena que el otro no pudo cortar. Pasado el tambaleo sin otro golpe, se
+# corta y se apaga. No da nada: es para que se vea la cadena que se esta haciendo.
+var _combo_caja: Control = null
+var _combo_num: Label = null
+var _combo_daño_label: Label = null
+var _combo_golpes: int = 0
+var _combo_daño: float = 0.0
+var _combo_ultimo: float = -10.0
 var _ability_widgets: Array[Dictionary] = []
 
 var _channel_box: Control = null
@@ -94,6 +106,7 @@ func _build() -> void:
 	_build_scoreboard(root)
 	_build_modo(root)
 	_build_progreso(root)
+	_build_combo(root)
 	_aplicar_dispositivo()
 
 
@@ -125,7 +138,64 @@ func _build_progreso(root: Control) -> void:
 	Progreso.subio_nivel.connect(_on_subio_nivel)
 
 
+## Al costado de la mira, que es donde estan los ojos mientras se pelea.
+func _build_combo(root: Control) -> void:
+	_combo_caja = VBoxContainer.new()
+	_combo_caja.set_anchors_preset(Control.PRESET_CENTER)
+	_combo_caja.position = Vector2(70.0, -10.0)
+	_combo_caja.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_combo_caja.modulate.a = 0.0
+	root.add_child(_combo_caja)
+	_combo_num = UITheme.make_label("", 30, UITheme.GOLD)
+	_combo_num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_combo_caja.add_child(_combo_num)
+	_combo_daño_label = UITheme.make_label("", 13, UITheme.TEXT)
+	_combo_daño_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_combo_caja.add_child(_combo_daño_label)
+	FX.golpe_propio.connect(_on_golpe_propio)
+
+
+## Cuanto puede pasar entre un golpe y el siguiente para que siga siendo el mismo combo:
+## el tambaleo, mas un margen para lo que tarda en llegar el aviso por la red.
+func _ventana_combo() -> float:
+	return StatusEffects.TAMBALEO + 0.12
+
+
+func _on_golpe_propio(_victima: Node, cantidad: float) -> void:
+	var ahora := Time.get_ticks_msec() / 1000.0
+	if ahora - _combo_ultimo > _ventana_combo():
+		_combo_golpes = 0
+		_combo_daño = 0.0
+	_combo_golpes += 1
+	_combo_daño += cantidad
+	_combo_ultimo = ahora
+	# Un golpe suelto no es un combo: el contador aparece desde el segundo.
+	if _combo_golpes < 2 or not is_instance_valid(_combo_caja):
+		return
+	_combo_num.text = "COMBO ×%d" % _combo_golpes
+	_combo_daño_label.text = "%d de daño" % int(round(_combo_daño))
+	_combo_caja.modulate.a = 1.0
+	# Un saltito con cada golpe: el numero que crece tiene que sentirse, no solo leerse.
+	_combo_caja.pivot_offset = _combo_caja.size * 0.5
+	var tw := _combo_caja.create_tween()
+	tw.tween_property(_combo_caja, "scale", Vector2.ONE, 0.12).from(Vector2.ONE * 1.25)
+
+
+func _actualizar_combo() -> void:
+	if not is_instance_valid(_combo_caja) or _combo_caja.modulate.a <= 0.0:
+		return
+	var ahora := Time.get_ticks_msec() / 1000.0
+	if ahora - _combo_ultimo > _ventana_combo():
+		# Cortado: se va apagando, no desaparece de golpe, asi se alcanza a leer el total.
+		_combo_caja.modulate.a = maxf(0.0, _combo_caja.modulate.a - get_process_delta_time() * 1.6)
+		if _combo_caja.modulate.a <= 0.0:
+			_combo_golpes = 0
+			_combo_daño = 0.0
+
+
 func _exit_tree() -> void:
+	if FX.golpe_propio.is_connected(_on_golpe_propio):
+		FX.golpe_propio.disconnect(_on_golpe_propio)
 	if Progreso.monedas_cambiaron.is_connected(_on_monedas):
 		Progreso.monedas_cambiaron.disconnect(_on_monedas)
 	if Progreso.subio_nivel.is_connected(_on_subio_nivel):
@@ -656,6 +726,7 @@ func _actualizar_modo() -> void:
 
 func _process(delta: float) -> void:
 	_actualizar_modo()
+	_actualizar_combo()
 	_update_chip(delta)
 	_update_stamina_pulse(delta)
 

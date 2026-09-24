@@ -24,6 +24,8 @@ const ONLINE: StringName = &"online"
 const DUELO: StringName = &"duelo"
 const JEFES: StringName = &"jefes"
 const COLINA: StringName = &"colina"
+## El modo historia. No va en LISTA: tiene su propio boton y su propia pantalla.
+const HISTORIA: StringName = &"historia"
 
 ## Todos los offline, en el orden en que se muestran: del mas parejo al mas dificil.
 const LISTA: Array[StringName] = [DUELO, CONTRARRELOJ, COLINA, SUPERVIVENCIA,
@@ -90,7 +92,9 @@ static func bots_en_oleada(n: int) -> int:
 ## - En uno contra uno hay un punto muy marcado: por debajo de unos 150 de vida el heroe
 ##   gana casi siempre, y por arriba de 180 pierde casi siempre. La torre subia 48 por
 ##   jefe y pasaba ese umbral en el segundo, asi que el jefe 1 se ganaba y el 2 no.
-func vida_bot() -> float:
+func vida_bot(id: int = 0) -> float:
+	if actual == HISTORIA:
+		return float(_enemigo(id).get("vida", 60.0))
 	match actual:
 		PRACTICA: return 170.0
 		DUELO: return 150.0
@@ -104,7 +108,12 @@ func vida_bot() -> float:
 
 
 ## Cuanto pega un enemigo, como fraccion del daño normal.
-func daño_bot() -> float:
+##
+## `id` es el peer del bot (-1, -2...). Solo lo usa la historia, donde cada enemigo pega
+## distinto: un eco no pega como Dio.
+func daño_bot(id: int = 0) -> float:
+	if actual == HISTORIA:
+		return float(_enemigo(id).get("daño", 0.3))
 	match actual:
 		PRACTICA: return GameConfig.BOT_DAMAGE_SCALE
 		DUELO: return 0.72
@@ -126,6 +135,40 @@ var tiempo: float = 0.0
 var colina_avance: float = 0.0
 var colina_dentro: bool = false
 var _terminado: bool = false
+## El capitulo que se esta jugando en el modo historia. -1 = ninguno.
+var capitulo: int = -1
+
+
+## El enemigo de la historia que le toca a un bot, por su peer (-1 es el primero).
+func _enemigo(id: int) -> Dictionary:
+	var lista: Array = Historia.capitulo(capitulo).get("enemigos", [])
+	var i := absi(id) - 1
+	if i < 0 or i >= lista.size():
+		return {}
+	return lista[i]
+
+
+## El personaje de un bot. En la historia lo dice el capitulo; afuera, no aplica.
+func personaje_bot(indice: int) -> StringName:
+	var lista: Array = Historia.capitulo(capitulo).get("enemigos", [])
+	if actual != HISTORIA or indice < 0 or indice >= lista.size():
+		return &""
+	return StringName(lista[indice]["personaje"])
+
+
+## Como se llama un bot arriba de la cabeza, y si es un eco. Solo en la historia.
+func nombre_bot(id: int) -> String:
+	return String(_enemigo(id).get("nombre", "")) if actual == HISTORIA else ""
+
+
+func es_eco(id: int) -> bool:
+	return actual == HISTORIA and bool(_enemigo(id).get("eco", false))
+
+
+## Arranca un capitulo de la historia.
+func iniciar_historia(i: int) -> void:
+	capitulo = i
+	iniciar(HISTORIA)
 
 
 func _process(delta: float) -> void:
@@ -157,6 +200,7 @@ func nombre() -> String:
 		DUELO: return "Duelo"
 		JEFES: return "Torre de jefes"
 		COLINA: return "Rey de la colina"
+		HISTORIA: return "Historia"
 	return "En línea"
 
 
@@ -176,6 +220,8 @@ func descripcion() -> String:
 			return "%d enemigos, de a uno, cada uno más duro que el anterior." % JEFES_TOTAL
 		COLINA:
 			return "Aguantá %d segundos dentro del círculo. Si te salen, el reloj para." % int(META_COLINA)
+		HISTORIA:
+			return String(Historia.capitulo(capitulo).get("titulo", ""))
 	return "Contra otros jugadores."
 
 
@@ -189,6 +235,7 @@ func bots_iniciales() -> int:
 		DUELO: return 1
 		JEFES: return 1
 		COLINA: return BOTS_COLINA
+		HISTORIA: return (Historia.capitulo(capitulo).get("enemigos", []) as Array).size()
 	return 0
 
 
@@ -208,6 +255,10 @@ func reaparece_jugador() -> bool:
 # --------------------------------------------------------------------- Partida
 
 func iniciar(modo: StringName) -> void:
+	# Salir de la historia por cualquier otro modo olvida el capitulo: si no, un modo
+	# libre leeria la vida de los enemigos del ultimo capitulo jugado.
+	if modo != HISTORIA:
+		capitulo = -1
 	actual = modo
 	activo = es_offline() and modo != PRACTICA
 	bajas = 0
@@ -263,6 +314,12 @@ func bot_murio(vivos_restantes: int) -> int:
 		DUELO:
 			_finalizar(true, "¡GANASTE EL DUELO!", "En %s" % reloj())
 			return 0
+		HISTORIA:
+			# Nadie reaparece: el capitulo se gana cuando no queda ninguno en pie.
+			if vivos_restantes <= 0:
+				_finalizar(true, "¡CAPÍTULO %d COMPLETADO!" % (capitulo + 1),
+					String(Historia.capitulo(capitulo).get("titulo", "")))
+			return 0
 		JEFES:
 			if bajas >= JEFES_TOTAL:
 				_finalizar(true, "¡TORRE COMPLETADA!", "%d jefes en %s" % [bajas, reloj()])
@@ -306,6 +363,8 @@ func jugador_murio() -> void:
 				bajas + 1, JEFES_TOTAL])
 		ULTIMO_EN_PIE:
 			_finalizar(false, "TE GANARON", "%d de %d" % [bajas, BOTS_ULTIMO_EN_PIE])
+		HISTORIA:
+			_finalizar(false, "CAÍSTE", "El capítulo se puede volver a intentar cuando quieras.")
 
 
 func _finalizar(gano: bool, titulo: String, detalle: String) -> void:
@@ -338,6 +397,8 @@ func marcador() -> String:
 			return "DUELO    %s" % reloj()
 		JEFES:
 			return "JEFE %d / %d    %s" % [mini(bajas + 1, JEFES_TOTAL), JEFES_TOTAL, reloj()]
+		HISTORIA:
+			return "CAPÍTULO %d    QUEDAN %d" % [capitulo + 1, maxi(0, bots_iniciales() - bajas)]
 		COLINA:
 			# Dice tambien si el reloj esta corriendo: sin eso, estar afuera se ve igual que
 			# estar adentro y no se entiende por que no avanza.

@@ -549,7 +549,7 @@ func _on_damaged(amount: float, source_id: int) -> void:
 	FX.spawn_hit_impact(self, punto, amount, color)
 
 	if source_id == Net.local_id() and source_id != _peer_id_del_cuerpo():
-		FX.hit_feedback_for_attacker(amount)
+		FX.hit_feedback_for_attacker(amount, _body)
 
 
 ## El peer del jugador al que pertenece este visual. Sirve para no temblar cuando el
@@ -1961,6 +1961,38 @@ func _kanji(circulo: StandardMaterial3D, tinta: StandardMaterial3D, pos: Vector3
 		var trazo := Art.box(t[1], tinta, pos + (t[0] as Vector3) + Vector3(0.0, 0.0, 0.008 * hacia))
 		trazo.rotation_degrees = Vector3(0.0, 0.0, t[2])
 		_costume_add(_torso, trazo)
+
+
+## Un ECO del modo historia: la copia de pelea que la Arena fabrica con lo que le sobra de
+## cada uno. La misma forma, oscura y SIN CARA.
+##
+## Oscuro pero con el borde claro al maximo, igual que el acabado "sombra" de las skins:
+## un enemigo que se funde con el piso no es dificil, es injusto. La silueta tiene que
+## seguir leyendose a veinte metros, que es lo que dice que personaje es y que va a hacer.
+func volverse_eco() -> void:
+	var vistos: Dictionary = {}
+	var pendientes: Array[Node] = [_root]
+	while not pendientes.is_empty():
+		var nodo: Node = pendientes.pop_back()
+		pendientes.append_array(nodo.get_children())
+		var malla := nodo as MeshInstance3D
+		if malla == null:
+			continue
+		var m := malla.material_override as StandardMaterial3D
+		if m == null or vistos.has(m):
+			continue
+		vistos[m] = true
+		# Oscuro Y corrido al violeta: solo oscurecido, un guardapolvo blanco quedaba gris
+		# claro y el eco se leia como el personaje en una sombra, no como una sombra.
+		m.albedo_color = m.albedo_color.darkened(0.82).lerp(Color(0.10, 0.07, 0.17), 0.35)
+		if m.emission_enabled:
+			m.emission = m.emission.darkened(0.7)
+		m.rim = 1.0
+		m.rim_tint = 0.0
+	# Sin cara: los ojos, las cejas y la boca son lo que hace persona a un muñeco.
+	for parte: Node3D in [_eye_l, _eye_r, _brow_l, _brow_r, _mouth]:
+		if parte != null:
+			parte.visible = false
 
 
 func _costume_add(parent: Node3D, node: MeshInstance3D) -> void:

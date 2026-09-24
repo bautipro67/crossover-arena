@@ -65,6 +65,7 @@ func _run() -> void:
 	await _test_rick(player, arena)
 	await _test_sonic(player, arena)
 	await _test_goku(player, arena)
+	await _test_tambaleo(arena)
 	await _test_practica(player, arena)
 	await _test_arena(arena)
 
@@ -1476,6 +1477,68 @@ func _test_sonic(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+# ---------------------------------------------------------------- Combos
+
+## El tambaleo: cada golpe deja al rival clavado un instante, que es lo que hace posible
+## encadenar el basico con las habilidades.
+func _test_tambaleo(arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	var sitio := arena.find_clear_spot(Vector3(20.0, 0.6, 20.0), 1.5)
+	var victima := _spawn_dummy(arena, sitio)
+	victima.health.set_max(5000.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var est := victima.status
+
+	_check(est.can_act(), "(control: antes del golpe el rival puede actuar)")
+	CombatUtils.deal_damage(victima, 10.0, 1)
+	_check(not est.can_act() and est.esta_tambaleando(),
+		"un golpe deja al rival tambaleando: no se puede mover, dashear ni tirar nada")
+	_check(not est.is_frozen() and not est.is_stunned(),
+		"y NO es congelar ni el aturdimiento de ZA WARUDO: Snowgrave no ejecuta a un tambaleado")
+	_check(is_zero_approx(est.get_move_speed_multiplier()), "mientras tambalea no camina")
+
+	# Se renueva con cada golpe: es lo que permite encadenar.
+	await get_tree().create_timer(StatusEffects.TAMBALEO * 0.6).timeout
+	CombatUtils.deal_damage(victima, 10.0, 1)
+	_check(est.get_tambaleo_remaining() > StatusEffects.TAMBALEO * 0.8,
+		"el siguiente golpe lo renueva, y asi se arma la cadena (quedan %.2f s)" % est.get_tambaleo_remaining())
+
+	# Y se va solo.
+	await get_tree().create_timer(StatusEffects.TAMBALEO + 0.15).timeout
+	_check(est.can_act(), "sin otro golpe, al rato se repone solo")
+
+	# --- LA SALIDA DEL COMBO: tiene final ---
+	#
+	# Sin tope, el basico de Sonic (cada 0.32 s) y el de Dio (cada 0.40) trababan a
+	# cualquiera para siempre. Se le pega cada 0.3 s sin parar y se mide que se suelte.
+	var seguido := 0.0
+	var solto := false
+	while seguido < StatusEffects.COMBO_MAXIMO + 0.8:
+		CombatUtils.deal_damage(victima, 5.0, 1)
+		await get_tree().create_timer(0.3).timeout
+		seguido += 0.3
+		if est.can_act():
+			solto = true
+			break
+	_check(solto and seguido <= StatusEffects.COMBO_MAXIMO + 0.35,
+		"pegandole sin parar, a los %.1f s el rival se suelta del combo: no hay trabas infinitas" % seguido)
+	CombatUtils.deal_damage(victima, 5.0, 1)
+	_check(est.can_act() and est.esta_inmune_al_tambaleo(),
+		"y durante un segundo no se lo puede volver a trabar: es su momento de escapar")
+	await get_tree().create_timer(StatusEffects.INMUNE_TRAS_COMBO + 0.1).timeout
+	CombatUtils.deal_damage(victima, 5.0, 1)
+	_check(not est.can_act(), "pasado ese segundo, un golpe vuelve a empezar un combo")
+	await get_tree().create_timer(StatusEffects.TAMBALEO + 0.1).timeout
+
+	# Un golpe que se come entero el escudo no pego: no traba.
+	victima.health.add_shield(50.0, 5.0)
+	CombatUtils.deal_damage(victima, 10.0, 1)
+	_check(est.can_act(), "un golpe que absorbe entero el escudo no deja tambaleando")
+	victima.queue_free()
+	Arena.set_bots_active(true)
+
+
 # -------------------------------------------------------------------- Goku
 
 func _test_goku(player: Player, arena: Arena) -> void:
@@ -1802,7 +1865,7 @@ func _check(condition: bool, description: String) -> void:
 ## corrutina sin que su llamador la esperara— y las tres se vieron igual: nada.
 ##
 ## Subir este numero al agregar chequeos es el precio de que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 215
+const CHEQUEOS_MINIMOS: int = 225
 
 
 func _finish() -> void:

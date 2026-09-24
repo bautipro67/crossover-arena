@@ -58,6 +58,11 @@ func _ready() -> void:
 	# inventa a partir de ellos tienen que seguir de largo.
 	_lienzo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_lienzo.draw.connect(_dibujar)
+	# APAGADO DE ENTRADA, y es lo que arregla el fantasma. Un Control nace visible y se
+	# dibuja una vez al entrar al arbol; _actualizar_activo solo lo toca cuando el estado
+	# CAMBIA, y arrancando con teclado no cambia nunca. Resultado: los botones quedaban
+	# dibujados encima del HUD de cualquiera que jugara con teclado, sin responder a nada.
+	_lienzo.visible = false
 	add_child(_lienzo)
 	_armar_botones()
 	_actualizar_activo()

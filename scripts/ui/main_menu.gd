@@ -19,6 +19,7 @@ signal join_requested(player_name: String, ip: String, port: int)
 signal modo_requested(player_name: String, modo: StringName)
 signal pase_requested()
 signal tienda_requested()
+signal historia_requested(player_name: String)
 signal quit_requested()
 
 var message: String = ""
@@ -101,6 +102,18 @@ func _ready() -> void:
 		# Con el mando no hay mouse que pase por encima: el detalle sigue al foco.
 		boton.focus_entered.connect(func() -> void: _mostrar_detalle(id))
 		grilla.add_child(boton)
+
+	# LA HISTORIA VA EN LA GRILLA, en el hueco que quedaba al lado de la practica: con siete
+	# modos en dos columnas sobraba una celda. Un boton aparte, a lo ancho, empujaba SALIR
+	# fuera de los 720 de alto (ver el comentario de arriba del archivo).
+	var b_historia := UITheme.make_button("MODO HISTORIA", true)
+	b_historia.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b_historia.pressed.connect(func() -> void: historia_requested.emit(_name_field.text))
+	var detalle_historia := func() -> void:
+		_detalle.text = "Historia — %s. Cinco capítulos con diálogos, y una pelea en cada uno." % Historia.PARTE
+	b_historia.mouse_entered.connect(detalle_historia)
+	b_historia.focus_entered.connect(detalle_historia)
+	grilla.add_child(b_historia)
 
 	_detalle = UITheme.make_label("Pasá el mouse por un modo para ver de qué se trata.",
 		11, UITheme.TEXT_DIM)
