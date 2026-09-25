@@ -586,6 +586,28 @@ func _test_historia(main: Node) -> void:
 		and Historia.titulo_capitulo(10) == "PARTE 2 · CAPÍTULO 1",
 		"la historia tiene dos partes de diez capitulos, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
 
+	# --- NUNCA MAS DE TRES ENEMIGOS A LA VEZ ---
+	#
+	# Cuatro o cinco ecos de entrada, y refuerzos que llegaban por reloj aunque no hubiera
+	# caido nadie, hacian injustos varios capitulos: una persona no ve a todos a la vez como
+	# el bot de la simulacion. Los refuerzos llegan cuando queda uno en pie, y de a dos o tres.
+	var amontonados := ""
+	for i: int in range(Historia.cantidad()):
+		var cap_i := Historia.capitulo(i)
+		var de_entrada := 0
+		for e: Dictionary in cap_i.get("enemigos", []):
+			if not e.get("reserva", false):
+				de_entrada += 1
+		if de_entrada > 3:
+			amontonados += "cap%d:%d-de-entrada " % [i + 1, de_entrada]
+		for ev: Array in cap_i.get("eventos", []):
+			var cond: Array = ev[0]
+			var vivos := int(cond[1]) if String(cond[0]) == "quedan" else de_entrada
+			for accion: Array in ev[1]:
+				if String(accion[0]) == "refuerzos" and vivos + (accion[1] as Array).size() > 3:
+					amontonados += "cap%d:%s+%d " % [i + 1, String(cond[0]), (accion[1] as Array).size()]
+	_check(amontonados.is_empty(), "ningun capitulo junta mas de tres enemigos a la vez %s" % amontonados)
+
 	# --- La dificultad: la cuesta, las tres dificultades y lo que paga cada una ---
 	var sube := true
 	var jefes_arriba := true
@@ -1622,7 +1644,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 239
+const CHEQUEOS_MINIMOS: int = 240
 
 
 func _finish() -> void:

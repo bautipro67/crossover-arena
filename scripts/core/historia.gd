@@ -303,11 +303,11 @@ static func _armar() -> Array[Dictionary]:
 		"objetivo": {"tipo": "proteger", "id": &"rick", "segundos": 45.0, "texto": "Protegé a Rick mientras arma el rastreador"},
 		"eventos": [
 			[["inicio"], [["decir", &"rick", "Cuarenta y cinco segundos. Si me pegan, empiezo de cero. Y vos también."]]],
-			[["tiempo", 15.0], [
+			[["quedan", 1], [
 				["refuerzos", [_eco("eco3", &"sonic", Vector2(-8, -14), 40.0, 0.22, false),
 					_eco("eco4", &"dio", Vector2(8, -14), 40.0, 0.22, false)]],
 				["decir", &"rick", "¡Vienen más! ¿Sabés lo que cuesta un condensador de materia oscura? Yo tampoco. Lo robé."]]],
-			[["tiempo", 30.0], [
+			[["quedan", 1], [
 				["refuerzos", [_eco("eco5", &"rick", Vector2(0, -16), 40.0, 0.22, false)]],
 				["decir", &"noelle", "¡Ese es igual a usted!"],
 				["decir", &"rick", "Pobre. Tiene toda mi inteligencia y nada de mi encanto."]]],
@@ -477,11 +477,11 @@ static func _armar() -> Array[Dictionary]:
 			"texto": "Mantené el rastreador dentro de la señal"},
 		"eventos": [
 			[["inicio"], [["decir", &"rick", "Adentro del círculo, gente. Yo no me muevo de ahí ni aunque me paguen."]]],
-			[["tiempo", 10.0], [
+			[["quedan", 1], [
 				["refuerzos", [_eco("e3", &"rick", Vector2(0, -22), 40.0, 0.22, false),
 					_eco("e4", &"noelle", Vector2(-9, -10), 40.0, 0.22, false)]],
 				["decir", &"flowery", "¡Más invitados a la fiesta!"]]],
-			[["tiempo", 20.0], [
+			[["quedan", 1], [
 				["refuerzos", [_eco("e5", &"flowery", Vector2(9, -10), 40.0, 0.22, false)]],
 				["decir", &"noelle", "¡Ya casi, Rick! ¡Aguante!"]]],
 		],
@@ -652,19 +652,19 @@ static func _armar() -> Array[Dictionary]:
 			_aliado(&"rick", "Rick", Vector2(-2.5, 1.5), 90.0, 0.5),
 		],
 		"enemigos": [
-			_eco("e1", &"dio", Vector2(-6, -12), 46.0, 0.24),
-			_eco("e2", &"flowery", Vector2(6, -12), 46.0, 0.24),
-			_eco("e3", &"goku", Vector2(0, -15), 46.0, 0.24),
-			_eco("e4", &"rick", Vector2(0, -10), 46.0, 0.24),
+			_eco("e1", &"dio", Vector2(-6, -12), 46.0, 0.20),
+			_eco("e2", &"flowery", Vector2(6, -12), 46.0, 0.20),
+			_eco("e3", &"goku", Vector2(0, -15), 46.0, 0.20),
 		],
 		"objetivo": {"tipo": "derrotar_todos", "texto": "Abrite paso hasta el núcleo", "limite": 150.0},
 		"eventos": [
 			[["inicio"], [["decir", &"sonic", "¡Carrera hasta el núcleo! ¡El último paga los chili dogs!"]]],
 			[["quedan", 1], [
-				["refuerzos", [_eco("e5", &"sonic", Vector2(-8, -16), 46.0, 0.24, false),
-					_eco("e6", &"noelle", Vector2(8, -16), 46.0, 0.24, false),
-					_eco("e7", &"dio", Vector2(0, -18), 46.0, 0.24, false)]],
+				["refuerzos", [_eco("e5", &"sonic", Vector2(-8, -16), 46.0, 0.20, false),
+					_eco("e6", &"noelle", Vector2(8, -16), 46.0, 0.20, false)]],
 				["decir", &"rick", "¡Genial! Refuerzos. Me encanta cuando el universo me odia."]]],
+			# De a dos: con tres llegando mientras quedaba uno, eran cuatro a la vez.
+			[["quedan", 1], [["refuerzos", [_eco("e7", &"dio", Vector2(0, -18), 46.0, 0.20, false)]]]],
 			[["muere", &"rick"], [["decir", &"noelle", "¡Rick! ...Aguante, ya casi llegamos."]]],
 		],
 		"intro": [
@@ -875,7 +875,7 @@ static func _armar() -> Array[Dictionary]:
 		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos"},
 		"eventos": [
 			[["inicio"], [["decir", NARRADOR, "Los ecos pelean como aquel al que copian. La bola de fuego pica: tirala al piso delante de ellos."]]],
-			[["tiempo", 12.0], [
+			[["quedan", 1], [
 				["refuerzos", [_eco("e4", &"rick", Vector2(-7, -12), 34.0, 0.18, false)]],
 				["decir", &"mario", "¡Mamma mia! ¡Viene otro!"]]],
 		],
@@ -937,11 +937,11 @@ static func _armar() -> Array[Dictionary]:
 			"texto": "Quedate en el círculo mientras el rastreador saca el fragmento"},
 		"eventos": [
 			[["inicio"], [["decir", &"rick", "¡Al círculo! Si salgo, el rastreador se detiene. Así funciona la ciencia."]]],
-			[["tiempo", 9.0], [
+			[["quedan", 1], [
 				["refuerzos", [_eco("e3", &"dio", Vector2(0, -22), 46.0, 0.25, false),
 					_eco("e4", &"flowery", Vector2(-9, -10), 46.0, 0.25, false)]],
 				["decir", &"noelle", "¡V-vienen más por los costados!"]]],
-			[["tiempo", 18.0], [
+			[["quedan", 1], [
 				["refuerzos", [_eco("e5", &"mario", Vector2(9, -10), 46.0, 0.25, false)]],
 				["decir", &"mario", "¡Mamma mia! ¡Ese eco tiene mi bigote!"]]],
 		],
@@ -1001,20 +1001,20 @@ static func _armar() -> Array[Dictionary]:
 			_aliado(&"goku", "Goku", Vector2(2.5, 1.5), 100.0, 0.55),
 		],
 		"enemigos": [
-			_eco("e1", &"dio", Vector2(-5, -12), 64.0, 0.40),
-			_eco("e2", &"dio", Vector2(5, -12), 64.0, 0.40),
+			_eco("e1", &"dio", Vector2(-5, -12), 64.0, 0.28),
+			_eco("e2", &"dio", Vector2(5, -12), 64.0, 0.28),
 		],
 		"objetivo": {"tipo": "proteger", "id": &"flowery", "segundos": 40.0,
 			"texto": "Protegé a Flowery mientras enciende el faro"},
 		"eventos": [
 			[["inicio"], [["decir", NARRADOR, "Si Flowery cae, el faro se apaga. Que los ecos te elijan a vos."]]],
-			[["tiempo", 12.0], [
-				["refuerzos", [_eco("e3", &"goku", Vector2(-8, -14), 64.0, 0.40, false),
-					_eco("e4", &"rick", Vector2(8, -14), 64.0, 0.40, false)]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("e3", &"goku", Vector2(-8, -14), 64.0, 0.28, false),
+					_eco("e4", &"rick", Vector2(8, -14), 64.0, 0.28, false)]],
 				["decir", &"goku", "¡Ja! ¡Llegan más! ¡Esto se pone bueno!"]]],
-			[["tiempo", 25.0], [
-				["refuerzos", [_eco("e5", &"sonic", Vector2(0, -16), 64.0, 0.40, false),
-					_eco("e6", &"mario", Vector2(-6, -16), 64.0, 0.40, false)]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("e5", &"sonic", Vector2(0, -16), 64.0, 0.28, false),
+					_eco("e6", &"mario", Vector2(-6, -16), 64.0, 0.28, false)]],
 				["decir", &"flowery", "¡Ya casi, amigos! ¡Ya veo la luz del otro lado!"]]],
 		],
 		"intro": [
@@ -1063,17 +1063,16 @@ static func _armar() -> Array[Dictionary]:
 			_eco("e1", &"noelle", Vector2(-6, -12), 32.0, 0.18),
 			_eco("e2", &"rick", Vector2(6, -12), 32.0, 0.18),
 			_eco("e3", &"dio", Vector2(0, -14), 32.0, 0.18),
-			_eco("e4", &"goku", Vector2(-9, -16), 32.0, 0.18),
-			_eco("e5", &"flowery", Vector2(9, -16), 32.0, 0.18),
 		],
 		"objetivo": {"tipo": "derrotar_todos", "texto": "Limpiá el camino antes de que se cierre la torre",
 			"limite": 120.0},
 		"eventos": [
 			[["inicio"], [["decir", NARRADOR, "La puerta de la torre se está cerrando: si no caen todos a tiempo, hay que volver a empezar."]]],
-			[["quedan", 2], [
+			[["quedan", 1], [
 				["refuerzos", [_eco("e6", &"sonic", Vector2(0, -18), 32.0, 0.18, false),
 					_eco("e7", &"mario", Vector2(-5, -18), 32.0, 0.18, false)]],
 				["decir", &"mario", "¡Mamma mia! ¡Un eco con MI cara! ¡Y otro con la tuya!"]]],
+			[["quedan", 1], [["refuerzos", [_eco("e4", &"goku", Vector2(5, -18), 32.0, 0.18, false)]]]],
 		],
 		"intro": [
 			["colocar", &"sonic", Vector2(0, 0), 0.0],
@@ -1262,7 +1261,6 @@ static func _armar() -> Array[Dictionary]:
 			_eco("e1", &"dio", Vector2(-5, -12), 38.0, 0.19),
 			_eco("e2", &"dio", Vector2(5, -12), 38.0, 0.19),
 			_eco("e3", &"goku", Vector2(0, -15), 38.0, 0.19),
-			_eco("e4", &"sonic", Vector2(-8, -10), 38.0, 0.19),
 		],
 		"objetivo": {"tipo": "derrotar_todos", "limite": 170.0,
 			"texto": "Llegá a la cima antes de que Dio les saque la energía a Noelle y a Rick"},
@@ -1271,9 +1269,9 @@ static func _armar() -> Array[Dictionary]:
 			[["quedan", 1], [
 				["decir", NARRADOR, "Un eco se inclina, muy educado, y dice: «Gracias, Mario. Pero tu amiga está en otro castillo»."],
 				["refuerzos", [_eco("e5", &"dio", Vector2(0, -18), 38.0, 0.19, false),
-					_eco("e6", &"flowery", Vector2(-6, -16), 38.0, 0.19, false),
-					_eco("e7", &"rick", Vector2(6, -16), 38.0, 0.19, false)]],
+					_eco("e6", &"flowery", Vector2(-6, -16), 38.0, 0.19, false)]],
 				["decir", &"mario", "¡Mamma mia! ¡¿Otra vez?!"]]],
+			[["quedan", 1], [["refuerzos", [_eco("e7", &"rick", Vector2(6, -16), 38.0, 0.19, false)]]]],
 		],
 		"intro": [
 			["colocar", &"mario", Vector2(0, 0), 0.0],
@@ -1324,22 +1322,21 @@ static func _armar() -> Array[Dictionary]:
 			_aliado(&"flowery", "Flowery", Vector2(-2.5, 1.5), 95.0, 0.55),
 		],
 		"enemigos": [
-			_eco("e1", &"mario", Vector2(-5, -12), 66.0, 0.50),
-			_eco("e2", &"goku", Vector2(5, -12), 66.0, 0.50),
-			_eco("e3", &"noelle", Vector2(0, -14), 66.0, 0.50),
+			_eco("e1", &"mario", Vector2(-5, -12), 66.0, 0.30),
+			_eco("e2", &"goku", Vector2(5, -12), 66.0, 0.30),
+			_eco("e3", &"noelle", Vector2(0, -14), 66.0, 0.30),
 		],
 		"objetivo": {"tipo": "proteger", "id": &"rick", "segundos": 45.0,
 			"texto": "Protegé a Rick mientras abre el portal a la cima"},
 		"eventos": [
 			[["inicio"], [["decir", &"rick", "Y si me pegan, se corta. Así que no me peguen. Gracias."]]],
-			[["tiempo", 14.0], [
-				["refuerzos", [_eco("e4", &"sonic", Vector2(-8, -14), 66.0, 0.50, false),
-					_eco("e5", &"dio", Vector2(8, -14), 66.0, 0.50, false)]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("e4", &"sonic", Vector2(-8, -14), 66.0, 0.30, false),
+					_eco("e5", &"dio", Vector2(8, -14), 66.0, 0.30, false)]],
 				["decir", &"flowery", "¡Más invitados! ¡Esta fiesta se está llenando!"]]],
-			[["tiempo", 30.0], [
-				["refuerzos", [_eco("e6", &"flowery", Vector2(0, -16), 66.0, 0.50, false),
-					_eco("e7", &"rick", Vector2(-6, -16), 66.0, 0.50, false)]],
-				["decir", &"rick", "¡Quince segundos! ¡Aguanten, Mortys!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("e6", &"flowery", Vector2(0, -16), 66.0, 0.30, false)]],
+				["decir", &"rick", "¡Ya falta poco! ¡Aguanten, Mortys!"]]],
 		],
 		"intro": [
 			["colocar", &"noelle", Vector2(0, 0), 0.0],
