@@ -185,6 +185,34 @@ func _congelar_pelea() -> void:
 		if aura != null and aura.visible:
 			aura.visible = false
 			_auras.append(aura)
+	_despegar()
+
+
+## NADIE ENCIMADO. En la pelea los bots atraviesan al jugador, y una escena que arrancaba
+## con un aliado metido adentro del jugador mostraba un solo cuerpo con dos cabezas (la de
+## Rick asomando del hombro de Noelle, capitulo 10). Se corre al que no es el jugador, al
+## hueco libre mas cercano a un metro y medio.
+func _despegar() -> void:
+	var vistos: Array[Player] = []
+	for a: Node in actores.values():
+		var p := a as Player
+		if p != null and is_instance_valid(p) and p.visible:
+			vistos.append(p)
+	for i: int in range(vistos.size()):
+		for j: int in range(i + 1, vistos.size()):
+			var fijo := vistos[i]
+			var movido := vistos[j]
+			if movido.is_local_player():
+				fijo = vistos[j]
+				movido = vistos[i]
+			var d := movido.global_position - fijo.global_position
+			d.y = 0.0
+			if d.length() >= 0.8:
+				continue
+			var lejos := d.normalized() if d.length() > 0.05 else fijo.global_transform.basis.x
+			var punto := arena.find_clear_spot(fijo.global_position + lejos * 1.5, 0.6)
+			movido.global_position = MisionHistoria.al_piso(arena, punto) + Vector3.UP * 0.1
+			movido.velocity = Vector3.ZERO
 
 
 func saltear() -> void:

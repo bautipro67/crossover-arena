@@ -64,7 +64,7 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	Sfx.play_3d(caster, &"portal", salida, -2.0)
 
 	await tree.create_timer(AVISO).timeout
-	if not is_instance_valid(caster3d):
+	if Ability.interrumpida(caster3d):
 		return
 	caster3d.call("teleport_to", destino)
 	Sfx.play_3d(caster, &"portal", destino, -4.0)

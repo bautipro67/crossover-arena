@@ -46,7 +46,7 @@ static func disparar(caster: Node, origin: Vector3, dir: Vector3, cosmetic: bool
 	for i: int in range(DISPAROS):
 		if i > 0:
 			await tree.create_timer(INTERVALO).timeout
-			if not is_instance_valid(caster):
+			if Ability.interrumpida(caster):
 				return
 			# El servidor relee la mira; el cliente remoto no la sabe y repite la primera,
 			# desde donde este el cuerpo ahora. Se ven casi igual y el daño lo decide el

@@ -80,7 +80,7 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	var recorrido := 0.0
 	while recorrido < ALCANCE * 1.6:
 		await tree.physics_frame
-		if not is_instance_valid(caster3d) or not is_instance_valid(blanco):
+		if Ability.interrumpida(caster3d) or not is_instance_valid(blanco):
 			return
 		if blanco.health.is_dead:
 			break
@@ -99,7 +99,7 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 		FX.spawn_dash_streak(caster, caster3d.global_position, hacia.normalized(),
 			Color(0.4, 0.7, 1.0, 0.6))
 
-	if not is_instance_valid(caster3d) or not is_instance_valid(blanco):
+	if Ability.interrumpida(caster3d) or not is_instance_valid(blanco):
 		return
 	if caster3d.global_position.distance_to(blanco.global_position) > FRENO * 2.6:
 		return

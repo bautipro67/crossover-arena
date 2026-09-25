@@ -69,6 +69,8 @@ func _schedule_burst(caster: Node, targets: Array[Node3D], origin: Vector3) -> v
 	var source_id: int = caster.peer_id
 
 	await tree.create_timer(STOP_DURATION).timeout
+	if Cinematica.activa:
+		return
 
 	for target: Node3D in targets:
 		if not is_instance_valid(target):

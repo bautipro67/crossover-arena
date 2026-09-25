@@ -55,7 +55,7 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	FX.spawn_spin_charge(caster3d, CARGA)
 	Sfx.play_3d(caster, &"dash", origin, -3.0)
 	await tree.create_timer(CARGA).timeout
-	if not is_instance_valid(caster3d):
+	if Ability.interrumpida(caster3d):
 		return
 
 	# El rumbo se vuelve a leer DESPUES de cargar. Durante la carga el jugador sigue
@@ -70,7 +70,7 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	# frenar_al_tocar en FALSE: atraviesa y sigue. Es la diferencia con el JARONA.
 	var tocados := await FloweryDash.pasada(
 		caster3d, rumbo, SPEED, DURATION, HIT_RADIUS, golpeados, false, ESTELA)
-	if not is_instance_valid(caster3d):
+	if Ability.interrumpida(caster3d):
 		return
 	for target: Node3D in tocados:
 		CombatUtils.deal_damage(target, DAMAGE, source_id)

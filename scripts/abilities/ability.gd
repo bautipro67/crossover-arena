@@ -34,3 +34,15 @@ func execute(_caster: Node, _origin: Vector3, _dir: Vector3) -> void:
 
 func get_cost() -> float:
 	return stamina_cost
+
+
+## ¿Hay que cortar una habilidad que va por la mitad?
+##
+## Las que son corrutinas —pasadas, rafagas, cadenas, vuelos— lo preguntan cada vez que
+## vuelven de una espera. Una escena del modo historia las corta: sin esto, una JARONA que
+## venia rebotando seguia en medio del dialogo, con su destello, su "¡JARONA!" y sus ondas
+## en cada pasada, aunque ya no moviera a nadie ni sacara vida.
+##
+## Sin tipo a proposito: el que la tiro puede ya no existir.
+static func interrumpida(caster) -> bool:
+	return not is_instance_valid(caster) or Cinematica.activa

@@ -59,7 +59,7 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	Sfx.play_3d(caster, &"dash", caster3d.global_position, -2.0)
 
 	await tree.create_timer(DESAPARECE).timeout
-	if not is_instance_valid(caster3d) or not is_instance_valid(blanco) or blanco.health.is_dead:
+	if Ability.interrumpida(caster3d) or not is_instance_valid(blanco) or blanco.health.is_dead:
 		return
 
 	var destino := calcular_destino(caster3d, blanco)

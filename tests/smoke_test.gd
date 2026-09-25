@@ -67,6 +67,7 @@ func _run() -> void:
 	await _test_goku(player, arena)
 	await _test_tambaleo(arena)
 	_test_descripciones()
+	await _test_escena_corta_habilidades(player)
 	await _test_practica(player, arena)
 	await _test_arena(arena)
 
@@ -1883,7 +1884,24 @@ func _test_descripciones() -> void:
 	_check(mal.is_empty(), "las descripciones muestran el daño de verdad %s" % mal)
 
 
-const CHEQUEOS_MINIMOS: int = 226
+## UNA ESCENA CORTA LO QUE VENIA PASANDO. Jugando el capitulo 4, la escena de mitad de
+## pelea arranco con Flowery a mitad de JARONA, y siguio "tirando jaronas" durante todo el
+## dialogo: destello, grito y ondas en cada una de las diez pasadas, quieta en el lugar.
+func _test_escena_corta_habilidades(player: Player) -> void:
+	player.health.revive_full()
+	player.status.clear_all()
+	var antes := player.global_position
+	Cinematica.activa = true
+	var t0 := Time.get_ticks_msec()
+	await Jarona.correr_embestida(player, Vector3.FORWARD, Jarona.MAX_PASSES, Jarona.DAMAGE,
+		Callable(), 0)
+	var tardo := Time.get_ticks_msec() - t0
+	Cinematica.activa = false
+	_check(tardo < 100 and player.global_position.distance_to(antes) < 0.2,
+		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
+
+
+const CHEQUEOS_MINIMOS: int = 227
 
 
 func _finish() -> void:

@@ -53,7 +53,7 @@ static func pasada(caster: Node3D, dir: Vector3, speed: float, duration: float,
 		if estela.a > 0.0:
 			FX.spawn_dash_streak(caster, caster.global_position, plano, estela)
 		await tree.create_timer(TICK).timeout
-		if not is_instance_valid(caster):
+		if Ability.interrumpida(caster):
 			return tocados
 		var health := caster.get_node_or_null("Health") as Health
 		if health != null and health.is_dead:

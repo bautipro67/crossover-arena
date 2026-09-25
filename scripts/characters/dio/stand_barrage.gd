@@ -59,7 +59,7 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	for i: int in range(TICKS):
 		if i > 0:
 			await tree.create_timer(TICK_INTERVAL).timeout
-		if not is_instance_valid(caster):
+		if Ability.interrumpida(caster):
 			return
 		var health := caster.get_node_or_null("Health") as Health
 		if health != null and health.is_dead:

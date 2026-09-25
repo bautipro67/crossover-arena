@@ -135,7 +135,7 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 	var fallos := 0
 	var golpe := damage
 	for pasada: int in range(tope):
-		if not is_instance_valid(caster3d):
+		if Ability.interrumpida(caster3d):
 			return
 
 		# El destello blanco ANTES de cada embestida, como en el original. No es adorno:
@@ -152,7 +152,7 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 		var golpeados: Dictionary = {}
 		var tocados := await FloweryDash.pasada(
 			caster3d, rumbo, SPEED, PASS_TIME, HIT_RADIUS, golpeados, true, estela)
-		if not is_instance_valid(caster3d):
+		if Ability.interrumpida(caster3d):
 			return
 
 		if tocados.is_empty():
@@ -167,7 +167,7 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 			# fallos dejaria al personaje clavado en el lugar entre pasada y pasada.
 			_dejar_estallido(estallido, caster, caster3d, rumbo)
 			await tree.create_timer(REGROUP).timeout
-			if not is_instance_valid(caster3d):
+			if Ability.interrumpida(caster3d):
 				return
 			var reapunte := _hacia_donde_apunta(caster3d)
 			if not reapunte.is_zero_approx():
@@ -209,7 +209,7 @@ static func correr_embestida(caster: Node, dir: Vector3, tope: int, damage: floa
 		if pasada == tope - 1:
 			return
 		await tree.create_timer(REGROUP).timeout
-		if not is_instance_valid(caster3d):
+		if Ability.interrumpida(caster3d):
 			return
 		# Y LA SIGUIENTE EMBESTIDA VA A DONDE MIRA EL JUGADOR.
 		var nuevo := _hacia_donde_apunta(caster3d)

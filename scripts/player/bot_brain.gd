@@ -555,7 +555,11 @@ func _separacion(peso: float) -> Vector3:
 	var empuje := Vector3.ZERO
 	for node: Node in get_tree().get_nodes_in_group("players"):
 		var otro := node as Player
-		if otro == null or otro == _body or not otro.is_dummy:
+		# De los otros bots, y en la historia tambien del jugador de su mismo equipo: un
+		# aliado que va y viene alrededor tuyo se te metia adentro, porque los bots no
+		# chocan con los jugadores.
+		var compañero := _body.equipo >= 0 and otro != null and otro.equipo == _body.equipo
+		if otro == null or otro == _body or not (otro.is_dummy or compañero):
 			continue
 		if not is_instance_valid(otro) or otro.health.is_dead:
 			continue

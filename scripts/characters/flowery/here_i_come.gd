@@ -72,7 +72,7 @@ func execute(caster: Node, _origin: Vector3, dir: Vector3) -> void:
 	# llegaba a nadie.
 	var tocados := await FloweryDash.pasada(
 		caster3d, rumbo, SPEED, DASH_TIME, HIT_RADIUS, golpeados, true, ESTELA)
-	if not is_instance_valid(caster3d):
+	if Ability.interrumpida(caster3d):
 		return
 	FloweryDash.frenar(caster3d)
 
@@ -88,7 +88,7 @@ func execute(caster: Node, _origin: Vector3, dir: Vector3) -> void:
 
 	for i: int in range(CHAIN_HITS):
 		await tree.create_timer(CHAIN_INTERVAL).timeout
-		if not is_instance_valid(caster3d) or not is_instance_valid(victima):
+		if Ability.interrumpida(caster3d) or not is_instance_valid(victima):
 			break
 		var health := caster.get_node_or_null("Health") as Health
 		if health != null and health.is_dead:
