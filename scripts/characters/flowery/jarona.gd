@@ -27,7 +27,7 @@ extends Ability
 ## encima SI vuelve a pegar. El registro por pasada existe para que un solo viaje no te
 ## cobre cuatro ticks mientras te atraviesa.
 
-const DAMAGE: float = 20.0
+const DAMAGE: float = 16.0
 ## CADA PASADA PEGA MENOS QUE LA ANTERIOR, y esto es lo que la hace jugable.
 ##
 ## El problema medido: con daño plano, un rival que no puede salirse del camino —contra
@@ -93,7 +93,7 @@ func _init() -> void:
 	display_name = "JARONA"
 	description = "Embiste. Cada vez que pega rebota y vuelve, UNA Y OTRA VEZ, hasta que falle una pasada. %d la primera y menos cada rebote. CORTA canalizados." % int(DAMAGE)
 	stamina_cost = 28.0
-	cooldown = 6.0
+	cooldown = 9.0
 	channel_time = 0.0
 	icon_color = Color(1.0, 0.36, 0.34)
 

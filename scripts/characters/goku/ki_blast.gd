@@ -27,7 +27,7 @@ func _init() -> void:
 	display_name = "Ráfaga de Ki"
 	description = "Tres esferas de ki seguidas, %d de daño cada una. Se puede reapuntar entre una y otra." % int(DAMAGE)
 	stamina_cost = 24.0
-	cooldown = 4.0
+	cooldown = 6.0
 	channel_time = 0.0
 	icon_color = Color(0.55, 0.85, 1.0)
 

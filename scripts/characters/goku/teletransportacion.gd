@@ -34,7 +34,7 @@ func _init() -> void:
 	display_name = "Teletransportación"
 	description = "Aparecés detrás de la espalda del rival que estás mirando y le pegás un rodillazo (%d)." % int(DAMAGE)
 	stamina_cost = 30.0
-	cooldown = 8.0
+	cooldown = 12.0
 	channel_time = 0.0
 	icon_color = Color(0.85, 0.95, 1.0)
 

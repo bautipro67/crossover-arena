@@ -18,7 +18,10 @@ signal unstunned()
 ## Stacks necesarios para congelar.
 const MAX_CHILL: int = 5
 ## Cada cuanto se pierde un stack si no te siguen pegando escarcha.
-const CHILL_DECAY_INTERVAL: float = 2.0
+##
+## 3 y no 2 desde que los cooldowns subieron x1.5: la escarcha llega mas espaciada, y con
+## el mismo descuento se iba antes de juntar los cinco stacks.
+const CHILL_DECAY_INTERVAL: float = 3.0
 ## Bajo de 2.5 a 2.0. Medido en duelos simulados: con el congelamiento entero, el rival
 ## de Noelle pasaba un tercio de la pelea sin poder hacer nada, y ella le ganaba a todos.
 const FREEZE_DURATION: float = 2.0

@@ -33,7 +33,7 @@ func _init() -> void:
 	display_name = "Spin Attack"
 	description = "Se enrolla en bola y golpea al frente. Gratis y muy rápido."
 	stamina_cost = 0.0  # <- GRATIS A PROPOSITO. No le pongas costo.
-	cooldown = 0.32
+	cooldown = 0.48
 	channel_time = 0.0
 	icon_color = Color(0.30, 0.55, 1.0)
 

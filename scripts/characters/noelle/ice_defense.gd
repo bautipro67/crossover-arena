@@ -33,7 +33,7 @@ func _init() -> void:
 	stamina_cost = 30.0
 	# Subio de 9 a 11: con 9 estaba levantado en cada intercambio, y medido en duelos
 	# simulados se comia un tercio del daño de los que pelean de lejos.
-	cooldown = 11.0
+	cooldown = 16.0
 	channel_time = 0.0
 	icon_color = Color(0.58, 0.86, 1.0)
 

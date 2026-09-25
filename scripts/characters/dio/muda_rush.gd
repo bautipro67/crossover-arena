@@ -8,7 +8,7 @@ extends Ability
 ## cono es mas corto y angosto. Dio es un peleador de distancia corta: su golpe gratis
 ## es su herramienta principal, no un relleno mientras espera cooldowns.
 
-const DAMAGE: float = 13.0
+const DAMAGE: float = 14.0
 const CONE_RANGE: float = 3.0
 const CONE_ANGLE: float = 60.0
 ## Casi nada: MUDA es una rafaga, si empujara de verdad Dio se alejaria solo del rival.
@@ -20,7 +20,7 @@ func _init() -> void:
 	display_name = "MUDA MUDA"
 	description = "Rafaga de golpes al frente. Gratis, rapida, corto alcance."
 	stamina_cost = 0.0  # <- GRATIS A PROPOSITO. No le pongas costo.
-	cooldown = 0.4
+	cooldown = 0.6
 	channel_time = 0.0
 	icon_color = Color(1.0, 0.82, 0.3)
 

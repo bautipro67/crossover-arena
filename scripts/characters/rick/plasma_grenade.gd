@@ -34,7 +34,7 @@ func _init() -> void:
 	stamina_cost = 30.0
 	# Bajo de 8 a 6: es lo unico que Rick tiene para sacar mucho de golpe, y con 8 salia
 	# una vez por pelea.
-	cooldown = 6.0
+	cooldown = 9.0
 	channel_time = 0.0
 	icon_color = Color(0.6, 1.0, 0.3)
 

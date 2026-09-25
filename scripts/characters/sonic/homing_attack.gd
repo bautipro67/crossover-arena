@@ -13,7 +13,7 @@ extends Ability
 ## otro nombre, y ademas dejaria a Sonic volando hacia la nada por haberse equivocado de
 ## momento. Que no salga es informacion: no habia nadie a tiro.
 
-const DAMAGE: float = 26.0
+const DAMAGE: float = 22.0
 ## Hasta donde busca. Generoso a proposito: es una herramienta para cerrar distancia.
 const ALCANCE: float = 18.0
 ## Cuan al frente tiene que estar. No es 360: se traba en lo que estas mirando.
@@ -49,7 +49,7 @@ func _init() -> void:
 	description = "Se traba en el rival más cercano y se lanza (%d). Si acertás, vuelve casi al instante: encadena hasta %d veces." % [
 		int(DAMAGE), CADENA_MAXIMA]
 	stamina_cost = 22.0
-	cooldown = 5.0
+	cooldown = 7.5
 	channel_time = 0.0
 	icon_color = Color(0.55, 0.85, 1.0)
 

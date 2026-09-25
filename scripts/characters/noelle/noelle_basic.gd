@@ -20,7 +20,7 @@ func _init() -> void:
 	display_name = "Icicle Strike"
 	description = "Zarpazo helado al frente. Gratis, corto alcance, suma 1 de escarcha."
 	stamina_cost = 0.0  # <- GRATIS A PROPOSITO. No le pongas costo.
-	cooldown = 0.5
+	cooldown = 0.75
 	channel_time = 0.0
 	icon_color = Color(0.72, 0.88, 1.0)
 

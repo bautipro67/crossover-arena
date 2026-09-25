@@ -103,19 +103,21 @@ static func bots_en_oleada(n: int) -> int:
 ## Y OTRA VEZ AL SACARSE LOS COMBOS (2026-09-25). Contra varios, el tambaleo castigaba
 ## sobre todo al que estaba solo: cada enemigo que le pegaba lo dejaba clavado para el
 ## siguiente. Sin el, todo se volvio mucho mas facil —colina 97%, contrarreloj 90%, ultimo
-## en pie 87%, la torre 67%— y estos numeros los devuelven a donde estaban.
+## en pie 87%, la torre 67%— y estos numeros los devuelven a donde estaban. Y al subir los
+## cooldowns x1.5, al reves y solo en los que el heroe tiene que matar rapido contra uno
+## fuerte: duelo 21%, torre 17%, colina 25%.
 func vida_bot(id: int = 0) -> float:
 	if actual == HISTORIA:
 		return mision.vida_de(id) if is_instance_valid(mision) else 60.0
 	match actual:
 		PRACTICA: return 170.0
-		DUELO: return 150.0
+		DUELO: return 141.0
 		SUPERVIVENCIA: return 36.0 + float(oleada) * 5.0
 		CONTRARRELOJ: return 57.0
 		ULTIMO_EN_PIE: return 56.0
 		# Sube de a poco para no cruzar de golpe el umbral de los 180.
-		JEFES: return 112.0 + float(bajas) * 20.0
-		COLINA: return 61.0
+		JEFES: return 104.0 + float(bajas) * 19.0
+		COLINA: return 54.0
 	return 170.0
 
 
@@ -134,8 +136,8 @@ func daño_bot(id: int = 0) -> float:
 		ULTIMO_EN_PIE: return 0.32
 		# Los jefes se endurecen tambien pegando, no solo aguantando: un jefe que solo tiene
 		# mas vida es la misma pelea mas larga.
-		JEFES: return 0.48 + float(bajas) * 0.03
-		COLINA: return 0.33
+		JEFES: return 0.44 + float(bajas) * 0.03
+		COLINA: return 0.28
 	return GameConfig.BOT_DAMAGE_SCALE
 
 var actual: StringName = ONLINE

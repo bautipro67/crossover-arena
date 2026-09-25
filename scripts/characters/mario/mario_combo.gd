@@ -17,7 +17,7 @@ func _init() -> void:
 	display_name = "Puño y Patada"
 	description = "Un puño, otro y una patada, cuerpo a cuerpo. %d de daño. Gratis." % int(DAMAGE)
 	stamina_cost = 0.0  # <- GRATIS A PROPOSITO. No le pongas costo.
-	cooldown = 0.45
+	cooldown = 0.68
 	channel_time = 0.0
 	icon_color = Color(0.95, 0.22, 0.20)
 

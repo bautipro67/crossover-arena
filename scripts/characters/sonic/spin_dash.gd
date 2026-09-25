@@ -35,7 +35,7 @@ func _init() -> void:
 	display_name = "Spin Dash"
 	description = "Carga en el lugar y sale disparado. Atropella a todos los que cruce (%d)." % int(DAMAGE)
 	stamina_cost = 26.0
-	cooldown = 6.0
+	cooldown = 9.0
 	channel_time = 0.0
 	icon_color = Color(0.35, 0.65, 1.0)
 

@@ -10,7 +10,7 @@ extends Ability
 ## poco menos que el MUDA de Dio, y sale mas seguido que el de Dio. Es el todoterreno
 ## tambien aca.
 
-const DAMAGE: float = 13.0
+const DAMAGE: float = 14.0
 const CONE_RANGE: float = 3.0
 const CONE_ANGLE: float = 65.0
 const KNOCKBACK: float = 2.4
@@ -21,7 +21,7 @@ func _init() -> void:
 	display_name = "Combo de Golpes"
 	description = "Golpes y patadas cuerpo a cuerpo, %d de daño. Gratis." % int(DAMAGE)
 	stamina_cost = 0.0  # <- GRATIS A PROPOSITO. No le pongas costo.
-	cooldown = 0.42
+	cooldown = 0.63
 	channel_time = 0.0
 	icon_color = Color(1.0, 0.58, 0.18)
 

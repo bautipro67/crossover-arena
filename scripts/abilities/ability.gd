@@ -11,6 +11,9 @@ extends Resource
 
 ## Costo en stamina. 0 = gratis (los golpes basicos van en 0 por diseño).
 @export var stamina_cost: float = 0.0
+## LOS BASICOS Y LAS HABILIDADES SUBIERON x1.5 el 2026-09-25, a pedido: los basicos se
+## podian spamear y las habilidades volvian demasiado rapido. Los ultimates no: a esos
+## los frenan la barra de stamina entera y el medidor de carga.
 @export var cooldown: float = 1.0
 ## Si es > 0, el jugador queda clavado en el piso mientras canaliza (la camara sigue libre).
 @export var channel_time: float = 0.0

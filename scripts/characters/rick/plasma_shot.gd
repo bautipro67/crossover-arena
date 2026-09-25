@@ -22,7 +22,7 @@ func _init() -> void:
 	description = "Disparo de plasma, %d de daño. Gratis y a distancia." % int(DAMAGE)
 	stamina_cost = 0.0
 	# Bajo de 0.55 a 0.5, el mismo ritmo que el golpe de Noelle.
-	cooldown = 0.5
+	cooldown = 0.75
 	channel_time = 0.0
 	icon_color = Color(0.45, 0.95, 0.35)
 

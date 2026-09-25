@@ -37,7 +37,7 @@ func _init() -> void:
 	description = "%d golpes en %.1fs, %d de daño cada uno. Hay que seguir encima del rival." % [
 		TICKS, TICKS * TICK_INTERVAL, int(DAMAGE_PER_TICK)]
 	stamina_cost = 32.0
-	cooldown = 8.0
+	cooldown = 12.0
 	channel_time = 0.0
 	icon_color = Color(0.95, 0.75, 0.25)
 

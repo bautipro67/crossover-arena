@@ -32,7 +32,7 @@ func _init() -> void:
 	description = "%d petalos al frente, %d de daño cada uno. Gratis y a distancia." % [
 		PETALS, int(DAMAGE)]
 	stamina_cost = 0.0  # <- GRATIS A PROPOSITO. No le pongas costo.
-	cooldown = 0.75
+	cooldown = 1.1
 	channel_time = 0.0
 	icon_color = Color(1.0, 0.86, 0.34)
 

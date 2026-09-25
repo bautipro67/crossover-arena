@@ -42,7 +42,7 @@ func _init() -> void:
 	stamina_cost = 32.0
 	# Bajo de 7 a 6: es su unica salida, y contra un rival encima siete segundos es una
 	# eternidad.
-	cooldown = 6.0
+	cooldown = 9.0
 	channel_time = 0.0
 	icon_color = Color(0.45, 0.95, 0.35)
 

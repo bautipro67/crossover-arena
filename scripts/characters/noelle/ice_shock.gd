@@ -10,9 +10,9 @@ extends Ability
 
 const PROJECTILE_SPEED: float = 26.0
 const PROJECTILE_LIFETIME: float = 3.0
-## Bajo de 22 a 19, y a 17 al sacarse los combos: con el escudo y el congelamiento,
-## Noelle seguia arriba de todos en los duelos simulados.
-const DAMAGE: float = 17.0
+## Bajo de 22 a 19: con el escudo y el congelamiento, Noelle seguia arriba de todos en
+## los duelos simulados.
+const DAMAGE: float = 19.0
 const CHILL_STACKS: int = 2
 const SLOW_PERCENT: float = 0.25
 const SLOW_DURATION: float = 2.0
@@ -24,7 +24,7 @@ func _init() -> void:
 	description = "Proyectil de hielo. %d de daño, +%d de escarcha y ralentiza %d%% por %.0fs." % [
 		int(DAMAGE), CHILL_STACKS, int(SLOW_PERCENT * 100.0), SLOW_DURATION]
 	stamina_cost = 28.0
-	cooldown = 3.5
+	cooldown = 5.2
 	channel_time = 0.0
 	icon_color = Color(0.4, 0.75, 1.0)
 

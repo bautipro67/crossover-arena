@@ -12,6 +12,11 @@ extends Ability
 ##
 ## O sea: Jarona te pasa por encima varias veces, esta te agarra una vez y no te suelta.
 ##
+## Y NO TE SUELTA DE VERDAD: durante la cadena Flowery sigue al rival adonde vaya. Sin el
+## tambaleo de los combos, el que recibia se alejaba caminando y cortaba la cadena despues
+## del primer golpe. Solo se suelta si el rival desaparece de golpe mas alla de CORREA
+## metros: un portal o una teletransportacion no se pueden seguir a pie.
+##
 ## NO TIENE CASTIGO POR FALLAR. Le habia puesto un "queda expuesto un segundo" que no
 ## estaba en el pedido; era una idea mia sobre lo que la habilidad deberia costar, no lo
 ## que se me pidio que hiciera. Lo que se pidio es una embestida que, si conecta, encadena
@@ -24,14 +29,17 @@ const SPEED: float = 27.0
 const DASH_TIME: float = 0.42
 const HIT_RADIUS: float = 2.3
 ## El golpe de la embestida, antes de la cadena.
-const IMPACT_DAMAGE: float = 14.0
+const IMPACT_DAMAGE: float = 10.0
 ## La cadena: golpes rapidos al que engancho.
 const CHAIN_HITS: int = 5
-const CHAIN_DAMAGE: float = 11.0
+## 5 y no 11 desde que la cadena sigue al rival: antes casi nunca entraba entera, y
+## entrando siempre, Flowery ganaba casi nueve de cada diez duelos simulados.
+const CHAIN_DAMAGE: float = 5.0
 const CHAIN_INTERVAL: float = 0.12
-## Alcance de la cadena. Si el rival se escapa de este radio, la cadena se corta: no es
-## un agarre garantizado, es una presion que se puede romper.
-const CHAIN_RANGE: float = 3.4
+## Hasta donde lo sigue. Mas lejos que esto de un golpe al otro, es que se teletransporto.
+const CORREA: float = 7.0
+## A cuanto del rival se queda pegada mientras lo sigue.
+const PEGADA: float = 1.3
 ## El ultimo golpe de la cadena manda lejos.
 const FINISH_KNOCKBACK: float = 11.0
 const FINISH_LIFT: float = 3.0
@@ -45,7 +53,7 @@ func _init() -> void:
 	description = "Embiste. Si engancha, se le prende encima y le mete %d golpes seguidos (%d + %dx%d)." % [
 		CHAIN_HITS, int(IMPACT_DAMAGE), CHAIN_HITS, int(CHAIN_DAMAGE)]
 	stamina_cost = 30.0
-	cooldown = 8.0
+	cooldown = 12.0
 	channel_time = 0.0
 	icon_color = Color(1.0, 0.58, 0.18)
 
@@ -96,9 +104,14 @@ func execute(caster: Node, _origin: Vector3, dir: Vector3) -> void:
 		var estado := caster.get_node_or_null("StatusEffects") as StatusEffects
 		if estado != null and not estado.can_act():
 			break
-		# Se le escapo: la cadena se corta. Es la contra de la habilidad.
-		if caster3d.global_position.distance_to(victima.global_position) > CHAIN_RANGE:
+		# PRENDIDA: va detras del rival. Solo lo pierde si se fue de golpe (ver CORREA).
+		var hacia := victima.global_position - caster3d.global_position
+		hacia.y = 0.0
+		if hacia.length() > CORREA:
 			break
+		if hacia.length() > PEGADA and caster3d.has_method("launch_charge"):
+			caster3d.call("launch_charge", hacia.normalized(),
+				(hacia.length() - PEGADA) / CHAIN_INTERVAL, CHAIN_INTERVAL)
 
 		var es_ultimo := i == CHAIN_HITS - 1
 		CombatUtils.deal_damage(victima, CHAIN_DAMAGE, source_id)

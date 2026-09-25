@@ -88,9 +88,9 @@ func _register_all() -> void:
 	# Alto y flaco: la referencia dice 3.5 metros de alto y lean. No se puede llevar tan
 	# lejos sin romper las camaras, pero la proporcion sale en la misma direccion.
 	flowery.build_scale = Vector3(0.93, 1.12, 0.93)
-	# 84 desde que se sacaron los combos: sin el tambaleo, nadie la frenaba a mitad de
-	# embestida y ganaba dos de cada tres duelos.
-	flowery.max_health = 84.0
+	# 80 desde que se sacaron los combos y la cadena de Here I Come sigue al rival: sin el
+	# tambaleo nadie la frenaba a mitad de embestida, y ganaba tres de cada cuatro duelos.
+	flowery.max_health = 80.0
 	flowery.max_stamina = 100.0
 	flowery.move_speed = 6.3
 	flowery.silhouette = &"petals"
@@ -143,7 +143,7 @@ func _register_all() -> void:
 	# Dio tiene que verse que le llega al pecho.
 	sonic.build_scale = Vector3(1.04, 0.80, 1.04)
 	# La vida mas baja del juego y la velocidad mas alta, por bastante.
-	sonic.max_health = 78.0
+	sonic.max_health = 74.0
 	sonic.max_stamina = 112.0
 	sonic.move_speed = 7.4
 	sonic.silhouette = &"quills"

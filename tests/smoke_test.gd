@@ -943,20 +943,23 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	await _plantar_flowery(player, victima, puesto, rumbo, 6.0)
 
 	var vida_cadena := victima.health.current
-	# QUIETO: sin el tambaleo, un rival que se aleja caminando corta la cadena —es la contra
-	# de la habilidad—, y el maniqui de practica camina solo de vuelta a su lugar. Aca se mide
-	# la cadena, no si el maniqui se escapa.
-	victima.set_physics_process(false)
 	player.stamina.restore_full()
 	player.caster.reset_state()
 	player.caster.request_use(2)
+	# EL RIVAL SE VA: se lo empuja lejos apenas lo engancha. Flowery lo tiene que seguir y
+	# meterle la cadena entera; antes, alejarse caminando la cortaba en el primer golpe.
+	var espera_enganche := 0
+	while is_equal_approx(victima.health.current, vida_cadena) and espera_enganche < 60:
+		await get_tree().physics_frame
+		espera_enganche += 1
+	victima.velocity = rumbo * 9.0
 	for _i: int in range(120):
 		await get_tree().physics_frame
-	victima.set_physics_process(true)
 	var total_cadena := vida_cadena - victima.health.current
-	var minimo := HereICome.IMPACT_DAMAGE + HereICome.CHAIN_DAMAGE * 2.0
+	var minimo := HereICome.IMPACT_DAMAGE + HereICome.CHAIN_DAMAGE * (HereICome.CHAIN_HITS - 1)
 	_check(total_cadena >= minimo,
-		"engancha y encadena golpes (%.0f de daño, minimo esperado %.0f)" % [total_cadena, minimo])
+		"engancha y lo sigue aunque se aleje: la cadena entra entera (%.0f de daño, minimo %.0f)" % [
+			total_cadena, minimo])
 
 	# --- LAST JARONA: siete embestidas, y no se corta si falla una ---
 	_check(LastJarona.FALLOS_TOLERADOS > 0,
@@ -1726,6 +1729,28 @@ func _test_mario(player: Player, arena: Arena) -> void:
 			vida - aplastado.health.current, caida])
 	aplastado.queue_free()
 
+	# --- Y CAE ENCIMA DEL QUE APUNTA, aunque este lejos ---
+	#
+	# Antes el avance se lo comia el freno del movimiento: Mario saltaba casi en el lugar.
+	await get_tree().create_timer(0.6).timeout
+	player.respawn_at(puesto, yaw)
+	var lejano := _spawn_dummy(arena, puesto + rumbo * 9.0)
+	lejano.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = lejano.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	for _i: int in range(110):
+		await get_tree().physics_frame
+	var llegada := Vector3(player.global_position.x - lejano.global_position.x, 0.0,
+		player.global_position.z - lejano.global_position.z).length()
+	_check(lejano.health.current <= vida - SuperSalto.DAMAGE * 0.9 and llegada < SuperSalto.RADIO,
+		"el Super Salto va a buscar al rival a nueve metros y le cae encima (cayo a %.1f m, %.0f de daño)" % [
+			llegada, vida - lejano.health.current])
+	lejano.queue_free()
+
 	# --- SUPERESTRELLA: invencible de verdad, y el que toca sale volando ---
 	player.respawn_at(puesto, yaw)
 	for _i: int in range(6):
@@ -1977,7 +2002,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 233
+const CHEQUEOS_MINIMOS: int = 234
 
 
 func _finish() -> void:

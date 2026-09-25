@@ -528,7 +528,7 @@ static func _armar() -> Array[Dictionary]:
 				"pos": Vector2(4, 2.5), "reserva": true},
 		],
 		"enemigos": [
-			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 400.0, "daño": 0.6,
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 400.0, "daño": 0.5,
 				"pos": Vector2(0, -8), "jefe": true},
 		],
 		"objetivo": {"tipo": "sobrevivir", "segundos": 35.0, "texto": "Aguantá frente a DIO"},
@@ -601,7 +601,7 @@ static func _armar() -> Array[Dictionary]:
 		"personaje": &"sonic",
 		"aliados": [_aliado(&"flowery", "Flowery", Vector2(2.5, 1.5), 100.0, 0.55)],
 		"enemigos": [
-			{"id": &"desconocido", "personaje": &"goku", "nombre": "???", "vida": 150.0, "daño": 0.44,
+			{"id": &"desconocido", "personaje": &"goku", "nombre": "???", "vida": 122.0, "daño": 0.38,
 				"pos": Vector2(0, -10), "jefe": true, "eco": true, "oculto": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"desconocido", "texto": "Derrotá al eco sin nombre"},
@@ -705,7 +705,7 @@ static func _armar() -> Array[Dictionary]:
 				"daño": 0.6, "pos": Vector2(3.5, 2.5), "reserva": true},
 		],
 		"enemigos": [
-			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 270.0, "daño": 0.48,
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 210.0, "daño": 0.38,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"dio", "texto": "Derrotá a DIO"},
@@ -1185,7 +1185,7 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "Un saiyajin contra el tiempo",
 		"personaje": &"mario",
 		"enemigos": [
-			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 270.0, "daño": 0.42,
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 270.0, "daño": 0.38,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"dio", "hasta": 0.3, "texto": "Hacé retroceder a DIO"},

@@ -88,8 +88,8 @@ gente.
    Combo de Golpes · Ráfaga de Ki · Teletransportación · KAMEHAMEHA
 
 🍄 MARIO — Super Mario Bros.  (NUEVO, gratis)
-   Power-ups: bolas de fuego que pican por el piso, un salto que cae aplastando, y la
-   Superestrella, que por unos segundos lo vuelve invencible.
+   Power-ups: bolas de fuego que pican por el piso, un salto que va a buscar al rival y
+   le cae encima, y la Superestrella, que por unos segundos lo vuelve invencible.
    Puño y Patada · Bola de Fuego · Súper Salto · SUPERESTRELLA
 
 ═══ MODO HISTORIA — DOS PARTES, VEINTE CAPÍTULOS ═══

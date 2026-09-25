@@ -6,7 +6,7 @@ extends Ability
 ## la herramienta de media distancia de Mario: pega como un Ice Shock pero sin escarcha,
 ## sale mas seguido, y al picar es mas dificil de embocar contra alguien que se mueve.
 ##
-## 20 de daño cada 1.8 s: con 16 cada 2 s, en duelos simulados Mario ganaba 1 de cada 5.
+## 20 de daño: con 16, en duelos simulados Mario ganaba 1 de cada 5.
 
 const DAMAGE: float = 20.0
 const SPEED: float = 21.0
@@ -18,7 +18,7 @@ func _init() -> void:
 	display_name = "Bola de Fuego"
 	description = "Una bola de fuego que va picando por el piso. %d de daño." % int(DAMAGE)
 	stamina_cost = 18.0
-	cooldown = 1.8
+	cooldown = 2.7
 	channel_time = 0.0
 	icon_color = Color(1.0, 0.55, 0.15)
 
