@@ -1899,6 +1899,15 @@ func _test_madara(player: Player, arena: Arena) -> void:
 		"y su propio daño no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
 	aplastado.queue_free()
 
+	# Sus skins: las tres, en la tienda.
+	var suyas := SkinDB.de_personaje(&"madara")
+	var en_tienda := 0
+	for sid: StringName in suyas:
+		if SkinDB.get_skin(sid).precio > 0:
+			en_tienda += 1
+	_check(suyas.size() >= 3 and en_tienda == suyas.size(),
+		"Madara tiene sus skins y estan todas en la tienda (%d de %d)" % [en_tienda, suyas.size()])
+
 	player.aim_override = Vector3.ZERO
 	player.setup_character(CharacterDB.get_character(&"sonic"))
 	player.caster.reset_state()
@@ -2111,7 +2120,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 248
+const CHEQUEOS_MINIMOS: int = 249
 
 
 func _finish() -> void:

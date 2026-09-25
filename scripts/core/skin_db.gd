@@ -196,6 +196,21 @@ func _registrar_temporada_1() -> void:
 			"La Flor Dorada: todo lo que toca se vuelve moneda.",
 			Color(1.00, 0.82, 0.25), Color(1.00, 0.80, 0.20),
 			Color(1.00, 0.88, 0.55), Color(0.92, 0.70, 0.16), &"legendaria", 2600),
+		# Las de Madara, en la tienda, cuando llego el personaje. Salen de la serie: el
+		# Madara revivido con el Edo Tensei (piel gris y agrietada), el chakra azul de su
+		# Susano'o, y el Madara jinchuriki del Diez Colas, blanco como los Otsutsuki.
+		_hacer(&"madara_edo", &"madara", "Madara Edo Tensei",
+			"Traído de la tumba: la piel gris, y un cuerpo que no se cansa nunca.",
+			Color(0.14, 0.17, 0.33), Color(0.50, 0.12, 0.14),
+			Color(0.55, 0.53, 0.52), Color(0.12, 0.15, 0.30), &"rara", 900),
+		_hacer(&"madara_susanoo", &"madara", "Madara Susano'o",
+			"Envuelto en el chakra azul del Susano'o, de la armadura al abanico.",
+			Color(0.10, 0.14, 0.34), Color(0.30, 0.46, 1.00),
+			Color(0.96, 0.88, 0.80), Color(0.10, 0.13, 0.32), &"epica", 1800),
+		_hacer(&"madara_rikudo", &"madara", "Madara Rikudō",
+			"Jinchūriki del Diez Colas: la piel y el pelo blancos, y el Rinnegan en los dos ojos.",
+			Color(0.93, 0.93, 0.91), Color(0.20, 0.20, 0.24),
+			Color(0.97, 0.96, 0.94), Color(0.88, 0.88, 0.86), &"legendaria", 2600),
 	]
 	for sk: SkinData in nuevas:
 		sk.temporada = 1
@@ -377,6 +392,26 @@ func _detallar() -> void:
 		&"botones": Color(1.00, 0.98, 0.85)},
 		&"metal", &"chispas", Color(1.0, 0.88, 0.35), Color(1.0, 0.85, 0.30), &"",
 		Color(1.0, 0.86, 0.32, 0.85))
+	# ---------------------------------------------------------------- Madara
+	# Los ojos van con el Rinnegan —lila, con anillos— en las dos que lo tienen en la serie.
+	_det(&"madara_edo", {
+		&"armadura": Color(0.50, 0.12, 0.14), &"obi": Color(0.50, 0.44, 0.36),
+		&"cinturon": Color(0.52, 0.46, 0.60), &"vendas": Color(0.66, 0.64, 0.62),
+		&"sandalias": Color(0.10, 0.11, 0.18), &"gunbai": Color(0.40, 0.38, 0.44),
+		&"ojos": Color(0.72, 0.62, 0.90)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.70, 0.66, 0.78, 0.75))
+	_det(&"madara_susanoo", {
+		&"armadura": Color(0.30, 0.46, 1.00), &"gunbai": Color(0.55, 0.66, 1.00),
+		&"obi": Color(0.20, 0.28, 0.60), &"cinturon": Color(0.55, 0.70, 1.00),
+		&"sandalias": Color(0.08, 0.10, 0.26)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.40, 0.56, 1.0, 0.8))
+	_det(&"madara_rikudo", {
+		&"pelo": Color(0.90, 0.90, 0.93), &"armadura": Color(0.20, 0.20, 0.24),
+		&"obi": Color(0.20, 0.20, 0.22), &"cinturon": Color(0.20, 0.20, 0.22),
+		&"vendas": Color(0.96, 0.95, 0.93), &"sandalias": Color(0.18, 0.18, 0.20),
+		&"gunbai": Color(0.30, 0.30, 0.34), &"ojos": Color(0.76, 0.66, 0.96)},
+		&"brillo", &"chispas", Color(0.92, 0.90, 1.0), Color(0.80, 0.70, 1.0), &"",
+		Color(0.90, 0.88, 1.0, 0.85))
 	_det(&"goku_ssj", {
 		&"pelo": Color(1.00, 0.86, 0.25), &"ojos": Color(0.20, 0.72, 0.62)},
 		&"", &"chispas", Color(1.0, 0.90, 0.40), Color(0.30, 0.95, 0.80), &"",
