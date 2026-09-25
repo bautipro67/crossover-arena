@@ -22,9 +22,9 @@ const DURACION: float = 8.0
 ## x1.55 de velocidad. Sonic ya es el mas rapido del juego; esto lo vuelve inalcanzable.
 const VELOCIDAD: float = 1.55
 ## Recibe el 35% del daño. Es el "casi" de "casi invulnerable".
-const RESISTENCIA: float = 0.35
+const RESISTENCIA: float = 0.45
 ## Y reparte un 45% mas.
-const POTENCIA: float = 1.45
+const POTENCIA: float = 1.35
 ## Radio del estallido dorado al transformarse.
 const RADIO_ESTALLIDO: float = 6.0
 const DAÑO_ESTALLIDO: float = 18.0

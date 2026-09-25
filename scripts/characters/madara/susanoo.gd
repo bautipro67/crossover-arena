@@ -11,7 +11,7 @@ extends Ability
 ## daño antes que la vida y se va solo al vencer.
 
 const ESCUDO: float = 34.0
-const DURACION: float = 5.0
+const DURACION: float = 6.0
 const DAMAGE: float = 24.0
 const ALCANCE: float = 5.5
 const ANGULO: float = 120.0

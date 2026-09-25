@@ -145,7 +145,9 @@ func _register_all() -> void:
 	# La vida mas baja del juego y la velocidad mas alta, por bastante.
 	sonic.max_health = 74.0
 	sonic.max_stamina = 112.0
-	sonic.move_speed = 7.4
+	# 7.2 y no 7.4 desde el nerf del 2026-09-25: sigue siendo el mas rapido, pero ya no se
+	# escapa de todo caminando.
+	sonic.move_speed = 7.2
 	sonic.silhouette = &"quills"
 	_add(sonic)
 

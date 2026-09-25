@@ -12,14 +12,19 @@ extends Ability
 ##
 ## El daño de la definitiva no paga recursos: no recarga el medidor ni devuelve stamina.
 
-const DURACION: float = 6.0
-const VELOCIDAD: float = 1.35
+## MEJORADA el 2026-09-25, a pedido: dura mas, corre mas, toca desde mas lejos, el toque
+## pega mas y mas seguido, y ademas TODO lo de Mario pega mas fuerte mientras dura (POTENCIA):
+## en los juegos, con la estrella uno no esquiva a los enemigos, los atropella.
+const DURACION: float = 8.0
+const VELOCIDAD: float = 1.5
 ## A esta distancia del cuerpo, cuenta como tocado.
-const RADIO: float = 1.5
-const DAMAGE: float = 9.0
+const RADIO: float = 2.0
+const DAMAGE: float = 14.0
 ## Cuanto espera para volver a pegarle al MISMO rival. Sin esto, uno pegado al cuerpo se
 ## comeria diez golpes por segundo.
-const ENTRE_GOLPES: float = 0.5
+const ENTRE_GOLPES: float = 0.4
+## Lo que multiplica el daño de sus golpes, bolas de fuego y pisotones mientras dura.
+const POTENCIA: float = 1.3
 const KNOCKBACK: float = 8.0
 const KNOCKBACK_LIFT: float = 3.0
 const TIC: float = 0.1
@@ -28,8 +33,8 @@ const TIC: float = 0.1
 func _init() -> void:
 	id = &"superestrella"
 	display_name = "Superestrella"
-	description = "%.0fs invencible: nada te saca vida ni te frena, vas x%.2f más rápido, y el que tocás sale volando (%d)." % [
-		DURACION, VELOCIDAD, int(DAMAGE)]
+	description = "%.0fs invencible: nada te saca vida ni te frena, vas x%.1f más rápido, todo lo tuyo pega %d%% más, y el que tocás sale volando (%d)." % [
+		DURACION, VELOCIDAD, int(round((POTENCIA - 1.0) * 100.0)), int(DAMAGE)]
 	stamina_cost = 100.0
 	cooldown = 0.0
 	channel_time = 0.5
@@ -44,7 +49,7 @@ func execute(caster: Node, origin: Vector3, _dir: Vector3) -> void:
 	var estado := caster.get_node_or_null("StatusEffects") as StatusEffects
 	if estado != null:
 		estado.estrella(DURACION)
-		estado.impulsar(VELOCIDAD, 1.0, 1.0, DURACION)
+		estado.impulsar(VELOCIDAD, 1.0, POTENCIA, DURACION)
 	FX.spawn_estrella(caster3d, DURACION)
 	FX.camera_shake(1.0)
 	Sfx.play_3d(caster, &"estrella", origin, 2.0)

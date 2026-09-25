@@ -10,8 +10,8 @@ extends Ability
 ##
 ## LAS PAREDES LO CORTAN (el cono pide linea de vista): las coberturas sirven contra el.
 
-const DAMAGE: float = 21.0
-const ALCANCE: float = 10.0
+const DAMAGE: float = 23.0
+const ALCANCE: float = 11.0
 const ANGULO: float = 70.0
 const KNOCKBACK: float = 5.0
 

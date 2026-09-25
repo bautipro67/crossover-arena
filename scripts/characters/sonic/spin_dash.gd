@@ -13,7 +13,7 @@ extends Ability
 ## de Flowery, que rebota: aquel castiga quedarse en el camino una y otra vez, este premia
 ## alinear a varios en una linea. Los dos son embestidas y no se juegan igual.
 
-const DAMAGE: float = 24.0
+const DAMAGE: float = 22.0
 const SPEED: float = 27.0
 # RUEDA MAS LEJOS Y SALE ANTES.
 #

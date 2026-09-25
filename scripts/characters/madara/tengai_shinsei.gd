@@ -20,11 +20,13 @@ const ALCANCE: float = 36.0
 ## Lo ancho de la linea de la mira para encontrar a quien caerle: generoso, es un meteorito.
 const RADIO_MIRA: float = 2.5
 ## Desde que sale hasta que pega el primero, y del primero al segundo.
-const CAIDA: float = 1.6
-const ENTRE: float = 1.3
-const RADIO_PRIMERO: float = 7.0
-const RADIO_SEGUNDO: float = 8.5
-const DAMAGE: float = 40.0
+## Mejorados el 2026-09-25, a pedido: bajan mas rapido, cubren mas y pegan mas. Se siguen
+## viendo venir —la sombra aparece desde que salen—, pero ya no alcanza con caminar.
+const CAIDA: float = 1.35
+const ENTRE: float = 1.1
+const RADIO_PRIMERO: float = 7.5
+const RADIO_SEGUNDO: float = 9.5
+const DAMAGE: float = 45.0
 const KNOCKBACK: float = 12.0
 const KNOCKBACK_LIFT: float = 5.0
 

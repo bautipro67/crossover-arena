@@ -13,7 +13,9 @@ extends Ability
 ## otro nombre, y ademas dejaria a Sonic volando hacia la nada por haberse equivocado de
 ## momento. Que no salga es informacion: no habia nadie a tiro.
 
-const DAMAGE: float = 22.0
+## 21 y no 22 desde el 2026-09-25, a pedido: "nerfea a Sonic". El nerf de verdad es la
+## cadena (ver CADENA_MAXIMA): con el daño mas bajo, Sonic ganaba 1 de cada 5 duelos.
+const DAMAGE: float = 21.0
 ## Hasta donde busca. Generoso a proposito: es una herramienta para cerrar distancia.
 const ALCANCE: float = 18.0
 ## Cuan al frente tiene que estar. No es 360: se traba en lo que estas mirando.
@@ -38,7 +40,10 @@ const FRENO: float = 1.5
 const COOLDOWN_AL_ACERTAR: float = 0.45
 ## Cuantos saltos seguidos antes de que el cooldown vuelva a ser el entero. Sin tope, con
 ## suficiente stamina se cruza el mapa entero rebotando y nadie lo puede tocar.
-const CADENA_MAXIMA: int = 4
+##
+## 3 y no 4 desde el nerf: cuatro saltos seguidos eran casi 90 de daño sin que el otro
+## pudiera responder. Con 2 se paso para el otro lado: medido, Sonic ganaba 1 de cada 10.
+const CADENA_MAXIMA: int = 3
 ## Cuanto dura la ventana de la cadena. Si te tomas mas tiempo, es un ataque nuevo.
 const VENTANA_CADENA: float = 2.2
 
