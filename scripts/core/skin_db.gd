@@ -121,8 +121,9 @@ func _registrar_todas() -> void:
 
 # ------------------------------------------------------------- Temporada 1
 #
-# SIETE EN EL PASE Y CINCO EN LA TIENDA, como en la temporada 0: el que no compra el pase
-# igual tiene de donde elegir, y el pase tiene lo que no se consigue en otro lado.
+# SIETE EN EL PASE Y EL RESTO EN LA TIENDA, como en la temporada 0: el que no compra el
+# pase igual tiene de donde elegir, y el pase tiene lo que no se consigue en otro lado. Las
+# tres de Mario se sumaron despues, cuando llego el personaje: van a la tienda.
 #
 # LAS DE GOKU VAN TODAS EN LA TIENDA, y no por olvido: Goku es el premio del ULTIMO
 # escalon del pase pro, asi que una skin suya en el pase caeria antes de tenerlo y no se
@@ -181,6 +182,20 @@ func _registrar_temporada_1() -> void:
 			"Traje, moño y ninguna intención de quedarse a la cena.",
 			Color(0.96, 0.96, 0.96), Color(0.60, 0.10, 0.15),
 			Color(0.90, 0.78, 0.63), Color(0.08, 0.08, 0.10), &"rara", 900),
+		# Las de Mario, en la tienda: salen de sus juegos. La paleta de 1985 —camisa marron
+		# y overol rojo—, la Flor de Fuego y la Flor Dorada.
+		_hacer(&"mario_clasico", &"mario", "Mario Clásico",
+			"Los colores de 1985, cuando todavía le decían Jumpman.",
+			Color(0.52, 0.30, 0.12), Color(0.82, 0.13, 0.10),
+			Color(0.99, 0.78, 0.60), Color(0.82, 0.13, 0.10), &"rara", 900),
+		_hacer(&"mario_fuego", &"mario", "Mario de Fuego",
+			"Con una Flor de Fuego adentro. Blanco y rojo.",
+			Color(0.97, 0.96, 0.94), Color(0.90, 0.14, 0.14),
+			Color(0.99, 0.80, 0.64), Color(0.86, 0.12, 0.12), &"epica", 1800),
+		_hacer(&"mario_dorado", &"mario", "Mario Dorado",
+			"La Flor Dorada: todo lo que toca se vuelve moneda.",
+			Color(1.00, 0.82, 0.25), Color(1.00, 0.80, 0.20),
+			Color(1.00, 0.88, 0.55), Color(0.92, 0.70, 0.16), &"legendaria", 2600),
 	]
 	for sk: SkinData in nuevas:
 		sk.temporada = 1
@@ -344,6 +359,24 @@ func _detallar() -> void:
 		Color(1.0, 0.88, 0.45, 0.85))
 	# Goku: el pelo claro brilla solo (lo decide el constructor del disfraz), asi que las
 	# tres se notan sin acabado. La Blue lleva brillo porque es epica y no tiene aura.
+	# ----------------------------------------------------------------- Mario
+	_det(&"mario_clasico", {
+		&"gorra": Color(0.82, 0.13, 0.10), &"m": Color(0.82, 0.13, 0.10),
+		&"overol": Color(0.82, 0.13, 0.10), &"pelo": Color(0.40, 0.22, 0.08),
+		&"bigote": Color(0.36, 0.20, 0.07), &"zapatos": Color(0.40, 0.22, 0.08)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.45, 0.30, 0.75))
+	_det(&"mario_fuego", {
+		&"gorra": Color(0.97, 0.96, 0.94), &"m": Color(0.90, 0.14, 0.14),
+		&"overol": Color(0.86, 0.12, 0.12), &"zapatos": Color(0.46, 0.24, 0.10)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.55, 0.20, 0.8))
+	_det(&"mario_dorado", {
+		&"gorra": Color(1.00, 0.84, 0.28), &"emblema": Color(1.00, 0.95, 0.70),
+		&"m": Color(0.95, 0.72, 0.15), &"overol": Color(0.90, 0.68, 0.15),
+		&"pelo": Color(0.95, 0.75, 0.20), &"bigote": Color(0.85, 0.62, 0.12),
+		&"guantes": Color(1.00, 0.95, 0.72), &"zapatos": Color(0.88, 0.64, 0.14),
+		&"botones": Color(1.00, 0.98, 0.85)},
+		&"metal", &"chispas", Color(1.0, 0.88, 0.35), Color(1.0, 0.85, 0.30), &"",
+		Color(1.0, 0.86, 0.32, 0.85))
 	_det(&"goku_ssj", {
 		&"pelo": Color(1.00, 0.86, 0.25), &"ojos": Color(0.20, 0.72, 0.62)},
 		&"", &"chispas", Color(1.0, 0.90, 0.40), Color(0.30, 0.95, 0.80), &"",

@@ -112,14 +112,19 @@ func _arrancar() -> void:
 	if objetivo.get("tipo", "") == "zona":
 		_crear_zona()
 
-	var intro: Array = [["titulo", "CAPÍTULO %d" % (capitulo + 1), String(datos.get("titulo", ""))]]
+	var intro: Array = [["titulo", Historia.titulo_capitulo(capitulo), String(datos.get("titulo", ""))]]
 	intro.append_array(datos.get("intro", []))
 	await _escena(intro)
 	_comenzar()
 
 
 ## Un participante nuevo. Lo crea la arena, igual que a cualquier bot.
+##
+## Un enemigo entra ya con la cuesta del capitulo y la dificultad elegida encima (ver
+## Historia.escalar): de ahi en mas, su vida y su daño salen de estos datos.
 func _sumar(d: Dictionary, equipo: int) -> Player:
+	if equipo == 1:
+		d = Historia.escalar(d, capitulo, Progreso.dificultad_historia)
 	var peer := _siguiente_peer
 	_siguiente_peer -= 1
 	var rel: Vector2 = d.get("pos", Vector2(0.0, -14.0))
@@ -139,9 +144,6 @@ func _sumar(d: Dictionary, equipo: int) -> Player:
 	b.name_label.modulate = Color(0.55, 1.0, 0.6) if equipo == 0 else Color(1.0, 0.55, 0.5)
 	if d.get("eco", false):
 		b.visual.volverse_eco()
-	# Los jefes no se tambalean: ver StatusEffects.sin_tambaleo.
-	if d.get("jefe", false):
-		b.status.sin_tambaleo = true
 	if d.get("quieto", false):
 		var cerebro := b.get_node_or_null("BotBrain")
 		if cerebro != null:
@@ -363,6 +365,20 @@ func jefe() -> Player:
 	return null
 
 
+## Como se llama el que habla: el nombre que le puso el capitulo ("Flowery Oscura", "DIO
+## del Nucleo"), o el de su personaje. El eco que habla en el capitulo 16 salia como
+## "FLOWERY", igual que la de verdad, en la charla que es justamente entre las dos.
+func nombre_de(id: StringName) -> String:
+	var b := participantes.get(id) as Player
+	if b == null:
+		return Historia.nombre_de(id)
+	if b != jugador():
+		var nombre := String(_datos_de(b).get("nombre", ""))
+		if nombre != "" and nombre != "Eco":
+			return nombre
+	return Historia.nombre_de(b.character_id)
+
+
 func _datos_de(b: Player) -> Dictionary:
 	return _por_peer.get(b.peer_id, {})
 
@@ -481,7 +497,7 @@ func _hacer(acciones: Array) -> void:
 				if is_instance_valid(hud) and hud.has_method("anunciar"):
 					hud.anunciar(String(objetivo.get("texto", "")).to_upper(), 2.2)
 			"cinematica":
-				await _escena(a[1])
+				await _escena(a[1], true)
 				if not terminada:
 					Arena.set_bots_active(true)
 			"ganar":
@@ -520,13 +536,32 @@ func _prender(b: Player) -> void:
 
 # ---------------------------------------------------------------- Escenas
 
-func _escena(pasos: Array) -> void:
+## Los actores que una escena nombra en algun paso.
+static func _nombrados(pasos: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for paso: Array in pasos:
+		if paso.size() > 1 and paso[1] is StringName:
+			out[paso[1]] = true
+		if String(paso[0]) in ["mirar", "plano"] and paso.size() > 2 and paso[2] is StringName:
+			out[paso[2]] = true
+		if String(paso[0]) == "plano" and paso.size() > 3 and paso[3] is StringName:
+			out[paso[3]] = true
+	return out
+
+
+## `en_la_pelea`: la escena corta la pelea donde esta, y sus posiciones son respecto del
+## jugador y no del ancla del capitulo. La pelea se mueve por todo el mapa, y un aliado que
+## "aparece al lado" aparecia al lado del punto de partida, a veinte metros de todos.
+func _escena(pasos: Array, en_la_pelea: bool = false) -> void:
 	if sin_cinematicas or pasos.is_empty():
 		return
 	var c := Cinematica.new()
 	c.pasos = pasos
 	c.actores = participantes.duplicate()
 	c.ancla = ancla
+	var p := jugador()
+	if en_la_pelea and p != null:
+		c.ancla = al_piso(arena, arena.find_clear_spot(p.global_position, 1.0))
 	c.arena = arena
 	c.hud = hud
 	add_child(c)
@@ -550,9 +585,20 @@ func _ganar() -> void:
 	# escenas se escriben respecto del ancla: sin esto, el plano general de la escena final
 	# se abria hasta filmar desde cincuenta metros para que entraran todos.
 	var p := jugador()
+	# LOS QUE LA ESCENA FINAL NOMBRA, y nadie mas. Se revivia a todos —para que hable el
+	# jefe derrotado— y con eso volvian los cinco ecos del capitulo, parados atras de la
+	# charla, y el plano general se abria para que entraran.
+	var nombrados := _nombrados(datos.get("outro", []))
 	for id: StringName in participantes:
 		var b := participantes[id] as Player
 		if b != null and is_instance_valid(b):
+			# Los muertos que no habla nadie se quedan afuera, y tambien los ENEMIGOS que no
+			# nombra: en un capitulo de aguantar o de proteger la pelea termina con ecos
+			# vivos, y quedaban parados en fila detras de la charla.
+			if b != p and not nombrados.has(id) and (b.health.is_dead or b.equipo == 1):
+				b.visible = false
+				_apagar(b)
+				continue
 			if _fuera.has(id):
 				_prender(b)
 				b.visible = true
@@ -582,7 +628,7 @@ func _ganar() -> void:
 				aura.queue_free()
 	_fuera.clear()
 	await _escena(datos.get("outro", []))
-	Modos.terminar_historia(true, "¡CAPÍTULO %d COMPLETADO!" % (capitulo + 1),
+	Modos.terminar_historia(true, "¡%s COMPLETADO!" % Historia.titulo_capitulo(capitulo),
 		String(datos.get("titulo", "")))
 
 

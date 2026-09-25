@@ -1081,7 +1081,7 @@ func _on_player_died(killer_id: int, victim_id: int) -> void:
 	# morir a todo el mundo, y pagarle por cada muerte ajena convertiria hostear en la
 	# forma mas rapida de juntar monedas sin jugar.
 	if killer_id == Net.local_id() and killer_id != victim_id:
-		Progreso.registrar_baja(Modos.da_recompensas())
+		Progreso.registrar_baja(Modos.da_recompensas(), Modos.premio())
 
 	if victim != null and victim.is_dummy:
 		_bot_murio(victim_id)

@@ -582,7 +582,47 @@ func _test_historia(main: Node) -> void:
 	Progreso.historia = {}
 
 	# --- Los datos: que todo lo que nombra la historia exista ---
-	_check(Historia.cantidad() == 10, "la parte 1 tiene diez capitulos (%d)" % Historia.cantidad())
+	_check(Historia.cantidad() == 20 and Historia.PARTES.size() == 2 and Historia.parte_de(10) == 1
+		and Historia.titulo_capitulo(10) == "PARTE 2 · CAPÍTULO 1",
+		"la historia tiene dos partes de diez capitulos, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
+
+	# --- La dificultad: la cuesta, las tres dificultades y lo que paga cada una ---
+	var sube := true
+	var jefes_arriba := true
+	for i: int in range(Historia.cantidad()):
+		if i > 0:
+			sube = sube and Historia.cuesta(i, false) > Historia.cuesta(i - 1, false)
+		jefes_arriba = jefes_arriba and Historia.cuesta(i, true) > Historia.cuesta(i, false)
+	_check(is_equal_approx(Historia.cuesta(0, false), 1.0) and sube and jefes_arriba,
+		"los enemigos se endurecen capitulo a capitulo y al pasar de parte, y los jefes van un escalon arriba")
+	var eco_base := {"vida": 40.0, "daño": 0.2}
+	var en_facil := Historia.escalar(eco_base, 4, 0)
+	var en_normal := Historia.escalar(eco_base, 4, 1)
+	var en_dificil := Historia.escalar(eco_base, 4, 2)
+	_check(en_facil["vida"] < en_normal["vida"] and en_normal["vida"] < en_dificil["vida"]
+		and en_facil["daño"] < en_normal["daño"] and en_normal["daño"] < en_dificil["daño"]
+		and is_equal_approx(en_normal["vida"], 40.0 * Historia.cuesta(4, false))
+		and is_equal_approx(eco_base["vida"], 40.0),
+		"facil, normal y dificil mueven la vida y el daño de los enemigos, sin tocar los datos del capitulo")
+	var modo_antes := Modos.actual
+	Modos.actual = Modos.HISTORIA
+	var monedas_por: Array[int] = []
+	var exp_por: Array[int] = []
+	for dif: int in range(Historia.DIFICULTADES.size()):
+		Progreso.dificultad_historia = dif
+		var monedas_antes := Progreso.monedas
+		var exp_antes := Progreso.pase_exp
+		Progreso.registrar_baja(true, Modos.premio())
+		Progreso.registrar_partida(true, true, Modos.premio())
+		monedas_por.append(Progreso.monedas - monedas_antes)
+		exp_por.append(Progreso.pase_exp - exp_antes)
+	Modos.actual = modo_antes
+	Progreso.dificultad_historia = Historia.DIFICULTAD_NORMAL
+	_check(monedas_por[0] < monedas_por[1] and monedas_por[1] < monedas_por[2]
+		and exp_por[0] < exp_por[1] and exp_por[1] < exp_por[2]
+		and monedas_por[1] == Progreso.MONEDAS_POR_BAJA + Progreso.MONEDAS_POR_VICTORIA,
+		"la historia en facil paga menos monedas y experiencia, y en dificil mas (%s %s)" % [
+			str(monedas_por), str(exp_por)])
 	var pasos_validos := ["decir", "narrar", "plano", "colocar", "mover", "mirar", "pose", "grito",
 		"habilidad", "aparecer", "desaparecer", "temblor", "esperar", "fundido", "titulo"]
 	var roto := ""
@@ -602,12 +642,14 @@ func _test_historia(main: Node) -> void:
 				if lado == "aliados":
 					hay_aliados = true
 		tipos[String((cap["objetivo"] as Dictionary)["tipo"])] = true
-		# Los refuerzos tambien son ids validos para los eventos.
+		# Los refuerzos y los aliados que llegan a mitad de pelea tambien son ids validos.
 		for ev: Array in cap.get("eventos", []):
 			for acc: Array in ev[1]:
 				if String(acc[0]) == "refuerzos":
 					for d: Dictionary in acc[1]:
 						ids[StringName(d["id"])] = true
+				elif String(acc[0]) == "aliado":
+					ids[StringName((acc[1] as Dictionary)["id"])] = true
 		for escena: String in ["intro", "outro"]:
 			var conocidos := ids.duplicate()
 			for paso: Array in cap.get(escena, []):
@@ -662,6 +704,18 @@ func _test_historia(main: Node) -> void:
 				if b != p and b.equipo == 1 and b.player_name == "Eco" and not b.visual._eye_l.visible:
 					ecos += 1
 			_check(ecos == 3, "los ecos del capitulo 1 son tres, del otro equipo y sin cara (%d)" % ecos)
+		if i == 9:
+			var datos_jefe: Dictionary = {}
+			for e: Dictionary in Historia.capitulo(i).get("enemigos", []):
+				if e.get("jefe", false):
+					datos_jefe = e
+			var jefe := mision.participantes.get(datos_jefe.get("id", &"")) as Player
+			var esperada := float(Historia.escalar(datos_jefe, i, Progreso.dificultad_historia)["vida"]) \
+				if not datos_jefe.is_empty() else -1.0
+			_check(jefe != null and is_equal_approx(jefe.health.max_health, esperada)
+				and jefe.health.max_health > float(datos_jefe["vida"]),
+				"en la pelea, el jefe entra con la cuesta del capitulo encima (%.0f de vida, el capitulo dice %.0f)" % [
+					jefe.health.max_health if jefe != null else -1.0, float(datos_jefe.get("vida", -1.0))])
 		if i == 2:
 			var rick := mision.participantes.get(&"rick") as Player
 			var antes := rick.health.current if rick != null else 0.0
@@ -705,9 +759,9 @@ func _test_historia(main: Node) -> void:
 			if hijo is HistoriaMenu:
 				hijo.queue_free()
 	_check(fallas.is_empty(),
-		"los diez capitulos corren enteros: escena de entrada, eventos, pelea y escena final %s" % fallas)
-	_check(Progreso.capitulo_completado(9) and Net.local_character_id == "dio",
-		"ganar el ultimo cierra la parte 1, y te devuelve el personaje que tenias elegido")
+		"los veinte capitulos corren enteros: escena de entrada, eventos, pelea y escena final %s" % fallas)
+	_check(Progreso.capitulo_completado(Historia.cantidad() - 1) and Net.local_character_id == "dio",
+		"ganar el ultimo cierra la historia, y te devuelve el personaje que tenias elegido")
 	Cinematica.automatica = false
 
 	# --- Perder: caer ---
@@ -825,7 +879,7 @@ func _test_escenas_y_peleas(main: Node) -> void:
 				"un bot muerto no se hunde en el piso (bajo %.2f m)" % (y0 - eco.global_position.y))
 
 		# --- El ultimate sin carga no cuenta como disponible ---
-		# El estado de la pelea no importa aca: sin tambaleo, sin cooldowns, stamina llena.
+		# El estado de la pelea no importa aca: sin estados, sin cooldowns, stamina llena.
 		var p := m.jugador()
 		p.status.clear_all()
 		p.caster.reset_state()
@@ -844,27 +898,10 @@ func _test_escenas_y_peleas(main: Node) -> void:
 			"con la stamina llena pero sin carga el ultimate no esta disponible, y con carga si (%s %s)" % [
 				sin_carga, con_carga])
 
-	# --- Los jefes no se tambalean ---
-	Net.leave_game()
-	main.show_main_menu()
-	Progreso.historia = {"0": true}
-	main.jugar_capitulo(1)
-	var mj := await _esperar_pelea()
-	var jefe := mj.jefe() if mj != null else null
-	if jefe != null:
-		jefe.status.clear_all()
-		CombatUtils.deal_damage(jefe, 5.0, mj.jugador().peer_id)
-	var jugador_h := mj.jugador() if mj != null else null
-	if jugador_h != null:
-		jugador_h.status.clear_all()
-		CombatUtils.deal_damage(jugador_h, 5.0, -999)
-	_check(jefe != null and not jefe.status.esta_tambaleando() and jugador_h.status.esta_tambaleando(),
-		"un jefe de la historia no se tambalea con los golpes; el jugador si")
-
 	# --- Comparar equipos con alguien que ya no existe ---
 	var ido := Node3D.new()
 	ido.free()
-	_check(not CombatUtils.son_aliados(ido, mj.jugador() if mj != null else null),
+	_check(not CombatUtils.son_aliados(ido, m.jugador() if is_instance_valid(m) else null),
 		"son_aliados con un cuerpo liberado responde que no, sin error")
 	Net.leave_game()
 	main.show_main_menu()
@@ -917,6 +954,15 @@ func _test_escenas_y_peleas(main: Node) -> void:
 		if boton.text == "VOLVER" and not pantalla.encloses(boton.get_global_rect()):
 			afuera = str(boton.get_global_rect())
 	_check(afuera.is_empty(), "con los diez capitulos, VOLVER entra en la pantalla %s" % afuera)
+	var boton_dificil: Button = null
+	for b: Node in menu.find_children("*", "Button", true, false):
+		if (b as Button).text == "DIFÍCIL":
+			boton_dificil = b
+	if boton_dificil != null:
+		boton_dificil.pressed.emit()
+	_check(boton_dificil != null and Progreso.dificultad_historia == 2,
+		"la dificultad se elige en la pantalla de capitulos")
+	Progreso.dificultad_historia = Historia.DIFICULTAD_NORMAL
 	menu.queue_free()
 
 	MisionHistoria.sin_cinematicas = false
@@ -1005,18 +1051,11 @@ func _test_mando_y_tactil(main: Node, player: Player) -> void:
 	while player.get_dash_cooldown_ratio() > 0.0 and espera < 3.0:
 		await get_tree().create_timer(0.1).timeout
 		espera += 0.1
-	# LIMPIO JUSTO ANTES DE APRETAR: con el tambaleo de los combos, un proyectil que un bot
-	# habia tirado antes de apagarse y que llega en este instante deja al jugador clavado
-	# 0.4 s, y en ese rato no dashea nadie. Es la regla nueva funcionando, no un error.
+	# LIMPIO JUSTO ANTES DE APRETAR: un estado que le quede de la pelea anterior no puede
+	# ser el motivo por el que no dashea.
 	player.status.clear_all()
-	var quieto := 0
-	while not player.status.can_act() and quieto < 60:
-		await get_tree().physics_frame
-		quieto += 1
-	var tambaleo_antes := player.status.get_tambaleo_remaining()
 	await _apretar_mando(JOY_BUTTON_B)
-	_check(player.get_dash_cooldown_ratio() > 0.0,
-		"B del mando dashea (tambaleo antes de apretar: %.2f)" % tambaleo_antes)
+	_check(player.get_dash_cooldown_ratio() > 0.0, "B del mando dashea")
 	_check(not pausa.esta_abierto(), "y NO abre la pausa")
 
 	# --- Start pausa, y con la pausa abierta el stick no camina ---
@@ -1583,7 +1622,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 236
+const CHEQUEOS_MINIMOS: int = 239
 
 
 func _finish() -> void:

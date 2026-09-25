@@ -1193,6 +1193,8 @@ func _build_costume(kind: StringName) -> void:
 			_build_sonic()
 		&"gi":
 			_build_goku()
+		&"gorra":
+			_build_mario()
 		_:
 			pass
 
@@ -2049,6 +2051,150 @@ func _build_goku() -> void:
 				Vector3(0.0, -0.26 - float(k) * 0.07, -0.088))
 			cruce.rotation_degrees = Vector3(0.0, 0.0, 22.0 if k == 0 else -22.0)
 			_costume_add(rodilla, cruce)
+
+
+## Mario, con la ropa de siempre.
+##
+## DE LA REFERENCIA OFICIAL, NO DE MEMORIA: gorra roja con la M roja en un circulo blanco,
+## camisa roja de manga larga, overol azul con dos botones dorados, guantes blancos,
+## zapatos marrones, pelo castaño corto con patillas, bigote negro grueso y la nariz
+## grande. Los colores de base salen del CharacterData: el cuerpo es la camisa, el
+## pantalon es el overol, y el acento es el rojo de la gorra y de la M.
+##
+## LA SILUETA ES LA GORRA, LA NARIZ Y EL BIGOTE. Segun Miyamoto las tres cosas estan
+## justamente para eso: para que se lo reconozca en un dibujo chico. Y la cabeza grande
+## sobre un cuerpo bajo y ancho, que es la proporcion de cualquier Mario desde 1996.
+func _build_mario() -> void:
+	# Cejas arriba y la boca chica bajo el bigote: contento, siempre.
+	_apply_expression(-0.08, 0.012, 0.040)
+	_head_pivot.scale = Vector3.ONE * 1.12
+
+	var rojo := Art.toon(_tono(&"gorra", accent_color), OUTLINE_WIDTH)
+	var blanco := Art.flat(_tono(&"emblema", Color(0.98, 0.98, 0.96)))
+	var letra := Art.flat(_tono(&"m", accent_color))
+	var pelo := Art.toon(_tono(&"pelo", Color(0.36, 0.20, 0.10)), OUTLINE_WIDTH)
+	var bigote := Art.toon(_tono(&"bigote", Color(0.10, 0.07, 0.06)), OUTLINE_WIDTH)
+	var overol := Art.toon(_tono(&"overol", trouser_color), OUTLINE_WIDTH)
+	var boton := Art.toon(_tono(&"botones", Color(0.98, 0.80, 0.22)), OUTLINE_WIDTH, 0.6)
+	var guante := Art.toon(_tono(&"guantes", Color(0.97, 0.97, 0.98)), OUTLINE_WIDTH)
+	var zapato := Art.toon(_tono(&"zapatos", Color(0.40, 0.22, 0.10)), OUTLINE_WIDTH)
+
+	# --- LA GORRA: la copa, la visera y la M ---
+	#
+	# La copa va ARRIBA Y ATRAS de la cabeza, y por eso no tapa las cejas: el borde de
+	# adelante queda justo encima de la frente, donde empieza la visera.
+	var copa := Art.sphere(0.215, rojo, Vector3(0.0, 0.265, 0.02))
+	copa.scale = Vector3(1.06, 0.58, 1.08)
+	_costume_add(_head_pivot, copa)
+	# La visera: un disco aplastado adelante, apenas inclinado hacia abajo. La mitad de
+	# atras queda adentro de la cabeza y no se ve; lo que asoma es el ala.
+	var visera := Art.cylinder(0.15, 0.024, rojo, Vector3(0.0, 0.212, -0.165))
+	visera.scale = Vector3(1.25, 1.0, 0.78)
+	visera.rotation_degrees = Vector3(-8.0, 0.0, 0.0)
+	_costume_add(_head_pivot, visera)
+	# El circulo blanco al frente de la copa, mirando un poco hacia arriba como la copa.
+	var circulo := Art.cylinder(0.060, 0.010, blanco, Vector3(0.0, 0.300, -0.200))
+	circulo.rotation_degrees = Vector3(72.0, 0.0, 0.0)
+	_costume_add(_head_pivot, circulo)
+	# La M: dos patas y la V del medio, en el mismo plano que el circulo.
+	var frente_m := Vector3(0.0, 0.300, -0.208)
+	for trazo: Array in [
+			[Vector3(-0.024, 0.0, 0.0), Vector3(0.011, 0.050, 0.004), 0.0],
+			[Vector3(0.024, 0.0, 0.0), Vector3(0.011, 0.050, 0.004), 0.0],
+			[Vector3(-0.011, 0.008, 0.0), Vector3(0.010, 0.034, 0.004), 36.0],
+			[Vector3(0.011, 0.008, 0.0), Vector3(0.010, 0.034, 0.004), -36.0]]:
+		var pivote := Node3D.new()
+		pivote.position = frente_m
+		pivote.rotation_degrees = Vector3(-18.0, 0.0, 0.0)
+		_head_pivot.add_child(pivote)
+		_costume.append(pivote)
+		var barra := Art.box(trazo[1], letra, trazo[0])
+		barra.rotation_degrees = Vector3(0.0, 0.0, trazo[2])
+		pivote.add_child(barra)
+
+	# --- EL PELO: patillas y la nuca, asomando bajo la gorra ---
+	for lado: float in [-1.0, 1.0]:
+		var patilla := Art.box(Vector3(0.034, 0.075, 0.055), pelo, Vector3(0.186 * lado, 0.150, -0.045))
+		_costume_add(_head_pivot, patilla)
+		# Las orejas, que Mario tiene bien a la vista.
+		var oreja := Art.sphere(0.046, _mat_skin, Vector3(0.198 * lado, 0.112, 0.005))
+		oreja.scale = Vector3(0.55, 1.0, 0.8)
+		_costume_add(_head_pivot, oreja)
+	# La nuca entera castaña, hasta el cuello: de espaldas, que es como se lo ve casi toda
+	# la partida, una cabeza pelada abajo de la gorra no es Mario.
+	var nuca := Art.sphere(0.170, pelo, Vector3(0.0, 0.105, 0.085))
+	nuca.scale = Vector3(1.14, 0.95, 0.80)
+	_costume_add(_head_pivot, nuca)
+
+	# --- LA NARIZ GRANDE, redonda, tapando la del rig ---
+	var nariz := Art.sphere(0.058, _mat_skin, Vector3(0.0, 0.078, -0.212))
+	nariz.scale = Vector3(1.05, 0.95, 1.0)
+	_costume_add(_head_pivot, nariz)
+
+	# --- EL BIGOTE: ancho, grueso y justo abajo de la nariz ---
+	#
+	# Dos mitades caidas hacia los costados y una en el medio. Tapa la boca, como en los
+	# dibujos: a Mario casi nunca se le ve la boca entera.
+	for lado: float in [-1.0, 1.0]:
+		var mitad := Art.sphere(0.052, bigote, Vector3(0.052 * lado, 0.036, -0.200))
+		mitad.scale = Vector3(1.35, 0.62, 0.55)
+		mitad.rotation_degrees = Vector3(0.0, 0.0, -14.0 * lado)
+		_costume_add(_head_pivot, mitad)
+	var medio := Art.sphere(0.040, bigote, Vector3(0.0, 0.046, -0.214))
+	medio.scale = Vector3(1.35, 0.60, 0.50)
+	_costume_add(_head_pivot, medio)
+
+	# --- OJOS AZULES ---
+	var iris := Art.flat(_tono(&"ojos", Color(0.18, 0.40, 0.86)))
+	for ojo: Node3D in [_eye_l, _eye_r]:
+		if ojo == null:
+			continue
+		var anillo := Art.sphere(0.030, iris, Vector3(0.0, 0.004, -0.026))
+		anillo.scale = Vector3(1.0, 1.25, 0.55)
+		_costume_add(ojo, anillo)
+
+	# --- EL OVEROL: la parte de abajo del torso, el peto, los tiradores y los botones ---
+	#
+	# El torso del rig sale del color de la camisa. De la cintura para abajo va azul: una
+	# capsula apenas mas gruesa que el torso lo tapa, y encima el peto y los tiradores.
+	var pantalon := Art.capsule(0.235, 0.36, overol, Vector3(0.0, 0.14, 0.0))
+	pantalon.scale = Vector3(1.0, 1.0, 0.84)
+	_costume_add(_torso, pantalon)
+	var peto := Art.box(Vector3(0.25, 0.20, 0.03), overol, Vector3(0.0, 0.37, -0.180))
+	_costume_add(_torso, peto)
+	for lado: float in [-1.0, 1.0]:
+		var adelante := Art.box(Vector3(0.056, 0.22, 0.028), overol, Vector3(0.092 * lado, 0.56, -0.168))
+		_costume_add(_torso, adelante)
+		var hombro := Art.box(Vector3(0.056, 0.03, 0.34), overol, Vector3(0.100 * lado, 0.668, 0.0))
+		_costume_add(_torso, hombro)
+		# Hasta la cintura: mas cortos, de espaldas quedaba una franja de camisa entre los
+		# tiradores y el overol.
+		var atras := Art.box(Vector3(0.056, 0.44, 0.028), overol, Vector3(0.092 * lado, 0.44, 0.176))
+		_costume_add(_torso, atras)
+		var dorado := Art.sphere(0.027, boton, Vector3(0.088 * lado, 0.445, -0.200))
+		dorado.scale = Vector3(1.0, 1.0, 0.6)
+		_costume_add(_torso, dorado)
+
+	# --- LAS MANGAS LARGAS ROJAS y los guantes ---
+	#
+	# El antebrazo del rig es de piel. La camisa de Mario es de manga larga: una capsula
+	# roja lo tapa, y en la punta va el guante blanco con su puño.
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo == null:
+			continue
+		var manga := Art.capsule(0.070, 0.24, _mat_body, Vector3(0.0, -0.12, 0.0))
+		_costume_add(codo, manga)
+		var mano := Art.sphere(0.086, guante, Vector3(0.0, -0.30, 0.0))
+		_costume_add(codo, mano)
+		var puño := Art.cylinder(0.076, 0.07, guante, Vector3(0.0, -0.225, 0.0))
+		_costume_add(codo, puño)
+
+	# --- LOS ZAPATOS MARRONES, encima de los del rig ---
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla == null:
+			continue
+		var pie := Art.box(Vector3(0.175, 0.12, 0.30), zapato, Vector3(0.0, -0.405, -0.06))
+		_costume_add(rodilla, pie)
 
 
 ## El circulo blanco con el kanji. En la espalda va mirando para atras.

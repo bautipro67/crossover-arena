@@ -153,6 +153,10 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 	var mult := 1.0
 	var status := target.get_node_or_null("StatusEffects") as StatusEffects
 	if status != null:
+		# SUPERESTRELLA: no hay golpe que valga. Y sin golpe no hay carga de ultimate ni
+		# stamina para el que le pego: pegarle a una estrella no paga nada.
+		if status.es_invencible():
+			return 0.0
 		mult = status.get_damage_taken_multiplier()
 	# Los bots de practica pegan mas flojo. Se los reconoce por el peer negativo.
 	if source_id < 0:
@@ -182,16 +186,7 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 			mult *= est.get_damage_dealt_multiplier()
 	var final_amount := amount * mult
 	var was_alive := not health.is_dead
-	var vida_antes := health.current
 	health.apply_damage(final_amount, source_id)
-
-	# EL TAMBALEO DEL COMBO, en el unico camino por el que pasa todo el daño del juego: asi
-	# lo heredan las treinta y pico habilidades sin tocar ninguna.
-	#
-	# Solo si el golpe LLEGO A LA VIDA. Un golpe que se come entero el escudo de hielo no
-	# pego, y no puede trabar a nadie: el escudo existe justamente para cortar combos.
-	if status != null and (health.current < vida_antes or (was_alive and health.is_dead)):
-		status.tambalear(StatusEffects.TAMBALEO)
 
 	# LOS RECURSOS SE PAGAN SOBRE EL DAÑO SIN LA REBAJA DE LOS BOTS.
 	#
@@ -244,6 +239,12 @@ static func apply_knockback(target: Node, direction: Vector3, force: float, lift
 	if not is_instance_valid(target) or force <= 0.0:
 		return
 	if not target.has_method("apply_knockback"):
+		return
+	# Con la estrella no te mueve nadie. Va aca y no en Player.apply_knockback porque este
+	# es el camino de los GOLPES: el Super Salto de Mario se impulsa a si mismo por el
+	# otro, y con la estrella puesta tiene que poder seguir saltando.
+	var estado := target.get_node_or_null("StatusEffects") as StatusEffects
+	if estado != null and estado.es_invencible():
 		return
 	var flat := Vector3(direction.x, 0.0, direction.z).normalized()
 	if flat.is_zero_approx():

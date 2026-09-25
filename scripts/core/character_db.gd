@@ -88,7 +88,9 @@ func _register_all() -> void:
 	# Alto y flaco: la referencia dice 3.5 metros de alto y lean. No se puede llevar tan
 	# lejos sin romper las camaras, pero la proporcion sale en la misma direccion.
 	flowery.build_scale = Vector3(0.93, 1.12, 0.93)
-	flowery.max_health = 88.0
+	# 84 desde que se sacaron los combos: sin el tambaleo, nadie la frenaba a mitad de
+	# embestida y ganaba dos de cada tres duelos.
+	flowery.max_health = 84.0
 	flowery.max_stamina = 100.0
 	flowery.move_speed = 6.3
 	flowery.silhouette = &"petals"
@@ -179,6 +181,37 @@ func _register_all() -> void:
 	_add(goku)
 
 
+	# --------------------------------------------------------------- Mario
+	#
+	# GRATIS DESDE EL PRINCIPIO: lo pidio asi el usuario, a diferencia de Goku.
+	#
+	# EL TODOTERRENO DE VERDAD. Mario es el personaje de referencia de Nintendo —el de las
+	# estadisticas del medio en cualquier Smash o Mario Kart—, y aca tambien: vida y stamina
+	# de fabrica, velocidad del medio. Lo que lo distingue es el kit, todo de power-ups.
+	#
+	# La ropa sale de la referencia oficial: gorra roja con la M en un circulo blanco,
+	# camisa roja, overol azul con botones dorados, guantes blancos, zapatos marrones, pelo
+	# castaño corto y bigote negro. El acento es el ROJO y no el marron de los zapatos: el
+	# acento tambien es el color de sus frases y de su barra, y Mario es rojo. Los zapatos
+	# marrones los dibuja PlayerVisual encima de los del rig.
+	var mario := CharacterData.new()
+	mario.id = &"mario"
+	mario.display_name = "Mario"
+	mario.origin_game = "Super Mario Bros."
+	mario.body_color = Color(0.86, 0.11, 0.13)
+	mario.accent_color = Color(0.90, 0.14, 0.14)
+	mario.skin_color = Color(0.99, 0.80, 0.64)
+	mario.trouser_color = Color(0.13, 0.27, 0.74)
+	# BAJO Y ANCHO: un metro cincuenta y pico, robusto. Mas bajo que todos menos Sonic, y
+	# mas ancho que cualquiera de los flacos.
+	mario.build_scale = Vector3(1.10, 0.86, 1.08)
+	mario.max_health = 100.0
+	mario.max_stamina = 100.0
+	mario.move_speed = 6.5
+	mario.silhouette = &"gorra"
+	_add(mario)
+
+
 func _add(data: CharacterData) -> void:
 	_characters[data.id] = data
 	if not _order.has(data.id):
@@ -245,6 +278,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(KiBlast.new())
 			list.append(Teletransportacion.new())
 			list.append(Kamehameha.new())
+		&"mario":
+			list.append(MarioCombo.new())
+			list.append(BolaDeFuego.new())
+			list.append(SuperSalto.new())
+			list.append(Superestrella.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

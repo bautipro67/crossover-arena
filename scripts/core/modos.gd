@@ -99,18 +99,23 @@ static func bots_en_oleada(n: int) -> int:
 ## bastante menos de lo que podian. Arreglados, los modos contra varios se volvieron mucho
 ## mas duros (colina de 60% a 13%) y estos numeros vuelven a dejarlos donde estaban. Con
 ## 30 peleas por modo: con 15, el ruido era de doce puntos.
+##
+## Y OTRA VEZ AL SACARSE LOS COMBOS (2026-09-25). Contra varios, el tambaleo castigaba
+## sobre todo al que estaba solo: cada enemigo que le pegaba lo dejaba clavado para el
+## siguiente. Sin el, todo se volvio mucho mas facil —colina 97%, contrarreloj 90%, ultimo
+## en pie 87%, la torre 67%— y estos numeros los devuelven a donde estaban.
 func vida_bot(id: int = 0) -> float:
 	if actual == HISTORIA:
 		return mision.vida_de(id) if is_instance_valid(mision) else 60.0
 	match actual:
 		PRACTICA: return 170.0
-		DUELO: return 140.0
-		SUPERVIVENCIA: return 30.0 + float(oleada) * 4.0
-		CONTRARRELOJ: return 45.0
-		ULTIMO_EN_PIE: return 42.0
+		DUELO: return 150.0
+		SUPERVIVENCIA: return 36.0 + float(oleada) * 5.0
+		CONTRARRELOJ: return 57.0
+		ULTIMO_EN_PIE: return 56.0
 		# Sube de a poco para no cruzar de golpe el umbral de los 180.
-		JEFES: return 98.0 + float(bajas) * 18.0
-		COLINA: return 44.0
+		JEFES: return 112.0 + float(bajas) * 20.0
+		COLINA: return 61.0
 	return 170.0
 
 
@@ -124,13 +129,13 @@ func daño_bot(id: int = 0) -> float:
 	match actual:
 		PRACTICA: return GameConfig.BOT_DAMAGE_SCALE
 		DUELO: return 0.72
-		SUPERVIVENCIA: return minf(0.14 + float(oleada) * 0.015, 0.30)
-		CONTRARRELOJ: return 0.26
-		ULTIMO_EN_PIE: return 0.22
+		SUPERVIVENCIA: return minf(0.17 + float(oleada) * 0.018, 0.36)
+		CONTRARRELOJ: return 0.37
+		ULTIMO_EN_PIE: return 0.32
 		# Los jefes se endurecen tambien pegando, no solo aguantando: un jefe que solo tiene
 		# mas vida es la misma pelea mas larga.
-		JEFES: return 0.38 + float(bajas) * 0.03
-		COLINA: return 0.20
+		JEFES: return 0.48 + float(bajas) * 0.03
+		COLINA: return 0.33
 	return GameConfig.BOT_DAMAGE_SCALE
 
 var actual: StringName = ONLINE
@@ -174,6 +179,14 @@ func es_offline() -> bool:
 ## monedas dejarian de significar algo.
 func da_recompensas() -> bool:
 	return actual != PRACTICA
+
+
+## Por cuanto se multiplican las monedas y la experiencia. Solo lo mueve la dificultad de
+## la historia: mas dificil, mas paga.
+func premio() -> float:
+	if actual == HISTORIA:
+		return float(Historia.dificultad(Progreso.dificultad_historia)["premio"])
+	return 1.0
 
 
 func nombre() -> String:
@@ -364,7 +377,7 @@ func _finalizar(gano: bool, titulo: String, detalle: String) -> void:
 	_terminado = true
 	activo = false
 	# El plus por ganar sale de aca; las monedas por baja ya se pagaron una por una.
-	Progreso.registrar_partida(gano, da_recompensas())
+	Progreso.registrar_partida(gano, da_recompensas(), premio())
 	termino.emit(gano, titulo, detalle)
 	estado_cambio.emit()
 

@@ -11,7 +11,10 @@ extends Ability
 ## las otras dos hacia donde apuntas en ese momento: se puede corregir en el medio.
 
 ## Subio de 8 a 10 (24 a 30 las tres): en duelos simulados Goku ganaba 1 de cada 4.
-const DAMAGE: float = 10.0
+## 12 y no 10 desde que se sacaron los combos: sin el tambaleo, Goku ganaba 3 de cada 10
+## duelos simulados, y no puede subir de vida (es el premio del pase: no aguanta mas que
+## nadie).
+const DAMAGE: float = 12.0
 const DISPAROS: int = 3
 ## Entre una esfera y la siguiente.
 const INTERVALO: float = 0.13

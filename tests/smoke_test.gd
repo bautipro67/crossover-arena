@@ -65,7 +65,7 @@ func _run() -> void:
 	await _test_rick(player, arena)
 	await _test_sonic(player, arena)
 	await _test_goku(player, arena)
-	await _test_tambaleo(arena)
+	await _test_mario(player, arena)
 	_test_descripciones()
 	await _test_escena_corta_habilidades(player)
 	await _test_practica(player, arena)
@@ -943,11 +943,16 @@ func _test_flowery(player: Player, arena: Arena) -> void:
 	await _plantar_flowery(player, victima, puesto, rumbo, 6.0)
 
 	var vida_cadena := victima.health.current
+	# QUIETO: sin el tambaleo, un rival que se aleja caminando corta la cadena —es la contra
+	# de la habilidad—, y el maniqui de practica camina solo de vuelta a su lugar. Aca se mide
+	# la cadena, no si el maniqui se escapa.
+	victima.set_physics_process(false)
 	player.stamina.restore_full()
 	player.caster.reset_state()
 	player.caster.request_use(2)
 	for _i: int in range(120):
 		await get_tree().physics_frame
+	victima.set_physics_process(true)
 	var total_cadena := vida_cadena - victima.health.current
 	var minimo := HereICome.IMPACT_DAMAGE + HereICome.CHAIN_DAMAGE * 2.0
 	_check(total_cadena >= minimo,
@@ -1479,68 +1484,6 @@ func _test_sonic(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
-# ---------------------------------------------------------------- Combos
-
-## El tambaleo: cada golpe deja al rival clavado un instante, que es lo que hace posible
-## encadenar el basico con las habilidades.
-func _test_tambaleo(arena: Arena) -> void:
-	Arena.set_bots_active(false)
-	var sitio := arena.find_clear_spot(Vector3(20.0, 0.6, 20.0), 1.5)
-	var victima := _spawn_dummy(arena, sitio)
-	victima.health.set_max(5000.0)
-	for _i: int in range(6):
-		await get_tree().physics_frame
-	var est := victima.status
-
-	_check(est.can_act(), "(control: antes del golpe el rival puede actuar)")
-	CombatUtils.deal_damage(victima, 10.0, 1)
-	_check(not est.can_act() and est.esta_tambaleando(),
-		"un golpe deja al rival tambaleando: no se puede mover, dashear ni tirar nada")
-	_check(not est.is_frozen() and not est.is_stunned(),
-		"y NO es congelar ni el aturdimiento de ZA WARUDO: Snowgrave no ejecuta a un tambaleado")
-	_check(is_zero_approx(est.get_move_speed_multiplier()), "mientras tambalea no camina")
-
-	# Se renueva con cada golpe: es lo que permite encadenar.
-	await get_tree().create_timer(StatusEffects.TAMBALEO * 0.6).timeout
-	CombatUtils.deal_damage(victima, 10.0, 1)
-	_check(est.get_tambaleo_remaining() > StatusEffects.TAMBALEO * 0.8,
-		"el siguiente golpe lo renueva, y asi se arma la cadena (quedan %.2f s)" % est.get_tambaleo_remaining())
-
-	# Y se va solo.
-	await get_tree().create_timer(StatusEffects.TAMBALEO + 0.15).timeout
-	_check(est.can_act(), "sin otro golpe, al rato se repone solo")
-
-	# --- LA SALIDA DEL COMBO: tiene final ---
-	#
-	# Sin tope, el basico de Sonic (cada 0.32 s) y el de Dio (cada 0.40) trababan a
-	# cualquiera para siempre. Se le pega cada 0.3 s sin parar y se mide que se suelte.
-	var seguido := 0.0
-	var solto := false
-	while seguido < StatusEffects.COMBO_MAXIMO + 0.8:
-		CombatUtils.deal_damage(victima, 5.0, 1)
-		await get_tree().create_timer(0.3).timeout
-		seguido += 0.3
-		if est.can_act():
-			solto = true
-			break
-	_check(solto and seguido <= StatusEffects.COMBO_MAXIMO + 0.35,
-		"pegandole sin parar, a los %.1f s el rival se suelta del combo: no hay trabas infinitas" % seguido)
-	CombatUtils.deal_damage(victima, 5.0, 1)
-	_check(est.can_act() and est.esta_inmune_al_tambaleo(),
-		"y durante un segundo no se lo puede volver a trabar: es su momento de escapar")
-	await get_tree().create_timer(StatusEffects.INMUNE_TRAS_COMBO + 0.1).timeout
-	CombatUtils.deal_damage(victima, 5.0, 1)
-	_check(not est.can_act(), "pasado ese segundo, un golpe vuelve a empezar un combo")
-	await get_tree().create_timer(StatusEffects.TAMBALEO + 0.1).timeout
-
-	# Un golpe que se come entero el escudo no pego: no traba.
-	victima.health.add_shield(50.0, 5.0)
-	CombatUtils.deal_damage(victima, 10.0, 1)
-	_check(est.can_act(), "un golpe que absorbe entero el escudo no deja tambaleando")
-	victima.queue_free()
-	Arena.set_bots_active(true)
-
-
 # -------------------------------------------------------------------- Goku
 
 func _test_goku(player: Player, arena: Arena) -> void:
@@ -1694,6 +1637,139 @@ func _test_goku(player: Player, arena: Arena) -> void:
 	player.setup_character(CharacterDB.get_character(&"sonic"))
 	player.caster.reset_state()
 	player.status.clear_all()
+	Arena.set_bots_active(true)
+
+
+func _test_mario(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	_check(CharacterDB.has_character(&"mario"), "Mario esta registrado")
+	var data := CharacterDB.get_character(&"mario")
+	_check(data != null and data.origin_game == "Super Mario Bros." and data.silhouette == &"gorra",
+		"Mario viene de Super Mario Bros. y tiene silueta propia: la gorra")
+	_check(data != null and not data.requiere_desbloqueo, "Mario viene de fabrica: gratis desde el principio")
+
+	var kit := CharacterDB.build_abilities_for(&"mario")
+	_check(kit.size() == 4, "Mario tiene 4 habilidades (tiene %d)" % kit.size())
+	if kit.size() < 4:
+		return
+	_check(kit[0] is MarioCombo and kit[1] is BolaDeFuego and kit[2] is SuperSalto
+		and kit[3] is Superestrella,
+		"su kit: puño y patada, bola de fuego, super salto y superestrella")
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+	_check(kit[3].stamina_cost == 100.0 and kit[3].requires_charge and kit[3].channel_time > 0.0,
+		"la Superestrella cuesta la barra entera, pide el medidor y se carga a la vista")
+
+	player.setup_character(data)
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, -30.0), 1.5)
+	var rumbo := _carril_libre(player, puesto, 20.0)
+	var yaw := atan2(-rumbo.x, -rumbo.z)
+	player.respawn_at(puesto, yaw)
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	for _i: int in range(24):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+
+	# --- BOLA DE FUEGO: pica en el piso y sigue, no se apaga contra el suelo ---
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	await get_tree().create_timer(0.7).timeout
+	var bola: BolaFuego = null
+	for hijo: Node in arena.get_children():
+		if hijo is BolaFuego and not hijo.is_queued_for_deletion():
+			bola = hijo
+	_check(bola != null and bola._piques >= 1,
+		"la bola de fuego pica en el piso y sigue viajando (%d piques)" % (bola._piques if bola != null else -1))
+
+	# --- Y pega ---
+	var blanco := _spawn_dummy(arena, puesto + rumbo * 7.0)
+	blanco.health.set_max(3000.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var vida := blanco.health.current
+	await get_tree().create_timer(1.2).timeout
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	await get_tree().create_timer(1.4).timeout
+	_check(blanco.health.current <= vida - BolaDeFuego.DAMAGE * 0.9,
+		"la bola de fuego le pega al que tiene adelante (%.0f)" % (vida - blanco.health.current))
+
+	# --- SUPER SALTO: sube, cae, y el pisoton aplasta alrededor ---
+	#
+	# Con un maniqui NUEVO a tres metros: el de antes vuelve caminando a su marca, y en lo
+	# que dura el salto se iba de abajo.
+	player.respawn_at(puesto, yaw)
+	var aplastado := _spawn_dummy(arena, puesto + rumbo * 3.0)
+	aplastado.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = aplastado.health.current
+	var piso := player.global_position.y
+	var alto := 0.0
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	for _i: int in range(110):
+		await get_tree().physics_frame
+		alto = maxf(alto, player.global_position.y - piso)
+	_check(alto > 2.0, "el Super Salto sube bien alto (%.1f m)" % alto)
+	var caida := Vector3(player.global_position.x - aplastado.global_position.x, 0.0,
+		player.global_position.z - aplastado.global_position.z).length()
+	_check(aplastado.health.current <= vida - SuperSalto.DAMAGE * 0.9,
+		"y al caer, el pisoton le pega al que estaba cerca (%.0f, cayo a %.1f m)" % [
+			vida - aplastado.health.current, caida])
+	aplastado.queue_free()
+
+	# --- SUPERESTRELLA: invencible de verdad, y el que toca sale volando ---
+	player.respawn_at(puesto, yaw)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.request_use(3)
+	await get_tree().create_timer(Superestrella.new().channel_time + 0.2).timeout
+	var antes := player.health.current
+	var hecho := CombatUtils.deal_damage(player, 50.0, -77)
+	player.status.freeze_for(2.0)
+	player.status.stun_for(1.0)
+	_check(player.status.es_invencible() and hecho == 0.0 and is_equal_approx(player.health.current, antes)
+		and player.status.can_act(),
+		"con la Superestrella nada le saca vida ni lo frena (congelar ni aturdir)")
+	blanco.global_position = player.global_position + rumbo * 0.8
+	blanco.velocity = Vector3.ZERO
+	blanco.health.revive_full()
+	vida = blanco.health.current
+	await get_tree().create_timer(0.5).timeout
+	_check(blanco.health.current < vida, "y el que lo toca sale lastimado (%.0f)" % (vida - blanco.health.current))
+	_check(player.ultimate.current < 1.0,
+		"y su propio daño no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
+	await get_tree().create_timer(Superestrella.DURACION).timeout
+	hecho = CombatUtils.deal_damage(player, 5.0, -77)
+	_check(not player.status.es_invencible() and hecho > 0.0,
+		"y cuando se apaga, vuelve a recibir daño como cualquiera")
+
+	# Sus skins: las tres, en la tienda.
+	var suyas := SkinDB.de_personaje(&"mario")
+	var en_tienda := 0
+	for sid: StringName in suyas:
+		if SkinDB.get_skin(sid).precio > 0:
+			en_tienda += 1
+	_check(suyas.size() >= 3 and en_tienda == suyas.size(),
+		"Mario tiene sus skins y estan todas en la tienda (%d de %d)" % [en_tienda, suyas.size()])
+
+	player.aim_override = Vector3.ZERO
+	blanco.queue_free()
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.status.clear_all()
+	player.health.revive_full()
 	Arena.set_bots_active(true)
 
 
@@ -1901,7 +1977,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 227
+const CHEQUEOS_MINIMOS: int = 233
 
 
 func _finish() -> void:

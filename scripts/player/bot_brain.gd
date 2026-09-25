@@ -453,6 +453,16 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 		&"jarona":
 			# Cada pasada son unos nueve metros: tiene que alcanzar en la primera.
 			return dist < 10.0
+		&"bola_de_fuego":
+			# Va picando por el piso unos quince metros; una cobertura en el medio la apaga.
+			return dist > 2.5 and dist < 15.0 and _a_la_vista
+		&"super_salto":
+			# Avanza unos tres metros en el aire y el pisoton pega en 4 m a la redonda al
+			# caer: sirve con el rival a tiro de salto, no encima ni en la otra punta.
+			return dist > 1.5 and dist < 6.0
+		&"superestrella":
+			# Invencible y lo que toca sale volando: con el rival cerca, para ir a buscarlo.
+			return dist < 10.0
 		&"ice_shock", &"knife_throw":
 			return dist > 3.0 and dist < 26.0
 		&"stand_barrage":

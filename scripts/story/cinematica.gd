@@ -195,9 +195,8 @@ func _congelar_pelea() -> void:
 func _despegar() -> void:
 	var vistos: Array[Player] = []
 	for a: Node in actores.values():
-		var p := a as Player
-		if p != null and is_instance_valid(p) and p.visible:
-			vistos.append(p)
+		if _en_escena(a as Player):
+			vistos.append(a)
 	for i: int in range(vistos.size()):
 		for j: int in range(i + 1, vistos.size()):
 			var fijo := vistos[i]
@@ -369,7 +368,11 @@ func _aparecer(id: StringName, personaje: StringName, rel: Vector2, efecto: Stri
 			a.global_position = punto + Vector3.UP * 14.0
 			a.velocity = Vector3.DOWN * 4.0
 			var t := 0.0
-			while t < 2.5 and not a.is_on_floor():
+			# is_on_floor() es del ultimo move_and_slide: recien subido a catorce metros,
+			# un cuerpo que estaba parado sigue diciendo que esta en el piso. Sin esperar un
+			# poco, la caida "terminaba" en el acto y el dialogo arrancaba con el que caia
+			# todavia en el aire, fuera de cuadro.
+			while t < 2.5 and (t < 0.2 or not a.is_on_floor()):
 				await get_tree().physics_frame
 				t += get_physics_process_delta_time()
 			FX.spawn_impact_burst(a, a.global_position + Vector3.UP * 0.2, Color(1.0, 0.9, 0.6, 1.0))
@@ -598,8 +601,19 @@ func _contrapicado(a: Player) -> void:
 func _plano_general() -> void:
 	var visibles: Array[Player] = []
 	for a: Node in actores.values():
-		if is_instance_valid(a) and (a as Player).visible:
+		if _en_escena(a as Player):
 			visibles.append(a)
+	# LOS QUE ESTAN EN LA ESCENA, no los que quedaron lejos: en una escena de mitad de pelea
+	# alguien puede estar a veinte metros, y encuadrarlo abria el plano hasta que los que
+	# hablaban eran puntitos. Si hay alguien cerca del ancla, se encuadra a los de cerca.
+	var cerca: Array[Player] = []
+	for a: Player in visibles:
+		var d := a.global_position - ancla
+		d.y = 0.0
+		if d.length() <= 12.0:
+			cerca.append(a)
+	if not cerca.is_empty():
+		visibles = cerca
 	if visibles.is_empty():
 		_cam_pos = ancla + Vector3(0.0, 4.5, 10.0)
 		_cam_mira = ancla + Vector3.UP
@@ -642,6 +656,12 @@ func _plano_general() -> void:
 	_cam_deriva = (_cam_mira - _cam_pos).cross(Vector3.UP).normalized() * 0.25
 
 
+## Esta en la escena: existe, se ve y no esta muerto. Un muerto tiene el cuerpo escondido
+## pero el nodo visible, y contarlo abria el plano general hasta donde habia caido.
+func _en_escena(p: Player) -> bool:
+	return p != null and is_instance_valid(p) and p.visible and not p.health.is_dead
+
+
 func _frente(a: Player) -> Vector3:
 	var f := -a.global_transform.basis.z
 	f.y = 0.0
@@ -674,7 +694,7 @@ func _nota(desde: Vector3, a: Player, ignorar: Array) -> int:
 		var seg := punto - desde
 		for otro: Node in actores.values():
 			var o := otro as Player
-			if o == null or not is_instance_valid(o) or o == a or not o.visible or ignorar.has(o):
+			if not _en_escena(o) or o == a or ignorar.has(o):
 				continue
 			for alto_o: float in [1.0, 1.5]:
 				var cuerpo := o.global_position + Vector3.UP * alto_o * o.visual.build_scale.y
@@ -827,7 +847,13 @@ func _decir(quien: StringName, texto: String) -> void:
 		# El nombre sale del PERSONAJE del actor, no de su id: un actor de escena se puede
 		# llamar "rick_" para no chocar con otro, y el cartel tiene que decir Rick.
 		var cid := a.character_id if a != null else quien
-		_nombre.text = Historia.nombre_de(cid).to_upper()
+		var nombre := Historia.nombre_de(cid)
+		# Y si es de la pelea, el nombre que le puso el capitulo: "Flowery Oscura", no
+		# "Flowery", en la charla entre las dos.
+		var m := Modos.mision as MisionHistoria
+		if m != null and m.participantes.has(quien):
+			nombre = m.nombre_de(quien)
+		_nombre.text = nombre.to_upper()
 		_nombre.add_theme_color_override("font_color", Frases.color_de(cid))
 	_texto.text = texto
 	_texto.add_theme_color_override("font_color",

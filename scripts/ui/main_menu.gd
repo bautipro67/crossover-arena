@@ -110,7 +110,7 @@ func _ready() -> void:
 	b_historia.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b_historia.pressed.connect(func() -> void: historia_requested.emit(_name_field.text))
 	var detalle_historia := func() -> void:
-		_detalle.text = "Historia — %s. Cinco capítulos con diálogos, y una pelea en cada uno." % Historia.PARTE
+		_detalle.text = "Historia — dos partes de diez capítulos, con escenas, aliados y objetivos. La parte 2 se abre al terminar la 1."
 	b_historia.mouse_entered.connect(detalle_historia)
 	b_historia.focus_entered.connect(detalle_historia)
 	grilla.add_child(b_historia)

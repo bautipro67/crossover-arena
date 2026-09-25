@@ -327,7 +327,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 30
+const TOTAL_SONIDOS: int = 34
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -348,6 +348,7 @@ func _build_combate() -> void:
 		[&"meeseeks", _synth_meeseeks],
 		[&"last_jarona", _synth_last_jarona], [&"snowgrave", _synth_snowgrave],
 		[&"portal", _synth_portal], [&"za_warudo", _synth_za_warudo],
+		[&"fuego", _synth_fuego], [&"estrella", _synth_estrella],
 		# Las voces al final: son las mas caras de generar —tres resonadores moviles por
 		# palabra— y son las unicas que nadie puede necesitar en el primer segundo,
 		# porque para gritar una habilidad primero hay que tener una habilidad lista.
@@ -359,6 +360,8 @@ func _build_combate() -> void:
 		[&"voz_toki", _synth_voz_toki],
 		[&"voz_kamehameha", _synth_voz_kamehameha],
 		[&"voz_ha", _synth_voz_ha],
+		[&"voz_wahoo", _synth_voz_wahoo],
+		[&"voz_lets_go", _synth_voz_lets_go],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -834,6 +837,74 @@ func _synth_voz_kamehameha() -> PackedFloat32Array:
 func _synth_voz_ha() -> PackedFloat32Array:
 	return _voz([["a", 0.55, "aire"]], G_TONO + 22.0, G_CUERPO, 0.16, G_DRAMA + 0.3,
 		G_BRILLO, 0.26)
+
+
+# --- MARIO ---
+#
+# La voz mas aguda y la mas contenta del juego: un tipo bajito que salta gritando de
+# alegria. Mucho brillo y nada de rasgado: Mario no grita de esfuerzo, grita de ganas.
+const M_TONO: float = 212.0
+const M_CUERPO: float = 1.06
+const M_DRAMA: float = 1.5
+const M_BRILLO: float = 1.35
+
+
+## "¡WAHOO!" — ua-ju. El del salto: sube en el "ua" y se estira en el "ju".
+func _synth_voz_wahoo() -> PackedFloat32Array:
+	return _voz([["u", 0.08, "suave"], ["a", 0.16, ""], ["u", 0.28, "aire"]],
+		M_TONO, M_CUERPO, 0.08, M_DRAMA, M_BRILLO)
+
+
+## "¡LET'S-A GO!" — le-tsa-go. El de la estrella, con la "a" de mas que le pone siempre.
+func _synth_voz_lets_go() -> PackedFloat32Array:
+	return _voz([["e", 0.12, "golpe"], ["a", 0.13, "aire"], ["o", 0.32, "golpe"]],
+		M_TONO - 8.0, M_CUERPO, 0.09, M_DRAMA - 0.1, M_BRILLO)
+
+
+## La bola de fuego: un "piu" de onda cuadrada que cae, y un chisporroteo.
+##
+## Onda cuadrada porque es el sonido de Mario desde 1985: todo lo suyo es chiptune, y una
+## bola de fuego con un soplido realista sonaria a otro juego.
+func _synth_fuego() -> PackedFloat32Array:
+	var dur := 0.16
+	var out := _vacio(dur)
+	var n := out.size()
+	var fase := 0.0
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		fase += lerpf(980.0, 260.0, sqrt(p)) / float(MIX_RATE)
+		var env: float = exp(-p * 4.5)
+		out[i] = _pulso(fase, 0.5) * 0.40 * env + _ruido() * 0.18 * exp(-t * 60.0)
+	_pasaaltos(out, 200.0)
+	_normalizar(out, 0.62)
+	_bordes(out, 0.3, 8.0)
+	return out
+
+
+## La Superestrella: un arpegio que sube, con brillo de campana.
+##
+## NO ES LA MUSICA DE LA ESTRELLA, a proposito: esa melodia es de Nintendo y no se copia.
+## Es un acorde mayor subiendo rapido, que se lee como "algo bueno acaba de pasar" en
+## cualquier juego, con el timbre cuadrado del resto de Mario.
+func _synth_estrella() -> PackedFloat32Array:
+	var dur := 0.7
+	var out := _vacio(dur)
+	var n := out.size()
+	var notas: Array[float] = [523.25, 659.25, 783.99, 1046.5, 1318.5]
+	var paso := 0.07
+	var fase := 0.0
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var k := mini(int(t / paso), notas.size() - 1)
+		var f: float = notas[k]
+		fase += f / float(MIX_RATE)
+		var local := t - float(k) * paso
+		var env: float = exp(-local * 9.0) * (1.0 if k < notas.size() - 1 else exp(-(t - float(k) * paso) * 3.0))
+		out[i] = _pulso(fase, 0.25) * 0.28 * env + _campana(t, f * 2.0, 1.41, 1.2) * 0.16 * env
+	_normalizar(out, 0.6)
+	_bordes(out, 0.3, 30.0)
+	return out
 
 
 # ------------------------------------------------------------------- Deltarune

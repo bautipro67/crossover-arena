@@ -105,8 +105,31 @@ func _revisar_camino(desde: Vector3, hasta: Vector3) -> bool:
 	var espacio := get_world_3d().direct_space_state
 	if espacio == null:
 		return false
+	if _revisar_jugadores(hasta):
+		return true
 
-	# --- Jugadores ---
+	# --- Mundo ---
+	var rayo := PhysicsRayQueryParameters3D.create(desde, hasta)
+	rayo.collision_mask = GameConfig.LAYER_WORLD
+	var choque := espacio.intersect_ray(rayo)
+	if not choque.is_empty():
+		_spent = true
+		# En el punto de contacto, no donde habria seguido: asi la explosion sale
+		# pegada a la superficie y no hundida adentro.
+		global_position = choque["position"] as Vector3
+		_spawn_impact_fx()
+		expire()
+		return true
+	return false
+
+
+## ¿Hay alguien en el punto de llegada? Si hay, le pega y el proyectil muere. Aparte del
+## chequeo contra el mundo para que un proyectil con otra forma de tratar el piso —la bola
+## de fuego de Mario, que rebota— use el mismo de siempre para los jugadores.
+func _revisar_jugadores(hasta: Vector3) -> bool:
+	var espacio := get_world_3d().direct_space_state
+	if espacio == null:
+		return false
 	var forma := PhysicsShapeQueryParameters3D.new()
 	var esfera := SphereShape3D.new()
 	esfera.radius = hit_radius
@@ -128,19 +151,6 @@ func _revisar_camino(desde: Vector3, hasta: Vector3) -> bool:
 		_spent = true
 		global_position = hasta
 		_on_hit_player(cuerpo)
-		_spawn_impact_fx()
-		expire()
-		return true
-
-	# --- Mundo ---
-	var rayo := PhysicsRayQueryParameters3D.create(desde, hasta)
-	rayo.collision_mask = GameConfig.LAYER_WORLD
-	var choque := espacio.intersect_ray(rayo)
-	if not choque.is_empty():
-		_spent = true
-		# En el punto de contacto, no donde habria seguido: asi la explosion sale
-		# pegada a la superficie y no hundida adentro.
-		global_position = choque["position"] as Vector3
 		_spawn_impact_fx()
 		expire()
 		return true

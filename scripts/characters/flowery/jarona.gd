@@ -27,7 +27,7 @@ extends Ability
 ## encima SI vuelve a pegar. El registro por pasada existe para que un solo viaje no te
 ## cobre cuatro ticks mientras te atraviesa.
 
-const DAMAGE: float = 22.0
+const DAMAGE: float = 20.0
 ## CADA PASADA PEGA MENOS QUE LA ANTERIOR, y esto es lo que la hace jugable.
 ##
 ## El problema medido: con daño plano, un rival que no puede salirse del camino —contra

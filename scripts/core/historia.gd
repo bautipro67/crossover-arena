@@ -1,6 +1,8 @@
 class_name Historia
 extends RefCounted
-## El modo historia. PARTE 1: LA GRIETA. Diez capitulos.
+## El modo historia. PARTE 1: LA GRIETA y PARTE 2: EL TORNEO DEL NUCLEO. Diez capitulos
+## cada una, en una sola lista: el capitulo 11 es el primero de la parte 2, y se abre al
+## ganar el 10 como cualquier otro.
 ##
 ## LA TRAMA. Rick rompe la pared entre los mundos arreglando su pistola de portales, y del
 ## otro lado hay algo viejo: la Arena, un coliseo entre mundos que VIVE DE LAS PELEAS. Por
@@ -26,7 +28,16 @@ extends RefCounted
 ##   Dio      grandilocuente y cruel; "insectos", "inutil", "¡fui yo, DIO!". Cree que el
 ##            poder lo justifica todo.
 ##   Goku     aparece al final: contento, con hambre, y con ganas de pelear con alguien
-##            fuerte. Abre la parte 2.
+##            fuerte. Abre la parte 2. "¡Hola, soy Goku!", "¡qué emocion!", y todo
+##            torneo le parece el Tenkaichi Budokai.
+##   Mario    llega en la parte 2 por una tuberia equivocada. Habla poco y contento —
+##            "¡Mamma mia!", "¡Wahoo!", "okey-dokey", "¡Let's-a go!"— y rescatar gente es
+##            lo que hace siempre. Lo esperan la princesa Peach y un pastel.
+##
+## LA PARTE 2. Cuando Dio apreto el nucleo, se partio: los fragmentos quedaron repartidos
+## por la Arena y Dio escapo con el mas grande. La Arena, herida, llama a un TORNEO para
+## rearmarse, y tira adentro a los mas fuertes: Goku, y Mario. Juntar los fragmentos, subir
+## a la torre del centro y sacarle el nucleo a Dio, que se quiere convertir en la Arena.
 ##
 ## TODO LO QUE SE DICE ES ORIGINAL. De las obras salen los personajes y las frases que son
 ## su marca, nada mas.
@@ -35,7 +46,12 @@ extends RefCounted
 ## entrada y salida. El formato de las escenas esta en Cinematica, y el de la pelea en
 ## MisionHistoria. Las posiciones son (x, z) desde el jugador; adelante es z negativo.
 
-const PARTE: String = "PARTE 1: LA GRIETA"
+## Las partes, en orden, y cuantos capitulos trae cada una. Los capitulos van todos en la
+## misma lista: la parte de un capitulo sale de contar.
+const PARTES: Array[Dictionary] = [
+	{"titulo": "PARTE 1: LA GRIETA", "capitulos": 10},
+	{"titulo": "PARTE 2: EL TORNEO DEL NÚCLEO", "capitulos": 10},
+]
 const NARRADOR: StringName = &"narrador"
 
 
@@ -64,6 +80,95 @@ static func capitulo(i: int) -> Dictionary:
 	if i < 0 or i >= t.size():
 		return {}
 	return t[i]
+
+
+## En que parte esta el capitulo `i` (0, 1...).
+static func parte_de(i: int) -> int:
+	var hasta := 0
+	for k: int in range(PARTES.size()):
+		hasta += int(PARTES[k]["capitulos"])
+		if i < hasta:
+			return k
+	return PARTES.size() - 1
+
+
+## El primer capitulo de la parte `k`.
+static func primero_de(k: int) -> int:
+	var desde := 0
+	for j: int in range(mini(k, PARTES.size())):
+		desde += int(PARTES[j]["capitulos"])
+	return desde
+
+
+static func titulo_parte(k: int) -> String:
+	return String(PARTES[clampi(k, 0, PARTES.size() - 1)]["titulo"])
+
+
+## Como se lo nombra: "CAPÍTULO 3" en la parte 1, "PARTE 2 · CAPÍTULO 3" en las demas. Cada
+## parte cuenta desde uno: el primero de la parte 2 no es el "capitulo 11".
+static func titulo_capitulo(i: int) -> String:
+	var k := parte_de(i)
+	var n := i - primero_de(k) + 1
+	if k == 0:
+		return "CAPÍTULO %d" % n
+	return "PARTE %d · CAPÍTULO %d" % [k + 1, n]
+
+
+# ------------------------------------------------------------------ Dificultad
+
+## LAS DIFICULTADES, que se eligen en la pantalla de capitulos. Mueven dos cosas: cuanto
+## aguantan y cuanto pegan los enemigos —los aliados no cambian—, y cuanto paga jugar: la
+## baja, el plus por ganar y la experiencia se multiplican por "premio". Si facil pagara
+## lo mismo, jugar en facil seria la unica forma sensata de juntar monedas.
+const DIFICULTADES: Array[Dictionary] = [
+	{"nombre": "FÁCIL", "vida": 0.75, "daño": 0.65, "premio": 0.5,
+		"texto": "Enemigos más débiles. La mitad de monedas y experiencia."},
+	{"nombre": "NORMAL", "vida": 1.0, "daño": 1.0, "premio": 1.0,
+		"texto": "La historia como fue pensada. Monedas y experiencia normales."},
+	{"nombre": "DIFÍCIL", "vida": 1.3, "daño": 1.35, "premio": 1.5,
+		"texto": "Enemigos más duros. 50% más de monedas y experiencia."},
+]
+const DIFICULTAD_NORMAL: int = 1
+
+## LA CUESTA: los enemigos se endurecen con cada capitulo y con cada parte, encima de lo
+## que diga el capitulo y de la dificultad elegida. Cada pelea estaba calibrada para
+## costar mas o menos lo mismo, y el ultimo capitulo se sentia como el segundo.
+##
+## CUENTA LOS CAPITULOS DE PUNTA A PUNTA, no dentro de cada parte: contando desde cero en
+## cada parte, el primero de la parte 2 salia mas facil que el ultimo de la 1. Y pasar de
+## parte suma un escalon mas.
+##
+## LOS JEFES SUBEN MAS: arrancan un escalon arriba de los ecos de su mismo capitulo.
+##
+## EL DAÑO SUBE LA MITAD QUE LA VIDA. Las dos cosas juntas se multiplican entre si, y con
+## la cuesta entera en las dos, la parte 2 salia casi imposible: medido con un bot de
+## jugador, el capitulo 18 se ganaba 2 de 24, siempre muriendo antes de los veinte segundos.
+const CUESTA_CAPITULO: float = 0.015
+const CUESTA_PARTE: float = 0.05
+const CUESTA_JEFE: float = 1.12
+const CUESTA_DAÑO: float = 0.5
+
+
+static func dificultad(d: int) -> Dictionary:
+	return DIFICULTADES[clampi(d, 0, DIFICULTADES.size() - 1)]
+
+
+## Cuanto se multiplica la vida de un enemigo del capitulo `i`, antes de la dificultad
+## elegida. El daño sube la mitad: ver CUESTA_DAÑO.
+static func cuesta(i: int, jefe: bool) -> float:
+	var f := 1.0 + CUESTA_CAPITULO * float(i) + CUESTA_PARTE * float(parte_de(i))
+	return f * CUESTA_JEFE if jefe else f
+
+
+## Un enemigo del capitulo `i` con la cuesta y la dificultad `d` encima. Devuelve una
+## copia: los datos del capitulo no se tocan, o rejugarlo lo endureceria otra vez.
+static func escalar(e: Dictionary, i: int, d: int) -> Dictionary:
+	var out := e.duplicate()
+	var dif := dificultad(d)
+	var f := cuesta(i, e.get("jefe", false))
+	out["vida"] = float(e.get("vida", 60.0)) * f * float(dif["vida"])
+	out["daño"] = float(e.get("daño", 0.4)) * (1.0 + (f - 1.0) * CUESTA_DAÑO) * float(dif["daño"])
+	return out
 
 
 ## El nombre de quien habla, para los carteles.
@@ -96,7 +201,7 @@ static func _armar() -> Array[Dictionary]:
 		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos"},
 		"eventos": [
 			[["inicio"], [["decir", &"noelle", "Tranquila, Noelle. Es como en el Mundo Oscuro. Vos podés."]]],
-			[["tiempo", 3.0], [["decir", NARRADOR, "Cada golpe deja al rival tambaleando un instante: encadená el golpe básico con tus habilidades antes de que se reponga."]]],
+			[["tiempo", 3.0], [["decir", NARRADOR, "Cada habilidad tiene su recarga: alterná entre ellas y el golpe básico, y no dejes de moverte."]]],
 			[["quedan", 1], [["decir", &"noelle", "¡Queda uno! ...Ay, perdón, no quería gritar."]]],
 		],
 		"intro": [
@@ -245,7 +350,7 @@ static func _armar() -> Array[Dictionary]:
 		"personaje": &"sonic",
 		"enemigos": [
 			{"id": &"flowery", "personaje": &"flowery", "nombre": "Flowery", "vida": 95.0,
-				"daño": 0.25, "pos": Vector2(0, -10), "jefe": true, "oculto": true},
+				"daño": 0.22, "pos": Vector2(0, -10), "jefe": true, "oculto": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"flowery", "texto": "Derrotá a Flowery"},
 		"eventos": [
@@ -496,7 +601,7 @@ static func _armar() -> Array[Dictionary]:
 		"personaje": &"sonic",
 		"aliados": [_aliado(&"flowery", "Flowery", Vector2(2.5, 1.5), 100.0, 0.55)],
 		"enemigos": [
-			{"id": &"desconocido", "personaje": &"goku", "nombre": "???", "vida": 170.0, "daño": 0.44,
+			{"id": &"desconocido", "personaje": &"goku", "nombre": "???", "vida": 150.0, "daño": 0.44,
 				"pos": Vector2(0, -10), "jefe": true, "eco": true, "oculto": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"desconocido", "texto": "Derrotá al eco sin nombre"},
@@ -687,4 +792,710 @@ static func _armar() -> Array[Dictionary]:
 			["titulo", "CONTINUARÁ", "Parte 2"],
 		],
 	})
+
+	# ================================================================ PARTE 2
+	#
+	# EL TORNEO DEL NUCLEO. Arranca donde termino la parte 1: Goku recien caido del cielo.
+
+	# ------------------------------------------------------------------ 11
+	#
+	# GOKU NO SE JUEGA EN LA HISTORIA: es el premio del pase pro, y jugarlo aca seria usarlo
+	# antes de ganarlo. Esta en la trama de punta a punta, del otro lado o como aliado.
+	c.append({
+		"titulo": "El que vino a pelear",
+		"personaje": &"sonic",
+		"enemigos": [
+			# Una pelea de practica: Goku no es jefe.
+			{"id": &"goku", "personaje": &"goku", "nombre": "Goku", "vida": 120.0, "daño": 0.35,
+				"pos": Vector2(0, -7)},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"goku", "hasta": 0.5,
+			"texto": "Ganale el combate de práctica a Goku"},
+		"eventos": [
+			[["inicio"], [["decir", NARRADOR, "Es una pelea amistosa: con bajarle la mitad de la vida alcanza."]]],
+			[["vida", &"goku", 0.75], [["decir", &"goku", "¡Uh! ¡Qué rápido sos! ¡Esto me encanta!"]]],
+		],
+		"intro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(0, -7), 180.0],
+			["aparecer", &"noelle_", &"noelle", Vector2(-4, 2), ""],
+			["aparecer", &"rick_", &"rick", Vector2(4, 2), ""],
+			["plano", "general"],
+			["narrar", "La Arena, un rato después. El cielo sigue roto, y el que cayó de él no para de estirarse."],
+			["plano", "abajo", &"goku"],
+			["pose", &"goku", &"desafio", 1.6],
+			["decir", &"goku", "¡Bueno! ¿Quién pelea conmigo primero? Prometo no ir con todo... al principio."],
+			["plano", "cerca", &"noelle_"],
+			["decir", &"noelle_", "E-eh... ¿no deberíamos descansar? Recién le ganamos a Dio..."],
+			["plano", "dos", &"goku", &"sonic"],
+			["decir", &"sonic", "¿Fuerte? Yo no soy fuerte. Soy RÁPIDO. Que es mejor."],
+			["decir", &"goku", "¡Qué bueno! Nunca peleé con alguien que corra tanto."],
+			["plano", "cerca", &"rick_"],
+			["decir", &"rick_", "Un mono espacial contra un erizo con zapatillas. Qué gran uso de nuestro tiempo."],
+			["plano", "abajo", &"goku"],
+			["decir", &"goku", "¡Una peleíta corta y después comemos! ¿Hay comida acá?"],
+			["plano", "cerca", &"sonic"],
+			["pose", &"sonic", &"senalar", 1.4],
+			["decir", &"sonic", "Si me alcanzás, te invito. Spoiler: no me vas a alcanzar."],
+		],
+		"outro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(0, -3.5), 180.0],
+			["aparecer", &"noelle_", &"noelle", Vector2(-4, 2), ""],
+			["aparecer", &"rick_", &"rick", Vector2(4, 2), ""],
+			["plano", "dos", &"sonic", &"goku"],
+			["decir", &"goku", "¡Uf! Sos rapidísimo. ¡Casi no te veía!"],
+			["decir", &"sonic", "Vos tampoco estás tan mal. Para no ser yo, sos bastante rápido."],
+			["decir", &"goku", "¡Tenemos que repetirla!"],
+			["temblor", 1.0],
+			["narrar", "El piso late. Desde el centro de la Arena sale un zumbido que se mete en los huesos."],
+			["plano", "cerca", &"rick_"],
+			["decir", &"rick_", "Es el núcleo. Cuando Dio lo apretó, se partió, y los pedazos quedaron desparramados por toda la Arena."],
+			["decir", &"rick_", "El que junte los fragmentos, manda acá. Y adivinen quién se llevó el más grande."],
+			["plano", "cerca", &"noelle_"],
+			["decir", &"noelle_", "Dio..."],
+			["narrar", "Y entonces la Arena habla. Con mil voces a la vez, una sola palabra: TORNEO."],
+			["plano", "abajo", &"goku"],
+			["pose", &"goku", &"victoria", 1.8],
+			["decir", &"goku", "¡¿Un torneo?! ¡Como el Tenkaichi Budokai! ¡Qué emoción!"],
+			["plano", "cerca", &"rick_"],
+			["decir", &"rick_", "No es un torneo, es un organismo hambriento que quiere que nos matemos. ...Pero sí, técnicamente es un torneo."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 12
+	c.append({
+		"titulo": "Una tubería equivocada",
+		"personaje": &"mario",
+		"enemigos": [
+			_eco("e1", &"goku", Vector2(-4, -10), 34.0, 0.18),
+			_eco("e2", &"dio", Vector2(0, -12), 34.0, 0.18),
+			_eco("e3", &"flowery", Vector2(4, -10), 34.0, 0.18),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos"},
+		"eventos": [
+			[["inicio"], [["decir", NARRADOR, "Los ecos pelean como aquel al que copian. La bola de fuego pica: tirala al piso delante de ellos."]]],
+			[["tiempo", 12.0], [
+				["refuerzos", [_eco("e4", &"rick", Vector2(-7, -12), 34.0, 0.18, false)]],
+				["decir", &"mario", "¡Mamma mia! ¡Viene otro!"]]],
+		],
+		"intro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["plano", "libre", Vector3(5, 3, 6), Vector3(0, 1.2, 0)],
+			["narrar", "En otra punta de la Arena, donde nadie miraba, una tubería verde asoma del piso como si siempre hubiera estado ahí."],
+			["aparecer", &"mario", &"mario", Vector2(0, 0), "caida"],
+			["plano", "cerca", &"mario"],
+			["pose", &"mario", &"pensar", 1.6],
+			["decir", &"mario", "¡Mamma mia! Esto no es el Reino Champiñón..."],
+			["decir", &"mario", "La princesa Peach me invitó a comer pastel. Tomé la tubería de siempre. Y la tubería de siempre me trajo acá."],
+			["aparecer", &"e1", &"goku", Vector2(-4, -10), "sombra"],
+			["aparecer", &"e2", &"dio", Vector2(0, -12), "sombra"],
+			["aparecer", &"e3", &"flowery", Vector2(4, -10), "sombra"],
+			["plano", "general"],
+			["narrar", "Tres sombras suben del piso. Tienen forma de gente, pero no tienen cara."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¿Goombas sin cara? ¿Bowser, sos vos?"],
+			["pose", &"mario", &"desafio", 1.4],
+			["grito", &"mario", "¡LET'S-A GO!", &"voz_lets_go"],
+		],
+		"outro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["aparecer", &"goku", &"goku", Vector2(0, -5), "teletransporte"],
+			["mirar", &"goku", &"mario"],
+			["mirar", &"mario", &"goku"],
+			["plano", "abajo", &"goku"],
+			["pose", &"goku", &"saludo", 1.8],
+			["decir", &"goku", "¡Uh, qué bien peleás! Sentí tu ki desde la otra punta y vine con la teletransportación."],
+			["plano", "dos", &"mario", &"goku"],
+			["decir", &"goku", "¡Hola, soy Goku!"],
+			["decir", &"mario", "¡It's-a me, Mario!"],
+			["decir", &"goku", "Oye, Mario, ¿tenés algo de comer? Pelear me da un hambre terrible."],
+			["decir", &"mario", "Tengo un hongo. Te hace crecer. Mucho."],
+			["decir", &"goku", "¡¿En serio?! ¡Qué buena comida tienen en tu mundo!"],
+			["aparecer", &"rick", &"rick", Vector2(3, -1), "portal"],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Genial. Un plomero. Justo lo que le faltaba a esta pesadilla: alguien que sepa de tuberías."],
+			["decir", &"rick", "Tu tubería no es una tubería, bigote. Es una grieta con forma de tubería. La Arena te trajo porque peleás bien."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "Okey-dokey. Entonces ayudo, y después vuelvo con la princesa. ¡Wahoo!"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 13
+	c.append({
+		"titulo": "El fragmento azul",
+		"personaje": &"rick",
+		"aliados": [
+			_aliado(&"mario", "Mario", Vector2(2.5, 1.5), 100.0, 0.55),
+			_aliado(&"noelle", "Noelle", Vector2(-2.5, 1.5), 100.0, 0.55),
+		],
+		"enemigos": [
+			_eco("e1", &"sonic", Vector2(-6, -18), 46.0, 0.25),
+			_eco("e2", &"goku", Vector2(6, -18), 46.0, 0.25),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -12), "radio": 6.0, "segundos": 30.0,
+			"texto": "Quedate en el círculo mientras el rastreador saca el fragmento"},
+		"eventos": [
+			[["inicio"], [["decir", &"rick", "¡Al círculo! Si salgo, el rastreador se detiene. Así funciona la ciencia."]]],
+			[["tiempo", 9.0], [
+				["refuerzos", [_eco("e3", &"dio", Vector2(0, -22), 46.0, 0.25, false),
+					_eco("e4", &"flowery", Vector2(-9, -10), 46.0, 0.25, false)]],
+				["decir", &"noelle", "¡V-vienen más por los costados!"]]],
+			[["tiempo", 18.0], [
+				["refuerzos", [_eco("e5", &"mario", Vector2(9, -10), 46.0, 0.25, false)]],
+				["decir", &"mario", "¡Mamma mia! ¡Ese eco tiene mi bigote!"]]],
+		],
+		"intro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["colocar", &"mario", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"noelle", Vector2(-2.5, 1.5), 0.0],
+			["plano", "cerca", &"rick"],
+			["pose", &"rick", &"pensar", 1.6],
+			["decir", &"rick", "El rastreador marca un fragmento del núcleo acá adelante. Enterrado en el piso, como una muela."],
+			["decir", &"rick", "Treinta segundos parado encima y sale solo. Mario, Noelle: que nadie me interrumpa."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¡Okey-dokey!"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "E-entendido, señor Rick. Voy a... voy a hacerle frío en la cara a quien venga."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Esa es la actitud, Morty."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "Soy Mario."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Es lo mismo."],
+			["aparecer", &"e1", &"sonic", Vector2(-6, -18), "sombra"],
+			["aparecer", &"e2", &"goku", Vector2(6, -18), "sombra"],
+			["plano", "general"],
+			["narrar", "Los ecos huelen el fragmento. Vienen por él."],
+		],
+		"outro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["colocar", &"mario", Vector2(2.5, 1.5), -20.0],
+			["colocar", &"noelle", Vector2(-2.5, 1.5), 20.0],
+			["plano", "cerca", &"rick"],
+			["pose", &"rick", &"victoria", 1.4],
+			["decir", &"rick", "Fragmento uno. Azul, brillante, y zumbando como una heladera vieja."],
+			["temblor", 0.8],
+			["aparecer", &"dio_", &"dio", Vector2(0, -8), "sombra"],
+			["plano", "abajo", &"dio_"],
+			["pose", &"dio_", &"brazos_cruzados"],
+			["decir", &"dio_", "¿Juntan migajas, insectos? Yo tengo el pan entero."],
+			["decir", &"dio_", "Cada fragmento que tocan, lo siento. Y cada eco que matan, la Arena me lo devuelve más fuerte."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "¡¿Dio?! ¡¿Está acá?!"],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "No. Es una proyección. Un holograma de vampiro. Hasta los hologramas de este tipo son insoportables."],
+			["desaparecer", &"dio_", "sombra"],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "Un malo que habla mucho y se esconde en un castillo. Eso ya lo conozco."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 14
+	c.append({
+		"titulo": "Luz prestada",
+		"personaje": &"noelle",
+		"aliados": [
+			{"id": &"flowery", "personaje": &"flowery", "nombre": "Flowery", "vida": 110.0, "daño": 0.5,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"pensar"},
+			_aliado(&"goku", "Goku", Vector2(2.5, 1.5), 100.0, 0.55),
+		],
+		"enemigos": [
+			_eco("e1", &"dio", Vector2(-5, -12), 64.0, 0.40),
+			_eco("e2", &"dio", Vector2(5, -12), 64.0, 0.40),
+		],
+		"objetivo": {"tipo": "proteger", "id": &"flowery", "segundos": 40.0,
+			"texto": "Protegé a Flowery mientras enciende el faro"},
+		"eventos": [
+			[["inicio"], [["decir", NARRADOR, "Si Flowery cae, el faro se apaga. Que los ecos te elijan a vos."]]],
+			[["tiempo", 12.0], [
+				["refuerzos", [_eco("e3", &"goku", Vector2(-8, -14), 64.0, 0.40, false),
+					_eco("e4", &"rick", Vector2(8, -14), 64.0, 0.40, false)]],
+				["decir", &"goku", "¡Ja! ¡Llegan más! ¡Esto se pone bueno!"]]],
+			[["tiempo", 25.0], [
+				["refuerzos", [_eco("e5", &"sonic", Vector2(0, -16), 64.0, 0.40, false),
+					_eco("e6", &"mario", Vector2(-6, -16), 64.0, 0.40, false)]],
+				["decir", &"flowery", "¡Ya casi, amigos! ¡Ya veo la luz del otro lado!"]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"flowery", Vector2(0, 3), 180.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "Rick me dio el fragmento. Tiene luz adentro, amigos. Luz de verdad. De la que no se apaga."],
+			["decir", &"flowery", "Con esto el reino de las flores de Asgore brillaría para siempre..."],
+			["plano", "dos", &"noelle", &"flowery"],
+			["decir", &"noelle", "F-Flowery..."],
+			["decir", &"flowery", "Tranqui, Noelle. Esta vez no. Esta luz la voy a usar para encontrar los otros fragmentos: un faro que se vea desde toda la Arena."],
+			["decir", &"flowery", "Pero tengo que quedarme quieta cuarenta segundos. Y los ecos van a venir derechito a mí."],
+			["plano", "cerca", &"goku"],
+			["pose", &"goku", &"desafio", 1.4],
+			["decir", &"goku", "¡Dejámelos a mí! Bueno, a nosotros. ¡Vamos, Noelle!"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "S-sí. Nadie la va a tocar. Se lo prometo."],
+			["aparecer", &"e1", &"dio", Vector2(-5, -12), "sombra"],
+			["aparecer", &"e2", &"dio", Vector2(5, -12), "sombra"],
+			["plano", "general"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"flowery", Vector2(0, 3), 180.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["plano", "abajo", &"flowery"],
+			["habilidad", &"flowery", &"last_jarona"],
+			["narrar", "Una columna de luz dorada sube desde las manos de Flowery y parte el cielo roto en dos."],
+			["decir", &"flowery", "¡Ahí están! Todos los fragmentos que faltan... están en la torre del centro."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Donde está Dio."],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "Y no me quedé con la luz. Asgore me enseñó algo sin decírmelo: la luz que vale es la que se comparte."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Muy bien, Flowery! ¡A la torre! ...¿Queda algún lugar para comer de camino?"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 15
+	c.append({
+		"titulo": "¿Quién es el más rápido?",
+		"personaje": &"sonic",
+		"aliados": [_aliado(&"mario", "Mario", Vector2(2.5, 1.5), 100.0, 0.55)],
+		"enemigos": [
+			_eco("e1", &"noelle", Vector2(-6, -12), 32.0, 0.18),
+			_eco("e2", &"rick", Vector2(6, -12), 32.0, 0.18),
+			_eco("e3", &"dio", Vector2(0, -14), 32.0, 0.18),
+			_eco("e4", &"goku", Vector2(-9, -16), 32.0, 0.18),
+			_eco("e5", &"flowery", Vector2(9, -16), 32.0, 0.18),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Limpiá el camino antes de que se cierre la torre",
+			"limite": 120.0},
+		"eventos": [
+			[["inicio"], [["decir", NARRADOR, "La puerta de la torre se está cerrando: si no caen todos a tiempo, hay que volver a empezar."]]],
+			[["quedan", 2], [
+				["refuerzos", [_eco("e6", &"sonic", Vector2(0, -18), 32.0, 0.18, false),
+					_eco("e7", &"mario", Vector2(-5, -18), 32.0, 0.18, false)]],
+				["decir", &"mario", "¡Mamma mia! ¡Un eco con MI cara! ¡Y otro con la tuya!"]]],
+		],
+		"intro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"mario", Vector2(2.5, 1.5), 0.0],
+			["aparecer", &"e1", &"noelle", Vector2(-6, -12), "sombra"],
+			["aparecer", &"e2", &"rick", Vector2(6, -12), "sombra"],
+			["aparecer", &"e3", &"dio", Vector2(0, -14), "sombra"],
+			["aparecer", &"e4", &"goku", Vector2(-9, -16), "sombra"],
+			["aparecer", &"e5", &"flowery", Vector2(9, -16), "sombra"],
+			["plano", "general"],
+			["narrar", "El camino a la torre está lleno de ecos. Y la puerta de la torre se está cerrando."],
+			["plano", "dos", &"mario", &"sonic"],
+			["decir", &"sonic", "Bueno, bigotes. Carrera: el que derrote más ecos antes de que cierre la puerta, gana."],
+			["decir", &"mario", "¡Como en las Olimpíadas!"],
+			["decir", &"sonic", "Ahí siempre ganaba yo."],
+			["decir", &"mario", "Mmm... no me acuerdo así."],
+			["plano", "cerca", &"sonic"],
+			["pose", &"sonic", &"senalar", 1.2],
+			["decir", &"sonic", "¡Demasiado lento! ¡Arrancamos!"],
+		],
+		"outro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"mario", Vector2(2.5, 1.5), -30.0],
+			["plano", "dos", &"sonic", &"mario"],
+			["decir", &"mario", "¿Cuántos te hiciste? Yo, cuatro."],
+			["decir", &"sonic", "...Cuatro. Empate. Esto no queda así."],
+			["decir", &"mario", "¡Revancha en las próximas Olimpíadas!"],
+			["temblor", 0.8],
+			["narrar", "La puerta de la torre se abre sola. Desde arriba, alguien aplaude, despacio."],
+			["aparecer", &"dio_", &"dio", Vector2(0, -12), "sombra"],
+			["plano", "abajo", &"dio_"],
+			["pose", &"dio_", &"brazos_cruzados"],
+			["decir", &"dio_", "Carreras. Juegos de niños. Qué inútil."],
+			["decir", &"dio_", "Suban, si quieren. Los espero con el núcleo casi entero."],
+			["desaparecer", &"dio_", "sombra"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 16
+	c.append({
+		"titulo": "La flor y su sombra",
+		"personaje": &"flowery",
+		"aliados": [
+			{"id": &"noelle", "personaje": &"noelle", "nombre": "Noelle", "vida": 100.0, "daño": 0.55,
+				"pos": Vector2(-2.5, 1.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"sombra", "personaje": &"flowery", "nombre": "Flowery Oscura", "vida": 130.0,
+				"daño": 0.30, "pos": Vector2(0, -9), "jefe": true, "eco": true, "oculto": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"sombra", "texto": "Derrotá a tu propio eco"},
+		"eventos": [
+			[["inicio"], [["decir", &"sombra", "Dale, embestime. Sé exactamente para dónde vas a ir."]]],
+			[["vida", &"sombra", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"sombra"],
+					["decir", &"sombra", "Nunca vas a ser suficiente. Para Asgore eras una flor en un florero. Nada más."],
+					["plano", "cerca", &"flowery"],
+					["decir", &"flowery", "...Puede ser. Pero me regó todos los días."],
+					["aparecer", &"noelle", &"noelle", Vector2(-2.5, 1.5), "teletransporte"],
+					["plano", "cerca", &"noelle"],
+					["decir", &"noelle", "¡Flowery! ¡No estás sola! Los demás me mandaron a buscarte."],
+					["plano", "abajo", &"sombra"],
+					["decir", &"sombra", "¿Una amiga? Yo nunca tuve una."],
+					["plano", "cerca", &"flowery"],
+					["decir", &"flowery", "Por eso sos el eco, y yo soy yo."],
+				]],
+				["entrar", &"noelle"],
+				["potenciar", &"sombra", 14.0],
+				["objetivo", {"tipo": "derrotar", "id": &"sombra", "texto": "Derrotá a tu eco junto a Noelle"}]]],
+		],
+		"intro": [
+			["colocar", &"flowery", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"flowery"],
+			["narrar", "En la escalera de la torre, Flowery sube sola. Los demás se quedaron abajo, peleando con los ecos de la entrada."],
+			["decir", &"flowery", "Groovy, groovy... Nadie a la vista. Qué raro que esté todo tan tranquilo."],
+			["aparecer", &"sombra", &"flowery", Vector2(0, -9), "sombra"],
+			["mirar", &"sombra", &"flowery"],
+			["plano", "abajo", &"sombra"],
+			["pose", &"sombra", &"brazos_cruzados"],
+			["decir", &"sombra", "Hola, yo. Qué mal te queda el valor."],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "Ah... sos un eco. Un eco mío. Con mi pelo, pero sin mi onda."],
+			["plano", "abajo", &"sombra"],
+			["decir", &"sombra", "Soy todo lo que pensás de noche. Que le fallaste a Asgore. Que le fallaste a Dio. Que les vas a fallar a estos."],
+			["plano", "cerca", &"flowery"],
+			["pose", &"flowery", &"desafio", 1.4],
+			["grito", &"flowery", "¡JARONA!", &"voz_jarona"],
+		],
+		"outro": [
+			["colocar", &"flowery", Vector2(0, 0), 0.0],
+			["colocar", &"noelle", Vector2(-2.5, 1.0), 20.0],
+			["colocar", &"sombra", Vector2(0, -5), 180.0],
+			["plano", "abajo", &"sombra"],
+			["decir", &"sombra", "Si ganás... ¿qué queda de mí?"],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "Queda lo que sirve. El miedo me avisa. Pero ya no decide."],
+			["desaparecer", &"sombra", "sombra"],
+			["plano", "dos", &"noelle", &"flowery"],
+			["decir", &"noelle", "Eso fue... muy valiente."],
+			["decir", &"flowery", "¡Groovy! Y vos llegaste justo. Como una amiga de verdad."],
+			["decir", &"noelle", "¿A-amiga?"],
+			["decir", &"flowery", "Amiga. Sin descuento."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 17
+	c.append({
+		"titulo": "Un saiyajin contra el tiempo",
+		"personaje": &"mario",
+		"enemigos": [
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 270.0, "daño": 0.42,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"dio", "hasta": 0.3, "texto": "Hacé retroceder a DIO"},
+		"eventos": [
+			[["inicio"], [["decir", NARRADOR, "DIO tiene un fragmento grande del núcleo y no se frena a golpes: esquivá lo suyo y pegale cuando termina."]]],
+			# Por vida y no por tiempo: la escena del 60% lo nombra, y un Mario que le
+			# bajaba la vida rapido llegaba a esa escena antes que Goku.
+			[["vida", &"dio", 0.85], [
+				["aliado", _aliado(&"goku", "Goku", Vector2(3, 2), 100.0, 0.55)],
+				["decir", &"goku", "¡Llegué con la teletransportación! ¡Aguantá, Mario!"]]],
+			[["vida", &"dio", 0.6], [
+				["cinematica", [
+					["plano", "abajo", &"dio"],
+					["decir", &"dio", "¡Suficiente! ¡Les voy a mostrar el mundo de DIO!"],
+					["habilidad", &"dio", &"za_warudo"],
+					["grito", &"dio", "¡ZA WARUDO!", &"voz_za_warudo"],
+					["temblor", 1.4],
+					["plano", "cerca", &"mario"],
+					["decir", &"mario", "¡Mamma mia! No me puedo mover..."],
+					["plano", "cerca", &"goku"],
+					["decir", &"goku", "Yo tampoco... pero el ki no se detiene."],
+					["pose", &"goku", &"channel_up", 1.6],
+					["grito", &"goku", "¡SUPER SAIYAJIN!"],
+					["temblor", 1.2],
+					["plano", "abajo", &"dio"],
+					["decir", &"dio", "¡¿Se mueve?! ¡¿En MI tiempo?!"],
+				]],
+				["potenciar", &"goku", 14.0]]],
+		],
+		"intro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["colocar", &"dio", Vector2(0, -9), 180.0],
+			["plano", "abajo", &"dio"],
+			["pose", &"dio", &"brazos_cruzados"],
+			["decir", &"dio", "El plomero. ¿Vos sos lo mejor que me mandó la Arena? Qué decepción."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "Conozco a los que son como vos. Grandes, gritones, y con un castillo."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Voy a detener el tiempo, y en ese tiempo detenido vas a aprender lo que es la desesperación."],
+			["plano", "cerca", &"mario"],
+			["pose", &"mario", &"desafio", 1.6],
+			["decir", &"mario", "¡Okey-dokey! Pero primero me tenés que alcanzar. ¡Wahoo!"],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, -6), 180.0],
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["pose", &"dio", &"dolor", 1.2],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Tsk. Un plomero y un mono con suerte. No importa."],
+			["aparecer", &"noelle_", &"noelle", Vector2(-3, -9), ""],
+			["aparecer", &"rick_", &"rick", Vector2(3, -9), ""],
+			["pose", &"noelle_", &"tirado"],
+			["pose", &"rick_", &"tirado"],
+			["plano", "general"],
+			["decir", &"dio", "Mientras jugaban, mis ecos me trajeron invitados. Si los quieren de vuelta, suban a la cima de la torre."],
+			["desaparecer", &"dio", "sombra"],
+			["desaparecer", &"noelle_", "sombra"],
+			["desaparecer", &"rick_", "sombra"],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¡Noelle! ¡Rick!"],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "Se los llevó. Pero siento sus ki: están arriba. ¡Vamos, Mario!"],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¡Let's-a go!"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 18
+	c.append({
+		"titulo": "Tu amiga está en otro castillo",
+		"personaje": &"mario",
+		"aliados": [_aliado(&"goku", "Goku", Vector2(2.5, 1.5), 100.0, 0.55)],
+		"enemigos": [
+			_eco("e1", &"dio", Vector2(-5, -12), 38.0, 0.19),
+			_eco("e2", &"dio", Vector2(5, -12), 38.0, 0.19),
+			_eco("e3", &"goku", Vector2(0, -15), 38.0, 0.19),
+			_eco("e4", &"sonic", Vector2(-8, -10), 38.0, 0.19),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "limite": 170.0,
+			"texto": "Llegá a la cima antes de que Dio les saque la energía a Noelle y a Rick"},
+		"eventos": [
+			[["inicio"], [["decir", NARRADOR, "Hay tiempo contado: cada segundo, Dio les saca un poco más de energía."]]],
+			[["quedan", 1], [
+				["decir", NARRADOR, "Un eco se inclina, muy educado, y dice: «Gracias, Mario. Pero tu amiga está en otro castillo»."],
+				["refuerzos", [_eco("e5", &"dio", Vector2(0, -18), 38.0, 0.19, false),
+					_eco("e6", &"flowery", Vector2(-6, -16), 38.0, 0.19, false),
+					_eco("e7", &"rick", Vector2(6, -16), 38.0, 0.19, false)]],
+				["decir", &"mario", "¡Mamma mia! ¡¿Otra vez?!"]]],
+		],
+		"intro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["plano", "general"],
+			["narrar", "La torre de la Arena por dentro: escaleras que no terminan nunca, y ecos en cada piso."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¡Noelle! ¡Rick! ¡Ya vamos!"],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "Siento el ki de los dos más arriba. Débil, pero está. ¡Hay que apurarse!"],
+			["aparecer", &"e1", &"dio", Vector2(-5, -12), "sombra"],
+			["aparecer", &"e2", &"dio", Vector2(5, -12), "sombra"],
+			["aparecer", &"e3", &"goku", Vector2(0, -15), "sombra"],
+			["aparecer", &"e4", &"sonic", Vector2(-8, -10), "sombra"],
+			["plano", "general"],
+			["plano", "cerca", &"mario"],
+			["pose", &"mario", &"desafio", 1.2],
+			["grito", &"mario", "¡WAHOO!", &"voz_wahoo"],
+		],
+		"outro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["aparecer", &"noelle_", &"noelle", Vector2(-2, -4), "teletransporte"],
+			["aparecer", &"rick_", &"rick", Vector2(2, -4), "teletransporte"],
+			["mirar", &"noelle_", &"mario"],
+			["mirar", &"rick_", &"mario"],
+			["plano", "general"],
+			["narrar", "En el último piso, atrás de una puerta que ya no está: Noelle y Rick."],
+			["plano", "cerca", &"rick_"],
+			["decir", &"rick_", "Tardaron. Estuve a punto de rescatarme solo. Tenía un plan con un clip y un eructo."],
+			["plano", "cerca", &"noelle_"],
+			["decir", &"noelle_", "¡G-gracias, señor Mario! ¡Gracias, Goku!"],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "Solo Mario. Y de nada. Rescatar gente es lo que hago todos los fines de semana."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "Dio está en la cima, con todos los fragmentos menos el nuestro. ¡Ya casi!"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 19
+	c.append({
+		"titulo": "Todos los ecos",
+		"personaje": &"noelle",
+		"aliados": [
+			{"id": &"rick", "personaje": &"rick", "nombre": "Rick", "vida": 120.0, "daño": 0.5,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"pensar"},
+			_aliado(&"sonic", "Sonic", Vector2(2.5, 1.5), 90.0, 0.55),
+			_aliado(&"flowery", "Flowery", Vector2(-2.5, 1.5), 95.0, 0.55),
+		],
+		"enemigos": [
+			_eco("e1", &"mario", Vector2(-5, -12), 66.0, 0.50),
+			_eco("e2", &"goku", Vector2(5, -12), 66.0, 0.50),
+			_eco("e3", &"noelle", Vector2(0, -14), 66.0, 0.50),
+		],
+		"objetivo": {"tipo": "proteger", "id": &"rick", "segundos": 45.0,
+			"texto": "Protegé a Rick mientras abre el portal a la cima"},
+		"eventos": [
+			[["inicio"], [["decir", &"rick", "Y si me pegan, se corta. Así que no me peguen. Gracias."]]],
+			[["tiempo", 14.0], [
+				["refuerzos", [_eco("e4", &"sonic", Vector2(-8, -14), 66.0, 0.50, false),
+					_eco("e5", &"dio", Vector2(8, -14), 66.0, 0.50, false)]],
+				["decir", &"flowery", "¡Más invitados! ¡Esta fiesta se está llenando!"]]],
+			[["tiempo", 30.0], [
+				["refuerzos", [_eco("e6", &"flowery", Vector2(0, -16), 66.0, 0.50, false),
+					_eco("e7", &"rick", Vector2(-6, -16), 66.0, 0.50, false)]],
+				["decir", &"rick", "¡Quince segundos! ¡Aguanten, Mortys!"]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(0, 3), 180.0],
+			["colocar", &"sonic", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"flowery", Vector2(-2.5, 1.5), 0.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Dio rompió la escalera de arriba. Necesito cuarenta y cinco segundos para abrir un portal a la cima."],
+			["decir", &"rick", "No me interrumpan. Ni para agradecerme. Sobre todo para agradecerme."],
+			["temblor", 1.0],
+			["narrar", "La Arena siente el núcleo casi entero en las manos de Dio, y se defiende como sabe: con ecos. Ecos de todos."],
+			["aparecer", &"e1", &"mario", Vector2(-5, -12), "sombra"],
+			["aparecer", &"e2", &"goku", Vector2(5, -12), "sombra"],
+			["aparecer", &"e3", &"noelle", Vector2(0, -14), "sombra"],
+			["plano", "general"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Un eco mío... Qué raro verse sin cara."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "Con cara o sin cara, son lentos. ¡Vamos, Noelle!"],
+			["plano", "cerca", &"noelle"],
+			["pose", &"noelle", &"desafio", 1.4],
+			["decir", &"noelle", "¡Sí! ¡Nadie toca a Rick!"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(0, 3), 180.0],
+			["colocar", &"sonic", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"flowery", Vector2(-2.5, 1.5), 0.0],
+			["plano", "cerca", &"rick"],
+			["habilidad", &"rick", &"portal_gun"],
+			["decir", &"rick", "Portal abierto. Directo a la cima. Pasen antes de que me arrepienta."],
+			["aparecer", &"goku_", &"goku", Vector2(3.5, -2), "teletransporte"],
+			["aparecer", &"mario_", &"mario", Vector2(-3.5, -2), "caida"],
+			["plano", "general"],
+			["decir", &"goku_", "¡Llegamos! ¿Nos perdimos algo?"],
+			["decir", &"mario_", "¡Todos juntos! ¡Let's-a go!"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Todos juntos."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 20
+	c.append({
+		"titulo": "El corazón de la Arena",
+		"personaje": &"mario",
+		"aliados": [
+			_aliado(&"goku", "Goku", Vector2(2.5, 1.5), 110.0, 0.55),
+			_aliado(&"noelle", "Noelle", Vector2(-2.5, 1.5), 95.0, 0.5),
+			{"id": &"sonic", "personaje": &"sonic", "nombre": "Sonic", "vida": 90.0, "daño": 0.5,
+				"pos": Vector2(4, 2.5), "reserva": true},
+			{"id": &"rick", "personaje": &"rick", "nombre": "Rick", "vida": 90.0, "daño": 0.5,
+				"pos": Vector2(-4, 2.5), "reserva": true},
+			{"id": &"flowery", "personaje": &"flowery", "nombre": "Flowery", "vida": 95.0, "daño": 0.55,
+				"pos": Vector2(0, 3.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO del Núcleo", "vida": 400.0, "daño": 0.46,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"dio", "texto": "Derrotá a DIO del Núcleo"},
+		"eventos": [
+			[["inicio"], [["decir", &"goku", "¡Por fin alguien fuerte de verdad! ¡Vamos, Mario!"]]],
+			[["vida", &"dio", 0.6], [
+				["cinematica", [
+					["plano", "abajo", &"dio"],
+					["decir", &"dio", "¡Con el núcleo entero, YO soy la Arena! ¡Y en mi Arena, el tiempo es mío!"],
+					["habilidad", &"dio", &"za_warudo"],
+					["grito", &"dio", "¡ZA WARUDO!", &"voz_za_warudo"],
+					["pose", &"noelle", &"tirado"],
+					["temblor", 1.4],
+					["plano", "cerca", &"mario"],
+					["decir", &"mario", "¡Noelle!"],
+					["aparecer", &"sonic", &"sonic", Vector2(4, 2.5), "teletransporte"],
+					["aparecer", &"rick", &"rick", Vector2(-4, 2.5), "portal"],
+					["aparecer", &"flowery", &"flowery", Vector2(0, 3.5), "teletransporte"],
+					["plano", "general"],
+					["decir", &"sonic", "¿Nos extrañaron? Llegué primero, obvio."],
+					["decir", &"rick", "Traje refuerzos. Y por refuerzos me refiero a mí."],
+					["decir", &"flowery", "¡Here I come, San Fransdisco! ¡Y esta vez del lado bueno!"],
+				]],
+				["retirar", &"noelle"],
+				["entrar", &"sonic"],
+				["entrar", &"rick"],
+				["entrar", &"flowery"],
+				["potenciar", &"dio", 20.0],
+				["objetivo", {"tipo": "derrotar", "id": &"dio", "texto": "Derrotá a DIO con todos"}]]],
+			[["vida", &"dio", 0.25], [
+				["cinematica", [
+					["temblor", 1.5],
+					["narrar", "La Arena tiembla. No quiere un dueño: quiere peleas. Y Dio no pelea, manda."],
+					["plano", "abajo", &"dio"],
+					["decir", &"dio", "¡¿Qué pasa?! ¡El núcleo... me rechaza!"],
+					["plano", "cerca", &"goku"],
+					["decir", &"goku", "¡Ahora, Mario! ¡Todos juntos, con todo lo que tenemos!"],
+					["grito", &"goku", "¡SUPER SAIYAJIN!"],
+					["plano", "cerca", &"mario"],
+					["grito", &"mario", "¡WAHOO!", &"voz_wahoo"],
+				]],
+				["potenciar", &"goku", 15.0],
+				["potenciar", &"mario", 15.0],
+				["decir", &"mario", "¡Esto se termina acá, Dio!"]]],
+		],
+		"intro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"noelle", Vector2(-2.5, 1.5), 0.0],
+			["colocar", &"dio", Vector2(0, -9), 180.0],
+			["plano", "general"],
+			["narrar", "La cima de la torre. El cielo roto está tan cerca que se puede tocar, y en el medio, Dio, con el núcleo casi entero en el pecho."],
+			["plano", "abajo", &"dio"],
+			["pose", &"dio", &"brazos_cruzados"],
+			["decir", &"dio", "Llegaron. Justo a tiempo para ver a un hombre convertirse en el mundo."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "Te hiciste mucho más fuerte, Dio. ¡Eso me pone muy contento!"],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "A mí no. Mamma mia, qué feo te queda ese brillo."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Devolvenos el núcleo. Es de todos los que pelearon acá."],
+			["plano", "abajo", &"dio"],
+			["pose", &"dio", &"senalar", 1.6],
+			["decir", &"dio", "¡Fui yo, DIO, el que juntó cada pedazo! ¡Y va a ser DIO el que reine en cada mundo!"],
+			["grito", &"dio", "¡WRYYY!"],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, -6), 180.0],
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), -15.0],
+			["colocar", &"noelle", Vector2(-2.5, 1.5), 15.0],
+			["colocar", &"sonic", Vector2(4.5, 2.5), -25.0],
+			["colocar", &"rick", Vector2(-4.5, 2.5), 25.0],
+			["colocar", &"flowery", Vector2(0, 3.5), 0.0],
+			["pose", &"dio", &"dolor", 1.4],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Yo... DIO... el dueño de todos los mundos... ¡¿derrotado por un plomero y un mono?!"],
+			["temblor", 1.6],
+			["narrar", "El núcleo se le escapa del pecho y se arma solo en el aire: entero, por primera vez en mil años."],
+			["desaparecer", &"dio", "sombra"],
+			["plano", "general"],
+			["narrar", "Y la Arena, satisfecha por fin, abre una puerta para cada mundo que tocó la grieta."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Hometown... Papá. Susie. Kris. Ya voy."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "Fue divertido. Pero hay un doctor gordo que seguro está tramando algo sin mí."],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "Vuelvo con Asgore. Sin luz robada. Con una historia para contarle, que es mejor."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Yo me quedo un rato. Un coliseo que come peleas y abre portales: lo voy a estudiar. Y a patentar."],
+			["plano", "cerca", &"goku"],
+			["pose", &"goku", &"victoria", 2.0],
+			["decir", &"goku", "¡Yo también me quedo! Acá siempre aparece alguien fuerte. ¡Nos vemos en el próximo torneo!"],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¡La princesa me espera con el pastel! ...Ojalá esta vez esté en ESTE castillo."],
+			["fundido", "negro", 1.0],
+			["narrar", "En lo más hondo de la Arena, donde no llega ninguna puerta, algo que no es un eco abre los ojos."],
+			["titulo", "FIN DE LA PARTE 2", "La historia continuará"],
+		],
+	})
+
 	return c

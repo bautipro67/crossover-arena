@@ -28,16 +28,14 @@ func _ready() -> void:
 	var titulo := UITheme.make_label("MODO HISTORIA", 28)
 	titulo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	caja.add_child(titulo)
-	var parte := UITheme.make_label(Historia.PARTE, 15, UITheme.GOLD)
-	parte.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	caja.add_child(parte)
-	caja.add_child(UITheme.make_spacer(6))
+	caja.add_child(UITheme.make_spacer(2))
+	_armar_dificultad(caja)
 
 	# CON SCROLL: diez capitulos, con el titulo y el boton de volver, no entran en 720 de
 	# alto. Sin esto el panel se pasaba de la pantalla y VOLVER quedaba afuera, sin forma de
 	# llegar a el con el mouse. El titulo y VOLVER quedan fijos; se desplaza la lista.
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 440)
+	scroll.custom_minimum_size = Vector2(0, 360)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	# Con el mando, el foco que baja por la lista la arrastra con el.
 	scroll.follow_focus = true
@@ -48,16 +46,31 @@ func _ready() -> void:
 	scroll.add_child(lista)
 
 	var primero_disponible: Button = null
+	var parte_actual := -1
 	for i: int in range(Historia.cantidad()):
+		# UN TITULO POR PARTE, arriba de sus capitulos. Una parte cerrada lo dice: si no, la
+		# parte 2 entera se veia como diez candados sin explicacion.
+		var k := Historia.parte_de(i)
+		if k != parte_actual:
+			parte_actual = k
+			if k > 0:
+				lista.add_child(UITheme.make_spacer(6))
+			var abierta := Progreso.capitulo_disponible(Historia.primero_de(k))
+			var cabecera := UITheme.make_label(Historia.titulo_parte(k) if abierta
+				else "%s  ·  se abre al terminar la parte %d" % [Historia.titulo_parte(k), k], 15,
+				UITheme.GOLD if abierta else UITheme.TEXT_DIM)
+			cabecera.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lista.add_child(cabecera)
+		var n := i - Historia.primero_de(k) + 1
 		var cap := Historia.capitulo(i)
 		var personaje := CharacterDB.get_character(StringName(cap["personaje"]))
 		var hecho := Progreso.capitulo_completado(i)
 		var abierto := Progreso.capitulo_disponible(i)
 		var texto := ""
 		if not abierto:
-			texto = "🔒  Capítulo %d" % (i + 1)
+			texto = "🔒  Capítulo %d" % n
 		else:
-			texto = "%s  Capítulo %d · %s" % ["✓" if hecho else "▶", i + 1, cap["titulo"]]
+			texto = "%s  Capítulo %d · %s" % ["✓" if hecho else "▶", n, cap["titulo"]]
 		var boton := UITheme.make_button(texto, abierto and not hecho)
 		boton.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		boton.disabled = not abierto
@@ -79,8 +92,8 @@ func _ready() -> void:
 	for i: int in range(Historia.cantidad()):
 		todos = todos and Progreso.capitulo_completado(i)
 	if todos:
-		var fin := UITheme.make_label("Terminaste la parte 1. La historia sigue en la parte 2.", 12,
-			UITheme.GOLD)
+		var fin := UITheme.make_label("Terminaste la parte %d. La historia continuará." % Historia.PARTES.size(),
+			12, UITheme.GOLD)
 		fin.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caja.add_child(fin)
 
@@ -93,6 +106,41 @@ func _ready() -> void:
 	# de todo al abrir la pantalla.
 	if primero_disponible != null:
 		_mostrar.call_deferred(scroll, primero_disponible)
+
+
+## LA DIFICULTAD, arriba de la lista: vale para todos los capitulos y se cambia cuando se
+## quiera, tambien para rejugar uno ya ganado. Abajo dice que cambia, con la paga incluida:
+## que facil paga menos tiene que saberse ANTES de elegirla.
+func _armar_dificultad(caja: VBoxContainer) -> void:
+	var fila := HBoxContainer.new()
+	fila.add_theme_constant_override("separation", 8)
+	caja.add_child(fila)
+	var etiqueta := UITheme.make_label("DIFICULTAD", 14, UITheme.TEXT_DIM)
+	etiqueta.custom_minimum_size = Vector2(110, 0)
+	etiqueta.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	fila.add_child(etiqueta)
+	var explicacion := UITheme.make_label(
+		String(Historia.dificultad(Progreso.dificultad_historia)["texto"]), 12, UITheme.TEXT_DIM)
+	explicacion.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var grupo := ButtonGroup.new()
+	# La elegida con el color de acento: con el de apretado de siempre, apenas mas claro, no
+	# se distinguia cual estaba puesta.
+	var elegida := UITheme._button_style(UITheme.ACCENT.darkened(0.45), true)
+	for d: int in range(Historia.DIFICULTADES.size()):
+		var b := UITheme.make_button(String(Historia.DIFICULTADES[d]["nombre"]))
+		b.toggle_mode = true
+		b.button_group = grupo
+		b.button_pressed = d == Progreso.dificultad_historia
+		b.custom_minimum_size = Vector2(0, 38)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_stylebox_override("pressed", elegida)
+		b.add_theme_stylebox_override("hover_pressed", elegida)
+		b.pressed.connect(func() -> void:
+			Progreso.cambiar_dificultad(d)
+			explicacion.text = String(Historia.dificultad(d)["texto"]))
+		fila.add_child(b)
+	caja.add_child(explicacion)
+	caja.add_child(UITheme.make_spacer(2))
 
 
 func _mostrar(scroll: ScrollContainer, boton: Control) -> void:

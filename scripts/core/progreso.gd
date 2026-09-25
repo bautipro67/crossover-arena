@@ -72,6 +72,8 @@ var personajes: Dictionary = {}
 var temporada: int = -1
 ## Capitulos del modo historia ya ganados: "0" -> true.
 var historia: Dictionary = {}
+## La dificultad elegida para la historia: un indice de Historia.DIFICULTADES.
+var dificultad_historia: int = Historia.DIFICULTAD_NORMAL
 ## Cuando esta en false, guardar() no escribe nada.
 ##
 ## EXISTE PARA EL ARNES, y no es un lujo: los tests suben de nivel, gastan monedas y
@@ -194,15 +196,18 @@ func gastar_monedas(cantidad: int) -> bool:
 ## `cuenta` viene en false en la sala de practica, y ese es el unico lugar donde no paga.
 ## Sin eso, "monedas por baja" seria "monedas por quedarse quieto con cinco maniquies
 ## invencibles que reaparecen solos", y no habria ninguna razon para jugar el resto.
-func registrar_baja(cuenta: bool) -> void:
+##
+## `premio` multiplica monedas y experiencia: lo mueve la dificultad de la historia (ver
+## Modos.premio). En el resto del juego es 1.
+func registrar_baja(cuenta: bool, premio: float = 1.0) -> void:
 	if not cuenta:
 		return
 	bajas_totales += 1
-	sumar_monedas(MONEDAS_POR_BAJA)
-	sumar_exp(EXP_POR_BAJA)
+	sumar_monedas(roundi(MONEDAS_POR_BAJA * premio))
+	sumar_exp(roundi(EXP_POR_BAJA * premio))
 
 
-func registrar_partida(gano: bool, cuenta: bool) -> void:
+func registrar_partida(gano: bool, cuenta: bool, premio: float = 1.0) -> void:
 	if not cuenta:
 		return
 	partidas_jugadas += 1
@@ -210,8 +215,8 @@ func registrar_partida(gano: bool, cuenta: bool) -> void:
 	if gano:
 		victorias += 1
 		exp_total += EXP_POR_VICTORIA
-		sumar_monedas(MONEDAS_POR_VICTORIA)
-	sumar_exp(exp_total)
+		sumar_monedas(roundi(MONEDAS_POR_VICTORIA * premio))
+	sumar_exp(roundi(exp_total * premio))
 	guardar()
 
 
@@ -281,6 +286,12 @@ func completar_capitulo(i: int) -> void:
 	guardar()
 
 
+func cambiar_dificultad(d: int) -> void:
+	dificultad_historia = clampi(d, 0, Historia.DIFICULTADES.size() - 1)
+	cambio.emit()
+	guardar()
+
+
 # ------------------------------------------------------------------ Guardado
 
 func cargar() -> void:
@@ -297,6 +308,8 @@ func cargar() -> void:
 	equipadas = cfg.get_value("skins", "equipadas", {}) as Dictionary
 	personajes = cfg.get_value("personajes", "desbloqueados", {}) as Dictionary
 	historia = cfg.get_value("historia", "capitulos", {}) as Dictionary
+	dificultad_historia = clampi(int(cfg.get_value("historia", "dificultad", Historia.DIFICULTAD_NORMAL)),
+		0, Historia.DIFICULTADES.size() - 1)
 	# Un archivo sin temporada es de la 0: es la unica que existio antes de este campo.
 	temporada = int(cfg.get_value("pase", "temporada", 0))
 	bajas_totales = maxi(0, int(cfg.get_value("stats", "bajas", 0)))
@@ -318,6 +331,7 @@ func guardar() -> void:
 	cfg.set_value("skins", "equipadas", equipadas)
 	cfg.set_value("personajes", "desbloqueados", personajes)
 	cfg.set_value("historia", "capitulos", historia)
+	cfg.set_value("historia", "dificultad", dificultad_historia)
 	cfg.set_value("pase", "temporada", temporada)
 	cfg.set_value("stats", "bajas", bajas_totales)
 	cfg.set_value("stats", "partidas", partidas_jugadas)
@@ -337,6 +351,7 @@ func borrar_todo() -> void:
 	equipadas = {}
 	personajes = {}
 	historia = {}
+	dificultad_historia = Historia.DIFICULTAD_NORMAL
 	temporada = Pase.TEMPORADA
 	bajas_totales = 0
 	partidas_jugadas = 0

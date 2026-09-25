@@ -302,6 +302,9 @@ func _revisar_cuerpos(c: Cinematica, cuando: String) -> void:
 		if p == null or not is_instance_valid(p) or not p.visible:
 			continue
 		vistos.append(p)
+		# El que esta cayendo (una entrada desde el cielo) no tiene piso cerca: es la escena.
+		if absf(p.velocity.y) > 1.0:
+			continue
 		var desde := p.global_position + Vector3.UP * 0.6
 		var r := PhysicsRayQueryParameters3D.create(desde, desde + Vector3.DOWN * 8.0)
 		r.collision_mask = GameConfig.LAYER_WORLD

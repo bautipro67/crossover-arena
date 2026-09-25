@@ -190,6 +190,9 @@ func _duelo(a: StringName, b: StringName, ancla: Vector3, lado: bool) -> Array:
 ## refuerzos. Un bot hace de jugador (MisionHistoria.heroe) y las escenas se saltean.
 func _medir_historia() -> void:
 	MisionHistoria.sin_cinematicas = true
+	# DIFICULTAD_SIM=0/1/2: la dificultad elegida. Sin ella, normal, y no la que haya
+	# guardado quien corre la simulacion.
+	Progreso.dificultad_historia = int(OS.get_environment("DIFICULTAD_SIM")) 		if OS.get_environment("DIFICULTAD_SIM") != "" else Historia.DIFICULTAD_NORMAL
 	var args := OS.get_cmdline_user_args()
 	# -- historia [heroe|-] [capitulos, ej. 4,6,7]
 	var heroe: StringName = StringName(args[1]) if args.size() > 1 and args[1] != "-" else &""
@@ -256,8 +259,12 @@ func _pelea_mision(c: int, cap: Dictionary, heroe: StringName) -> Array:
 	var usos_jefe := {}
 	var recibido := [0.0]
 	var dist_jefe := [0.0, 0]
+	var usos_heroe := {}
 	if diag:
 		h.health.damaged.connect(func(cuanto: float, _de: int) -> void: recibido[0] += cuanto)
+		h.caster.ability_used.connect(func(idx: int) -> void:
+			var n := String(h.caster.get_ability(idx).id)
+			usos_heroe[n] = int(usos_heroe.get(n, 0)) + 1)
 	var jefe_conectado := [false]
 	while fin[0] == null and t < 200.0:
 		if diag and not jefe_conectado[0] and m.jefe() != null:
@@ -278,8 +285,8 @@ func _pelea_mision(c: int, cap: Dictionary, heroe: StringName) -> Array:
 			h.set_meta(&"correa", float(cap["objetivo"].get("radio", 6.0)) * 0.7)
 	Modos.termino.disconnect(al_terminar)
 	if diag:
-		print("  diag cap %d: el heroe recibe %.0f, el jefe usa %s, distancia media %.1f m" % [c + 1,
-			recibido[0], str(usos_jefe), dist_jefe[0] / maxf(1.0, float(dist_jefe[1]))])
+		print("  diag cap %d: el heroe recibe %.0f y usa %s; el jefe usa %s, distancia media %.1f m" % [c + 1,
+			recibido[0], str(usos_heroe), str(usos_jefe), dist_jefe[0] / maxf(1.0, float(dist_jefe[1]))])
 	m.queue_free()
 	return [fin[0] == true, t, h.health.current / maxf(1.0, h.health.max_health)]
 

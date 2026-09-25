@@ -175,13 +175,8 @@ func spawn_hit_impact(context: Node, position: Vector3, amount: float, color: Co
 ## Va aparte de spawn_hit_impact porque el impacto lo ve todo el mundo y el temblor
 ## solo lo siente el autor: si temblara la camara de todos, cada golpe en la otra punta
 ## del mapa te sacudiria la pantalla.
-## El jugador local le pego a alguien. Lo escucha el contador de combo del HUD.
-signal golpe_propio(victima: Node, cantidad: float)
-
-
-func hit_feedback_for_attacker(amount: float, victima: Node = null) -> void:
+func hit_feedback_for_attacker(amount: float, _victima: Node = null) -> void:
 	camera_shake(clampf(0.18 + amount * 0.012, 0.18, 1.1))
-	golpe_propio.emit(victima, amount)
 
 
 ## Arco de un golpe cuerpo a cuerpo: una media luna que barre y se desvanece.
@@ -1052,6 +1047,127 @@ func spawn_super_sonic(caster: Node3D, duracion: float) -> void:
 	_auto_free(aura, duracion)
 
 
+# ------------------------------------------------------------------ Mario
+
+## El pisoton del Super Salto: la onda en el piso y el polvo que levanta.
+##
+## BLANCA Y BAJA, pegada al suelo, y no dorada como la de JARONA: es un golpe contra el
+## piso, no energia. La onda llega hasta el radio que pega, para que se vea hasta donde
+## alcanzo.
+func spawn_pisoton(context: Node, origin: Vector3, radius: float) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var anillo := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.86
+	toro.outer_radius = 1.0
+	anillo.mesh = toro
+	var mat := Art.glow(Color(1.0, 0.96, 0.86), 2.2)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	anillo.material_override = mat
+	anillo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(anillo)
+	anillo.global_position = origin + Vector3.UP * 0.12
+	var tw := anillo.create_tween().set_parallel()
+	tw.tween_property(anillo, "scale", Vector3(radius, 1.6, radius), 0.28).from(Vector3(0.5, 1.0, 0.5))
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.32).from(0.9)
+	tw.chain().tween_callback(anillo.queue_free)
+
+	var polvo := CPUParticles3D.new()
+	polvo.emitting = true
+	polvo.one_shot = true
+	polvo.amount = 36
+	polvo.lifetime = 0.6
+	polvo.explosiveness = 1.0
+	polvo.direction = Vector3(0.0, 0.3, 0.0)
+	polvo.spread = 90.0
+	polvo.flatness = 0.8
+	polvo.initial_velocity_min = radius * 1.2
+	polvo.initial_velocity_max = radius * 2.2
+	polvo.gravity = Vector3(0.0, -2.0, 0.0)
+	polvo.scale_amount_min = 0.12
+	polvo.scale_amount_max = 0.32
+	polvo.color = Color(0.85, 0.80, 0.72, 0.8)
+	world.add_child(polvo)
+	polvo.global_position = origin + Vector3.UP * 0.25
+	_auto_free(polvo, 1.2)
+
+
+## La Superestrella: el cuerpo titilando en todos los colores, con chispas.
+##
+## TITILA, no brilla parejo: en los juegos Mario con estrella cambia de color todo el
+## tiempo, y ese parpadeo es lo que dice "no lo toques" desde la otra punta del mapa.
+##
+## Se llama AuraSuper, como el aura de Super Sonic y la de los jefes potenciados, a
+## proposito: las escenas del modo historia la esconden y la escena final la saca por ese
+## nombre (ver Cinematica._congelar_pelea y MisionHistoria._ganar).
+func spawn_estrella(caster: Node3D, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var viejo := caster.get_node_or_null(^"AuraSuper")
+	if viejo != null:
+		viejo.queue_free()
+	var aura := Node3D.new()
+	aura.name = &"AuraSuper"
+	caster.add_child(aura)
+	aura.position = Vector3(0.0, 1.0, 0.0)
+
+	var cascara := MeshInstance3D.new()
+	var capsula := CapsuleMesh.new()
+	capsula.radius = 0.62
+	capsula.height = 2.1
+	cascara.mesh = capsula
+	var mat := Art.glow(Color(1.0, 0.9, 0.3), 2.4)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mat.albedo_color.a = 0.22
+	cascara.material_override = mat
+	cascara.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	aura.add_child(cascara)
+
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.amount = 36
+	chispas.lifetime = 0.7
+	chispas.direction = Vector3.UP
+	chispas.spread = 60.0
+	chispas.initial_velocity_min = 1.0
+	chispas.initial_velocity_max = 3.0
+	chispas.gravity = Vector3.ZERO
+	chispas.scale_amount_min = 0.05
+	chispas.scale_amount_max = 0.13
+	chispas.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	chispas.emission_sphere_radius = 0.6
+	var arcoiris := Gradient.new()
+	arcoiris.set_color(0, Color(1.0, 0.3, 0.3))
+	arcoiris.set_color(1, Color(0.4, 0.6, 1.0))
+	arcoiris.add_point(0.33, Color(1.0, 0.95, 0.3))
+	arcoiris.add_point(0.66, Color(0.4, 1.0, 0.5))
+	chispas.color_initial_ramp = arcoiris
+	aura.add_child(chispas)
+
+	var luz := OmniLight3D.new()
+	luz.light_energy = 2.4
+	luz.omni_range = 6.0
+	luz.shadow_enabled = false
+	aura.add_child(luz)
+
+	# El titileo: la cascara y la luz pasan por los colores del arcoiris, rapido.
+	var colores: Array[Color] = [Color(1.0, 0.25, 0.25), Color(1.0, 0.85, 0.2),
+		Color(0.35, 1.0, 0.45), Color(0.35, 0.7, 1.0), Color(0.85, 0.4, 1.0)]
+	var tw := cascara.create_tween()
+	tw.set_loops(int(duracion / (0.09 * colores.size())) + 1)
+	for c: Color in colores:
+		tw.tween_callback(func() -> void:
+			mat.albedo_color = Color(c.r, c.g, c.b, 0.26)
+			mat.emission = c
+			luz.light_color = c)
+		tw.tween_interval(0.09)
+	_auto_free(aura, duracion)
+
+
 # ------------------------------------------------------------------- Goku
 
 ## Teletransportacion: el destello donde desaparece o aparece.
@@ -1682,6 +1798,19 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 			spawn_charge_burst(caster, origin, dir)
 		&"last_jarona":
 			spawn_last_jarona(caster, origin, LastJarona.BLAST_RADIUS)
+		&"mario_combo":
+			spawn_melee_arc(caster, origin, dir)
+		&"bola_de_fuego":
+			BolaDeFuego.spawn_cosmetic(caster, origin, dir)
+		&"super_salto":
+			# La salida nada mas: el cuerpo lo mueve el transform, y el pisoton lo decide
+			# el servidor cuando aterriza.
+			if caster is Node3D:
+				spawn_impact_burst(caster, (caster as Node3D).global_position + Vector3.UP * 0.2,
+					Color(0.95, 0.92, 0.85, 0.8))
+		&"superestrella":
+			if caster is Node3D:
+				spawn_estrella(caster as Node3D, Superestrella.DURACION)
 		_:
 			pass
 

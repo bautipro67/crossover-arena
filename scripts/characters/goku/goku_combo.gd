@@ -10,7 +10,7 @@ extends Ability
 ## poco menos que el MUDA de Dio, y sale mas seguido que el de Dio. Es el todoterreno
 ## tambien aca.
 
-const DAMAGE: float = 12.0
+const DAMAGE: float = 13.0
 const CONE_RANGE: float = 3.0
 const CONE_ANGLE: float = 65.0
 const KNOCKBACK: float = 2.4

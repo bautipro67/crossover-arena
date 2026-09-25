@@ -42,6 +42,9 @@ const LINEAS: Dictionary = {
 	# --- GOKU (Dragon Ball) ---
 	# El "¡HA!" final: sale junto con el rayo. El resto del nombre va en LINEAS_CARGA.
 	&"kamehameha": [["¡HAAA!", 0.0, &"voz_ha"]],
+	# --- MARIO (Super Mario) ---
+	# Mario casi no habla en sus juegos: grita al saltar. El "¡Wahoo!" es EL salto.
+	&"super_salto": [["¡WAHOO!", 0.0, &"voz_wahoo"]],
 }
 
 ## Frases que salen AL EMPEZAR a canalizar, no al soltar.
@@ -51,6 +54,8 @@ const LINEAS: Dictionary = {
 ## nombre llegaria despues del golpe, y el anuncio no anunciaria nada.
 const LINEAS_CARGA: Dictionary = {
 	&"kamehameha": [["KA... ME... HA... ME...", 0.0, &"voz_kamehameha"]],
+	# Al agarrar la estrella, antes de que empiece a brillar.
+	&"superestrella": [["¡LET'S-A GO!", 0.0, &"voz_lets_go"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el
