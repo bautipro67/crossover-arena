@@ -60,7 +60,110 @@ func _run() -> void:
 
 	await _test_dummies(arena, player)
 	await _test_mando_y_tactil(main, player)
+	await _test_fijar_y_asistencia(arena, player)
 	_finish()
+
+
+# ------------------------------------------------------- Fijar y asistencias
+
+## Fijar al rival, la asistencia de apuntado, el bufer y mantener apretado para atacar.
+func _test_fijar_y_asistencia(arena: Arena, player: Player) -> void:
+	Arena.set_bots_active(false)
+	var cam := player.camera_pivot
+	player.health.revive_full()
+	player.status.clear_all()
+	player.caster.reset_state()
+	var base := arena.find_clear_spot(Vector3(24.0, 0.6, 24.0), 1.5)
+	player.respawn_at(base, 0.0)
+	# Bots propios, en su marca: los de la practica vuelven caminando a la suya.
+	arena._crear_bot(-901, arena.find_clear_spot(base + Vector3(6.0, 0.0, 0.0), 1.0), &"dio")
+	arena._crear_bot(-902, arena.find_clear_spot(base + Vector3(0.0, 0.0, -13.0), 1.0), &"rick")
+	var cerca := arena._players.get(-901) as Player
+	var lejos := arena._players.get(-902) as Player
+	for _i: int in range(20):
+		await get_tree().physics_frame
+	# Los de la practica, lejos de todo, para que no sean "el mas cercano".
+	for child: Node in arena.get_children():
+		var b := child as Player
+		if b != null and b.is_dummy and b != cerca and b != lejos and not b.health.is_dead:
+			b.health.apply_damage(b.health.max_health * 2.0, 1)
+	await get_tree().physics_frame
+	if cerca == null or lejos == null:
+		_check(false, "no se pudieron crear los bots para probar el fijado")
+		return
+
+	# --- FIJAR: al mas cercano, y la camara gira hacia el ---
+	cam.soltar()
+	cam.fijar_o_soltar()
+	_check(cam.objetivo == cerca, "fijar elige al enemigo mas cercano (%s)" % [
+		cam.objetivo.name if cam.objetivo != null else "nadie"])
+	for _i: int in range(40):
+		await get_tree().process_frame
+	var pecho := cerca.global_position + Vector3.UP * 1.0
+	var desvio := rad_to_deg(player.get_aim_direction().angle_to(pecho - player.get_aim_origin()))
+	_check(desvio < 6.0, "la camara giro sola hacia el fijado y la mira quedo encima (%.1f grados)" % desvio)
+	_check(cerca.get_node_or_null(^"MarcaFijado") != null, "el fijado tiene su marca encima")
+	var yaw_antes := cam.get_yaw()
+	cam._girar(0.6, 0.0)
+	_check(is_equal_approx(cam.get_yaw(), yaw_antes), "con alguien fijado, el mouse no gira la camara")
+
+	# --- Si cae, pasa solo al siguiente mas cercano ---
+	cerca.health.apply_damage(cerca.health.max_health * 2.0, 1)
+	for _i: int in range(4):
+		await get_tree().process_frame
+	_check(cam.objetivo == lejos, "si el fijado cae, pasa solo al siguiente mas cercano")
+	for _i: int in range(40):
+		await get_tree().process_frame
+
+	# --- Y la misma tecla lo suelta ---
+	cam.fijar_o_soltar()
+	await get_tree().process_frame
+	_check(cam.objetivo == null and lejos.get_node_or_null(^"MarcaFijado") == null,
+		"apretar otra vez suelta el fijado y se va la marca")
+
+	# --- ASISTENCIA DE APUNTADO: cuatro grados al costado, la corrige hasta el rival ---
+	cam.set_yaw(cam.get_yaw() + deg_to_rad(4.0))
+	for _i: int in range(3):
+		await get_tree().process_frame
+	var pecho_lejos := lejos.global_position + Vector3.UP * 1.0
+	Settings.asistencia_apuntado = false
+	var sin := rad_to_deg(player.get_aim_direction().angle_to(pecho_lejos - player.get_aim_origin()))
+	Settings.asistencia_apuntado = true
+	var con := rad_to_deg(player.get_aim_direction().angle_to(pecho_lejos - player.get_aim_origin()))
+	_check(con < 0.5 and sin > 1.0,
+		"la asistencia corrige el tiro que pasaba al lado (%.1f grados sin ella, %.1f con ella)" % [sin, con])
+
+	# --- EL BUFER: apretada un poco antes de estar lista, sale igual ---
+	var usos: Array[int] = []
+	var contar := func(i: int) -> void: usos.append(i)
+	player.caster.ability_used.connect(contar)
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster._cooldowns[1] = AbilityCaster.BUFER * 0.6
+	player.caster.request_use(1)
+	await get_tree().create_timer(AbilityCaster.BUFER + 0.15).timeout
+	_check(usos.has(1), "una habilidad apretada un instante antes de estar lista sale igual al liberarse")
+
+	# --- MANTENER PARA ATACAR ---
+	usos.clear()
+	player.caster.reset_state()
+	var antes := Controles.dispositivo
+	Controles.usar(&"mando")
+	Settings.mantener_para_atacar = true
+	Input.action_press(&"attack_basic")
+	var basico := player.caster.get_ability(0).cooldown
+	await get_tree().create_timer(basico * 2.5 + 0.2).timeout
+	Input.action_release(&"attack_basic")
+	Controles.usar(antes)
+	var golpes := usos.count(0)
+	_check(golpes >= 2, "con el golpe apretado, sigue pegando solo (%d golpes)" % golpes)
+	player.caster.ability_used.disconnect(contar)
+
+	for b: Player in [cerca, lejos]:
+		if is_instance_valid(b):
+			arena._players.erase(b.peer_id)
+			b.queue_free()
+	Arena.set_bots_active(true)
 
 
 # ---------------------------------------------------------------------- Bots
@@ -1644,7 +1747,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 240
+const CHEQUEOS_MINIMOS: int = 250
 
 
 func _finish() -> void:

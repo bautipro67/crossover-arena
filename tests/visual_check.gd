@@ -92,6 +92,18 @@ func _run() -> void:
 	await _wait(1.0)
 	await _shot("04_arena_noelle_hud")
 
+	# --- Fijar al rival: la marca encima y el aviso en el HUD ---
+	# Un poco al costado, para que se vea a la camara girar sola hacia el maniqui.
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(0.7)
+		await _wait(0.2)
+		player.camera_pivot.fijar_o_soltar()
+		await _wait(0.8)
+		await _shot("04b_fijado")
+		player.camera_pivot.soltar()
+		_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+		await _wait(0.4)
+
 	# --- Combate con Noelle ---
 	var dummy := _find_dummy(arena)
 	if dummy != null:

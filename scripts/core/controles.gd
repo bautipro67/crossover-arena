@@ -39,6 +39,7 @@ const ETIQUETA_TACTIL: Dictionary = {
 	&"jump": "SALTO",
 	&"scoreboard": "TABLA",
 	&"practice_panel": "PANEL",
+	&"fijar_objetivo": "FIJAR",
 }
 
 ## Las acciones que se pueden cambiar, en el orden en que se muestran, con su nombre.
@@ -60,6 +61,7 @@ const ACCIONES: Array = [
 	["ability_ultimate", "Definitiva"],
 	["scoreboard", "Tabla de puntos"],
 	["practice_panel", "Panel de práctica"],
+	["fijar_objetivo", "Fijar al enemigo más cercano"],
 ]
 
 ## Para el arnes: con esto en false, las pruebas reasignan teclas sin pisar las del jugador

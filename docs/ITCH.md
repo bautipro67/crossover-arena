@@ -157,15 +157,23 @@ Espacio ...... saltar           Click der .... habilidad 1
 Shift ........ dash             E ............ habilidad 2
 Ctrl ......... correr           Q ............ ultimate
 Tab .......... marcador         P ............ panel de práctica
+F o rueda .... fijar al enemigo más cercano
 
 Se pueden cambiar todos en Opciones → Controles.
 
+FIJAR (NUEVO): la cámara gira sola hacia el enemigo más cercano y lo sigue todo el tiempo,
+con una marca roja encima que se ve hasta detrás de las paredes; todas tus habilidades
+salen hacia él. Si cae, pasa solo al siguiente. Y en Opciones: asistencia de apuntado
+(tus tiros se corren apenas hacia el rival que casi tenés en la mira) y mantener
+apretado para atacar.
+
 CON MANDO: stick izquierdo moverse, stick derecho cámara, RT golpe, LT habilidad 1,
-RB habilidad 2, Y ultimate, A saltar, B dash, Start pausa. Los menús también se usan
+RB habilidad 2, Y ultimate, A saltar, B dash, R3 fijar, Start pausa. Los menús también se usan
 con el mando.
 
 EN EL CELULAR: stick a la izquierda (aparece donde apoyás el pulgar), botones a la
-derecha, y arrastrando el dedo por la pantalla girás la cámara.
+derecha, y arrastrando el dedo por la pantalla girás la cámara. FIJAR, arriba a la
+derecha, sigue al rival solo.
 
 ═══ SALA DE PRÁCTICA CONFIGURABLE ═══
 

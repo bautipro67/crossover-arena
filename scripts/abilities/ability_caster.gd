@@ -36,6 +36,14 @@ var _channel_origin: Vector3 = Vector3.ZERO
 var _channel_dir: Vector3 = Vector3.FORWARD
 
 var _caster: Node = null
+
+## EL BUFER: una habilidad apretada un instante ANTES de que este lista, sale en cuanto se
+## libera, en vez de perderse. Es lo que hace que un juego de peleas se sienta preciso: sin
+## esto, apretar dos centesimas antes de que vuelva el cooldown no hace nada, y hay que
+## volver a apretar. Solo guarda si falta poco (BUFER), y solo la ultima que se apreto.
+const BUFER: float = 0.25
+var _pendiente: int = -1
+var _pendiente_t: float = 0.0
 var _stamina: Stamina = null
 var _ultimate: UltimateCharge = null
 var _status: StatusEffects = null
@@ -72,6 +80,15 @@ func _process(delta: float) -> void:
 		if _is_server() and is_zero_approx(_channel_left):
 			_finish_channel()
 
+	if _pendiente >= 0:
+		_pendiente_t -= delta
+		if _pendiente_t <= 0.0:
+			_pendiente = -1
+		elif puede_usar(_pendiente):
+			var i := _pendiente
+			_pendiente = -1
+			request_use(i)
+
 
 # ---------------------------------------------------------------- API publica
 
@@ -84,11 +101,17 @@ func request_use(index: int) -> void:
 	# Validacion local: solo feedback, no es la que manda.
 	var reason := _local_reject_reason(index, ability)
 	if reason != "":
+		if _se_guarda(index, reason):
+			_pendiente = index
+			_pendiente_t = BUFER + 0.05
+			return
 		ability_failed.emit(index, reason)
 		return
 
 	var origin: Vector3 = _caster.call("get_aim_origin")
 	var dir: Vector3 = _caster.call("get_aim_direction")
+	if index == 0 and _caster.has_method("asistir_golpe"):
+		dir = _caster.call("asistir_golpe", origin, dir)
 
 	# Prediccion: la barra y el cooldown se mueven ya, sin esperar al servidor.
 	if not _is_server():
@@ -162,6 +185,7 @@ func cancel_channel() -> void:
 func reset_state() -> void:
 	for i: int in range(_cooldowns.size()):
 		_cooldowns[i] = 0.0
+	_pendiente = -1
 	if is_channeling:
 		var index := _channel_index
 		_clear_channel()
@@ -175,6 +199,15 @@ func reset_state() -> void:
 ## ultimate aunque el medidor estuviera vacio: el pedido fallaba en silencio y el bot se
 ## quedaba igual su pausa entre ataques. Rick y Sonic, que tienen mas de 100 de stamina,
 ## pasaban asi la mitad de la pelea sin pegar.
+## Se guarda en el bufer: le falta poco al cooldown o al canalizado que la frena.
+func _se_guarda(index: int, reason: String) -> bool:
+	if reason == "en cooldown":
+		return get_cooldown_remaining(index) <= BUFER
+	if reason == "canalizando":
+		return _channel_left <= BUFER
+	return false
+
+
 func puede_usar(index: int) -> bool:
 	return _local_reject_reason(index, get_ability(index)) == ""
 

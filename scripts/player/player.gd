@@ -191,7 +191,50 @@ func get_aim_direction() -> Vector3:
 	var dir := target - get_aim_origin()
 	if dir.is_zero_approx():
 		return camera_pivot.get_aim_direction()
-	return dir.normalized()
+	dir = dir.normalized()
+	if Settings.asistencia_apuntado and is_local_player():
+		dir = _asistir(get_aim_origin(), dir, ASISTENCIA_ALCANCE, ASISTENCIA_ANGULO)
+	return dir
+
+
+## ASISTENCIA DE APUNTADO (Settings.asistencia_apuntado). Si hay un rival casi en la mira
+## —a menos de `angulo` grados de hacia donde se apunta, a la vista y a menos de `alcance`
+## metros—, la direccion se corre hasta su pecho. Si no, queda como estaba.
+##
+## POCO, a proposito: seis grados son un cuerpo de ancho a diez metros. Corrige el "le erre
+## por un pelo", no apunta por uno. Y solo para el jugador de este equipo: los bots apuntan
+## con aim_override —con adelanto— y no pasan por aca.
+const ASISTENCIA_ANGULO: float = 6.0
+const ASISTENCIA_ALCANCE: float = 40.0
+## El golpe basico busca al que esta AL LADO aunque no este en la mira: con el rival encima,
+## la camara suele quedar mirando por arriba de su hombro.
+const GOLPE_ANGULO: float = 75.0
+const GOLPE_ALCANCE: float = 4.5
+
+
+func _asistir(origen: Vector3, dir: Vector3, alcance: float, angulo: float) -> Vector3:
+	var mejor := dir
+	var mejor_ang := deg_to_rad(angulo)
+	for t: Node3D in CombatUtils._living_targets(self):
+		if not t.visible:
+			continue
+		var hacia := (t.global_position + Vector3.UP * 1.0) - origen
+		var d := hacia.length()
+		if d > alcance or d < 0.3:
+			continue
+		var ang := dir.angle_to(hacia)
+		if ang < mejor_ang and CombatUtils.has_line_of_sight(self, origen, t):
+			mejor_ang = ang
+			mejor = hacia / d
+	return mejor
+
+
+## La direccion del golpe basico con la asistencia: el rival que esta al lado. La pide
+## AbilityCaster para el slot 0.
+func asistir_golpe(origen: Vector3, dir: Vector3) -> Vector3:
+	if not Settings.asistencia_apuntado or not is_local_player() or not aim_override.is_zero_approx():
+		return dir
+	return _asistir(origen, dir, GOLPE_ALCANCE, GOLPE_ANGULO)
 
 
 ## SOLO SERVIDOR. Empuja al jugador.
@@ -314,7 +357,25 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_handle_local_movement(delta)
+	_mantener_ataque()
 	_replicate(delta)
+
+
+## MANTENER APRETADO PARA ATACAR (Settings.mantener_para_atacar): con el golpe basico
+## apretado, sale solo cada vez que se libera. El primero lo dispara el evento en
+## _unhandled_input; estos son los que siguen, sin tener que hacer clic cada medio segundo.
+##
+## Solo con el mouse capturado o con mando/dedo: con el mouse suelto se esta usando un menu,
+## y un clic en un boton no es un golpe.
+func _mantener_ataque() -> void:
+	if not Settings.mantener_para_atacar or Cinematica.activa or not status.can_act():
+		return
+	if _mando_en_menu() or not Input.is_action_pressed(&"attack_basic"):
+		return
+	if Controles.dispositivo == &"teclado" and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		return
+	if caster.puede_usar(0):
+		caster.request_use(0)
 
 
 func _handle_local_movement(delta: float) -> void:
@@ -389,9 +450,15 @@ func _handle_local_movement(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_local_player() or health.is_dead or Cinematica.activa:
 		return
-	if not status.can_act():
-		return
 	if _mando_en_menu() and (event is InputEventJoypadButton or event is InputEventJoypadMotion):
+		return
+	# Fijar va antes que el chequeo de si puede actuar: congelado o aturdido, igual se tiene
+	# que poder mirar a quien te lo hizo.
+	if event.is_action_pressed("fijar_objetivo"):
+		if is_instance_valid(camera_pivot):
+			camera_pivot.fijar_o_soltar()
+		return
+	if not status.can_act():
 		return
 
 	# Dash: SIN COSTO DE STAMINA. Solo cooldown.

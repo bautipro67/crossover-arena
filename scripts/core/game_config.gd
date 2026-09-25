@@ -91,12 +91,16 @@ const BINDINGS: Dictionary = {
 	# justamente donde vive la mayoria de los que juegan esto, porque es lo que esta en
 	# itch. F1 queda igual porque en escritorio funciona y es lo que uno prueba primero.
 	"practice_panel": [KEY_P, KEY_F1],
+	# Fijar al enemigo mas cercano. F porque queda al lado de WASD como la E, y tambien la
+	# rueda del mouse (abajo): es la tecla de fijar de casi todos los juegos de accion en PC.
+	"fijar_objetivo": [KEY_F],
 }
 
 ## Acciones ligadas al mouse: accion -> boton.
 const MOUSE_BINDINGS: Dictionary = {
 	"attack_basic": MOUSE_BUTTON_LEFT,
 	"ability_1": MOUSE_BUTTON_RIGHT,
+	"fijar_objetivo": MOUSE_BUTTON_MIDDLE,
 }
 
 ## El mando: accion -> lista de botones (un entero) o de ejes ([eje, signo]).
@@ -128,6 +132,8 @@ const JOY_BINDINGS: Dictionary = {
 	"ability_ultimate": [JOY_BUTTON_Y],
 	"scoreboard": [JOY_BUTTON_BACK],
 	"practice_panel": [JOY_BUTTON_DPAD_UP],
+	# Apretar el stick derecho, el que mueve la camara: donde fijan todos los juegos de mando.
+	"fijar_objetivo": [JOY_BUTTON_RIGHT_STICK],
 	"pausa": [JOY_BUTTON_START],
 	# Los menus de Godot vienen sin mando para aceptar y volver: solo teclas. Sin esto, con
 	# un mando en la mano se puede recorrer un menu pero no apretar nada.

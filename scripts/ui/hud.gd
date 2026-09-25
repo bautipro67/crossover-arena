@@ -72,6 +72,8 @@ var _channel_label: Label = null
 
 var _dash_panel: PanelContainer = null
 var _dash_label: Label = null
+## Debajo del dash: la tecla de fijar, o a quien se tiene fijado.
+var _fijar_label: Label = null
 
 var _kill_feed: VBoxContainer = null
 var _center_label: Label = null
@@ -555,6 +557,17 @@ func _build_dash(root: Control) -> void:
 	_dash_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_dash_panel.add_child(_dash_label)
 
+	# Abajo, chico: si no se ve en pantalla, nadie sabe que se puede fijar.
+	_fijar_label = UITheme.make_label("", 12, UITheme.TEXT_DIM)
+	_fijar_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_fijar_label.offset_left = -260
+	_fijar_label.offset_top = 74
+	_fijar_label.offset_right = -22
+	_fijar_label.offset_bottom = 94
+	_fijar_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_fijar_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_fijar_label)
+
 
 func _build_kill_feed(root: Control) -> void:
 	_kill_feed = VBoxContainer.new()
@@ -943,6 +956,16 @@ func _update_abilities() -> void:
 
 
 func _update_dash() -> void:
+	if is_instance_valid(_fijar_label) and is_instance_valid(_player.camera_pivot):
+		var cam := _player.camera_pivot
+		var tecla := Controles.nombre_tecla(&"fijar_objetivo")
+		if cam.esta_fijado():
+			var quien := cam.objetivo as Player
+			_fijar_label.text = "FIJADO: %s   [%s] soltar" % [quien.player_name if quien != null else "", tecla]
+			_fijar_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+		else:
+			_fijar_label.text = "[%s]  fijar al más cercano" % tecla
+			_fijar_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	var ratio := _player.get_dash_cooldown_ratio()
 	if ratio <= 0.0:
 		_dash_label.text = "DASH  [%s]  listo" % Controles.nombre_tecla(&"dash")

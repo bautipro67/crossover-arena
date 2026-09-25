@@ -38,6 +38,19 @@ func _ready() -> void:
 	box.add_child(title)
 	box.add_child(UITheme.make_spacer(10))
 
+	# CON SCROLL: con las opciones de juego el panel ya no entraba en 720 de alto, y CERRAR
+	# quedaba afuera. El titulo y los botones de abajo quedan fijos; se desplaza el medio.
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 430)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	box.add_child(scroll)
+	var marco := box
+	box = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(box)
+
 	# --- Sensibilidad del mouse ---
 	_sens_label = UITheme.make_label("", 14, UITheme.TEXT_DIM)
 	box.add_child(_sens_label)
@@ -113,6 +126,38 @@ func _ready() -> void:
 
 	box.add_child(UITheme.make_spacer(6))
 
+	# --- Asistencia de apuntado ---
+	var asistencia := CheckButton.new()
+	asistencia.text = "Asistencia de apuntado"
+	asistencia.button_pressed = Settings.asistencia_apuntado
+	asistencia.add_theme_font_size_override("font_size", 16)
+	asistencia.toggled.connect(func(pressed: bool) -> void:
+		Settings.set_asistencia_apuntado(pressed))
+	box.add_child(asistencia)
+	var asistencia_hint := UITheme.make_label(
+		"Las habilidades se corren apenas hacia el rival que tenés casi en la mira, y el golpe básico busca al que tenés al lado.",
+		11, UITheme.TEXT_DIM)
+	asistencia_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(asistencia_hint)
+
+	box.add_child(UITheme.make_spacer(6))
+
+	# --- Mantener para atacar ---
+	var mantener := CheckButton.new()
+	mantener.text = "Mantener apretado para atacar"
+	mantener.button_pressed = Settings.mantener_para_atacar
+	mantener.add_theme_font_size_override("font_size", 16)
+	mantener.toggled.connect(func(pressed: bool) -> void:
+		Settings.set_mantener_para_atacar(pressed))
+	box.add_child(mantener)
+	var mantener_hint := UITheme.make_label(
+		"Con el golpe básico apretado sigue pegando solo, cada vez que se libera.",
+		11, UITheme.TEXT_DIM)
+	mantener_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(mantener_hint)
+
+	box.add_child(UITheme.make_spacer(6))
+
 	# --- Pantalla completa ---
 	var fs := CheckButton.new()
 	fs.text = "Pantalla completa"
@@ -123,7 +168,8 @@ func _ready() -> void:
 	)
 	box.add_child(fs)
 
-	box.add_child(UITheme.make_spacer(10))
+	box = marco
+	box.add_child(UITheme.make_spacer(6))
 
 	# Antes aca habia un renglon que decia que los controles se cambiaban editando una
 	# tabla del codigo fuente. Ahora se cambian aca, como en cualquier juego.

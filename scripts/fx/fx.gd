@@ -2028,6 +2028,43 @@ func spawn_ice_spikes(caster: Node, origin: Vector3, dir: Vector3, cone_range: f
 		rise.tween_callback(spike.queue_free)
 
 
+## La marca del rival fijado (ver PlayerCamera.fijar_o_soltar): un triangulo rojo que
+## flota arriba de su cabeza, girando.
+##
+## SE VE A TRAVES DE LAS PAREDES, a proposito: fijar es para no perderlo de vista, y detras
+## de una cobertura es justo cuando mas hace falta saber donde esta. Es de quien fija y de
+## nadie mas: la crea su camara, en su pantalla.
+func spawn_marca_fijado(target: Node3D) -> Node3D:
+	if not is_instance_valid(target):
+		return null
+	var raiz := Node3D.new()
+	raiz.name = &"MarcaFijado"
+	target.add_child(raiz)
+	raiz.position = Vector3(0.0, 2.75, 0.0)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 0.22, 0.18)
+	mat.no_depth_test = true
+	mat.render_priority = 10
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var punta := MeshInstance3D.new()
+	var cono := CylinderMesh.new()
+	cono.top_radius = 0.30
+	cono.bottom_radius = 0.0
+	cono.height = 0.46
+	cono.radial_segments = 3
+	punta.mesh = cono
+	punta.material_override = mat
+	punta.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	raiz.add_child(punta)
+	var tw := raiz.create_tween().set_loops()
+	tw.tween_property(raiz, "position:y", 2.95, 0.45).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(raiz, "position:y", 2.75, 0.45).set_trans(Tween.TRANS_SINE)
+	var giro := punta.create_tween().set_loops()
+	giro.tween_property(punta, "rotation:y", TAU, 1.6).from(0.0)
+	return raiz
+
+
 ## Lo llaman los clientes remotos cuando el servidor avisa que alguien tiro una habilidad.
 ## Solo reproduce lo visual: el daño ya esta resuelto en el servidor.
 func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3, dir: Vector3) -> void:

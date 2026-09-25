@@ -27,6 +27,13 @@ var auto_run: bool = true
 ## combate, y sin poder VER el alcance no hay forma de saber si es cierto o si el que se
 ## queja calculo mal. Tambien sirve para reportar un bug con algo mas que una impresion.
 var mostrar_hitboxes: bool = false
+## ASISTENCIA DE APUNTADO: las habilidades se corren apenas hacia el rival que esta casi
+## en la mira, y el golpe basico busca al que esta al lado (ver Player.get_aim_direction).
+## Prendida por defecto: sin ella, embocar una bola a alguien que se mueve con el mouse es
+## lo que mas cuesta al empezar, y con mando o con el dedo, mas todavia.
+var asistencia_apuntado: bool = true
+## Con el golpe basico apretado, sigue pegando solo (ver Player._mantener_ataque).
+var mantener_para_atacar: bool = true
 
 
 func _ready() -> void:
@@ -45,6 +52,8 @@ func load_settings() -> void:
 	player_name = String(cfg.get_value("game", "player_name", player_name))
 	auto_run = bool(cfg.get_value("game", "auto_run", auto_run))
 	mostrar_hitboxes = bool(cfg.get_value("game", "mostrar_hitboxes", mostrar_hitboxes))
+	asistencia_apuntado = bool(cfg.get_value("game", "asistencia_apuntado", asistencia_apuntado))
+	mantener_para_atacar = bool(cfg.get_value("game", "mantener_para_atacar", mantener_para_atacar))
 
 
 func save_settings() -> void:
@@ -56,6 +65,8 @@ func save_settings() -> void:
 	cfg.set_value("game", "player_name", player_name)
 	cfg.set_value("game", "auto_run", auto_run)
 	cfg.set_value("game", "mostrar_hitboxes", mostrar_hitboxes)
+	cfg.set_value("game", "asistencia_apuntado", asistencia_apuntado)
+	cfg.set_value("game", "mantener_para_atacar", mantener_para_atacar)
 	cfg.save(CONFIG_PATH)
 
 
@@ -106,6 +117,16 @@ func set_mostrar_hitboxes(value: bool) -> void:
 	mostrar_hitboxes = value
 	save_settings()
 	changed.emit()
+
+
+func set_asistencia_apuntado(value: bool) -> void:
+	asistencia_apuntado = value
+	save_settings()
+
+
+func set_mantener_para_atacar(value: bool) -> void:
+	mantener_para_atacar = value
+	save_settings()
 
 
 func set_player_name(value: String) -> void:

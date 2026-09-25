@@ -97,6 +97,9 @@ func _armar_botones() -> void:
 	_boton(&"pausa", Vector2(-44.0, 40.0), 28.0, -1, false, true, "II")
 	_boton(&"scoreboard", Vector2(-110.0, 40.0), 28.0, -1, false, true)
 	_boton(&"practice_panel", Vector2(-176.0, 40.0), 28.0, -1, false, true)
+	# Fijar, a la izquierda del resto: con el dedo se aprieta una vez y la camara hace sola
+	# lo que en el celular mas cuesta, que es seguir a alguien arrastrando.
+	_boton(&"fijar_objetivo", Vector2(-242.0, 40.0), 28.0, -1, false, true)
 
 
 func _boton(accion: StringName, pos: Vector2, radio: float, habilidad: int, gira: bool,
