@@ -67,6 +67,7 @@ func _run() -> void:
 	await _test_goku(player, arena)
 	await _test_mario(player, arena)
 	await _test_madara(player, arena)
+	await _test_mob(player, arena)
 	_test_descripciones()
 	await _test_escena_corta_habilidades(player)
 	await _test_practica(player, arena)
@@ -1500,8 +1501,9 @@ func _test_goku(player: Player, arena: Arena) -> void:
 	var data := CharacterDB.get_character(&"goku")
 	_check(data != null and data.origin_game == "Dragon Ball" and data.silhouette == &"gi",
 		"Goku viene de Dragon Ball y tiene silueta propia: el pelo en puntas")
-	_check(data != null and data.requiere_desbloqueo,
-		"Goku NO viene de fabrica: se gana con el pase pro")
+	# FUE EL PREMIO DE LA TEMPORADA 1, y al terminar la temporada paso a ser de todos.
+	_check(data != null and not data.requiere_desbloqueo and Progreso.puede_usar_personaje(&"goku"),
+		"Goku es de todos desde que termino la temporada 1")
 
 	# ES UN PREMIO Y NO PUEDE SER EL MAS FUERTE. Un personaje que se gana jugando y que
 	# ademas le gana a los otros convertiria el pase en un requisito para competir.
@@ -1781,14 +1783,14 @@ func _test_mario(player: Player, arena: Arena) -> void:
 	_check(not player.status.es_invencible() and hecho > 0.0,
 		"y cuando se apaga, vuelve a recibir daño como cualquiera")
 
-	# Sus skins: las tres, en la tienda.
+	# Sus skins: las tres de cuando llego, en la tienda (despues se sumo una del pase).
 	var suyas := SkinDB.de_personaje(&"mario")
 	var en_tienda := 0
 	for sid: StringName in suyas:
 		if SkinDB.get_skin(sid).precio > 0:
 			en_tienda += 1
-	_check(suyas.size() >= 3 and en_tienda == suyas.size(),
-		"Mario tiene sus skins y estan todas en la tienda (%d de %d)" % [en_tienda, suyas.size()])
+	_check(en_tienda >= 3,
+		"Mario tiene sus tres skins en la tienda (%d de %d)" % [en_tienda, suyas.size()])
 
 	player.aim_override = Vector3.ZERO
 	blanco.queue_free()
@@ -1899,19 +1901,144 @@ func _test_madara(player: Player, arena: Arena) -> void:
 		"y su propio daño no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
 	aplastado.queue_free()
 
-	# Sus skins: las tres, en la tienda.
+	# Sus skins: las tres de cuando llego, en la tienda (despues se sumo una del pase).
 	var suyas := SkinDB.de_personaje(&"madara")
 	var en_tienda := 0
 	for sid: StringName in suyas:
 		if SkinDB.get_skin(sid).precio > 0:
 			en_tienda += 1
-	_check(suyas.size() >= 3 and en_tienda == suyas.size(),
-		"Madara tiene sus skins y estan todas en la tienda (%d de %d)" % [en_tienda, suyas.size()])
+	_check(en_tienda >= 3,
+		"Madara tiene sus tres skins en la tienda (%d de %d)" % [en_tienda, suyas.size()])
 
 	player.aim_override = Vector3.ZERO
 	player.setup_character(CharacterDB.get_character(&"sonic"))
 	player.caster.reset_state()
 	player.status.clear_all()
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
+# ---------------------------------------------------------------------- Mob
+
+func _test_mob(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	_check(CharacterDB.has_character(&"mob"), "Mob esta registrado")
+	var data := CharacterDB.get_character(&"mob")
+	_check(data != null and data.origin_game == "Mob Psycho 100" and data.silhouette == &"tazon",
+		"Mob viene de Mob Psycho 100 y tiene silueta propia: el tazon")
+	_check(data != null and data.requiere_desbloqueo and Pase.recompensa(Pase.ESCALONES, true) == [Pase.PERSONAJE, "mob"],
+		"Mob NO viene de fabrica: es el ultimo escalon del pase pro de la temporada 2")
+	# ES UN PREMIO Y NO PUEDE SER EL MAS FUERTE. Un personaje que se gana jugando y que
+	# ademas le gana a los otros convertiria el pase en un requisito para competir.
+	var vida_max := 0.0
+	var vel_max := 0.0
+	for otro_id: StringName in CharacterDB.get_all_ids():
+		if otro_id == &"mob":
+			continue
+		var otro := CharacterDB.get_character(otro_id)
+		vida_max = maxf(vida_max, otro.max_health)
+		vel_max = maxf(vel_max, otro.move_speed)
+	_check(data.max_health <= vida_max and data.move_speed < vel_max,
+		"y no aguanta mas que nadie ni es el mas rapido (%.0f de vida, %.1f de velocidad)" % [
+			data.max_health, data.move_speed])
+
+	var kit := CharacterDB.build_abilities_for(&"mob")
+	_check(kit.size() == 4, "Mob tiene 4 habilidades (tiene %d)" % kit.size())
+	if kit.size() < 4:
+		return
+	_check(kit[0] is OndaPsiquica and kit[1] is Escombros and kit[2] is BarreraPsiquica
+		and kit[3] is CienPorCiento,
+		"su kit: onda psiquica, escombros, barrera y 100%")
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+	_check(kit[3].stamina_cost == 100.0 and kit[3].requires_charge and kit[3].channel_time > 0.0,
+		"el 100% cuesta la barra entera, pide el medidor y se carga a la vista")
+
+	player.setup_character(data)
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, -30.0), 1.5)
+	var rumbo := _carril_libre(player, puesto, 20.0)
+	var yaw := atan2(-rumbo.x, -rumbo.z)
+	player.respawn_at(puesto, yaw)
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	for _i: int in range(24):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+
+	# --- ONDA PSIQUICA y ESCOMBROS: a distancia ---
+	var blanco := _spawn_dummy(arena, puesto + rumbo * 7.0)
+	blanco.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	var vida := blanco.health.current
+	player.caster.reset_state()
+	player.caster.request_use(0)
+	await get_tree().create_timer(0.6).timeout
+	_check(blanco.health.current <= vida - OndaPsiquica.DAMAGE * 0.9,
+		"la onda psiquica le pega al que esta a siete metros (%.0f)" % (vida - blanco.health.current))
+	vida = blanco.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	await get_tree().create_timer(Escombros.INTERVALO * Escombros.PIEDRAS + 0.8).timeout
+	var piedras := vida - blanco.health.current
+	_check(piedras >= Escombros.DAMAGE * 3.0,
+		"los escombros salen uno tras otro y le pegan casi todos (%.0f de daño)" % piedras)
+	blanco.queue_free()
+
+	# --- BARRERA: el escudo, y el empujon al que esta pegado ---
+	await get_tree().create_timer(0.4).timeout
+	player.respawn_at(puesto, yaw)
+	var pegado := _spawn_dummy(arena, puesto + rumbo * 2.5)
+	pegado.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = pegado.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	await get_tree().create_timer(0.2).timeout
+	_check(player.health.get_shield() >= BarreraPsiquica.ESCUDO * 0.99
+		and pegado.health.current <= vida - BarreraPsiquica.DAMAGE * 0.9,
+		"la barrera da escudo y empuja al que esta pegado (escudo %.0f, %.0f de daño)" % [
+			player.health.get_shield(), vida - pegado.health.current])
+	pegado.queue_free()
+	await get_tree().create_timer(BarreraPsiquica.DURACION).timeout
+
+	# --- 100%: la onda enorme y el estado despues ---
+	player.respawn_at(puesto, yaw)
+	player.status.clear_all()
+	var lejos := _spawn_dummy(arena, puesto + rumbo * 8.0)
+	lejos.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = lejos.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.request_use(3)
+	await get_tree().create_timer(CienPorCiento.new().channel_time + 0.3).timeout
+	_check(lejos.health.current <= vida - CienPorCiento.DAMAGE * 0.9 and player.status.esta_impulsado(),
+		"el 100%% le pega al que esta a ocho metros y lo deja potenciado (%.0f de daño)" % (vida - lejos.health.current))
+	_check(player.ultimate.current < 1.0,
+		"y su propio daño no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
+	lejos.queue_free()
+
+	# Sus skins: las tres, en la tienda.
+	var suyas := SkinDB.de_personaje(&"mob")
+	var en_tienda := 0
+	for sid: StringName in suyas:
+		if SkinDB.get_skin(sid).precio > 0:
+			en_tienda += 1
+	_check(en_tienda >= 3, "Mob tiene sus tres skins en la tienda (%d)" % en_tienda)
+
+	player.aim_override = Vector3.ZERO
+	player.status.clear_all()
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
 	player.health.revive_full()
 	Arena.set_bots_active(true)
 
@@ -2120,7 +2247,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 249
+const CHEQUEOS_MINIMOS: int = 262
 
 
 func _finish() -> void:

@@ -117,6 +117,7 @@ func _registrar_todas() -> void:
 		Color(0.99, 0.80, 0.56), Color(0.07, 0.13, 0.55), &"rara", 900))
 
 	_registrar_temporada_1()
+	_registrar_temporada_2()
 
 
 # ------------------------------------------------------------- Temporada 1
@@ -214,6 +215,65 @@ func _registrar_temporada_1() -> void:
 	]
 	for sk: SkinData in nuevas:
 		sk.temporada = 1
+		_add(sk)
+
+
+# ------------------------------------------------------------- Temporada 2
+#
+# EL MISMO REPARTO QUE LA 1: siete en el pase —dos en la via gratuita— y las del personaje
+# nuevo en la tienda. Mob es el premio del ultimo escalon del pro, asi que sus skins se
+# compran recien cuando ya lo tenes (la tienda lo dice: "primero ganate a Mob").
+#
+# TODAS SALEN DE ALGO DEL ORIGINAL, como siempre: la Flor de Hielo de Mario, el Dark Sonic
+# de Sonic X, el Dio de la parte 1, los colores del rey Asgore para Flowery, el Madara de
+# antes de la guerra, el Mundo Cibernetico del capitulo 2 de Deltarune y Hyper Sonic.
+func _registrar_temporada_2() -> void:
+	var nuevas: Array[SkinData] = [
+		# --- El pase ---
+		_hacer(&"mario_hielo", &"mario", "Mario de Hielo",
+			"Con una Flor de Hielo adentro: lo que toca se congela.",
+			Color(0.45, 0.75, 0.98), Color(0.40, 0.70, 0.98),
+			Color(0.99, 0.82, 0.68), Color(0.12, 0.22, 0.58), &"epica", 0),
+		_hacer(&"sonic_oscuro", &"sonic", "Dark Sonic",
+			"Cuando se enoja de verdad: casi negro, y los ojos blancos.",
+			Color(0.10, 0.12, 0.24), Color(0.22, 0.24, 0.38),
+			Color(0.92, 0.84, 0.72), Color(0.10, 0.12, 0.24), &"rara", 0),
+		_hacer(&"dio_phantom", &"dio", "Dio de Phantom Blood",
+			"El Dio de 1880, todavía con casaca y pañuelo al cuello.",
+			Color(0.18, 0.34, 0.42), Color(0.85, 0.75, 0.40),
+			Color(0.96, 0.88, 0.82), Color(0.16, 0.20, 0.26), &"rara", 0),
+		_hacer(&"flowery_asgore", &"flowery", "Flowery de Asgore",
+			"El violeta y el dorado del rey, para el que hace todo.",
+			Color(0.45, 0.30, 0.62), Color(0.95, 0.78, 0.30),
+			Color(0.80, 0.92, 0.45), Color(0.40, 0.26, 0.55), &"epica", 0),
+		_hacer(&"madara_joven", &"madara", "Madara Joven",
+			"Antes de la guerra: el manto del clan, sin armadura.",
+			Color(0.16, 0.20, 0.40), Color(0.17, 0.21, 0.42),
+			Color(0.96, 0.88, 0.80), Color(0.13, 0.17, 0.36), &"rara", 0),
+		_hacer(&"noelle_cyber", &"noelle", "Noelle Cibernética",
+			"De la Ciudad Cibernética: todo el suéter en neón.",
+			Color(0.95, 0.25, 0.75), Color(0.20, 0.90, 0.95),
+			Color(0.95, 0.87, 0.76), Color(0.10, 0.10, 0.22), &"epica", 0),
+		_hacer(&"sonic_hyper", &"sonic", "Hyper Sonic",
+			"Las siete Súper Esmeraldas: blanco, y todos los colores a la vez.",
+			Color(0.92, 0.95, 1.00), Color(0.60, 0.85, 1.00),
+			Color(1.00, 0.97, 0.92), Color(0.90, 0.93, 1.00), &"legendaria", 0),
+		# --- La tienda: las de Mob ---
+		_hacer(&"mob_verano", &"mob", "Mob de Verano",
+			"El uniforme de verano: la camisa blanca de manga corta.",
+			Color(0.96, 0.96, 0.95), Color(0.55, 0.75, 1.00),
+			Color(0.98, 0.88, 0.80), Color(0.08, 0.08, 0.10), &"rara", 900),
+		_hacer(&"mob_cien", &"mob", "Mob 100%",
+			"Cuando el medidor llega al tope: los ojos le brillan.",
+			Color(0.09, 0.09, 0.12), Color(0.60, 0.80, 1.00),
+			Color(0.98, 0.88, 0.80), Color(0.08, 0.08, 0.10), &"epica", 1800),
+		_hacer(&"mob_incognita", &"mob", "Mob ???%",
+			"Lo que queda cuando ya no hay nadie adentro: una sombra con los ojos blancos.",
+			Color(0.04, 0.04, 0.06), Color(0.85, 0.92, 1.00),
+			Color(0.06, 0.06, 0.08), Color(0.04, 0.04, 0.06), &"legendaria", 2600),
+	]
+	for sk: SkinData in nuevas:
+		sk.temporada = 2
 		_add(sk)
 
 
@@ -392,6 +452,47 @@ func _detallar() -> void:
 		&"botones": Color(1.00, 0.98, 0.85)},
 		&"metal", &"chispas", Color(1.0, 0.88, 0.35), Color(1.0, 0.85, 0.30), &"",
 		Color(1.0, 0.86, 0.32, 0.85))
+	# ------------------------------------------------------------ Temporada 2
+	_det(&"mario_hielo", {
+		&"gorra": Color(0.45, 0.75, 0.98), &"m": Color(0.40, 0.70, 0.98),
+		&"overol": Color(0.12, 0.22, 0.58)},
+		&"hielo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.55, 0.85, 1.0, 0.8))
+	_det(&"sonic_oscuro", {
+		&"pua": Color(0.10, 0.12, 0.24), &"pelo": Color(0.10, 0.12, 0.24),
+		&"ojos": Color(0.95, 0.95, 1.00)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.30, 0.25, 0.55, 0.75))
+	_det(&"dio_phantom", {
+		&"tela": Color(0.18, 0.34, 0.42), &"detalle": Color(0.85, 0.75, 0.40),
+		&"musculosa": Color(0.92, 0.90, 0.86)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.40, 0.65, 0.75, 0.75))
+	_det(&"flowery_asgore", {
+		&"campera": Color(0.45, 0.30, 0.62), &"chaleco_a": Color(0.95, 0.78, 0.30),
+		&"chaleco_b": Color(0.62, 0.46, 0.80), &"camisa": Color(0.98, 0.95, 0.85)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.80, 0.35, 0.8))
+	_det(&"madara_joven", {
+		&"armadura": Color(0.17, 0.21, 0.42), &"obi": Color(0.66, 0.53, 0.38)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.40, 0.46, 0.80, 0.75))
+	_det(&"noelle_cyber", {
+		&"sueter_a": Color(0.95, 0.25, 0.75), &"sueter_b": Color(0.20, 0.90, 0.95),
+		&"oscuro": Color(0.10, 0.10, 0.22)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.35, 0.85, 0.8))
+	_det(&"sonic_hyper", {
+		&"pua": Color(0.94, 0.96, 1.00), &"pelo": Color(0.94, 0.96, 1.00),
+		&"piel": Color(1.00, 0.97, 0.92), &"ojos": Color(0.30, 0.60, 1.00)},
+		&"brillo", &"arcoiris", Color(0.95, 0.95, 1.0), Color(0.40, 0.70, 1.0), &"",
+		Color(0.95, 0.95, 1.0, 0.85))
+	# Las de Mob. La ???% es la silueta de la serie: todo negro y los ojos blancos.
+	_det(&"mob_verano", {&"botones": Color(0.88, 0.88, 0.90), &"cuello": Color(0.96, 0.96, 0.95)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.60, 0.80, 1.0, 0.75))
+	_det(&"mob_cien", {&"ojos": Color(0.85, 0.93, 1.00), &"botones": Color(0.80, 0.90, 1.00),
+		&"cuello": Color(0.75, 0.88, 1.00)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.60, 0.80, 1.0, 0.85))
+	_det(&"mob_incognita", {
+		&"pelo": Color(0.03, 0.03, 0.05), &"botones": Color(0.10, 0.10, 0.12),
+		&"cuello": Color(0.06, 0.06, 0.08), &"zapatos": Color(0.03, 0.03, 0.05),
+		&"ojos": Color(0.95, 0.97, 1.00)},
+		&"sombra", &"chispas", Color(0.85, 0.92, 1.0), Color(0.95, 0.97, 1.0), &"",
+		Color(0.80, 0.90, 1.0, 0.85))
 	# ---------------------------------------------------------------- Madara
 	# Los ojos van con el Rinnegan —lila, con anillos— en las dos que lo tienen en la serie.
 	_det(&"madara_edo", {

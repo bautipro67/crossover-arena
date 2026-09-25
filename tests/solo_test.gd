@@ -473,64 +473,65 @@ func _test_progresion() -> void:
 	_check(not Pase.comprar_escalon() and Progreso.monedas == Progreso.PRECIO_ESCALON,
 		"con el pase completo no se puede comprar mas, ni se cobra")
 
-	# --- GOKU: solo con el pase pro COMPLETO ---
+	# --- MOB: solo con el pase pro COMPLETO de la temporada 2 ---
 	#
-	# Es la condicion que se pidio, tal cual: completar todo el pase pro. Ni la via
-	# gratuita completa, ni el pro a medias, ni la tienda.
+	# Como Goku en la 1: completar todo el pase pro. Ni la via gratuita completa, ni el pro
+	# a medias, ni la tienda. Y Goku, que era el premio de la 1, ya es de todos.
 	Progreso.borrar_todo()
-	_check(Pase.TEMPORADA == 1, "estamos en la temporada 1")
+	_check(Pase.TEMPORADA == 2, "estamos en la temporada 2")
+	_check(Progreso.puede_usar_personaje(&"goku"), "Goku ya es de todos: se termino la temporada 1")
 	var final_pro := Pase.recompensa(Pase.ESCALONES, true)
-	_check(final_pro[0] == Pase.PERSONAJE and StringName(final_pro[1]) == &"goku",
-		"el ultimo escalon del pase pro es Goku")
-	_check(not Progreso.puede_usar_personaje(&"goku"), "de entrada Goku esta bloqueado")
+	_check(final_pro[0] == Pase.PERSONAJE and StringName(final_pro[1]) == &"mob",
+		"el ultimo escalon del pase pro es Mob")
+	_check(not Progreso.puede_usar_personaje(&"mob"), "de entrada Mob esta bloqueado")
 	_check(Progreso.puede_usar_personaje(&"noelle") and Progreso.puede_usar_personaje(&"sonic"),
 		"y los demas no: vienen de fabrica")
-	var goku_en_otro_lado := false
+	var premio_en_otro_lado := false
 	for i: int in range(1, Pase.ESCALONES + 1):
 		for pro: bool in [false, true]:
 			var r := Pase.recompensa(i, pro)
 			if r[0] == Pase.PERSONAJE and (i != Pase.ESCALONES or not pro):
-				goku_en_otro_lado = true
-	_check(not goku_en_otro_lado, "y no aparece en ningun otro escalon ni en la via gratuita")
+				premio_en_otro_lado = true
+	_check(not premio_en_otro_lado, "y no aparece en ningun otro escalon ni en la via gratuita")
 	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
 	Pase.reclamar_todo()
-	_check(not Progreso.puede_usar_personaje(&"goku"),
-		"con toda la via gratuita cobrada, Goku sigue bloqueado")
+	_check(not Progreso.puede_usar_personaje(&"mob"),
+		"con toda la via gratuita cobrada, Mob sigue bloqueado")
 	Progreso.pase_exp = Pase.EXP_POR_ESCALON * (Pase.ESCALONES - 1)
 	Progreso.pase_pro = true
 	Pase.reclamar_todo()
-	_check(not Progreso.puede_usar_personaje(&"goku"), "con el pro a un escalon del final, tampoco")
+	_check(not Progreso.puede_usar_personaje(&"mob"), "con el pro a un escalon del final, tampoco")
 	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
-	_check(not Pase.reclamar(Pase.ESCALONES, true).is_empty() and Progreso.puede_usar_personaje(&"goku"),
-		"completando el pase pro, Goku queda desbloqueado")
+	_check(not Pase.reclamar(Pase.ESCALONES, true).is_empty() and Progreso.puede_usar_personaje(&"mob"),
+		"completando el pase pro, Mob queda desbloqueado")
 
-	# --- El cierre de la temporada 0 ---
+	# --- El cierre de la temporada 1 ---
 	#
-	# Se arma un archivo de la 0 a mano: el pro comprado, diez escalones alcanzados y solo
+	# Se arma un archivo de la 1 a mano: el pro comprado, diez escalones alcanzados y solo
 	# el primero cobrado. Al cerrarla, lo alcanzado se tiene que cobrar solo y el pase
 	# tiene que arrancar de cero, sin tocar ni el nivel, ni las monedas, ni las skins.
 	Progreso.borrar_todo()
 	Progreso.nivel = 7
 	Progreso.monedas = 300
-	Progreso.temporada = 0
+	Progreso.temporada = 1
 	Progreso.pase_pro = true
 	Progreso.pase_exp = Pase.EXP_POR_ESCALON * 10
 	Progreso.reclamados = {"1": true}
 	Progreso.skins = {"sonic_clasico": true}
 	Pase._cerrar_temporada_vieja()
-	_check(Progreso.tiene_skin(&"dio_dorado") and Progreso.tiene_skin(&"flowery_nocturno")
-		and Progreso.tiene_skin(&"noelle_snowgrave"),
-		"al cerrar la temporada 0 se cobran solas las skins que ya habias alcanzado")
-	_check(not Progreso.tiene_skin(&"rick_maligno"),
+	_check(Progreso.tiene_skin(&"sonic_metal") and Progreso.tiene_skin(&"noelle_otono")
+		and Progreso.tiene_skin(&"flowery_primavera"),
+		"al cerrar la temporada 1 se cobran solas las skins que ya habias alcanzado")
+	_check(not Progreso.tiene_skin(&"rick_toxico"),
 		"pero no las de escalones a los que no llegaste")
 	_check(Progreso.tiene_skin(&"sonic_clasico") and Progreso.nivel >= 7 and Progreso.monedas > 300,
 		"y lo tuyo queda: skins, nivel, y las monedas pendientes se suman (%d)" % Progreso.monedas)
 	_check(Progreso.pase_exp == 0 and not Progreso.pase_pro and Progreso.reclamados.is_empty()
 		and Progreso.temporada == Pase.TEMPORADA,
-		"y el pase de la temporada 1 arranca de cero, pro incluido")
+		"y el pase de la temporada 2 arranca de cero, pro incluido")
 	var aviso := Pase.tomar_aviso()
-	_check(aviso.contains("Temporada 0") and aviso.contains("pendientes"),
-		"y avisa que termino y cuanto se cobro solo: %s" % aviso)
+	_check(aviso.contains("Temporada 1") and aviso.contains("pendientes") and aviso.contains("Goku"),
+		"y avisa que termino, que Goku es de todos y cuanto se cobro solo: %s" % aviso)
 	_check(Pase.tomar_aviso().is_empty(), "el aviso se muestra una sola vez")
 	var antes_cierre := Progreso.monedas
 	Pase._cerrar_temporada_vieja()
@@ -685,9 +686,10 @@ func _test_historia(main: Node) -> void:
 	Progreso.historia = {}
 
 	# --- Los datos: que todo lo que nombra la historia exista ---
-	_check(Historia.cantidad() == 20 and Historia.PARTES.size() == 2 and Historia.parte_de(10) == 1
+	_check(Historia.cantidad() == 30 and Historia.PARTES.size() == 3 and Historia.parte_de(10) == 1
+		and Historia.parte_de(20) == 2 and Historia.titulo_capitulo(20) == "PARTE 3 · CAPÍTULO 1"
 		and Historia.titulo_capitulo(10) == "PARTE 2 · CAPÍTULO 1",
-		"la historia tiene dos partes de diez capitulos, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
+		"la historia tiene tres partes de diez capitulos, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
 
 	# --- NUNCA MAS DE TRES ENEMIGOS A LA VEZ ---
 	#
@@ -884,7 +886,7 @@ func _test_historia(main: Node) -> void:
 			if hijo is HistoriaMenu:
 				hijo.queue_free()
 	_check(fallas.is_empty(),
-		"los veinte capitulos corren enteros: escena de entrada, eventos, pelea y escena final %s" % fallas)
+		"los treinta capitulos corren enteros: escena de entrada, eventos, pelea y escena final %s" % fallas)
 	_check(Progreso.capitulo_completado(Historia.cantidad() - 1) and Net.local_character_id == "dio",
 		"ganar el ultimo cierra la historia, y te devuelve el personaje que tenias elegido")
 	Cinematica.automatica = false

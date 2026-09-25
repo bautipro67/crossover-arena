@@ -30,6 +30,11 @@ extends RefCounted
 ##   Goku     aparece al final: contento, con hambre, y con ganas de pelear con alguien
 ##            fuerte. Abre la parte 2. "¡Hola, soy Goku!", "¡qué emocion!", y todo
 ##            torneo le parece el Tenkaichi Budokai.
+##   Madara   llega en la parte 3 por la grieta, buscando un rival a su altura. Orgulloso,
+##            frio, "desperta a la realidad"; no soporta que alguien lo use.
+##   Mob      Shigeo Kageyama. Timido, educado, con la cara siempre igual; dice su
+##            porcentaje cuando se le junta lo que siente. "No me gusta pelear". Nombra a
+##            su maestro (Reigen) como si fuera un sabio. Exorciza espiritus desde chico.
 ##   Mario    llega en la parte 2 por una tuberia equivocada. Habla poco y contento —
 ##            "¡Mamma mia!", "¡Wahoo!", "okey-dokey", "¡Let's-a go!"— y rescatar gente es
 ##            lo que hace siempre. Lo esperan la princesa Peach y un pastel.
@@ -38,6 +43,10 @@ extends RefCounted
 ## por la Arena y Dio escapo con el mas grande. La Arena, herida, llama a un TORNEO para
 ## rearmarse, y tira adentro a los mas fuertes: Goku, y Mario. Juntar los fragmentos, subir
 ## a la torre del centro y sacarle el nucleo a Dio, que se quiere convertir en la Arena.
+##
+## LA PARTE 3. Abajo de todo desperto el ESPIRITU DE LA ARENA: lo que sintieron mil años
+## de peleadores, junto, con hambre. Posee ecos, posee a DIO y a Madara, y quiere lo que
+## Mob guarda. Termina con Mob exorcizandolo cuando lo que siente deja de ser solo suyo.
 ##
 ## TODO LO QUE SE DICE ES ORIGINAL. De las obras salen los personajes y las frases que son
 ## su marca, nada mas.
@@ -51,6 +60,7 @@ extends RefCounted
 const PARTES: Array[Dictionary] = [
 	{"titulo": "PARTE 1: LA GRIETA", "capitulos": 10},
 	{"titulo": "PARTE 2: EL TORNEO DEL NÚCLEO", "capitulos": 10},
+	{"titulo": "PARTE 3: EL ESPÍRITU DE LA ARENA", "capitulos": 10},
 ]
 const NARRADOR: StringName = &"narrador"
 
@@ -1492,6 +1502,564 @@ static func _armar() -> Array[Dictionary]:
 			["fundido", "negro", 1.0],
 			["narrar", "En lo más hondo de la Arena, donde no llega ninguna puerta, algo que no es un eco abre los ojos."],
 			["titulo", "FIN DE LA PARTE 2", "La historia continuará"],
+		],
+	})
+
+	# ================================================================ PARTE 3
+	#
+	# EL ESPIRITU DE LA ARENA. Mil años de peleas no dejaron solo energia: dejaron lo que
+	# sintieron los que pelearon, y eso junto desperto como un ESPIRITU. No es un eco: no
+	# copia a nadie, se mete adentro. Posee ecos, posee peleadores, y se alimenta de
+	# emociones fuertes. Mob —que exorciza espiritus desde chico— es el unico que lo puede
+	# sacar, pero guarda todo lo que siente, y si llega al 100% le da al espiritu el banquete
+	# mas grande de su vida.
+	#
+	# MOB NO SE JUEGA: es el premio del pase de la temporada 2, como Goku lo fue de la 1.
+	# Esta de punta a punta como aliado y una vez como rival. Goku, que ya es de todos, si.
+
+	# ------------------------------------------------------------------ 21
+	c.append({
+		"titulo": "Un chico común",
+		"personaje": &"goku",
+		"enemigos": [
+			_eco("p1", &"sonic", Vector2(-5, -12), 34.0, 0.18),
+			_eco("p2", &"dio", Vector2(5, -12), 34.0, 0.18),
+			_eco("p3", &"flowery", Vector2(0, -14), 34.0, 0.18),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Sacate de encima a los ecos poseídos"},
+		"eventos": [
+			[["inicio"], [["decir", &"goku", "¡Qué raros estos ecos! Se mueven como si alguien los manejara desde adentro."]]],
+			[["quedan", 1], [
+				["aliado", _aliado(&"mob", "Mob", Vector2(2.5, 1.5), 90.0, 0.5)],
+				["decir", &"mob", "...Perdón. Eso que tienen adentro es un espíritu. Yo me encargo."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"rick", Vector2(-6, -14), 34.0, 0.18, false),
+					_eco("p5", &"noelle", Vector2(6, -14), 34.0, 0.18, false)]],
+				["decir", &"goku", "¡Ja! ¡Llegan más! ¡Esto se pone bueno!"]]],
+		],
+		"intro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Semanas después del torneo. La Arena está en calma, y Goku es el único que se quedó a entrenar."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "Mil flexiones, mil abdominales... ¡Qué aburrido es entrenar sin nadie con quien pelear!"],
+			["temblor", 0.6],
+			["aparecer", &"p1", &"sonic", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"dio", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"flowery", Vector2(0, -14), "sombra"],
+			["plano", "general"],
+			["narrar", "Los ecos no dicen nada. Se mueven a sacudones, como marionetas."],
+			["plano", "cerca", &"goku"],
+			["pose", &"goku", &"desafio", 1.2],
+			["decir", &"goku", "¡Bueno! ¡Al fin alguien con quien entrenar!"],
+		],
+		"outro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 200.0],
+			["plano", "dos", &"goku", &"mob"],
+			["decir", &"mob", "Me llamo Shigeo Kageyama. Pero me dicen Mob."],
+			["decir", &"goku", "¡Hola, soy Goku! ¡Qué ki enorme tenés! ¿Peleamos?"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "No me gusta pelear. Iba a la escuela y se me abrió el piso."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Jaja! A mí me pasó lo mismo, pero con un torneo."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Lo que tenían adentro esos ecos no era de ellos. Es un espíritu. Uno muy grande. Está debajo de todo esto."],
+			["fundido", "negro", 0.8],
+			["narrar", "Muy abajo, donde no llega ninguna puerta, algo se da cuenta de que lo vieron."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 22
+	c.append({
+		"titulo": "Espíritus en el cableado",
+		"personaje": &"mario",
+		"aliados": [
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 100.0, "daño": 0.5,
+				"pos": Vector2(0, -12), "quieto": true, "pose": &"pensar"},
+		],
+		"enemigos": [
+			_eco("p1", &"goku", Vector2(-6, -18), 34.0, 0.18),
+			_eco("p2", &"madara", Vector2(6, -18), 34.0, 0.18),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -12), "radio": 6.0, "segundos": 30.0,
+			"texto": "Quedate en el círculo mientras Mob exorciza la Arena"},
+		"eventos": [
+			[["inicio"], [["decir", &"mario", "¡Okey-dokey! Nadie toca al chico mientras hace su magia."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p3", &"sonic", Vector2(-8, -20), 34.0, 0.18, false),
+					_eco("p4", &"dio", Vector2(8, -20), 34.0, 0.18, false)]],
+				["decir", &"mob", "Están saliendo del piso. Los está mandando él."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p5", &"rick", Vector2(0, -22), 34.0, 0.18, false),
+					_eco("p6", &"mario", Vector2(-5, -20), 34.0, 0.18, false)]],
+				["decir", &"mario", "¡Mamma mia! ¡Uno con MI bigote!"]]],
+		],
+		"intro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, -12), 180.0],
+			["plano", "general"],
+			["narrar", "En el centro de la Arena, el suelo zumba como un cable pelado."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Si me quedo quieto acá, puedo empezar a sacarlo. Pero tarda."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¡Wahoo! Vos concentrate. Yo me encargo de los que vengan."],
+			["aparecer", &"p1", &"goku", Vector2(-6, -18), "sombra"],
+			["aparecer", &"p2", &"madara", Vector2(6, -18), "sombra"],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¡Let's-a go!"],
+		],
+		"outro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, -3), 180.0],
+			["plano", "dos", &"mario", &"mob"],
+			["decir", &"mob", "Lo saqué del cableado. Pero se fue más abajo. Es como querer atrapar humo."],
+			["decir", &"mario", "Mi hermano Luigi caza fantasmas con una aspiradora. ¡Te lo presentaría!"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Mi maestro dice que los espíritus malos se alimentan de lo que uno siente. Así que trato de no sentir mucho."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¿Y eso no cansa?"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "...Un poco."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 23
+	c.append({
+		"titulo": "Sin cara de nada",
+		"personaje": &"noelle",
+		"aliados": [_aliado(&"mob", "Mob", Vector2(2.5, 1.5), 90.0, 0.5)],
+		"enemigos": [
+			_eco("p1", &"dio", Vector2(-5, -12), 35.0, 0.19),
+			_eco("p2", &"goku", Vector2(5, -12), 35.0, 0.19),
+			_eco("p3", &"rick", Vector2(0, -14), 35.0, 0.19),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos poseídos junto a Mob"},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "¡P-perdón por estar tan nerviosa! ¡No es por vos!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"flowery", Vector2(-7, -14), 35.0, 0.19, false),
+					_eco("p5", &"madara", Vector2(7, -14), 35.0, 0.19, false)]],
+				["decir", &"mob", "Yo también me pongo nervioso. Pero no se me nota en la cara."]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.5), 0.0],
+			["plano", "dos", &"noelle", &"mob"],
+			["decir", &"noelle", "¡Hola! Soy Noelle... Rick me dijo que te acompañara. Perdón si molesto."],
+			["decir", &"mob", "No molestás. Yo tampoco sé hablar con gente nueva."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Es que... tenés la cara igual todo el tiempo. No sé si estás contento o enojado."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Yo tampoco sé, a veces."],
+			["aparecer", &"p1", &"dio", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"goku", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"rick", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "¡Ay! Bueno. Esto sí sé hacerlo."],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 200.0],
+			["plano", "dos", &"noelle", &"mob"],
+			["decir", &"mob", "Peleás mejor cuando dejás de pedir perdón."],
+			["decir", &"noelle", "¡Ah! ¿Sí? ...Perdón. Digo, ¡gracias!"],
+			["plano", "cerca", &"mob"],
+			["pose", &"mob", &"pensar", 1.2],
+			["decir", &"mob", "El espíritu no se llevó nada de vos. Casi siempre se lleva algo. Sos más valiente de lo que parecés."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Vos también."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 24
+	c.append({
+		"titulo": "Al sesenta por ciento",
+		"personaje": &"sonic",
+		"aliados": [_aliado(&"mob", "Mob", Vector2(2.5, 1.5), 90.0, 0.5)],
+		"enemigos": [
+			_eco("p1", &"madara", Vector2(-6, -12), 30.0, 0.17),
+			_eco("p2", &"mario", Vector2(6, -12), 30.0, 0.17),
+			_eco("p3", &"goku", Vector2(0, -14), 30.0, 0.17),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "limite": 120.0,
+			"texto": "Terminá la pelea antes de que Mob llegue al 100%"},
+		"eventos": [
+			[["inicio"], [["decir", &"mob", "El espíritu me está provocando. 40%."]]],
+			[["tiempo", 30.0], [["decir", &"mob", "...60%. Sonic, rápido, por favor."]]],
+			[["tiempo", 70.0], [["decir", &"mob", "80%. Si llego, él gana."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"dio", Vector2(-8, -14), 30.0, 0.17, false),
+					_eco("p5", &"sonic", Vector2(8, -14), 30.0, 0.17, false)]],
+				["decir", &"sonic", "¿Más? ¡Demasiado lentos igual!"]]],
+		],
+		"intro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.5), 0.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Cuando me enojo mucho, o me pongo muy triste, llego al 100%. Y ahí no sé lo que hago."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "¿Y el espíritu lo sabe?"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Sí. Por eso me manda estos. Para ver cuánto aguanto."],
+			["aparecer", &"p1", &"madara", Vector2(-6, -12), "sombra"],
+			["aparecer", &"p2", &"mario", Vector2(6, -12), "sombra"],
+			["aparecer", &"p3", &"goku", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"sonic"],
+			["pose", &"sonic", &"senalar", 1.0],
+			["decir", &"sonic", "Entonces esto se termina rápido. Y rápido es lo mío."],
+		],
+		"outro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 200.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "...Bajé. 30%."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "¿Ves? Nadie gana una carrera contra mí. Ni un fantasma."],
+			["plano", "dos", &"sonic", &"mob"],
+			["decir", &"mob", "Gracias. No estoy acostumbrado a que me ayuden a no explotar."],
+			["decir", &"sonic", "Para eso están los amigos. Aunque vos corras como una tortuga."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 25
+	c.append({
+		"titulo": "El que no se deja",
+		"personaje": &"rick",
+		"aliados": [
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 90.0, "daño": 0.5,
+				"pos": Vector2(2.5, 1.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO Poseído", "vida": 200.0, "daño": 0.30,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"dio", "texto": "Derrotá a DIO poseído"},
+		"eventos": [
+			[["inicio"], [["decir", &"rick", "Genial. El vampiro narcisista, con un fantasma adentro. Es martes."]]],
+			[["vida", &"dio", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"dio"],
+					["decir", &"dio", "Este... cuerpo... ¡NADIE POSEE A DIO!"],
+					["aparecer", &"mob", &"mob", Vector2(2.5, 1.5), "caida"],
+					["plano", "cerca", &"mob"],
+					["decir", &"mob", "Aguante un poco más. Si lo debilitan, lo puedo sacar."],
+					["plano", "cerca", &"rick"],
+					["decir", &"rick", "Por fin alguien útil. ¡Dale, Morty! Digo, Mob."],
+				]],
+				["entrar", &"mob"],
+				["objetivo", {"tipo": "derrotar", "id": &"dio", "texto": "Debilitá a DIO para que Mob lo exorcice"}]]],
+		],
+		"intro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"rick"],
+			["narrar", "Rick siguió la señal del espíritu hasta un sótano de la Arena que no estaba en ningún mapa."],
+			["decir", &"rick", "*burp* Lectura de ectoplasma altísima. Sí, existe el ectoplasma. No, no quiero hablar de eso."],
+			["aparecer", &"dio", &"dio", Vector2(0, -9), "sombra"],
+			["plano", "abajo", &"dio"],
+			["narrar", "Es DIO. Pero habla con dos voces a la vez."],
+			["decir", &"dio", "Rick... Sanchez... Tu cerebro... sería... un buen... banquete."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Mi cerebro no es comida para fantasmas de segunda mano. Ni para vampiros de primera."],
+		],
+		"outro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 200.0],
+			["colocar", &"dio", Vector2(0, -5), 180.0],
+			["plano", "cerca", &"mob"],
+			["pose", &"mob", &"pensar", 1.0],
+			["decir", &"mob", "Ya está. Salió."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Ese... gusano... se metió en MI cuerpo. En el cuerpo de DIO."],
+			["decir", &"dio", "Chico. Tu fantasma me ofendió. Voy a ayudarte a destruirlo. No lo hago por vos."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Ah, la alianza de siempre: el que te quería matar la semana pasada."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 26
+	c.append({
+		"titulo": "Flores para un fantasma",
+		"personaje": &"flowery",
+		"aliados": [
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 110.0, "daño": 0.5,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"pensar"},
+		],
+		"enemigos": [
+			_eco("p1", &"noelle", Vector2(-5, -12), 40.0, 0.20),
+			_eco("p2", &"goku", Vector2(5, -12), 40.0, 0.20),
+			_eco("p3", &"sonic", Vector2(0, -14), 40.0, 0.20),
+		],
+		"objetivo": {"tipo": "proteger", "id": &"mob", "segundos": 40.0,
+			"texto": "Protegé a Mob mientras exorciza el fragmento poseído"},
+		"eventos": [
+			[["inicio"], [["decir", &"flowery", "¡Groovy! ¡Una fiesta con fantasmas! ¡Nadie toca al invitado de honor!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"dio", Vector2(-8, -14), 40.0, 0.20, false),
+					_eco("p5", &"madara", Vector2(8, -14), 40.0, 0.20, false)]],
+				["decir", &"mob", "Ya casi. Lo siento resistirse."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p6", &"rick", Vector2(0, -16), 40.0, 0.20, false),
+					_eco("p7", &"mario", Vector2(-6, -16), 40.0, 0.20, false)]],
+				["decir", &"flowery", "¡Más invitados! ¡JARONA para todos!"]]],
+		],
+		"intro": [
+			["colocar", &"flowery", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, 3), 180.0],
+			["plano", "general"],
+			["narrar", "Un pedazo del núcleo de la Arena late como un corazón enfermo. El espíritu se escondió adentro."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Necesito cuarenta segundos sin que me toquen. Es mucho pedir, perdón."],
+			["plano", "cerca", &"flowery"],
+			["pose", &"flowery", &"desafio", 1.2],
+			["decir", &"flowery", "¿Cuarenta? ¡Te doy una canción entera! Asgore dice que las flores cuidan a los que están quietos."],
+			["aparecer", &"p1", &"noelle", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"goku", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"sonic", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"flowery", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, 3), 180.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Salió del fragmento. Pero se llevó algo: un pedazo de todo lo que sentía la gente que peleó acá."],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "¿Y qué siente, el pobre?"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Hambre. Solo eso. Nunca sintió otra cosa."],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "...Qué triste. Hasta a un fantasma le vendría bien una flor."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 27
+	c.append({
+		"titulo": "Lo que se guarda",
+		"personaje": &"madara",
+		"enemigos": [
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 200.0, "daño": 0.42,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"mob", "hasta": 0.5, "texto": "Empujá a Mob hasta su límite"},
+		"eventos": [
+			[["inicio"], [["decir", &"madara", "Mostrame ese poder que escondés, chico. Despertá a la realidad."]]],
+			[["vida", &"mob", 0.75], [["decir", &"mob", "Por favor, pare. 70%."]]],
+		],
+		"intro": [
+			["colocar", &"madara", Vector2(0, 0), 0.0],
+			["aparecer", &"mob", &"mob", Vector2(0, -9), "teletransporte"],
+			["plano", "general"],
+			["narrar", "La grieta que trajo a Mob se abrió otra vez, y por ella bajó un guerrero de otro mundo."],
+			["plano", "abajo", &"madara"],
+			["pose", &"madara", &"brazos_cruzados", 1.4],
+			["decir", &"madara", "Soy Madara Uchiha. Sentí tu chakra desde el otro lado de la grieta."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "No sé qué es el chakra. Y no quiero pelear."],
+			["plano", "abajo", &"madara"],
+			["decir", &"madara", "Nadie que tenga ese poder quiere pelear. Hasta que lo obligan."],
+		],
+		"outro": [
+			["colocar", &"madara", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, -5), 180.0],
+			["plano", "cerca", &"mob"],
+			["narrar", "Mob se para. 99%. Y no suelta nada."],
+			["decir", &"mob", "Lo que siento es mío. No lo voy a usar para lastimar a nadie."],
+			["plano", "abajo", &"madara"],
+			["decir", &"madara", "Tanto poder, y lo guardás... Interesante. Yo nunca pude guardar nada."],
+			["temblor", 1.0],
+			["plano", "cerca", &"madara"],
+			["narrar", "Y en ese instante, algo sube desde el piso y se mete en Madara."],
+			["decir", &"madara", "¿Qué...? Esta... ira... no es mía..."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 28
+	c.append({
+		"titulo": "Un guerrero ajeno",
+		"personaje": &"goku",
+		"aliados": [
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 90.0, "daño": 0.5,
+				"pos": Vector2(2.5, 1.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"madara", "personaje": &"madara", "nombre": "Madara Poseído", "vida": 150.0,
+				"daño": 0.21, "pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"madara", "texto": "Derrotá a Madara poseído"},
+		"eventos": [
+			[["inicio"], [["decir", &"goku", "¡Qué ki tan pesado! Ese no es el Madara de hace un rato."]]],
+			[["vida", &"madara", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"madara"],
+					["decir", &"madara", "Este cuerpo... es fuerte... Me quedo con él..."],
+					["aparecer", &"mob", &"mob", Vector2(2.5, 1.5), "caida"],
+					["plano", "cerca", &"mob"],
+					["decir", &"mob", "No. Ese cuerpo no es tuyo."],
+					["plano", "cerca", &"goku"],
+					["pose", &"goku", &"victoria", 1.0],
+					["decir", &"goku", "¡Mob! ¡Juntos! ¡Yo lo canso, vos se lo sacás!"],
+				]],
+				["entrar", &"mob"],
+				["potenciar", &"madara", 12.0],
+				["objetivo", {"tipo": "derrotar", "id": &"madara", "texto": "Derrotá a Madara junto a Mob"}]]],
+		],
+		"intro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["aparecer", &"madara", &"madara", Vector2(0, -9), "sombra"],
+			["plano", "abajo", &"madara"],
+			["narrar", "Madara habla con dos voces. Una es suya. La otra tiene mil años de hambre."],
+			["decir", &"madara", "El chico no quiso explotar. Entonces... voy a comerme a los que quiere."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "No sé quién sos, fantasma, pero Madara peleaba limpio. Vos no."],
+			["pose", &"goku", &"desafio", 1.2],
+			["decir", &"goku", "¡Salí de ahí y peleá conmigo!"],
+		],
+		"outro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 200.0],
+			["colocar", &"madara", Vector2(0, -5), 180.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Salió. Pero ahora es más grande. Comió todo lo que Madara tenía guardado."],
+			["plano", "abajo", &"madara"],
+			["decir", &"madara", "Humillante. Un espíritu sin nombre, usándome como una marioneta."],
+			["decir", &"madara", "Chico. Cuando lo encuentres, avisame. Esa deuda la cobro yo."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Y yo! ¡Ya somos un equipo!"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 29
+	c.append({
+		"titulo": "Todos los sentimientos",
+		"personaje": &"dio",
+		"aliados": [
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 110.0, "daño": 0.5,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"pensar"},
+			_aliado(&"madara", "Madara", Vector2(2.5, 1.5), 100.0, 0.5),
+		],
+		"enemigos": [
+			_eco("p1", &"sonic", Vector2(-5, -12), 38.0, 0.19),
+			_eco("p2", &"rick", Vector2(5, -12), 38.0, 0.19),
+			_eco("p3", &"noelle", Vector2(0, -14), 38.0, 0.19),
+		],
+		"objetivo": {"tipo": "sobrevivir", "segundos": 45.0,
+			"texto": "Aguantá mientras Mob junta lo que sienten todos"},
+		"eventos": [
+			[["inicio"], [["decir", &"dio", "¿DIO cuidándole la espalda a un mocoso? Que no se entere nadie."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"goku", Vector2(-8, -14), 38.0, 0.19, false),
+					_eco("p5", &"mario", Vector2(8, -14), 38.0, 0.19, false)]],
+				["decir", &"madara", "Vienen más. Bailemos, vampiro."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p6", &"flowery", Vector2(0, -16), 38.0, 0.19, false),
+					_eco("p7", &"madara", Vector2(-6, -16), 38.0, 0.19, false)]],
+				["decir", &"dio", "¡MUDA! Ni un espíritu de mil años le gana al tiempo de DIO."]]],
+		],
+		"intro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["colocar", &"madara", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"mob", Vector2(0, 3), 180.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "El espíritu come lo que uno siente. Pero si lo que siento lo sienten todos conmigo... no me lo puede sacar."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Qué idea tan cursi. ¿Y cuánto tarda la cursilería?"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Cuarenta y cinco segundos."],
+			["aparecer", &"p1", &"sonic", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"rick", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"noelle", Vector2(0, -14), "sombra"],
+			["plano", "abajo", &"dio"],
+			["pose", &"dio", &"desafio", 1.2],
+			["decir", &"dio", "Insectos. Ni siquiera tienen voluntad propia."],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["colocar", &"madara", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"mob", Vector2(0, 3), 180.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Ya está. Lo que sienten todos... lo tengo. Y no pesa. Es raro: no pesa nada."],
+			["temblor", 1.4],
+			["plano", "general"],
+			["narrar", "Debajo de la Arena, el espíritu se da cuenta de que se quedó sin comida. Y sube."],
+			["plano", "abajo", &"madara"],
+			["decir", &"madara", "Viene. Por fin."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 30
+	c.append({
+		"titulo": "???%",
+		"personaje": &"noelle",
+		"aliados": [
+			_aliado(&"goku", "Goku", Vector2(2.5, 1.5), 100.0, 0.42),
+			_aliado(&"madara", "Madara", Vector2(-2.5, 1.5), 100.0, 0.42),
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 100.0, "daño": 0.45,
+				"pos": Vector2(0, 3.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"incognita", "personaje": &"mob", "nombre": "???%", "vida": 430.0, "daño": 0.45,
+				"pos": Vector2(0, -9), "jefe": true, "eco": true, "oculto": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"incognita", "texto": "Derrotá al espíritu de la Arena"},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "¡Es la forma de Mob! Pero... vacía. Sin nadie adentro."]]],
+			[["vida", &"incognita", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"incognita"],
+					["decir", &"incognita", "Todo lo que ese chico guardó. Todo lo que ustedes sienten. Es MÍO."],
+					["aparecer", &"mob", &"mob", Vector2(0, 3.5), "caida"],
+					["plano", "cerca", &"mob"],
+					["decir", &"mob", "No. Lo que siento es mío. Y lo que sienten ellos también es de ellos."],
+					["plano", "cerca", &"noelle"],
+					["decir", &"noelle", "¡Mob! ¡Estamos con vos!"],
+					["plano", "cerca", &"mob"],
+					["grito", &"mob", "100%", &"voz_cien"],
+				]],
+				["entrar", &"mob"],
+				["potenciar", &"mob", 20.0],
+				["objetivo", {"tipo": "derrotar", "id": &"incognita", "texto": "Terminá con el espíritu junto a Mob"}]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"madara", Vector2(-2.5, 1.5), 0.0],
+			["temblor", 1.2],
+			["plano", "general"],
+			["narrar", "El piso de la Arena se abre, y de abajo sube una sombra con la forma de un chico."],
+			["aparecer", &"incognita", &"mob", Vector2(0, -9), "sombra"],
+			["plano", "abajo", &"incognita"],
+			["decir", &"incognita", "¿Les gusta? Es la forma de lo que el chico esconde. Del ???%."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¿Y Mob? ¿Dónde está Mob?"],
+			["plano", "abajo", &"incognita"],
+			["decir", &"incognita", "Dormido. Cuando despierte, va a estar tan asustado que me va a dar todo."],
+			["plano", "cerca", &"noelle"],
+			["pose", &"noelle", &"desafio", 1.2],
+			["decir", &"noelle", "N-no. Mob me dijo que soy más valiente de lo que parezco. ¡Y tenía razón!"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, -2), 180.0],
+			["colocar", &"goku", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"madara", Vector2(-2.5, 1.0), -20.0],
+			["colocar", &"incognita", Vector2(0, -6), 180.0],
+			["plano", "abajo", &"incognita"],
+			["decir", &"incognita", "¿Por qué... no tengo hambre?"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Porque por primera vez sentiste otra cosa. Te exorcizo. Ya podés descansar."],
+			["desaparecer", &"incognita", "sombra"],
+			["fundido", "claro", 1.0],
+			["plano", "general"],
+			["narrar", "La Arena se queda quieta. Por primera vez en mil años, nadie la mueve desde abajo."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Mob! ¡Ahora sí! ¿Peleamos? ¡Aunque sea un poquito!"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "...Un poquito. Pero primero tengo que volver. Mi maestro debe estar preocupado. O dormido."],
+			["plano", "abajo", &"madara"],
+			["decir", &"madara", "Un chico que guarda todo y no se rompe. Tal vez el mundo sí puede despertar a otra realidad."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Volvé cuando quieras. Esta vez sin que se abra el piso."],
+			["fundido", "negro", 1.0],
+			["titulo", "FIN DE LA PARTE 3", "La historia continuará"],
 		],
 	})
 

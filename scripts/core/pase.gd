@@ -2,9 +2,10 @@ extends Node
 ## Autoload: Pase
 ## El pase de temporada. Treinta escalones, dos vias: la gratuita y la pro.
 ##
-## TEMPORADA 1. La 0 termino: al abrir el juego con un archivo de la 0, lo que se habia
-## alcanzado y no se habia cobrado se cobra solo, y el pase arranca de cero. Ver
-## _cerrar_temporada_vieja().
+## TEMPORADA 2. La 1 termino el 2026-09-25: al abrir el juego con un archivo de una
+## temporada anterior, lo que se habia alcanzado y no se habia cobrado se cobra solo, y el
+## pase arranca de cero. Ver _cerrar_temporada_vieja(). Goku, que era el premio de la 1,
+## quedo de todos; el de la 2 es Mob.
 ##
 ## LAS DOS VIAS AVANZAN CON LA MISMA EXPERIENCIA. Comprar el pro no acelera nada: abre la
 ## fila de abajo, incluidas las recompensas de los escalones que ya pasaste. Es lo que
@@ -15,8 +16,8 @@ extends Node
 ## compran mas skins, y la experiencia solo mueve estas mismas barras. Un circuito cerrado
 ## que empieza y termina en lo cosmetico, a proposito.
 
-const TEMPORADA: int = 1
-const NOMBRE: String = "TEMPORADA 1 — TORNEO DE ARTES MARCIALES"
+const TEMPORADA: int = 2
+const NOMBRE: String = "TEMPORADA 2 — FUERZA PSÍQUICA"
 const ESCALONES: int = 30
 ## Experiencia por escalon. 250 x 30 = 7500 para el pase entero, que a unos 170 por
 ## partida son unas 45 partidas. Una temporada tiene que durar, pero tiene que terminarse.
@@ -26,7 +27,7 @@ const EXP_POR_ESCALON: int = 250
 const MONEDAS: StringName = &"monedas"
 const EXP: StringName = &"exp"
 const SKIN: StringName = &"skin"
-## Un personaje entero. Hoy, solo Goku en el ultimo escalon del pro.
+## Un personaje entero: el premio del ultimo escalon del pro. Goku en la 1, Mob en la 2.
 const PERSONAJE: StringName = &"personaje"
 const NADA: StringName = &"nada"
 
@@ -43,14 +44,14 @@ var aviso_cierre: String = ""
 var _tabla: Dictionary = {}
 
 
-## La tabla de la temporada 0. Solo se usa para cerrarla: cobrar lo que alguien alcanzo
-## y no llego a reclamar antes de que terminara.
-var _tabla_t0: Dictionary = {}
+## Las tablas de las temporadas que ya terminaron, por numero. Solo se usan para
+## cerrarlas: cobrar lo que alguien alcanzo y no llego a reclamar antes de que terminaran.
+var _viejas: Dictionary = {}
 
 
 func _ready() -> void:
-	_tabla_t0 = _armar_temporada_0()
-	_tabla = _armar_temporada_1()
+	_viejas = {0: _armar_temporada_0(), 1: _armar_temporada_1()}
+	_tabla = _armar_temporada_2()
 	_cerrar_temporada_vieja()
 
 
@@ -102,6 +103,21 @@ func _armar_temporada_1() -> Dictionary:
 	return t
 
 
+func _armar_temporada_2() -> Dictionary:
+	var t := _base()
+	# El mismo reparto que la 1 y la 0.
+	_poner(t, 3, null, [SKIN, "mario_hielo"])
+	_poner(t, 7, [SKIN, "sonic_oscuro"], null)
+	_poner(t, 10, null, [SKIN, "dio_phantom"])
+	_poner(t, 14, null, [SKIN, "flowery_asgore"])
+	_poner(t, 18, [SKIN, "madara_joven"], null)
+	_poner(t, 22, null, [SKIN, "noelle_cyber"])
+	_poner(t, 26, null, [SKIN, "sonic_hyper"])
+	# EL ULTIMO ESCALON DEL PRO ES MOB, como Goku en la 1: es lo unico que lo desbloquea.
+	_poner(t, 30, [MONEDAS, 500], [PERSONAJE, "mob"])
+	return t
+
+
 func _poner(t: Dictionary, escalon: int, gratis: Variant, pro: Variant) -> void:
 	var fila: Array = t.get(escalon, [[NADA, 0], [NADA, 0]])
 	if gratis != null:
@@ -128,7 +144,8 @@ func _cerrar_temporada_vieja() -> void:
 		return
 	if Progreso.temporada >= TEMPORADA:
 		return
-	var cobradas := cobrar_pendientes(_tabla_t0)
+	var vieja := Progreso.temporada
+	var cobradas := cobrar_pendientes(_viejas.get(vieja, {}))
 	var tenia_pro := Progreso.pase_pro
 	Progreso.pase_exp = 0
 	Progreso.pase_pro = false
@@ -136,11 +153,14 @@ func _cerrar_temporada_vieja() -> void:
 	Progreso.temporada = TEMPORADA
 	Progreso.guardar()
 	Progreso.cambio.emit()
-	aviso_cierre = "Terminó la Temporada 0 y empezó la Temporada %d: Torneo de Artes Marciales." % TEMPORADA
+	aviso_cierre = "Terminó la Temporada %d y empezó la Temporada %d: Fuerza Psíquica." % [vieja, TEMPORADA]
+	# El premio de la 1 queda para todos (ver CharacterDB: Goku ya no pide desbloqueo).
+	if vieja <= 1:
+		aviso_cierre += " Goku ahora es de todos: ya lo podés elegir."
 	if cobradas > 0:
 		aviso_cierre += " Se cobraron solas %d recompensas que tenías pendientes." % cobradas
 	if tenia_pro:
-		aviso_cierre += " El pase pro es por temporada: el de la 1 se compra aparte."
+		aviso_cierre += " El pase pro es por temporada: el de la %d se compra aparte." % TEMPORADA
 
 
 ## Cobra lo alcanzado y no reclamado de una tabla. Devuelve cuantas cobro.

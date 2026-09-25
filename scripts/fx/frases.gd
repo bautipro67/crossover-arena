@@ -62,6 +62,8 @@ const LINEAS_CARGA: Dictionary = {
 	# y el Tengai Shinsei con la mano en alto, antes de que se vea el primer meteorito.
 	&"goka_messhitsu": [["¡KATON: GŌKA MESSHITSU!", 0.0, &"voz_katon"]],
 	&"tengai_shinsei": [["¡TENGAI SHINSEI!", 0.0, &"voz_tengai"]],
+	# Mob no grita sus poderes: el unico numero que dice es el que lo desborda.
+	&"cien_por_ciento": [["100%", 0.0, &"voz_cien"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el

@@ -83,7 +83,7 @@ gente.
    El más rápido y el más frágil. Entra, pega y se va antes de que le respondan.
    Spin Attack · Spin Dash · Homing Attack · SUPER SONIC
 
-🔥 GOKU — Dragon Ball  (se gana completando el pase pro de la Temporada 1)
+🔥 GOKU — Dragon Ball  (gratis: terminó la Temporada 1 y ahora es de todos)
    El todoterreno. Aparece detrás de tu espalda y carga el rayo a la vista de todos.
    Combo de Golpes · Ráfaga de Ki · Teletransportación · KAMEHAMEHA
 
@@ -92,12 +92,17 @@ gente.
    le cae encima, y la Superestrella, que por unos segundos lo vuelve invencible.
    Puño y Patada · Bola de Fuego · Súper Salto · SUPERESTRELLA
 
-☄ MADARA UCHIHA — Naruto Shippuden  (NUEVO, gratis)
+☄ MADARA UCHIHA — Naruto Shippuden  (gratis)
    Control del campo. Un muro de fuego, el Susano'o que lo envuelve y corta, y dos
    meteoritos gigantes que caen uno tras otro donde apunta.
    Gunbai · Katon: Gōka Messhitsu · Susano'o · TENGAI SHINSEI
 
-═══ MODO HISTORIA — DOS PARTES, VEINTE CAPÍTULOS ═══
+🌀 MOB — Mob Psycho 100  (NUEVO: se gana completando el pase pro de la Temporada 2)
+   Telequinesis. Empuja de lejos, te tira el piso encima en cuatro piedras, se cubre
+   con una barrera que echa a todos, y cuando llega al 100%, revienta.
+   Onda Psíquica · Escombros · Barrera · 100%
+
+═══ MODO HISTORIA — TRES PARTES, TREINTA CAPÍTULOS ═══
 
 PARTE 1: LA GRIETA. Un experimento de Rick rompe la pared entre los mundos, y todo lo que
 cae por la grieta termina en la Arena: un coliseo entre mundos que vive de las peleas.
@@ -111,6 +116,12 @@ el más grande, y la Arena llama a un torneo para rearmarse. Llegan Goku y Mario
 tubería equivocada, camino al castillo de la princesa—. Juntar los fragmentos, subir a
 la torre del centro y sacarle el núcleo a DIO antes de que se convierta en la Arena.
 Se abre al terminar la parte 1.
+
+PARTE 3: EL ESPÍRITU DE LA ARENA (NUEVA). Mil años de peleas no dejaron solo energía:
+dejaron lo que sintieron los que pelearon, y eso despertó con hambre. Un espíritu que se
+mete adentro de los ecos, de DIO y de Madara, y que quiere lo que Mob guarda. Diez
+capítulos con Goku —ahora de todos— y Madara jugables, y Mob a tu lado. Se abre al
+terminar la parte 2.
 
 DIFICULTAD. Fácil, Normal o Difícil, y se cambia cuando quieras desde la pantalla
 de capítulos. Fácil paga la mitad de monedas y experiencia; Difícil, un 50% más. Y en
@@ -132,17 +143,20 @@ que la 1, y los jefes un escalón por encima de todo lo demás.
   · Rey de la colina — aguantá 45 segundos dentro del círculo.
   · Sala de práctica — ver abajo.
 
-═══ TEMPORADA 1: TORNEO DE ARTES MARCIALES ═══
+═══ TEMPORADA 2: FUERZA PSÍQUICA (NUEVA) ═══
 
 Jugar da experiencia y monedas: subís de nivel (del 1 al 60) y avanzás los 30 escalones
 del pase, con skins, monedas y experiencia de premio. El pase pro se desbloquea con
 monedas que se ganan peleando, fuera de la sala de práctica.
 
-El último escalón del pase pro es GOKU: no se vende ni sale de otro lado. Los
+Terminó la Temporada 1, y GOKU, que era su premio, ahora es de todos. Lo pendiente de
+la 1 se cobra solo al entrar.
+
+El último escalón del pase pro de la 2 es MOB: no se vende ni sale de otro lado. Los
 escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
 tarda subirlo jugando.
 
-31 skins entre el pase y la tienda, 12 nuevas en esta temporada. Cuanto más rara, más
+47 skins entre el pase y la tienda, 10 nuevas en esta temporada. Cuanto más rara, más
 se nota: las raras recolorean el personaje entero, las épicas suman un acabado (metal,
 piedra, sombra) o un accesorio, y las legendarias un aura y ojos que brillan. En la tienda hay un probador para verla
 puesta antes de comprarla.

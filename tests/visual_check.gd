@@ -203,6 +203,7 @@ func _run() -> void:
 	# --- Flowery ---
 	await _flowery()
 	await _madara()
+	await _mob()
 
 	# --- Los bots peleando, que es lo que cambia el modo practica ---
 	await _bots_en_combate()
@@ -424,6 +425,48 @@ func _madara() -> void:
 	await _wait(TengaiShinsei.ENTRE)
 	await _shot("33_segundo_meteorito")
 	await _wait(1.0)
+	player.health.set_max(100.0)
+
+
+## El kit de Mob: los escombros, la barrera y el 100%.
+func _mob() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+	player.setup_character(CharacterDB.get_character(&"mob"))
+	var hud := _find_hud()
+	if hud != null:
+		hud.bind_player(player)
+	_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+	player.health.set_max(3000.0)
+	player.status.clear_all()
+	await _wait(1.2)
+	await _shot("34_mob_hud")
+
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)  # Escombros
+	await _wait(0.4)
+	await _shot("35_escombros")
+
+	await _wait(1.0)
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)  # Barrera
+	await _wait(0.3)
+	await _shot("36_barrera")
+
+	await _wait(BarreraPsiquica.DURACION)
+	player.stamina.restore_full()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.reset_state()
+	player.caster.request_use(3)  # 100%
+	await _wait(CienPorCiento.new().channel_time + 0.15)
+	await _shot("37_cien_por_ciento")
+	await _wait(1.0)
+	await _shot("38_mob_al_100")
+	await _wait(CienPorCiento.DURACION)
 	player.health.set_max(100.0)
 
 

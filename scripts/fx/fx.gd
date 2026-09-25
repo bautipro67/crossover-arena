@@ -1455,6 +1455,134 @@ func _explosion_meteorito(context: Node, punto: Vector3, radio: float) -> void:
 	Sfx.play_3d(context, &"aterrizaje", punto, 6.0)
 
 
+# -------------------------------------------------------------------- Mob
+
+## La Barrera de Mob: una burbuja celeste alrededor del cuerpo, y el empujon que sale de
+## ella al levantarla.
+func spawn_barrera(caster: Node3D, duracion: float, radio: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var viejo := caster.get_node_or_null(^"Barrera")
+	if viejo != null:
+		viejo.queue_free()
+	var burbuja := MeshInstance3D.new()
+	burbuja.name = &"Barrera"
+	var esfera := SphereMesh.new()
+	esfera.radius = 1.15
+	esfera.height = 2.3
+	burbuja.mesh = esfera
+	var mat := Art.glow(Color(0.60, 0.78, 1.0), 1.2)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.albedo_color.a = 0.16
+	burbuja.material_override = mat
+	burbuja.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	caster.add_child(burbuja)
+	burbuja.position = Vector3(0.0, 1.0, 0.0)
+	var tw := burbuja.create_tween()
+	tw.tween_property(burbuja, "scale", Vector3.ONE, 0.18).from(Vector3.ONE * 0.4) 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(maxf(0.0, duracion - 0.5))
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.3)
+	tw.tween_callback(burbuja.queue_free)
+	spawn_pisoton(caster, caster.global_position, radio)
+	Sfx.play_3d(caster, &"psiquico", caster.global_position + Vector3.UP, 2.0)
+
+
+## El 100%: la onda que revienta, y el aura que queda mientras dura.
+##
+## EL PELO FLOTA EN PUNTAS, como en la serie cuando llega al 100%: unas puntas de luz
+## arriba de la cabeza. Se llama AuraSuper, como la de Super Sonic y la de la estrella:
+## las escenas del modo historia la esconden por ese nombre.
+func spawn_cien_por_ciento(caster: Node3D, radio: float, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var world := _world_of(caster)
+	if world != null:
+		var onda := MeshInstance3D.new()
+		var esfera := SphereMesh.new()
+		esfera.radius = 1.0
+		esfera.height = 2.0
+		onda.mesh = esfera
+		var mat_onda := Art.glow(Color(0.80, 0.90, 1.0), 2.4)
+		mat_onda.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat_onda.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		mat_onda.cull_mode = BaseMaterial3D.CULL_DISABLED
+		onda.material_override = mat_onda
+		onda.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(onda)
+		onda.global_position = caster.global_position + Vector3.UP
+		var tw := onda.create_tween().set_parallel()
+		tw.tween_property(onda, "scale", Vector3.ONE * radio, 0.45).from(Vector3.ONE * 0.5) 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(mat_onda, "albedo_color:a", 0.0, 0.5).from(0.28)
+		tw.chain().tween_callback(onda.queue_free)
+		spawn_pisoton(caster, caster.global_position, radio)
+		var luz := OmniLight3D.new()
+		luz.light_color = Color(0.80, 0.90, 1.0)
+		luz.light_energy = 12.0
+		luz.omni_range = radio * 1.6
+		world.add_child(luz)
+		luz.global_position = caster.global_position + Vector3.UP * 1.5
+		_fade_light(luz, 0.8)
+	camera_shake(2.0)
+	Sfx.play_3d(caster, &"explosion_psiquica", caster.global_position + Vector3.UP, 4.0)
+
+	var viejo := caster.get_node_or_null(^"AuraSuper")
+	if viejo != null:
+		viejo.queue_free()
+	var aura := Node3D.new()
+	aura.name = &"AuraSuper"
+	caster.add_child(aura)
+	aura.position = Vector3(0.0, 1.0, 0.0)
+	# Tenue: bien opaca, la capsula lo tapaba entero los seis segundos. Lo que se tiene que
+	# ver es Mob con el pelo flotando, no una pastilla blanca.
+	var brillo := Art.glow(Color(0.82, 0.92, 1.0), 0.8)
+	brillo.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	brillo.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	brillo.albedo_color.a = 0.07
+	var cascara := Art.capsule(0.6, 2.0, brillo)
+	cascara.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	aura.add_child(cascara)
+	# Las puntas del pelo, flotando para arriba.
+	var puntas := Art.glow(Color(0.90, 0.95, 1.0), 2.6)
+	for k: int in range(7):
+		var ang := TAU * float(k) / 7.0
+		var pivote := Node3D.new()
+		pivote.position = Vector3(cos(ang) * 0.13, 0.95, sin(ang) * 0.13)
+		pivote.rotation = Vector3(sin(ang) * 0.5, 0.0, -cos(ang) * 0.5)
+		aura.add_child(pivote)
+		var cono := MeshInstance3D.new()
+		var malla := CylinderMesh.new()
+		malla.top_radius = 0.0
+		malla.bottom_radius = 0.05
+		malla.height = 0.28
+		cono.mesh = malla
+		cono.material_override = puntas
+		cono.position = Vector3(0.0, 0.14, 0.0)
+		pivote.add_child(cono)
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.amount = 30
+	chispas.lifetime = 0.8
+	chispas.direction = Vector3.UP
+	chispas.spread = 40.0
+	chispas.initial_velocity_min = 0.8
+	chispas.initial_velocity_max = 2.2
+	chispas.gravity = Vector3.ZERO
+	chispas.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	chispas.emission_sphere_radius = 0.6
+	chispas.scale_amount_min = 0.05
+	chispas.scale_amount_max = 0.12
+	chispas.color = Color(0.85, 0.93, 1.0, 0.85)
+	aura.add_child(chispas)
+	var luz_aura := OmniLight3D.new()
+	luz_aura.light_color = Color(0.80, 0.90, 1.0)
+	luz_aura.light_energy = 1.8
+	luz_aura.omni_range = 5.0
+	aura.add_child(luz_aura)
+	_auto_free(aura, duracion)
+
+
 # ------------------------------------------------------------------- Goku
 
 ## Teletransportacion: el destello donde desaparece o aparece.
@@ -2135,6 +2263,16 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 		&"superestrella":
 			if caster is Node3D:
 				spawn_estrella(caster as Node3D, Superestrella.DURACION)
+		&"onda_psiquica":
+			OndaPsiquica.spawn_cosmetic(caster, origin, dir)
+		&"escombros":
+			Escombros.spawn_cosmetic(caster, origin, dir)
+		&"barrera_psiquica":
+			if caster is Node3D:
+				spawn_barrera(caster as Node3D, BarreraPsiquica.DURACION, BarreraPsiquica.RADIO)
+		&"cien_por_ciento":
+			if caster is Node3D:
+				spawn_cien_por_ciento(caster as Node3D, CienPorCiento.RADIO, CienPorCiento.DURACION)
 		&"gunbai":
 			spawn_melee_arc(caster, origin, dir)
 		&"goka_messhitsu":

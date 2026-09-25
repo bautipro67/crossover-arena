@@ -1197,6 +1197,8 @@ func _build_costume(kind: StringName) -> void:
 			_build_mario()
 		&"uchiha":
 			_build_madara()
+		&"tazon":
+			_build_mob()
 		_:
 			pass
 
@@ -2366,6 +2368,77 @@ func _build_madara() -> void:
 		var eslabones := Art.cylinder(0.008, 0.40, cadena, Vector3(0.0, -0.52, 0.03))
 		eslabones.rotation_degrees = Vector3(12.0, 0.0, 0.0)
 		_costume_add(_elbow_r, eslabones)
+
+
+## Mob (Shigeo Kageyama), con el uniforme del colegio.
+##
+## DE LA REFERENCIA, NO DE MEMORIA: pelo negro azabache en forma de TAZON —el flequillo
+## recto a la altura de las cejas y el resto parejo alrededor—, ojos negros y la cara sin
+## expresion; el gakuran negro del colegio Sal, con el cuello alto y los botones dorados,
+## el pantalon negro y los zapatos negros.
+##
+## LA SILUETA ES EL TAZON: una cabeza redonda y lisa, sin una sola punta, entre tanto pelo
+## en puntas (Goku, Sonic, Madara, Dio). De lejos se lee por lo que NO tiene.
+func _build_mob() -> void:
+	# Cara quieta: cejas rectas y la boca chica. Mob casi nunca cambia de cara.
+	_apply_expression(0.0, 0.0, 0.032)
+
+	var pelo := Art.toon(_tono(&"pelo", Color(0.05, 0.05, 0.07)), OUTLINE_WIDTH)
+	var boton := Art.toon(_tono(&"botones", Color(0.95, 0.78, 0.25)), OUTLINE_WIDTH, 0.7)
+	var cuello_blanco := Art.flat(_tono(&"cuello", Color(0.96, 0.96, 0.95)))
+	var zapato := Art.toon(_tono(&"zapatos", Color(0.06, 0.06, 0.08)), OUTLINE_WIDTH)
+
+	# --- EL TAZON ---
+	#
+	# Un casco de pelo que cubre la cabeza hasta la altura de las orejas, un poco mas grande
+	# que el craneo, y el flequillo recto adelante: un cilindro achatado y cortado justo
+	# arriba de las cejas.
+	var casco := Art.sphere(0.222, pelo, Vector3(0.0, 0.205, 0.035))
+	casco.scale = Vector3(1.03, 0.80, 1.04)
+	_costume_add(_head_pivot, casco)
+	# Justo arriba de las cejas: mas abajo tapaba los ojos y de frente no quedaba cara.
+	var flequillo := Art.box(Vector3(0.40, 0.06, 0.10), pelo, Vector3(0.0, 0.248, -0.158))
+	_costume_add(_head_pivot, flequillo)
+	# A los costados, hasta las orejas: el corte es parejo alrededor.
+	for lado: float in [-1.0, 1.0]:
+		var costado := Art.box(Vector3(0.06, 0.12, 0.24), pelo, Vector3(0.195 * lado, 0.15, 0.03))
+		_costume_add(_head_pivot, costado)
+	var nuca := Art.sphere(0.19, pelo, Vector3(0.0, 0.08, 0.09))
+	nuca.scale = Vector3(1.08, 0.9, 0.85)
+	_costume_add(_head_pivot, nuca)
+
+	# --- OJOS NEGROS, chicos y redondos ---
+	var negro := Art.flat(_tono(&"ojos", Color(0.04, 0.04, 0.05)))
+	for ojo: Node3D in [_eye_l, _eye_r]:
+		if ojo == null:
+			continue
+		var pupila := Art.sphere(0.024, negro, Vector3(0.0, 0.004, -0.028))
+		pupila.scale = Vector3(1.0, 1.15, 0.5)
+		_costume_add(ojo, pupila)
+
+	# --- EL GAKURAN: cuello alto, con el borde blanco de la camisa, y los botones ---
+	var cuello := Art.cylinder(0.12, 0.13, _mat_body, Vector3(0.0, 0.74, 0.0))
+	_costume_add(_torso, cuello)
+	var borde := Art.cylinder(0.123, 0.018, cuello_blanco, Vector3(0.0, 0.80, 0.0))
+	_costume_add(_torso, borde)
+	for k: int in range(5):
+		var dorado := Art.sphere(0.022, boton, Vector3(0.0, 0.62 - float(k) * 0.12, -0.192))
+		dorado.scale = Vector3(1.0, 1.0, 0.6)
+		_costume_add(_torso, dorado)
+
+	# --- LAS MANGAS LARGAS del gakuran, hasta la muñeca ---
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo == null:
+			continue
+		var manga := Art.capsule(0.066, 0.24, _mat_body, Vector3(0.0, -0.12, 0.0))
+		_costume_add(codo, manga)
+
+	# --- LOS ZAPATOS NEGROS, encima de los del rig (que son del color del acento) ---
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla == null:
+			continue
+		var pie := Art.box(Vector3(0.17, 0.11, 0.30), zapato, Vector3(0.0, -0.405, -0.06))
+		_costume_add(rodilla, pie)
 
 
 ## El circulo blanco con el kanji. En la espalda va mirando para atras.

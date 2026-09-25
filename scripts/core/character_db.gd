@@ -154,8 +154,9 @@ func _register_all() -> void:
 
 	# ---------------------------------------------------------------- Goku
 	#
-	# LA RECOMPENSA FINAL DEL PASE PRO DE LA TEMPORADA 1, y por eso mismo NO es el mas
-	# fuerte. Es un PvP: un personaje que se gana jugando y que ademas le gana a los otros
+	# FUE LA RECOMPENSA FINAL DEL PASE PRO DE LA TEMPORADA 1. Al terminar la temporada
+	# (2026-09-25) paso a ser de todos, gratis: el premio de la 2 es Mob. Y sigue sin ser el
+	# mas fuerte, por la misma razon que cuando era premio. Es un PvP: un personaje que se gana jugando y que ademas le gana a los otros
 	# convertiria el pase en un requisito para competir. Es el todoterreno —vida y stamina
 	# de fabrica, velocidad del medio— y lo que lo hace distinto es el kit, no los numeros.
 	#
@@ -179,7 +180,6 @@ func _register_all() -> void:
 	goku.max_stamina = 100.0
 	goku.move_speed = 6.4
 	goku.silhouette = &"gi"
-	goku.requiere_desbloqueo = true
 	_add(goku)
 
 
@@ -239,6 +239,33 @@ func _register_all() -> void:
 	madara.move_speed = 6.3
 	madara.silhouette = &"uchiha"
 	_add(madara)
+
+	# ----------------------------------------------------------------- Mob
+	#
+	# LA RECOMPENSA FINAL DEL PASE PRO DE LA TEMPORADA 2, como Goku en la 1, y por lo mismo
+	# NO es el mas fuerte: un premio que ademas gana todo haria del pase un requisito.
+	#
+	# Shigeo Kageyama, de Mob Psycho 100. De la referencia: bajo y flaco, pelo negro azabache
+	# con el flequillo recto en forma de tazon, ojos negros, y el gakuran negro del colegio
+	# Sal —chaqueta de cuello alto con botones dorados y pantalon negro—. El cuerpo es el
+	# gakuran y el acento es el celeste de sus poderes, que es lo que se ve de el en pelea.
+	# Es el mas fragil despues de Sonic y de los mas lentos: no es atletico, y en la serie
+	# lo dice cada vez que corre.
+	var mob := CharacterData.new()
+	mob.id = &"mob"
+	mob.display_name = "Mob"
+	mob.origin_game = "Mob Psycho 100"
+	mob.body_color = Color(0.09, 0.09, 0.12)
+	mob.accent_color = Color(0.55, 0.75, 1.0)
+	mob.skin_color = Color(0.98, 0.88, 0.80)
+	mob.trouser_color = Color(0.08, 0.08, 0.10)
+	mob.build_scale = Vector3(0.92, 0.90, 0.92)
+	mob.max_health = 86.0
+	mob.max_stamina = 110.0
+	mob.move_speed = 6.0
+	mob.silhouette = &"tazon"
+	mob.requiere_desbloqueo = true
+	_add(mob)
 
 
 func _add(data: CharacterData) -> void:
@@ -317,6 +344,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(GokaMesshitsu.new())
 			list.append(Susanoo.new())
 			list.append(TengaiShinsei.new())
+		&"mob":
+			list.append(OndaPsiquica.new())
+			list.append(Escombros.new())
+			list.append(BarreraPsiquica.new())
+			list.append(CienPorCiento.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

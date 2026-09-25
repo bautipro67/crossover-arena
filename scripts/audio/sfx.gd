@@ -327,7 +327,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 40
+const TOTAL_SONIDOS: int = 43
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -350,6 +350,7 @@ func _build_combate() -> void:
 		[&"portal", _synth_portal], [&"za_warudo", _synth_za_warudo],
 		[&"fuego", _synth_fuego], [&"estrella", _synth_estrella],
 		[&"katon", _synth_katon], [&"susanoo", _synth_susanoo], [&"meteorito", _synth_meteorito],
+		[&"psiquico", _synth_psiquico], [&"explosion_psiquica", _synth_explosion_psiquica],
 		# Las voces al final: son las mas caras de generar —tres resonadores moviles por
 		# palabra— y son las unicas que nadie puede necesitar en el primer segundo,
 		# porque para gritar una habilidad primero hay que tener una habilidad lista.
@@ -366,6 +367,7 @@ func _build_combate() -> void:
 		[&"voz_katon", _synth_voz_katon],
 		[&"voz_susanoo", _synth_voz_susanoo],
 		[&"voz_tengai", _synth_voz_tengai],
+		[&"voz_cien", _synth_voz_cien],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -841,6 +843,58 @@ func _synth_voz_kamehameha() -> PackedFloat32Array:
 func _synth_voz_ha() -> PackedFloat32Array:
 	return _voz([["a", 0.55, "aire"]], G_TONO + 22.0, G_CUERPO, 0.16, G_DRAMA + 0.3,
 		G_BRILLO, 0.26)
+
+
+# --- MOB ---
+#
+# Un chico de catorce años que casi no levanta la voz: suave y parejo, sin drama. El
+# "100%" no lo grita de rabia, lo dice como quien ya no puede aguantar mas.
+const MO_TONO: float = 176.0
+const MO_CUERPO: float = 1.04
+const MO_DRAMA: float = 0.55
+const MO_BRILLO: float = 1.05
+
+
+## "CIEN POR CIENTO" — cien-por-cien-to.
+func _synth_voz_cien() -> PackedFloat32Array:
+	return _voz([["i", 0.10, "aire"], ["e", 0.14, "nasal"], ["o", 0.12, "golpe"],
+		["i", 0.10, "aire"], ["e", 0.14, "nasal"], ["o", 0.28, "golpe"]],
+		MO_TONO, MO_CUERPO, 0.08, MO_DRAMA, MO_BRILLO)
+
+
+## La telequinesis: un zumbido que tiembla, dos tonos casi iguales peleandose.
+func _synth_psiquico() -> PackedFloat32Array:
+	var dur := 0.35
+	var out := _vacio(dur)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		var env: float = minf(1.0, t * 40.0) * exp(-p * 3.0)
+		var f := lerpf(520.0, 380.0, p)
+		out[i] = (sin(TAU * f * t) + sin(TAU * f * 1.013 * t) * 0.8
+			+ _campana(t, f * 2.0, 1.5, 0.6) * 0.3) * 0.35 * env
+	_normalizar(out, 0.6)
+	_bordes(out, 2.0, 30.0)
+	return out
+
+
+## El 100%: un golpe grave que se abre en un brillo que sube.
+func _synth_explosion_psiquica() -> PackedFloat32Array:
+	var dur := 1.2
+	var out := _vacio(dur)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		var golpe: float = exp(-t * 6.0)
+		out[i] = sin(TAU * lerpf(120.0, 40.0, minf(1.0, t * 5.0)) * t) * 0.8 * golpe
+		out[i] += _ruido() * 0.35 * exp(-t * 9.0)
+		out[i] += _campana(t, lerpf(600.0, 1400.0, p), 1.41, 1.0) * 0.18 * (1.0 - p)
+	_saturar(out, 1.6)
+	_normalizar(out, 0.9)
+	_bordes(out, 1.0, 60.0)
+	return out
 
 
 # --- MADARA ---

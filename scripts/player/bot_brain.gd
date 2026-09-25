@@ -399,6 +399,8 @@ func distancia_de_pelea() -> float:
 			return 9.0
 		&"petal_shot":
 			return 6.0
+		&"onda_psiquica":
+			return 7.0
 	return MELEE_RANGE
 
 
@@ -496,6 +498,18 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 		&"susanoo":
 			# El escudo sirve con el rival encima, y el espadazo llega a cinco metros.
 			return dist < 5.0
+		&"onda_psiquica":
+			# Una onda que se apaga a unos catorce metros, y una pared la frena.
+			return dist < 12.0 and _a_la_vista
+		&"escombros":
+			# Cuatro piedras que viajan unos treinta metros: de media distancia.
+			return dist > 3.0 and dist < 22.0 and _a_la_vista
+		&"barrera_psiquica":
+			# El escudo y el empujon: con el rival encima.
+			return dist < 4.5
+		&"cien_por_ciento":
+			# La onda llega a nueve metros.
+			return dist < 7.5
 		&"tengai_shinsei":
 			# Caen sobre el que apunta, hasta 36 m, pero tardan en bajar: de muy lejos da
 			# tiempo de sobra a salirse de la sombra.
