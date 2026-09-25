@@ -45,6 +45,8 @@ const LINEAS: Dictionary = {
 	# --- MARIO (Super Mario) ---
 	# Mario casi no habla en sus juegos: grita al saltar. El "¡Wahoo!" es EL salto.
 	&"super_salto": [["¡WAHOO!", 0.0, &"voz_wahoo"]],
+	# --- MADARA (Naruto) ---
+	&"susanoo": [["¡SUSANO'O!", 0.0, &"voz_susanoo"]],
 }
 
 ## Frases que salen AL EMPEZAR a canalizar, no al soltar.
@@ -56,6 +58,10 @@ const LINEAS_CARGA: Dictionary = {
 	&"kamehameha": [["KA... ME... HA... ME...", 0.0, &"voz_kamehameha"]],
 	# Al agarrar la estrella, antes de que empiece a brillar.
 	&"superestrella": [["¡LET'S-A GO!", 0.0, &"voz_lets_go"]],
+	# Madara dice el nombre de la tecnica mientras la prepara: el Katon mientras toma aire,
+	# y el Tengai Shinsei con la mano en alto, antes de que se vea el primer meteorito.
+	&"goka_messhitsu": [["¡KATON: GŌKA MESSHITSU!", 0.0, &"voz_katon"]],
+	&"tengai_shinsei": [["¡TENGAI SHINSEI!", 0.0, &"voz_tengai"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el

@@ -127,7 +127,7 @@ func _duelo(a: StringName, b: StringName, ancla: Vector3, lado: bool) -> Array:
 		_arena._crear_bot(id, punto, pj)
 		var p: Player = _arena._players[id]
 		p.equipo = i
-		p.health.set_max(CharacterDB.get_character(pj).max_health)
+		p.health.set_max(CharacterDB.get_character(pj).max_health * GameConfig.VIDA)
 		p.health.revive_full()
 		p.stamina.restore_full()
 		for conexion in p.died.get_connections():
@@ -238,7 +238,7 @@ func _pelea_mision(c: int, cap: Dictionary, heroe: StringName) -> Array:
 	_arena._crear_bot(heroe_id, base, personaje)
 	var h: Player = _arena._players[heroe_id]
 	h.set_meta(&"heroe", true)
-	h.health.set_max(CharacterDB.get_character(personaje).max_health)
+	h.health.set_max(CharacterDB.get_character(personaje).max_health * GameConfig.VIDA)
 	h.health.revive_full()
 	for conexion in h.died.get_connections():
 		h.died.disconnect(conexion["callable"])
@@ -308,7 +308,7 @@ func _pelea(personaje: StringName, enemigos: int, vida_heroe: float) -> Array:
 	var heroe: Player = _arena._players[heroe_id]
 	heroe.set_meta(&"heroe", true)
 	# Vida de JUGADOR, no la del modo.
-	heroe.health.set_max(CharacterDB.get_character(personaje).max_health)
+	heroe.health.set_max(CharacterDB.get_character(personaje).max_health * GameConfig.VIDA)
 	heroe.health.revive_full()
 	heroe.health.current = minf(vida_heroe, heroe.health.max_health)
 	# Sin respawn ni refuerzos: se mide la pelea pelada.

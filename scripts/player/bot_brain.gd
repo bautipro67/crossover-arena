@@ -490,6 +490,16 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 			# Un rayo recto de 42 m, pero hay que embocarlo: de muy lejos lo esquiva
 			# cualquiera caminando de costado durante la carga.
 			return dist < 26.0
+		&"goka_messhitsu":
+			# Un cono de fuego de diez metros, y las paredes lo cortan.
+			return dist < 9.0 and _a_la_vista
+		&"susanoo":
+			# El escudo sirve con el rival encima, y el espadazo llega a cinco metros.
+			return dist < 5.0
+		&"tengai_shinsei":
+			# Caen sobre el que apunta, hasta 36 m, pero tardan en bajar: de muy lejos da
+			# tiempo de sobra a salirse de la sombra.
+			return dist < 22.0 and _a_la_vista
 		_:
 			return dist <= MELEE_RANGE + 0.6
 

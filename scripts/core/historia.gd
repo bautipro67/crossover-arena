@@ -528,7 +528,7 @@ static func _armar() -> Array[Dictionary]:
 				"pos": Vector2(4, 2.5), "reserva": true},
 		],
 		"enemigos": [
-			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 400.0, "daño": 0.5,
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 400.0, "daño": 0.40,
 				"pos": Vector2(0, -8), "jefe": true},
 		],
 		"objetivo": {"tipo": "sobrevivir", "segundos": 35.0, "texto": "Aguantá frente a DIO"},
@@ -1184,7 +1184,7 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "Un saiyajin contra el tiempo",
 		"personaje": &"mario",
 		"enemigos": [
-			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 270.0, "daño": 0.38,
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 270.0, "daño": 0.33,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"dio", "hasta": 0.3, "texto": "Hacé retroceder a DIO"},
@@ -1393,7 +1393,7 @@ static func _armar() -> Array[Dictionary]:
 				"pos": Vector2(0, 3.5), "reserva": true},
 		],
 		"enemigos": [
-			{"id": &"dio", "personaje": &"dio", "nombre": "DIO del Núcleo", "vida": 400.0, "daño": 0.46,
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO del Núcleo", "vida": 380.0, "daño": 0.41,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"dio", "texto": "Derrotá a DIO del Núcleo"},

@@ -1195,6 +1195,8 @@ func _build_costume(kind: StringName) -> void:
 			_build_goku()
 		&"gorra":
 			_build_mario()
+		&"uchiha":
+			_build_madara()
 		_:
 			pass
 
@@ -2195,6 +2197,175 @@ func _build_mario() -> void:
 			continue
 		var pie := Art.box(Vector3(0.175, 0.12, 0.30), zapato, Vector3(0.0, -0.405, -0.06))
 		_costume_add(rodilla, pie)
+
+
+## Madara Uchiha, con la armadura de la guerra.
+##
+## DE LA REFERENCIA (Narutopedia), NO DE MEMORIA: pelo negro con reflejo azul, en puntas y
+## hasta la cintura, con un flequillo a los costados de la cara que le tapa casi todo el
+## ojo derecho; armadura carmesi de placas en el pecho, los hombros, la cintura y los
+## muslos; abajo, el manto azul de cuello alto y mangas largas; pantalon azul, vendas en
+## las canillas y sandalias azul oscuro; obi marron claro con un cinturon lila; y el
+## gunbai gris violaceo con una cadena negra. Los ojos van con el Sharingan: rojos.
+##
+## LA SILUETA ES LA MELENA. Ningun otro personaje tiene pelo hasta la cintura: de
+## espaldas, que es como se lo ve casi toda la partida, es lo primero que lo distingue.
+func _build_madara() -> void:
+	# Cejas bajas y boca chica y recta: seguro de si mismo, sin apuro.
+	_apply_expression(0.30, -0.010, 0.046)
+
+	var pelo := Art.toon(_tono(&"pelo", Color(0.06, 0.07, 0.12)), OUTLINE_WIDTH)
+	var armadura := Art.toon(_tono(&"armadura", accent_color), OUTLINE_WIDTH, 0.7)
+	var borde := Art.toon(_tono(&"armadura", accent_color).darkened(0.35), OUTLINE_WIDTH)
+	var obi := Art.toon(_tono(&"obi", Color(0.66, 0.53, 0.38)), OUTLINE_WIDTH)
+	var cinto := Art.toon(_tono(&"cinturon", Color(0.66, 0.56, 0.78)), OUTLINE_WIDTH)
+	var venda := Art.toon(_tono(&"vendas", Color(0.90, 0.88, 0.82)), OUTLINE_WIDTH)
+	var sandalia := Art.toon(_tono(&"sandalias", Color(0.10, 0.12, 0.24)), OUTLINE_WIDTH)
+	var abanico := Art.toon(_tono(&"gunbai", Color(0.47, 0.43, 0.55)), OUTLINE_WIDTH, 0.6)
+	var cadena := Art.toon(Color(0.07, 0.07, 0.08), OUTLINE_WIDTH)
+
+	# --- EL PELO ---
+	#
+	# Un casquete que tapa el craneo, y encima las puntas. Mismo sistema de conos que Goku y
+	# Sonic: el cono nace apuntando a +Y; girar en X positivo lo tira hacia ATRAS (+Z), y en
+	# Z positivo hacia el costado izquierdo (-X).
+	var casquete := Art.sphere(0.205, pelo, Vector3(0.0, 0.18, 0.05))
+	casquete.scale = Vector3(1.06, 0.84, 1.06)
+	_costume_add(_head_pivot, casquete)
+	var puntas: Array = [
+		# Arriba: unas puntas cortas y erizadas, que le dan el volumen de la coronilla.
+		{"pos": Vector3(0.00, 0.28, 0.04), "rot": Vector3(30.0, 0.0, 0.0), "len": 0.20, "r": 0.09},
+		{"pos": Vector3(-0.10, 0.26, 0.04), "rot": Vector3(22.0, 0.0, 40.0), "len": 0.20, "r": 0.085},
+		{"pos": Vector3(0.10, 0.26, 0.04), "rot": Vector3(22.0, 0.0, -40.0), "len": 0.20, "r": 0.085},
+		{"pos": Vector3(-0.17, 0.18, 0.06), "rot": Vector3(40.0, 0.0, 80.0), "len": 0.18, "r": 0.08},
+		{"pos": Vector3(0.17, 0.18, 0.06), "rot": Vector3(40.0, 0.0, -80.0), "len": 0.18, "r": 0.08},
+		# LA MELENA: mechones largos y gruesos que caen por la espalda hasta la cintura, un
+		# poco abiertos en abanico.
+		{"pos": Vector3(0.00, 0.14, 0.15), "rot": Vector3(166.0, 0.0, 0.0), "len": 0.86, "r": 0.13},
+		{"pos": Vector3(-0.10, 0.14, 0.14), "rot": Vector3(164.0, 0.0, 12.0), "len": 0.80, "r": 0.12},
+		{"pos": Vector3(0.10, 0.14, 0.14), "rot": Vector3(164.0, 0.0, -12.0), "len": 0.80, "r": 0.12},
+		{"pos": Vector3(-0.17, 0.12, 0.10), "rot": Vector3(160.0, 0.0, 24.0), "len": 0.70, "r": 0.10},
+		{"pos": Vector3(0.17, 0.12, 0.10), "rot": Vector3(160.0, 0.0, -24.0), "len": 0.70, "r": 0.10},
+		{"pos": Vector3(-0.06, 0.20, 0.16), "rot": Vector3(150.0, 0.0, 6.0), "len": 0.62, "r": 0.10},
+		{"pos": Vector3(0.06, 0.20, 0.16), "rot": Vector3(150.0, 0.0, -6.0), "len": 0.62, "r": 0.10},
+		# El FLEQUILLO de los costados, hasta los hombros, enmarcando la cara.
+		{"pos": Vector3(-0.17, 0.16, -0.08), "rot": Vector3(-172.0, 0.0, -8.0), "len": 0.34, "r": 0.06},
+		{"pos": Vector3(0.17, 0.16, -0.08), "rot": Vector3(-172.0, 0.0, 8.0), "len": 0.34, "r": 0.06},
+		# Y el mechon que le tapa el ojo DERECHO (el derecho del personaje es +X).
+		{"pos": Vector3(0.07, 0.26, -0.17), "rot": Vector3(-168.0, 0.0, 6.0), "len": 0.24, "r": 0.075},
+		{"pos": Vector3(-0.03, 0.27, -0.17), "rot": Vector3(-160.0, 0.0, -14.0), "len": 0.14, "r": 0.05},
+	]
+	for p: Dictionary in puntas:
+		var pivote := Node3D.new()
+		pivote.position = p["pos"]
+		pivote.rotation_degrees = p["rot"]
+		_head_pivot.add_child(pivote)
+		_costume.append(pivote)
+		var largo: float = p["len"]
+		var cono := MeshInstance3D.new()
+		var malla := CylinderMesh.new()
+		malla.top_radius = 0.0
+		malla.bottom_radius = p["r"]
+		malla.height = largo
+		cono.mesh = malla
+		cono.material_override = pelo
+		cono.position = Vector3(0.0, largo * 0.5, 0.0)
+		pivote.add_child(cono)
+
+	# --- EL SHARINGAN: iris rojo con la pupila negra ---
+	var rojo := Art.flat(_tono(&"ojos", Color(0.86, 0.06, 0.06)))
+	var negro := Art.flat(Color(0.03, 0.02, 0.02))
+	for ojo: Node3D in [_eye_l, _eye_r]:
+		if ojo == null:
+			continue
+		var anillo := Art.sphere(0.030, rojo, Vector3(0.0, 0.004, -0.026))
+		anillo.scale = Vector3(1.0, 1.25, 0.55)
+		_costume_add(ojo, anillo)
+		var pupila := Art.sphere(0.011, negro, Vector3(0.0, 0.004, -0.040))
+		_costume_add(ojo, pupila)
+
+	# --- EL MANTO: el cuello alto azul ---
+	var cuello := Art.cylinder(0.125, 0.13, _mat_body, Vector3(0.0, 0.74, 0.0))
+	_costume_add(_torso, cuello)
+
+	# --- LA ARMADURA ---
+	#
+	# El peto en dos placas —la de arriba mas ancha—, el espaldar, las hombreras en dos
+	# laminas cayendo hacia afuera, y las placas de la cintura colgando alrededor de la
+	# cadera. Carmesi con los bordes mas oscuros: es la separacion entre placas lo que dice
+	# "armadura" y no "chaleco rojo".
+	var peto := Art.box(Vector3(0.40, 0.17, 0.05), armadura, Vector3(0.0, 0.55, -0.180))
+	_costume_add(_torso, peto)
+	var peto_bajo := Art.box(Vector3(0.36, 0.15, 0.05), armadura, Vector3(0.0, 0.38, -0.170))
+	_costume_add(_torso, peto_bajo)
+	_costume_add(_torso, Art.box(Vector3(0.37, 0.018, 0.055), borde, Vector3(0.0, 0.463, -0.182)))
+	var espaldar := Art.box(Vector3(0.40, 0.34, 0.05), armadura, Vector3(0.0, 0.47, 0.178))
+	_costume_add(_torso, espaldar)
+	for lado: float in [-1.0, 1.0]:
+		for capa: int in range(2):
+			var lamina := Art.box(Vector3(0.20, 0.035, 0.26), armadura if capa == 0 else borde,
+				Vector3((0.26 + float(capa) * 0.035) * lado, 0.60 - float(capa) * 0.07, 0.0))
+			lamina.rotation_degrees = Vector3(0.0, 0.0, -28.0 * lado)
+			_costume_add(_torso, lamina)
+	# El obi y el cinturon lila, entre el peto y las placas de la cintura.
+	_costume_add(_torso, Art.box(Vector3(0.43, 0.08, 0.30), obi, Vector3(0.0, 0.07, 0.0)))
+	_costume_add(_torso, Art.box(Vector3(0.44, 0.03, 0.31), cinto, Vector3(0.0, 0.12, 0.0)))
+	# Las placas de la cintura: al frente, a los costados y atras, colgando.
+	var faldon: Array = [
+		[Vector3(-0.11, -0.05, -0.16), 0.0], [Vector3(0.11, -0.05, -0.16), 0.0],
+		[Vector3(-0.22, -0.05, 0.0), 90.0], [Vector3(0.22, -0.05, 0.0), 90.0],
+		[Vector3(-0.11, -0.05, 0.16), 0.0], [Vector3(0.11, -0.05, 0.16), 0.0],
+	]
+	for f: Array in faldon:
+		var placa := Art.box(Vector3(0.15, 0.17, 0.03), armadura, f[0])
+		placa.rotation_degrees = Vector3(0.0, f[1], 0.0)
+		_costume_add(_torso, placa)
+	# Las de los muslos, al frente.
+	for cadera: Node3D in [_hip_l, _hip_r]:
+		if cadera == null:
+			continue
+		var muslera := Art.box(Vector3(0.15, 0.20, 0.035), armadura, Vector3(0.0, -0.17, -0.105))
+		_costume_add(cadera, muslera)
+
+	# --- LAS PIERNAS: vendas en las canillas y las sandalias ---
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla == null:
+			continue
+		var vendas := Art.cylinder(0.080, 0.20, venda, Vector3(0.0, -0.22, 0.0))
+		_costume_add(rodilla, vendas)
+		# Del tamaño del zapato del rig, que es del color del acento: mas chico, asomaba
+		# un zapato carmesi abajo de la sandalia.
+		var pie := Art.box(Vector3(0.18, 0.12, 0.31), sandalia, Vector3(0.0, -0.405, -0.06))
+		_costume_add(rodilla, pie)
+
+	# --- LAS MANGAS LARGAS del manto, hasta la muñeca ---
+	#
+	# El antebrazo del rig es de piel: sin esto, de lejos parecian guantes blancos.
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo == null:
+			continue
+		var manga := Art.capsule(0.068, 0.24, _mat_body, Vector3(0.0, -0.12, 0.0))
+		_costume_add(codo, manga)
+
+	# --- EL GUNBAI, en la mano derecha ---
+	#
+	# El brazo cuelga en -Y desde el codo, y la mano esta en -0.30. El mango sigue hacia
+	# abajo y la pala queda a la altura de la rodilla, de canto hacia el costado: de
+	# espaldas se ve el abanico entero. La cadena negra cuelga del mango.
+	if _elbow_r != null:
+		var mango := Art.cylinder(0.018, 0.34, borde, Vector3(0.0, -0.44, 0.0))
+		_costume_add(_elbow_r, mango)
+		var pala := Art.cylinder(0.22, 0.03, abanico, Vector3(0.0, -0.78, 0.0))
+		pala.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+		pala.scale = Vector3(1.0, 1.0, 0.85)
+		_costume_add(_elbow_r, pala)
+		var aro := Art.cylinder(0.225, 0.02, cadena, Vector3(0.0, -0.78, 0.0))
+		aro.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+		aro.scale = Vector3(0.6, 1.0, 0.86)
+		_costume_add(_elbow_r, aro)
+		var eslabones := Art.cylinder(0.008, 0.40, cadena, Vector3(0.0, -0.52, 0.03))
+		eslabones.rotation_degrees = Vector3(12.0, 0.0, 0.0)
+		_costume_add(_elbow_r, eslabones)
 
 
 ## El circulo blanco con el kanji. En la espalda va mirando para atras.

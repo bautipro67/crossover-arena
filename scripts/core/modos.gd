@@ -106,18 +106,25 @@ static func bots_en_oleada(n: int) -> int:
 ## en pie 87%, la torre 67%— y estos numeros los devuelven a donde estaban. Y al subir los
 ## cooldowns x1.5, al reves y solo en los que el heroe tiene que matar rapido contra uno
 ## fuerte: duelo 21%, torre 17%, colina 25%.
+##
+## Todo multiplicado por GameConfig.VIDA, igual que la vida de los personajes. En la historia
+## ya viene multiplicada de la mision (ver MisionHistoria._sumar).
 func vida_bot(id: int = 0) -> float:
 	if actual == HISTORIA:
-		return mision.vida_de(id) if is_instance_valid(mision) else 60.0
+		return mision.vida_de(id) if is_instance_valid(mision) else 60.0 * GameConfig.VIDA
+	return _vida_base() * GameConfig.VIDA
+
+
+func _vida_base() -> float:
 	match actual:
 		PRACTICA: return 170.0
-		DUELO: return 141.0
+		DUELO: return 128.0
 		SUPERVIVENCIA: return 36.0 + float(oleada) * 5.0
 		CONTRARRELOJ: return 57.0
 		ULTIMO_EN_PIE: return 56.0
 		# Sube de a poco para no cruzar de golpe el umbral de los 180.
-		JEFES: return 104.0 + float(bajas) * 19.0
-		COLINA: return 54.0
+		JEFES: return 94.0 + float(bajas) * 17.0
+		COLINA: return 57.0
 	return 170.0
 
 
@@ -136,8 +143,8 @@ func daño_bot(id: int = 0) -> float:
 		ULTIMO_EN_PIE: return 0.32
 		# Los jefes se endurecen tambien pegando, no solo aguantando: un jefe que solo tiene
 		# mas vida es la misma pelea mas larga.
-		JEFES: return 0.44 + float(bajas) * 0.03
-		COLINA: return 0.28
+		JEFES: return 0.40 + float(bajas) * 0.03
+		COLINA: return 0.30
 	return GameConfig.BOT_DAMAGE_SCALE
 
 var actual: StringName = ONLINE

@@ -190,6 +190,7 @@ func _run() -> void:
 
 	# --- Flowery ---
 	await _flowery()
+	await _madara()
 
 	# --- Los bots peleando, que es lo que cambia el modo practica ---
 	await _bots_en_combate()
@@ -367,6 +368,50 @@ func _flowery() -> void:
 	await _wait(0.55)
 	await _shot("25_last_jarona")
 	await _wait(0.9)
+	player.health.set_max(100.0)
+
+
+## El kit de Madara: el muro de fuego, el Susano'o y los dos meteoritos.
+func _madara() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+	player.setup_character(CharacterDB.get_character(&"madara"))
+	var hud := _find_hud()
+	if hud != null:
+		hud.bind_player(player)
+	_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+	player.health.set_max(3000.0)
+	player.status.clear_all()
+	await _wait(1.2)
+	await _shot("28_madara_hud")
+
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)  # Katon: Goka Messhitsu
+	await _wait(GokaMesshitsu.new().channel_time + 0.25)
+	await _shot("29_katon")
+
+	await _wait(1.2)
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)  # Susano'o
+	await _wait(0.6)
+	await _shot("30_susanoo")
+
+	await _wait(Susanoo.DURACION)
+	player.stamina.restore_full()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.reset_state()
+	player.caster.request_use(3)  # Tengai Shinsei
+	await _wait(TengaiShinsei.new().channel_time + TengaiShinsei.CAIDA * 0.6)
+	await _shot("31_meteoritos_cayendo")
+	await _wait(TengaiShinsei.CAIDA * 0.4 + 0.12)
+	await _shot("32_primer_meteorito")
+	await _wait(TengaiShinsei.ENTRE)
+	await _shot("33_segundo_meteorito")
+	await _wait(1.0)
 	player.health.set_max(100.0)
 
 

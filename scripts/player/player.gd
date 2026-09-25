@@ -147,7 +147,7 @@ func setup_character(data: CharacterData) -> void:
 		return
 	character_id = data.id
 	walk_speed = data.move_speed
-	health.set_max(data.max_health)
+	health.set_max(data.max_health * GameConfig.VIDA)
 	stamina.set_max(data.max_stamina)
 	stamina.owner_peer_id = peer_id
 	ultimate.owner_peer_id = peer_id

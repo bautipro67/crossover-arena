@@ -79,8 +79,8 @@ func _test_dummies(arena: Arena, player: Player) -> void:
 
 	var dummy := dummies[0]
 	_check(dummy.is_in_group("players"), "los bots son objetivos validos de las habilidades")
-	_check(dummy.health.max_health == Arena.DUMMY_HEALTH,
-		"los bots aguantan %d de vida" % int(Arena.DUMMY_HEALTH))
+	_check(is_equal_approx(dummy.health.max_health, Arena.DUMMY_HEALTH * GameConfig.VIDA),
+		"los bots aguantan %d de vida" % int(Arena.DUMMY_HEALTH * GameConfig.VIDA))
 	_check(not dummy.is_local_player(), "los bots no le roban la camara al jugador")
 
 	# Las habilidades tienen que poder encontrarlos.
@@ -450,7 +450,7 @@ func _test_progresion() -> void:
 		_check(Modos.bots_iniciales() >= 1, "%s arranca con enemigos" % m)
 		# El tope es la vida del maniqui de practica. Un rival de un modo que se puede
 		# perder no puede aguantar MAS que un muñeco de entrenamiento.
-		_check(Modos.vida_bot() <= 170.0,
+		_check(Modos.vida_bot() <= 170.0 * GameConfig.VIDA,
 			"%s: sus enemigos no aguantan mas que un maniqui (%.0f)" % [m, Modos.vida_bot()])
 		_check(Modos.daño_bot() <= 0.75,
 			"%s: sus enemigos no pegan como un jugador entero (x%.2f)" % [m, Modos.daño_bot()])
@@ -482,7 +482,7 @@ func _test_progresion() -> void:
 	# Pero no tanto como para volverse una pared: el ultimo tiene que seguir siendo
 	# matable dentro de lo que dura la vida del jugador.
 	Modos.bajas = Modos.JEFES_TOTAL - 1
-	_check(Modos.vida_bot() <= 360.0,
+	_check(Modos.vida_bot() <= 360.0 * GameConfig.VIDA,
 		"y el ultimo sigue siendo matable (%.0f de vida)" % Modos.vida_bot())
 
 	# --- Rey de la colina: el reloj corre solo adentro ---
@@ -733,7 +733,7 @@ func _test_historia(main: Node) -> void:
 					datos_jefe = e
 			var jefe := mision.participantes.get(datos_jefe.get("id", &"")) as Player
 			var esperada := float(Historia.escalar(datos_jefe, i, Progreso.dificultad_historia)["vida"]) \
-				if not datos_jefe.is_empty() else -1.0
+				* GameConfig.VIDA if not datos_jefe.is_empty() else -1.0
 			_check(jefe != null and is_equal_approx(jefe.health.max_health, esperada)
 				and jefe.health.max_health > float(datos_jefe["vida"]),
 				"en la pelea, el jefe entra con la cuesta del capitulo encima (%.0f de vida, el capitulo dice %.0f)" % [

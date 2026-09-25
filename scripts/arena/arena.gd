@@ -947,7 +947,7 @@ func _crear_bot(id: int, pos: Vector3, character_id: StringName) -> void:
 	# La vida la decide el MODO. 170 era el numero de la practica —un maniqui que aguanta
 	# mientras ensayas— y en un modo que se puede perder estaba al reves: medido, un
 	# jugador de habilidad de bot no mataba ni uno en cuarenta segundos.
-	bot.health.set_max(Modos.vida_bot(id) if Net.solo_mode else DUMMY_HEALTH)
+	bot.health.set_max(Modos.vida_bot(id) if Net.solo_mode else DUMMY_HEALTH * GameConfig.VIDA)
 
 	# El servidor es el dueño de las habilidades del bot.
 	#

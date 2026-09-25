@@ -87,10 +87,15 @@ gente.
    El todoterreno. Aparece detrás de tu espalda y carga el rayo a la vista de todos.
    Combo de Golpes · Ráfaga de Ki · Teletransportación · KAMEHAMEHA
 
-🍄 MARIO — Super Mario Bros.  (NUEVO, gratis)
+🍄 MARIO — Super Mario Bros.  (gratis)
    Power-ups: bolas de fuego que pican por el piso, un salto que va a buscar al rival y
    le cae encima, y la Superestrella, que por unos segundos lo vuelve invencible.
    Puño y Patada · Bola de Fuego · Súper Salto · SUPERESTRELLA
+
+☄ MADARA UCHIHA — Naruto Shippuden  (NUEVO, gratis)
+   Control del campo. Un muro de fuego, el Susano'o que lo envuelve y corta, y dos
+   meteoritos gigantes que caen uno tras otro donde apunta.
+   Gunbai · Katon: Gōka Messhitsu · Susano'o · TENGAI SHINSEI
 
 ═══ MODO HISTORIA — DOS PARTES, VEINTE CAPÍTULOS ═══
 
@@ -101,13 +106,13 @@ planos, técnicas en pantalla— y peleas con objetivos: proteger a Rick mientra
 rastreador, aguantar en una zona, sobrevivir frente a DIO, pelear junto a aliados que se
 suman en el medio.
 
-PARTE 2: EL TORNEO DEL NÚCLEO (NUEVA). El núcleo se partió en fragmentos, DIO escapó con
+PARTE 2: EL TORNEO DEL NÚCLEO. El núcleo se partió en fragmentos, DIO escapó con
 el más grande, y la Arena llama a un torneo para rearmarse. Llegan Goku y Mario —por una
 tubería equivocada, camino al castillo de la princesa—. Juntar los fragmentos, subir a
 la torre del centro y sacarle el núcleo a DIO antes de que se convierta en la Arena.
 Se abre al terminar la parte 1.
 
-DIFICULTAD (NUEVO). Fácil, Normal o Difícil, y se cambia cuando quieras desde la pantalla
+DIFICULTAD. Fácil, Normal o Difícil, y se cambia cuando quieras desde la pantalla
 de capítulos. Fácil paga la mitad de monedas y experiencia; Difícil, un 50% más. Y en
 cualquiera de las tres, cada capítulo es un poco más duro que el anterior, la parte 2 más
 que la 1, y los jefes un escalón por encima de todo lo demás.

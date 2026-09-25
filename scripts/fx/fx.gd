@@ -1168,6 +1168,293 @@ func spawn_estrella(caster: Node3D, duracion: float) -> void:
 	_auto_free(aura, duracion)
 
 
+# ------------------------------------------------------------------ Madara
+
+## Katon: Gōka Messhitsu. Un muro de fuego que barre el cono entero.
+##
+## MUCHO Y DENSO, no chispas sueltas: en la serie tapa el horizonte. Dos capas —el fuego
+## que avanza pegado al piso y las llamas que suben— y un fogonazo de luz naranja.
+func spawn_katon(caster: Node, origin: Vector3, dir: Vector3, alcance: float, angulo: float) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var plano := Vector3(dir.x, 0.0, dir.z).normalized()
+	if plano.is_zero_approx():
+		plano = Vector3.FORWARD
+	# Naranja saturado y con poca opacidad: la mezcla es aditiva, y con colores claros y
+	# cientos de llamas encimadas el muro salia BLANCO, como una nube de vapor.
+	var fuego := Gradient.new()
+	fuego.set_color(0, Color(1.0, 0.50, 0.10, 0.40))
+	fuego.set_color(1, Color(0.35, 0.03, 0.0, 0.0))
+	fuego.add_point(0.4, Color(0.95, 0.26, 0.03, 0.32))
+	for capa: int in range(2):
+		var llamas := CPUParticles3D.new()
+		llamas.emitting = true
+		llamas.one_shot = true
+		llamas.amount = 150 if capa == 0 else 80
+		llamas.lifetime = 0.9 if capa == 0 else 1.2
+		llamas.explosiveness = 0.7
+		llamas.direction = (plano + Vector3.UP * (0.05 if capa == 0 else 0.35)).normalized()
+		llamas.spread = angulo * 0.5
+		llamas.flatness = 0.55 if capa == 0 else 0.2
+		llamas.initial_velocity_min = alcance * 0.6
+		llamas.initial_velocity_max = alcance * 1.15
+		llamas.damping_min = alcance * 0.35
+		llamas.damping_max = alcance * 0.55
+		llamas.gravity = Vector3(0.0, 2.5 if capa == 0 else 5.0, 0.0)
+		llamas.scale_amount_min = 0.35
+		llamas.scale_amount_max = 0.9 if capa == 0 else 1.3
+		llamas.color_ramp = fuego
+		var malla := QuadMesh.new()
+		malla.size = Vector2(1.0, 1.0)
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		mat.vertex_color_use_as_albedo = true
+		mat.albedo_texture = Art.punto_suave()
+		malla.material = mat
+		llamas.mesh = malla
+		world.add_child(llamas)
+		llamas.global_position = origin + Vector3.DOWN * (0.7 if capa == 0 else 0.2)
+		_auto_free(llamas, 2.0)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.55, 0.2)
+	luz.light_energy = 10.0
+	luz.omni_range = alcance * 1.4
+	world.add_child(luz)
+	luz.global_position = origin + plano * alcance * 0.45
+	_fade_light(luz, 0.9)
+	Sfx.play_3d(caster, &"katon", origin, 2.0)
+	camera_shake(0.8)
+
+
+## El Susano'o: la caja de costillas azul que lo envuelve mientras dura el escudo.
+##
+## TRANSLUCIDO Y MAS GRANDE QUE EL: el Susano'o es un gigante de chakra con el usuario
+## adentro. Un caparazon tenue, las costillas a la altura del pecho y llamas azules
+## subiendo. Sin nada solido y SIN CRANEO: la camara va justo detras de la cabeza, y un
+## craneo brillante ahi le tapaba la vista al propio jugador los cinco segundos.
+func spawn_susanoo(caster: Node3D, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var viejo := caster.get_node_or_null(^"Susanoo")
+	if viejo != null:
+		viejo.queue_free()
+	var raiz := Node3D.new()
+	raiz.name = &"Susanoo"
+	caster.add_child(raiz)
+	raiz.position = Vector3(0.0, 1.1, 0.0)
+
+	var azul := Color(0.38, 0.52, 1.0)
+	var mat := Art.glow(azul, 1.8)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.albedo_color.a = 0.30
+	var velo := Art.glow(azul, 0.8)
+	velo.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	velo.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	velo.cull_mode = BaseMaterial3D.CULL_DISABLED
+	velo.albedo_color.a = 0.10
+
+	# El caparazon: una capsula grande y casi transparente alrededor del cuerpo.
+	var caparazon := Art.capsule(0.85, 2.3, velo, Vector3(0.0, -0.05, 0.0))
+	caparazon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	raiz.add_child(caparazon)
+	# Las costillas: aros alrededor del pecho, achatados adelante y atras.
+	for i: int in range(4):
+		var costilla := MeshInstance3D.new()
+		var toro := TorusMesh.new()
+		toro.inner_radius = 0.66 - float(i) * 0.05
+		toro.outer_radius = 0.72 - float(i) * 0.05
+		costilla.mesh = toro
+		costilla.material_override = mat
+		costilla.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		costilla.position = Vector3(0.0, 0.55 - float(i) * 0.18, 0.0)
+		costilla.scale = Vector3(1.0, 1.0, 0.75)
+		raiz.add_child(costilla)
+
+	var llamas := CPUParticles3D.new()
+	llamas.emitting = true
+	llamas.amount = 44
+	llamas.lifetime = 0.8
+	llamas.direction = Vector3.UP
+	llamas.spread = 20.0
+	llamas.initial_velocity_min = 1.0
+	llamas.initial_velocity_max = 2.4
+	llamas.gravity = Vector3.ZERO
+	llamas.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	llamas.emission_sphere_radius = 0.9
+	llamas.scale_amount_min = 0.08
+	llamas.scale_amount_max = 0.2
+	llamas.color = Color(0.45, 0.6, 1.0, 0.7)
+	raiz.add_child(llamas)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = azul
+	luz.light_energy = 2.2
+	luz.omni_range = 5.0
+	raiz.add_child(luz)
+
+	# Aparece creciendo y se apaga al final, no de golpe.
+	raiz.scale = Vector3.ONE * 0.6
+	var tw := raiz.create_tween()
+	tw.tween_property(raiz, "scale", Vector3.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(maxf(0.0, duracion - 0.6))
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.35)
+	tw.tween_callback(raiz.queue_free)
+	Sfx.play_3d(caster, &"susanoo", caster.global_position + Vector3.UP, 1.0)
+
+
+## Tengai Shinsei: los dos meteoritos, la sombra que marca donde caen y los impactos.
+##
+## Todo el reloj del efecto sale de las constantes de TengaiShinsei, las mismas con las
+## que el servidor decide cuando pega: la explosion se ve cuando se pierde la vida.
+##
+## LLEGAN EN DIAGONAL desde ADELANTE, mas alla del punto: bajando desde atras de Madara
+## pasaban por encima de la camara y no se veian nunca. El segundo viene arriba y detras
+## del primero: se ve uno solo hasta que el primero pega, como en la serie.
+func spawn_tengai_shinsei(context: Node, punto: Vector3, rumbo: Vector3) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var plano := Vector3(rumbo.x, 0.0, rumbo.z).normalized()
+	if plano.is_zero_approx():
+		plano = Vector3.FORWARD
+	_marca_meteorito(world, punto, TengaiShinsei.RADIO_PRIMERO, TengaiShinsei.CAIDA)
+	_meteorito(world, punto, plano, 55.0, 32.0, TengaiShinsei.CAIDA, TengaiShinsei.RADIO_PRIMERO, 4.2)
+	_meteorito(world, punto, plano, 85.0, 50.0, TengaiShinsei.CAIDA + TengaiShinsei.ENTRE,
+		TengaiShinsei.RADIO_SEGUNDO, 4.8)
+	# La marca del segundo aparece cuando cae el primero: antes, el que mira arriba ve uno.
+	var tree := world.get_tree()
+	if tree == null:
+		return
+	var ref: WeakRef = weakref(world)
+	tree.create_timer(TengaiShinsei.CAIDA).timeout.connect(func() -> void:
+		var w := ref.get_ref() as Node
+		if w != null and w.is_inside_tree():
+			_marca_meteorito(w, punto, TengaiShinsei.RADIO_SEGUNDO, TengaiShinsei.ENTRE))
+	Sfx.play_3d(context, &"meteorito", punto, 2.0)
+
+
+## La sombra roja en el piso, latiendo, hasta que cae.
+func _marca_meteorito(world: Node, punto: Vector3, radio: float, dura: float) -> void:
+	var disco := MeshInstance3D.new()
+	var cil := CylinderMesh.new()
+	cil.top_radius = radio
+	cil.bottom_radius = radio
+	cil.height = 0.04
+	disco.mesh = cil
+	var mat := Art.glow(Color(1.0, 0.22, 0.08), 1.6)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mat.albedo_color.a = 0.18
+	disco.material_override = mat
+	disco.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(disco)
+	disco.global_position = punto + Vector3.UP * 0.08
+	var tw := disco.create_tween()
+	tw.set_loops(int(dura / 0.4) + 1)
+	tw.tween_property(mat, "albedo_color:a", 0.36, 0.2)
+	tw.tween_property(mat, "albedo_color:a", 0.16, 0.2)
+	_auto_free(disco, dura)
+
+
+## Un meteorito: la roca, la cola de fuego y la luz, bajando hasta `punto`; y al llegar,
+## la explosion.
+func _meteorito(world: Node, punto: Vector3, plano: Vector3, alto: float, atras: float,
+		dura: float, radio: float, tamaño: float) -> void:
+	var roca := Node3D.new()
+	world.add_child(roca)
+	var cuerpo := Art.sphere(tamaño, Art.toon(Color(0.30, 0.20, 0.15), 0.03, 0.2))
+	cuerpo.scale = Vector3(1.0, 0.9, 1.1)
+	roca.add_child(cuerpo)
+	# Las grietas encendidas: muchas y chicas, asomando apenas de la roca. Pocas y grandes
+	# parecian ojos.
+	var brasa := Art.glow(Color(1.0, 0.42, 0.08), 2.2)
+	for k: int in range(14):
+		var ang := TAU * float(k) / 14.0
+		var grieta := Art.sphere(tamaño * 0.12, brasa,
+			Vector3(cos(ang), sin(ang * 2.3) * 0.7, sin(ang)).normalized() * tamaño * 0.93)
+		grieta.scale = Vector3(1.8, 0.35, 1.0)
+		roca.add_child(grieta)
+	var cola := CPUParticles3D.new()
+	cola.emitting = true
+	cola.amount = 70
+	cola.lifetime = 0.9
+	cola.local_coords = false
+	cola.direction = Vector3.UP
+	cola.spread = 25.0
+	cola.initial_velocity_min = 2.0
+	cola.initial_velocity_max = 6.0
+	cola.gravity = Vector3.ZERO
+	cola.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	cola.emission_sphere_radius = tamaño * 0.8
+	cola.scale_amount_min = tamaño * 0.3
+	cola.scale_amount_max = tamaño * 0.6
+	var fuego := Gradient.new()
+	fuego.set_color(0, Color(1.0, 0.75, 0.3, 0.9))
+	fuego.set_color(1, Color(0.3, 0.1, 0.05, 0.0))
+	cola.color_ramp = fuego
+	roca.add_child(cola)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.5, 0.2)
+	luz.light_energy = 4.0
+	luz.omni_range = tamaño * 5.0
+	roca.add_child(luz)
+
+	var desde := punto + Vector3.UP * alto + plano * atras
+	roca.global_position = desde
+	var tw := roca.create_tween()
+	tw.tween_property(roca, "global_position", punto + Vector3.UP * tamaño * 0.4, dura) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(cuerpo, "rotation", Vector3(2.4, 1.1, 0.6), dura)
+	tw.tween_callback(func() -> void:
+		cola.emitting = false
+		_explosion_meteorito(roca, punto, radio))
+	# Se hunde en el crater y se va.
+	tw.tween_property(roca, "scale", Vector3.ONE * 0.15, 0.7).set_trans(Tween.TRANS_QUAD) \
+		.set_ease(Tween.EASE_IN)
+	tw.tween_callback(roca.queue_free)
+
+
+func _explosion_meteorito(context: Node, punto: Vector3, radio: float) -> void:
+	spawn_pisoton(context, punto, radio)
+	spawn_plasma_blast(context, punto + Vector3.UP, radio * 0.8)
+	var world := _world_of(context)
+	if world != null:
+		var polvo := CPUParticles3D.new()
+		polvo.emitting = true
+		polvo.one_shot = true
+		polvo.amount = 90
+		polvo.lifetime = 1.6
+		polvo.explosiveness = 0.95
+		polvo.direction = Vector3.UP
+		polvo.spread = 70.0
+		polvo.initial_velocity_min = radio * 0.8
+		polvo.initial_velocity_max = radio * 1.8
+		polvo.gravity = Vector3(0.0, -6.0, 0.0)
+		polvo.scale_amount_min = 0.4
+		polvo.scale_amount_max = 1.2
+		polvo.color = Color(0.45, 0.36, 0.30, 0.85)
+		world.add_child(polvo)
+		polvo.global_position = punto + Vector3.UP * 0.5
+		_auto_free(polvo, 2.2)
+		var luz := OmniLight3D.new()
+		luz.light_color = Color(1.0, 0.6, 0.25)
+		luz.light_energy = 16.0
+		luz.omni_range = radio * 3.0
+		world.add_child(luz)
+		luz.global_position = punto + Vector3.UP * 2.0
+		_fade_light(luz, 0.9)
+	camera_shake(2.4)
+	Sfx.play_3d(context, &"plasma_blast", punto, 4.0)
+	Sfx.play_3d(context, &"aterrizaje", punto, 6.0)
+
+
 # ------------------------------------------------------------------- Goku
 
 ## Teletransportacion: el destello donde desaparece o aparece.
@@ -1811,6 +2098,19 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 		&"superestrella":
 			if caster is Node3D:
 				spawn_estrella(caster as Node3D, Superestrella.DURACION)
+		&"gunbai":
+			spawn_melee_arc(caster, origin, dir)
+		&"goka_messhitsu":
+			spawn_katon(caster, origin, dir, GokaMesshitsu.ALCANCE, GokaMesshitsu.ANGULO)
+		&"susanoo":
+			if caster is Node3D:
+				spawn_susanoo(caster as Node3D, Susanoo.DURACION)
+			spawn_slash_arc(caster, origin, dir, Color(0.45, 0.58, 1.0))
+		&"tengai_shinsei":
+			if caster is Node3D:
+				var c3 := caster as Node3D
+				spawn_tengai_shinsei(caster, TengaiShinsei.donde_caen(c3, origin, dir),
+					TengaiShinsei.rumbo_de(c3, dir))
 		_:
 			pass
 

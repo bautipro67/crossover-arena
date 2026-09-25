@@ -66,6 +66,7 @@ func _run() -> void:
 	await _test_sonic(player, arena)
 	await _test_goku(player, arena)
 	await _test_mario(player, arena)
+	await _test_madara(player, arena)
 	_test_descripciones()
 	await _test_escena_corta_habilidades(player)
 	await _test_practica(player, arena)
@@ -1798,6 +1799,114 @@ func _test_mario(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+# ------------------------------------------------------------------- Madara
+
+func _test_madara(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	_check(CharacterDB.has_character(&"madara"), "Madara esta registrado")
+	var data := CharacterDB.get_character(&"madara")
+	_check(data != null and data.origin_game == "Naruto Shippuden" and data.silhouette == &"uchiha",
+		"Madara viene de Naruto y tiene silueta propia: la melena")
+	_check(data != null and not data.requiere_desbloqueo, "Madara viene de fabrica: gratis desde el principio")
+
+	var kit := CharacterDB.build_abilities_for(&"madara")
+	_check(kit.size() == 4, "Madara tiene 4 habilidades (tiene %d)" % kit.size())
+	if kit.size() < 4:
+		return
+	_check(kit[0] is GolpeGunbai and kit[1] is GokaMesshitsu and kit[2] is Susanoo
+		and kit[3] is TengaiShinsei,
+		"su kit: gunbai, Katon Goka Messhitsu, Susano'o y Tengai Shinsei")
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+	_check(kit[3].stamina_cost == 100.0 and kit[3].requires_charge and kit[3].channel_time > 0.0,
+		"los meteoritos cuestan la barra entera, piden el medidor y se cargan a la vista")
+
+	player.setup_character(data)
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, -30.0), 1.5)
+	var rumbo := _carril_libre(player, puesto, 20.0)
+	var yaw := atan2(-rumbo.x, -rumbo.z)
+	player.respawn_at(puesto, yaw)
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	for _i: int in range(24):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+
+	# --- KATON: el muro de fuego le pega al que tiene adelante ---
+	var blanco := _spawn_dummy(arena, puesto + rumbo * 6.0)
+	blanco.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	var vida := blanco.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	await get_tree().create_timer(GokaMesshitsu.new().channel_time + 0.3).timeout
+	_check(blanco.health.current <= vida - GokaMesshitsu.DAMAGE * 0.9,
+		"el Katon le pega al que tiene adelante, a seis metros (%.0f)" % (vida - blanco.health.current))
+	blanco.queue_free()
+
+	# --- SUSANO'O: el escudo, y el espadazo al frente ---
+	await get_tree().create_timer(0.4).timeout
+	player.respawn_at(puesto, yaw)
+	var cortado := _spawn_dummy(arena, puesto + rumbo * 3.0)
+	cortado.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = cortado.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	await get_tree().create_timer(Susanoo.new().channel_time + 0.25).timeout
+	_check(player.health.get_shield() >= Susanoo.ESCUDO * 0.99,
+		"el Susano'o lo envuelve en un escudo (%.0f)" % player.health.get_shield())
+	_check(cortado.health.current <= vida - Susanoo.DAMAGE * 0.9,
+		"y el espadazo le pega al que tiene adelante (%.0f)" % (vida - cortado.health.current))
+	var vida_madara := player.health.current
+	CombatUtils.deal_damage(player, 20.0, -77)
+	_check(is_equal_approx(player.health.current, vida_madara),
+		"lo que le pegan mientras dura se lo come el escudo, no la vida")
+	cortado.queue_free()
+	await get_tree().create_timer(Susanoo.DURACION).timeout
+
+	# --- TENGAI SHINSEI: dos meteoritos gigantes, uno tras otro, sobre el que apunta ---
+	player.respawn_at(puesto, yaw)
+	player.status.clear_all()
+	var aplastado := _spawn_dummy(arena, puesto + rumbo * 12.0)
+	aplastado.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = aplastado.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.request_use(3)
+	var carga := TengaiShinsei.new().channel_time
+	await get_tree().create_timer(carga + TengaiShinsei.CAIDA * 0.5).timeout
+	_check(is_equal_approx(aplastado.health.current, vida),
+		"los meteoritos se ven venir: a mitad de la caida todavia no pego nada")
+	await get_tree().create_timer(TengaiShinsei.CAIDA * 0.5 + 0.25).timeout
+	var primero := vida - aplastado.health.current
+	await get_tree().create_timer(TengaiShinsei.ENTRE).timeout
+	var total := vida - aplastado.health.current
+	_check(primero >= TengaiShinsei.DAMAGE * 0.9 and total >= TengaiShinsei.DAMAGE * 1.8,
+		"caen dos meteoritos, uno tras otro, sobre el que apunta (%.0f el primero, %.0f entre los dos)" % [
+			primero, total])
+	_check(player.ultimate.current < 1.0,
+		"y su propio daño no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
+	aplastado.queue_free()
+
+	player.aim_override = Vector3.ZERO
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.status.clear_all()
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
 func _test_practica(player: Player, arena: Arena) -> void:
 	Practica.restablecer()
 	_check(Practica.bots == 3 and not Practica.invulnerable,
@@ -2002,7 +2111,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 234
+const CHEQUEOS_MINIMOS: int = 248
 
 
 func _finish() -> void:

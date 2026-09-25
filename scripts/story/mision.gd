@@ -65,6 +65,10 @@ static var sin_cinematicas: bool = false
 func _ready() -> void:
 	Modos.mision = self
 	objetivo = (datos.get("objetivo", {"tipo": "derrotar_todos"}) as Dictionary).duplicate(true)
+	# EL TIEMPO LIMITE CRECE CON LA VIDA: si todos aguantan x1.5, derrotarlos tarda x1.5, y
+	# con el reloj de antes los capitulos contra reloj se volvian imposibles.
+	if objetivo.has("limite"):
+		objetivo["limite"] = float(objetivo["limite"]) * GameConfig.VIDA
 	_arrancar.call_deferred()
 
 
@@ -125,6 +129,9 @@ func _arrancar() -> void:
 func _sumar(d: Dictionary, equipo: int) -> Player:
 	if equipo == 1:
 		d = Historia.escalar(d, capitulo, Progreso.dificultad_historia)
+	# Y la vida de todos, aliados incluidos, por lo que duran las peleas (GameConfig.VIDA).
+	d = d.duplicate()
+	d["vida"] = float(d.get("vida", 60.0)) * GameConfig.VIDA
 	var peer := _siguiente_peer
 	_siguiente_peer -= 1
 	var rel: Vector2 = d.get("pos", Vector2(0.0, -14.0))

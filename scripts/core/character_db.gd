@@ -211,6 +211,33 @@ func _register_all() -> void:
 	mario.silhouette = &"gorra"
 	_add(mario)
 
+	# --------------------------------------------------------------- Madara
+	#
+	# Gratis. El de mas alcance del juego en sus dos definitivas de area —el muro de fuego y
+	# los meteoritos—, y por eso el que mas se ve venir: todo lo suyo canaliza un instante.
+	#
+	# La ropa sale de la referencia de Narutopedia: armadura carmesi de placas en pecho,
+	# hombros, cintura y muslos, sobre un manto azul de cuello alto; pantalon azul con vendas
+	# en las canillas, sandalias azul oscuro, obi marron claro y cinturon lila; pelo negro con
+	# reflejo azul, en puntas hasta la cintura, con un flequillo que le tapa el ojo derecho; y
+	# el gunbai gris violaceo con una cadena negra. El cuerpo es el manto y el acento es el
+	# carmesi de la armadura, que es lo que se ve de lejos.
+	var madara := CharacterData.new()
+	madara.id = &"madara"
+	madara.display_name = "Madara Uchiha"
+	madara.origin_game = "Naruto Shippuden"
+	madara.body_color = Color(0.15, 0.19, 0.40)
+	madara.accent_color = Color(0.66, 0.10, 0.12)
+	madara.skin_color = Color(0.96, 0.88, 0.80)
+	madara.trouser_color = Color(0.13, 0.17, 0.36)
+	# Alto y derecho, de hombros anchos por la armadura. No tan grande como Dio.
+	madara.build_scale = Vector3(1.03, 1.05, 1.02)
+	madara.max_health = 100.0
+	madara.max_stamina = 100.0
+	madara.move_speed = 6.3
+	madara.silhouette = &"uchiha"
+	_add(madara)
+
 
 func _add(data: CharacterData) -> void:
 	_characters[data.id] = data
@@ -283,6 +310,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(BolaDeFuego.new())
 			list.append(SuperSalto.new())
 			list.append(Superestrella.new())
+		&"madara":
+			list.append(GolpeGunbai.new())
+			list.append(GokaMesshitsu.new())
+			list.append(Susanoo.new())
+			list.append(TengaiShinsei.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

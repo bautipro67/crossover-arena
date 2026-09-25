@@ -327,7 +327,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 34
+const TOTAL_SONIDOS: int = 40
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -349,6 +349,7 @@ func _build_combate() -> void:
 		[&"last_jarona", _synth_last_jarona], [&"snowgrave", _synth_snowgrave],
 		[&"portal", _synth_portal], [&"za_warudo", _synth_za_warudo],
 		[&"fuego", _synth_fuego], [&"estrella", _synth_estrella],
+		[&"katon", _synth_katon], [&"susanoo", _synth_susanoo], [&"meteorito", _synth_meteorito],
 		# Las voces al final: son las mas caras de generar —tres resonadores moviles por
 		# palabra— y son las unicas que nadie puede necesitar en el primer segundo,
 		# porque para gritar una habilidad primero hay que tener una habilidad lista.
@@ -362,6 +363,9 @@ func _build_combate() -> void:
 		[&"voz_ha", _synth_voz_ha],
 		[&"voz_wahoo", _synth_voz_wahoo],
 		[&"voz_lets_go", _synth_voz_lets_go],
+		[&"voz_katon", _synth_voz_katon],
+		[&"voz_susanoo", _synth_voz_susanoo],
+		[&"voz_tengai", _synth_voz_tengai],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -837,6 +841,92 @@ func _synth_voz_kamehameha() -> PackedFloat32Array:
 func _synth_voz_ha() -> PackedFloat32Array:
 	return _voz([["a", 0.55, "aire"]], G_TONO + 22.0, G_CUERPO, 0.16, G_DRAMA + 0.3,
 		G_BRILLO, 0.26)
+
+
+# --- MADARA ---
+#
+# La voz mas grave y la mas tranquila del juego: no grita de esfuerzo como Goku ni declama
+# como Flowery. Dice el nombre de la tecnica como quien da una orden, bajo y parejo, con un
+# poco de aspereza.
+const MA_TONO: float = 96.0
+const MA_CUERPO: float = 0.92
+const MA_DRAMA: float = 0.7
+const MA_BRILLO: float = 0.8
+const MA_RASGADO: float = 0.22
+
+
+## "KATON: GŌKA MESSHITSU" — ka-ton, go-ka, mes-shi-tsu.
+func _synth_voz_katon() -> PackedFloat32Array:
+	return _voz([["a", 0.11, "golpe"], ["o", 0.15, "golpe"], ["o", 0.12, "golpe"],
+		["a", 0.13, "golpe"], ["e", 0.12, "nasal"], ["i", 0.12, "aire"], ["u", 0.22, "golpe"]],
+		MA_TONO, MA_CUERPO, 0.12, MA_DRAMA, MA_BRILLO, MA_RASGADO)
+
+
+## "SUSANO'O" — su-sa-no-o, la ultima larga.
+func _synth_voz_susanoo() -> PackedFloat32Array:
+	return _voz([["u", 0.12, "aire"], ["a", 0.14, "aire"], ["o", 0.14, "nasal"], ["o", 0.36, ""]],
+		MA_TONO, MA_CUERPO, 0.10, MA_DRAMA, MA_BRILLO, MA_RASGADO)
+
+
+## "TENGAI SHINSEI" — ten-gai, shin-sei. Durante la carga: es el aviso de que viene.
+func _synth_voz_tengai() -> PackedFloat32Array:
+	return _voz([["e", 0.14, "golpe"], ["a", 0.15, "golpe"], ["i", 0.10, ""],
+		["i", 0.15, "aire"], ["e", 0.16, "aire"], ["i", 0.28, ""]],
+		MA_TONO - 4.0, MA_CUERPO, 0.12, MA_DRAMA + 0.1, MA_BRILLO, MA_RASGADO)
+
+
+## El fuego del Katon: un rugido de ruido grave que se abre y se apaga, sin chiptune.
+func _synth_katon() -> PackedFloat32Array:
+	var dur := 1.1
+	var out := _vacio(dur)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		var env: float = minf(1.0, t * 10.0) * exp(-p * 2.6)
+		out[i] = _ruido() * env + sin(TAU * lerpf(90.0, 55.0, p) * t) * 0.35 * env
+	_pasabajos(out, 1600.0)
+	_saturar(out, 1.8)
+	_normalizar(out, 0.85)
+	_bordes(out, 4.0, 60.0)
+	return out
+
+
+## El Susano'o: un zumbido grave que crece, como algo enorme que se despierta.
+func _synth_susanoo() -> PackedFloat32Array:
+	var dur := 0.9
+	var out := _vacio(dur)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		var env: float = minf(1.0, t * 5.0) * exp(-p * 1.8)
+		out[i] = (sin(TAU * 62.0 * t) * 0.6 + sin(TAU * 124.5 * t) * 0.3
+			+ _campana(t, 311.0, 1.5, 0.8) * 0.15) * env
+	_normalizar(out, 0.8)
+	_bordes(out, 8.0, 80.0)
+	return out
+
+
+## El meteorito cayendo: un silbido que baja y un retumbe que crece hasta el golpe.
+func _synth_meteorito() -> PackedFloat32Array:
+	var dur := 1.6
+	var out := _vacio(dur)
+	var cuerpo := _vacio(dur)
+	var n := out.size()
+	var fase := 0.0
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		fase += lerpf(900.0, 160.0, p) / float(MIX_RATE)
+		out[i] = sin(TAU * fase) * 0.22 * p
+		cuerpo[i] = _ruido() * p * p
+	_pasabajos(cuerpo, 700.0)
+	for i: int in range(n):
+		out[i] += cuerpo[i] * 0.9
+	_normalizar(out, 0.8)
+	_bordes(out, 20.0, 30.0)
+	return out
 
 
 # --- MARIO ---

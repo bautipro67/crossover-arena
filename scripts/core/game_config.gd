@@ -43,6 +43,15 @@ const MAX_PLAYERS: int = 8
 ## practica a los ~14 por segundo que ya habiamos medido como jugables.
 const BOT_DAMAGE_SCALE: float = 0.45
 
+## CUANTO DURAN LAS PELEAS: toda la vida del juego se multiplica por esto —la de los
+## personajes, la de los bots de cada modo, la de los maniquies y la de todos los de la
+## historia—. Pedido el 2026-09-25: "que las peleas duren mas".
+##
+## POR LA VIDA Y NO POR EL DAÑO, a proposito: bajando el daño, cada descripcion que dice
+## "34 de daño" mentiria. Y como sube para TODOS igual, lo que ya estaba calibrado entre si
+## —quien le gana a quien, cuanto aguanta un jefe contra un jugador— sigue en su lugar.
+const VIDA: float = 1.5
+
 ## Cada cuanto el cliente le manda su transform al servidor.
 const NET_TICK_HZ: float = 20.0
 
