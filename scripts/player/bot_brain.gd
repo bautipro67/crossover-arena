@@ -99,6 +99,9 @@ var _usable: Array[int] = []
 ## Sector propio alrededor del objetivo. Ver _puesto_de_pelea().
 var _sector: float = 0.0
 var _esquive_left: float = 0.0
+## Si el blanco actual esta a la vista. Lo calcula _fight una vez por pensada: las
+## habilidades de disparo lo necesitan y un rayo por habilidad por pensada es de mas.
+var _a_la_vista: bool = true
 
 
 func setup(body: Player, home_position: Vector3) -> void:
@@ -255,15 +258,26 @@ func _fight(target: Player) -> void:
 	# Mirar y apuntar al objetivo. El apuntado va por aim_override porque un bot no
 	# tiene camara: get_aim_direction() saldria de un CameraPivot apagado.
 	_body.bot_look_yaw = atan2(-plano.x, -plano.z)
-	_body.aim_override = (target.get_aim_origin() - _body.get_aim_origin()).normalized()
+	# CON ADELANTO, como apunta una persona: al lugar donde va a estar cuando llegue el
+	# disparo, no donde esta. Sin esto todo lo que viaja —el rayo de Rick, los petalos, los
+	# cuchillos— erraba contra cualquiera que caminara de costado. Adelanto parcial (70%) y
+	# con una velocidad de proyectil promedio: acierta mas, no siempre.
+	var vuelo := dist / 38.0
+	var mueve := Vector3(target.velocity.x, 0.0, target.velocity.z)
+	var adonde := target.get_aim_origin() + mueve * vuelo * 0.7
+	_body.aim_override = (adonde - _body.get_aim_origin()).normalized()
 
 	# Si se alejo demasiado de su puesto, vuelve aunque tenga a quien pegarle. Sin esto
 	# los tres bots terminan arrinconando al jugador contra una pared del mapa.
-	if _body.global_position.distance_to(home) > leash():
+	# La correa la acorta solo la simulacion de balance, para que el heroe simulado no se
+	# vaya de la zona que tiene que defender. Ningun codigo del juego pone esa marca.
+	if _body.global_position.distance_to(home) > float(_body.get_meta(&"correa", leash())):
 		_go_home()
 		return
 
 	var lateral := plano.cross(Vector3.UP) * _strafe_dir
+	_a_la_vista = CombatUtils.has_line_of_sight(_body, _body.get_aim_origin(), target)
+	var rango := distancia_de_pelea()
 
 	# CASTIGAR AL QUE CANALIZA: si el rival esta cargando algo, se le va encima en vez de
 	# seguir orbitando en su sector.
@@ -287,9 +301,14 @@ func _fight(target: Player) -> void:
 			_reiniciar_esquive()
 	# Corre solo para cerrar distancia. Pegado al rival camina, que es lo que deja leer
 	# sus movimientos y poder esquivarlos.
-	_body.bot_wants_run = dist > MELEE_RANGE + 2.5
+	_body.bot_wants_run = dist > rango + 2.5
+	# EL QUE PELEA DE LEJOS CORRE PARA IRSE, no solo para llegar. Caminando hacia atras,
+	# cualquiera que lo persiguiera lo alcanzaba: medido, Rick queria pelear a 9 metros y
+	# peleaba a 5. Correr es gratis para todos, y es lo que hace una persona con Rick.
+	if rango > MELEE_RANGE and dist < rango - 2.0:
+		_body.bot_wants_run = true
 
-	if dist > MELEE_RANGE + 6.0:
+	if dist > rango + 6.0:
 		# LEJOS: manda el camino del navmesh y nada mas.
 		#
 		# Cualquier cosa que se le sume durante el trayecto largo lo desvia de la ruta
@@ -335,28 +354,105 @@ func _try_attack(dist: float) -> void:
 		if i == 0:
 			continue  # el basico lo dejamos para el final
 		var ability := caster.get_ability(i)
-		if ability == null or caster.is_on_cooldown(i):
-			continue
-		if not _body.stamina.has_enough(ability.stamina_cost):
+		if ability == null or not caster.puede_usar(i):
 			continue
 		# Las habilidades cuerpo a cuerpo solo de cerca; las de rango, de lejos.
 		if not _good_distance(ability, dist):
 			continue
+		# El portal de Rick es su salida: se apunta lejos del rival, un poco hacia abajo
+		# para que el rayo pegue en el piso a unos diez metros y no en la pared del fondo.
+		if ability.id == &"portal_gun":
+			_apuntar_escape()
+			caster.request_use(i)
+			# El portal no es un ataque: recien llegado del otro lado es cuando hay que
+			# disparar, no cuando hay que esperar la pausa entera.
+			_attack_left = ATTACK_COOLDOWN * 0.4
+			return
 		caster.request_use(i)
 		_attack_left = ATTACK_COOLDOWN
 		return
 
-	# Golpe basico: gratis, asi que siempre que este a tiro.
-	if dist <= MELEE_RANGE + 0.6 and not caster.is_on_cooldown(0):
+	# Golpe basico: gratis, asi que siempre que este a tiro. "A tiro" depende del basico:
+	# el de Rick y el de Flowery son disparos, y con la regla del cuerpo a cuerpo esos dos
+	# bots solo tiraban con el rival encima.
+	var basico := caster.get_ability(0)
+	if basico != null and _good_distance(basico, dist) and caster.puede_usar(0):
 		caster.request_use(0)
-		_attack_left = ATTACK_COOLDOWN
+		# LA PAUSA DEL BASICO VA CON EL RITMO DEL KIT. Con la misma pausa para todos, el
+		# golpe rapido de Sonic (0.32 s) salia tan seguido como los petalos de Flowery
+		# (0.75 s), y lo que cada kit gana por ser rapido se perdia. Proporcional al
+		# cooldown, con el de Noelle (0.5 s) como referencia, el promedio no cambia.
+		_attack_left = ATTACK_COOLDOWN * clampf(basico.cooldown / 0.5, 0.6, 1.6)
+
+
+## A que distancia se planta a pelear, segun el kit.
+##
+## Los de cuerpo a cuerpo, pegados. Los que pegan de lejos, a tiro de su disparo, que es
+## como los juega cualquier persona: con todos a 2.7 m, Rick —el mas lento— peleaba a
+## las piñas contra Noelle con una pistola en la mano.
+func distancia_de_pelea() -> float:
+	var basico := _body.caster.get_ability(0) if is_instance_valid(_body) else null
+	if basico == null:
+		return MELEE_RANGE
+	match basico.id:
+		&"plasma_shot":
+			return 9.0
+		&"petal_shot":
+			return 6.0
+	return MELEE_RANGE
+
+
+## Rick se va por un portal: lejos del rival y un poco hacia el piso.
+func _apuntar_escape() -> void:
+	var lejos := -_body.aim_override
+	lejos.y = 0.0
+	if lejos.is_zero_approx():
+		lejos = _body.global_transform.basis.z
+	# De costado tambien, para que no sea siempre la misma linea recta hacia atras.
+	lejos = (lejos.normalized() + lejos.cross(Vector3.UP).normalized() * 0.5 * _strafe_dir).normalized()
+	_body.aim_override = (lejos + Vector3.DOWN * 0.15).normalized()
 
 
 ## Rango util aproximado de cada habilidad, por id. No lee el alcance real porque cada
 ## habilidad lo guarda en su propia constante; esto es una tabla de intenciones y con
 ## eso alcanza para que el bot no tire un cono de 3m desde quince metros.
+##
+## Lo que no esta en la tabla se usa de cuerpo a cuerpo. Faltaban la mitad de los kits
+## —Rick, Sonic y casi todo Flowery— y todo eso se tiraba solo con el rival encima: la
+## granada a quemarropa, el Homing Attack desde un metro, el portal para aparecer al lado
+## del que tenia al lado.
 func _good_distance(ability: Ability, dist: float) -> bool:
 	match ability.id:
+		&"plasma_shot":
+			# El rayo cruza el mapa, pero una cobertura lo frena: sin linea, no tira.
+			return dist < 30.0 and _a_la_vista
+		&"petal_shot":
+			# Tres petalos que viven 0.62 s a 24 m/s: unos quince metros.
+			return dist < 13.0 and _a_la_vista
+		&"plasma_grenade":
+			# Revienta en 5.2 m: tirada encima, se come la explosion el que la tiro.
+			return dist > 5.5 and dist < 18.0
+		&"meeseeks_box":
+			# Los Meeseeks salen a buscar solos: sirve desde lejos.
+			return dist < 30.0
+		&"portal_gun":
+			# Para irse, no para llegar: solo con el rival encima.
+			return dist < 4.5
+		&"homing_attack":
+			# Busca en 18 m: de mas cerca que un basico no hace falta.
+			return dist > 2.5 and dist < 17.0
+		&"spin_dash":
+			# Rueda 0.58 s a 27 m/s: unos quince metros de recorrido.
+			return dist > 3.0 and dist < 14.0
+		&"super_sonic":
+			# Arranca con un estallido de 6 m: con el rival cerca.
+			return dist < 8.0
+		&"here_i_come":
+			# La embestida recorre unos once metros antes de la cadena de golpes.
+			return dist < 10.0
+		&"jarona":
+			# Cada pasada son unos nueve metros: tiene que alcanzar en la primera.
+			return dist < 10.0
 		&"ice_shock", &"knife_throw":
 			return dist > 3.0 and dist < 26.0
 		&"stand_barrage":
@@ -434,7 +530,7 @@ func _reiniciar_esquive() -> void:
 ## reloj comun la separacion angular es exacta todo el tiempo, por construccion.
 func _puesto_de_pelea(target: Player) -> Vector3:
 	var angulo := _sector + float(Time.get_ticks_msec()) * 0.001 * ORBITA
-	var ideal := target.global_position + Vector3(cos(angulo), 0.0, sin(angulo)) * MELEE_RANGE
+	var ideal := target.global_position + Vector3(cos(angulo), 0.0, sin(angulo)) * distancia_de_pelea()
 	# Y PEGADO AL NAVMESH, porque el puesto ideal puede caer adentro de una cobertura.
 	#
 	# Cuando caia ahi, is_target_reachable() daba false, el rumbo se iba al de linea recta

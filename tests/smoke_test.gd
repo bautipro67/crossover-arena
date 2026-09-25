@@ -66,6 +66,7 @@ func _run() -> void:
 	await _test_sonic(player, arena)
 	await _test_goku(player, arena)
 	await _test_tambaleo(arena)
+	_test_descripciones()
 	await _test_practica(player, arena)
 	await _test_arena(arena)
 
@@ -1865,7 +1866,24 @@ func _check(condition: bool, description: String) -> void:
 ## corrutina sin que su llamador la esperara— y las tres se vieron igual: nada.
 ##
 ## Subir este numero al agregar chequeos es el precio de que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 225
+## LO QUE DICE UNA HABILIDAD ES LO QUE HACE. Dos descripciones tenian el daño escrito a
+## mano y quedaron mintiendo cuando se balanceo el numero (los cuchillos de Dio decian 12
+## con 10 de daño). La que habla de daño tiene que decir el de su constante DAMAGE; las que
+## no dan numeros ("Gratis, rapida, corto alcance") no mienten.
+func _test_descripciones() -> void:
+	var mal := ""
+	for pj: StringName in CharacterDB.get_all_ids():
+		for ability: Ability in CharacterDB.build_abilities_for(pj):
+			var constantes: Dictionary = ability.get_script().get_script_constant_map()
+			if not constantes.has("DAMAGE"):
+				continue
+			var daño := str(int(constantes["DAMAGE"]))
+			if ability.description.contains("daño") and not ability.description.contains(daño):
+				mal += "%s(%s) " % [ability.id, daño]
+	_check(mal.is_empty(), "las descripciones muestran el daño de verdad %s" % mal)
+
+
+const CHEQUEOS_MINIMOS: int = 226
 
 
 func _finish() -> void:

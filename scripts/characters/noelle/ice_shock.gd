@@ -10,7 +10,9 @@ extends Ability
 
 const PROJECTILE_SPEED: float = 26.0
 const PROJECTILE_LIFETIME: float = 3.0
-const DAMAGE: float = 22.0
+## Bajo de 22 a 19: con el escudo y el congelamiento, Noelle seguia arriba de todos en
+## los duelos simulados.
+const DAMAGE: float = 19.0
 const CHILL_STACKS: int = 2
 const SLOW_PERCENT: float = 0.25
 const SLOW_DURATION: float = 2.0
@@ -19,7 +21,8 @@ const SLOW_DURATION: float = 2.0
 func _init() -> void:
 	id = &"ice_shock"
 	display_name = "Ice Shock"
-	description = "Proyectil de hielo. 22 de daño, +2 de escarcha y ralentiza 25% por 2s."
+	description = "Proyectil de hielo. %d de daño, +%d de escarcha y ralentiza %d%% por %.0fs." % [
+		int(DAMAGE), CHILL_STACKS, int(SLOW_PERCENT * 100.0), SLOW_DURATION]
 	stamina_cost = 28.0
 	cooldown = 3.5
 	channel_time = 0.0

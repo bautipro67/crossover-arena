@@ -9,7 +9,9 @@ extends Ability
 ## El precio esta en otro lado: es el mas lento, el mas fragil, y el tiro viaja, asi que
 ## de cerca —donde los demas ganan— es el peor de los cuatro.
 
-const DAMAGE: float = 9.0
+## Subio de 9 a 14. Es lo unico que Rick hace de lejos, y con 9 perdia todos los
+## intercambios: en duelos simulados gano 1 de 80.
+const DAMAGE: float = 14.0
 const SPEED: float = 42.0
 const LIFETIME: float = 1.6
 
@@ -19,7 +21,8 @@ func _init() -> void:
 	display_name = "Pistola de Plasma"
 	description = "Disparo de plasma, %d de daño. Gratis y a distancia." % int(DAMAGE)
 	stamina_cost = 0.0
-	cooldown = 0.55
+	# Bajo de 0.55 a 0.5, el mismo ritmo que el golpe de Noelle.
+	cooldown = 0.5
 	channel_time = 0.0
 	icon_color = Color(0.45, 0.95, 0.35)
 

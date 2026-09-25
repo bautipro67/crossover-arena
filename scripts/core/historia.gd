@@ -244,8 +244,8 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "Algo azul",
 		"personaje": &"sonic",
 		"enemigos": [
-			{"id": &"flowery", "personaje": &"flowery", "nombre": "Flowery", "vida": 130.0,
-				"daño": 0.52, "pos": Vector2(0, -10), "jefe": true, "oculto": true},
+			{"id": &"flowery", "personaje": &"flowery", "nombre": "Flowery", "vida": 95.0,
+				"daño": 0.25, "pos": Vector2(0, -10), "jefe": true, "oculto": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"flowery", "texto": "Derrotá a Flowery"},
 		"eventos": [
@@ -411,13 +411,25 @@ static func _armar() -> Array[Dictionary]:
 	c.append({
 		"titulo": "El mundo se detiene",
 		"personaje": &"noelle",
+		# Los tres que ZA WARUDO deja tirados en la escena. Estan en el capitulo —de reserva,
+		# sin pelear— para que sigan tirados DURANTE la pelea: como actores de escena nada
+		# mas, desaparecian al empezar la pelea y volvian a aparecer, tirados, en la final.
+		"aliados": [
+			{"id": &"rick_", "personaje": &"rick", "nombre": "Rick", "vida": 90.0, "daño": 0.5,
+				"pos": Vector2(-2.5, 1), "reserva": true},
+			{"id": &"sonic_", "personaje": &"sonic", "nombre": "Sonic", "vida": 90.0, "daño": 0.5,
+				"pos": Vector2(2.5, 1), "reserva": true},
+			{"id": &"flowery_", "personaje": &"flowery", "nombre": "Flowery", "vida": 90.0, "daño": 0.5,
+				"pos": Vector2(4, 2.5), "reserva": true},
+		],
 		"enemigos": [
-			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 400.0, "daño": 0.55,
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 400.0, "daño": 0.6,
 				"pos": Vector2(0, -8), "jefe": true},
 		],
 		"objetivo": {"tipo": "sobrevivir", "segundos": 35.0, "texto": "Aguantá frente a DIO"},
 		"eventos": [
-			[["inicio"], [["decir", NARRADOR, "No hace falta ganarle: aguantá. Cuando grite ZA WARUDO, alejate."]]],
+			[["inicio"], [["retirar", &"rick_"], ["retirar", &"sonic_"], ["retirar", &"flowery_"],
+				["decir", NARRADOR, "No hace falta ganarle: aguantá. Cuando grite ZA WARUDO, alejate."]]],
 			[["tiempo", 12.0], [["decir", &"dio", "¡MUDA MUDA MUDA! ¡Inútil! ¡Todo lo que hacés es inútil!"]]],
 			[["tiempo", 24.0], [["decir", &"noelle", "No es inútil... ¡no es inútil si los protege!"]]],
 		],
@@ -484,7 +496,7 @@ static func _armar() -> Array[Dictionary]:
 		"personaje": &"sonic",
 		"aliados": [_aliado(&"flowery", "Flowery", Vector2(2.5, 1.5), 100.0, 0.55)],
 		"enemigos": [
-			{"id": &"desconocido", "personaje": &"goku", "nombre": "???", "vida": 170.0, "daño": 0.5,
+			{"id": &"desconocido", "personaje": &"goku", "nombre": "???", "vida": 170.0, "daño": 0.44,
 				"pos": Vector2(0, -10), "jefe": true, "eco": true, "oculto": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"desconocido", "texto": "Derrotá al eco sin nombre"},
@@ -588,7 +600,7 @@ static func _armar() -> Array[Dictionary]:
 				"daño": 0.6, "pos": Vector2(3.5, 2.5), "reserva": true},
 		],
 		"enemigos": [
-			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 260.0, "daño": 0.58,
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 270.0, "daño": 0.48,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"dio", "texto": "Derrotá a DIO"},

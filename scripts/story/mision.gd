@@ -123,7 +123,7 @@ func _sumar(d: Dictionary, equipo: int) -> Player:
 	var peer := _siguiente_peer
 	_siguiente_peer -= 1
 	var rel: Vector2 = d.get("pos", Vector2(0.0, -14.0))
-	var punto := arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 1.0)
+	var punto := al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 1.0))
 	_por_peer[peer] = d
 	arena._crear_bot(peer, punto, StringName(d["personaje"]))
 	var b: Player = arena._players.get(peer)
@@ -139,6 +139,9 @@ func _sumar(d: Dictionary, equipo: int) -> Player:
 	b.name_label.modulate = Color(0.55, 1.0, 0.6) if equipo == 0 else Color(1.0, 0.55, 0.5)
 	if d.get("eco", false):
 		b.visual.volverse_eco()
+	# Los jefes no se tambalean: ver StatusEffects.sin_tambaleo.
+	if d.get("jefe", false):
+		b.status.sin_tambaleo = true
 	if d.get("quieto", false):
 		var cerebro := b.get_node_or_null("BotBrain")
 		if cerebro != null:
@@ -164,6 +167,25 @@ func _sumar(d: Dictionary, equipo: int) -> Player:
 	return b
 
 
+## El punto, apoyado en el piso que tenga abajo.
+##
+## find_clear_spot busca un hueco libre pero conserva la altura que le pidieron, y el ancla
+## de una escena tiene la altura del lugar donde cayo: dos metros al costado puede haber
+## un escalon o una rampa. Sin esto el actor aparecia medio metro en el aire y caia, o
+## adentro de una plataforma baja, y la fisica lo escupia para cualquier lado.
+static func al_piso(arena: Arena, punto: Vector3) -> Vector3:
+	var espacio := arena.get_world_3d().direct_space_state
+	if espacio == null:
+		return punto
+	var desde := punto + Vector3.UP * 1.6
+	var rayo := PhysicsRayQueryParameters3D.create(desde, desde + Vector3.DOWN * 8.0)
+	rayo.collision_mask = GameConfig.LAYER_WORLD
+	var golpe := espacio.intersect_ray(rayo)
+	if golpe.is_empty():
+		return punto
+	return Vector3(punto.x, (golpe["position"] as Vector3).y, punto.z)
+
+
 ## El lugar mas despejado del mapa, para que entren la escena y la pelea.
 ##
 ## LAS ESCENAS NECESITAN AIRE. Los guiones ponen gente a doce metros y camaras a cinco, y
@@ -172,7 +194,7 @@ func _sumar(d: Dictionary, equipo: int) -> Player:
 ## mas espacio libre alrededor, medido con rayos en ocho direcciones.
 static func lugar_despejado(arena: Arena, cerca_de: Vector3) -> Vector3:
 	var espacio := arena.get_world_3d().direct_space_state
-	var mejor := arena.find_clear_spot(cerca_de, 2.5)
+	var mejor := al_piso(arena, arena.find_clear_spot(cerca_de, 2.5))
 	var mejor_nota := -1.0
 	var mitad := Arena.ARENA_SIZE * 0.5 - 14.0
 	var paso := 10.0
@@ -180,7 +202,7 @@ static func lugar_despejado(arena: Arena, cerca_de: Vector3) -> Vector3:
 	while x <= mitad:
 		var z := -mitad
 		while z <= mitad:
-			var punto := arena.find_clear_spot(Vector3(x, 0.6, z), 1.5)
+			var punto := al_piso(arena, arena.find_clear_spot(Vector3(x, 0.6, z), 1.5))
 			var nota := 99.0
 			for k: int in range(8):
 				var a := TAU * float(k) / 8.0
@@ -324,7 +346,8 @@ func aliados() -> Array[Player]:
 	var p := jugador()
 	for b: Node in participantes.values():
 		var bot := b as Player
-		if bot != null and is_instance_valid(bot) and bot != p and bot.equipo == 0 and bot.visible 				and not _fuera.has(StringName(participantes.find_key(bot))):
+		if bot != null and is_instance_valid(bot) and bot != p and bot.equipo == 0 and bot.visible \
+				and not _fuera.has(StringName(participantes.find_key(bot))):
 			out.append(bot)
 	return out
 
@@ -438,6 +461,9 @@ func _hacer(acciones: Array) -> void:
 					_apagar(b)
 					b.visible = true
 					b.visual.actuar(&"tirado")
+					# Sin cartel: un nombre verde flotando sobre alguien noqueado se lee como
+					# un aliado que sigue en la pelea.
+					b.name_label.visible = false
 					_fuera[StringName(a[1])] = true
 			"entrar":
 				var b := participantes.get(StringName(a[1])) as Player
@@ -464,16 +490,21 @@ func _hacer(acciones: Array) -> void:
 				_perder(String(a[1]) if a.size() > 1 else "PERDISTE")
 
 
-## Fuera de la pelea: sin cuerpo que choque, sin cerebro y fuera del grupo "players", asi
-## nadie lo elige de blanco ni le llega un golpe. Mandarlo bajo el mapa no servia: la red
-## de seguridad de los bots lo devolvia a su marca.
+## Fuera de la pelea: sin cerebro, fuera del grupo "players" y fuera de la capa de los
+## jugadores, asi nadie lo elige de blanco ni le llega un golpe. Mandarlo bajo el mapa no
+## servia: la red de seguridad de los bots lo devolvia a su marca.
+##
+## LA CAPA, NO LA FORMA. La primera version apagaba la forma de colision entera, y un
+## cuerpo sin colision no tiene piso: el que quedaba tirado se hundia en el suelo, caia
+## hasta la red de seguridad, volvia a su marca y se volvia a hundir, en loop, a la vista
+## de todos. Sin capa sigue chocando con el mundo y parado donde cayo.
 func _apagar(b: Player) -> void:
 	b.remove_from_group("players")
 	var cerebro := b.get_node_or_null("BotBrain")
 	if cerebro != null:
 		cerebro.set_process(false)
 	b.bot_move_dir = Vector3.ZERO
-	b.collision.set_deferred("disabled", true)
+	b.collision_layer = 0
 
 
 func _prender(b: Player) -> void:
@@ -483,7 +514,8 @@ func _prender(b: Player) -> void:
 	var d := _datos_de(b)
 	if cerebro != null and not d.get("quieto", false):
 		cerebro.set_process(true)
-	b.collision.set_deferred("disabled", false)
+	b.collision_layer = GameConfig.LAYER_PLAYER
+	b.name_label.visible = not b.health.is_dead
 
 
 # ---------------------------------------------------------------- Escenas
@@ -512,17 +544,42 @@ func _ganar() -> void:
 	Arena.set_bots_active(false)
 	# Todos de vuelta en pie para la escena final: el que perdio tambien habla, y el que
 	# quedo tirado se levanta.
+	#
+	# Y EN FORMACION, cada uno en su lugar respecto del ancla, como al empezar. La pelea
+	# termina donde termina —el jugador a veinte metros, un aliado en otra punta— y las
+	# escenas se escriben respecto del ancla: sin esto, el plano general de la escena final
+	# se abria hasta filmar desde cincuenta metros para que entraran todos.
+	var p := jugador()
 	for id: StringName in participantes:
 		var b := participantes[id] as Player
 		if b != null and is_instance_valid(b):
 			if _fuera.has(id):
 				_prender(b)
 				b.visible = true
+			var rel: Vector2 = Vector2.ZERO if b == p else _datos_de(b).get("pos", Vector2(0.0, -8.0))
+			var lugar := al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 1.0))
+			var hacia := ancla - lugar
+			# Los enemigos, mirando al ancla; los del jugador, hacia adelante.
+			var yaw := 0.0
+			if b.equipo == 1 and Vector2(hacia.x, hacia.z).length() > 0.1:
+				yaw = atan2(-hacia.x, -hacia.z)
 			if b.health.is_dead:
-				b.respawn_at(b.global_position, b.rotation.y)
+				b.respawn_at(lugar + Vector3.UP * 0.1, yaw)
+			else:
+				b.global_position = lugar + Vector3.UP * 0.1
+				b.velocity = Vector3.ZERO
+				b.rotation.y = yaw
+			b.bot_look_yaw = yaw
+			if b.is_local_player() and is_instance_valid(b.camera_pivot):
+				b.camera_pivot.set_yaw(yaw)
 			b.status.clear_all()
 			b.caster.reset_state()
 			b.visual.dejar_de_actuar()
+			# La potencia se fue con clear_all, y su aura tiene que irse con ella: si no, la
+			# escena final muestra al jefe metido en una capsula dorada que tapa todo.
+			var aura := b.get_node_or_null(^"AuraSuper")
+			if aura != null:
+				aura.queue_free()
 	_fuera.clear()
 	await _escena(datos.get("outro", []))
 	Modos.terminar_historia(true, "¡CAPÍTULO %d COMPLETADO!" % (capitulo + 1),

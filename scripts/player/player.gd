@@ -202,6 +202,9 @@ func get_aim_direction() -> Vector3:
 func apply_knockback(impulse: Vector3) -> void:
 	if not Net.is_server():
 		return
+	# En una escena nadie sale volando: lo que llega tarde de la pelea no empuja actores.
+	if Cinematica.activa:
+		return
 	if is_dummy or is_local_player() or multiplayer.multiplayer_peer == null:
 		_apply_knockback_local(impulse)
 		return
@@ -224,6 +227,11 @@ func _net_knockback(impulse: Vector3) -> void:
 ## exactamente lo que tiene que pasar cuando te tiras de cabeza contra alguien.
 func launch_charge(dir: Vector3, speed: float, duration: float) -> void:
 	if not Net.is_server():
+		return
+	# JARONA y Here I Come son corrutinas que lanzan una pasada detras de otra: cortar la
+	# carga al empezar la escena frenaba una sola, y Flowery seguia rebotando por la arena
+	# en medio del dialogo, fuera de cuadro.
+	if Cinematica.activa:
 		return
 	if is_dummy or is_local_player() or multiplayer.multiplayer_peer == null:
 		_apply_charge_local(dir, speed, duration)
@@ -443,7 +451,7 @@ func _try_dash() -> void:
 ## teclas que esta apretando el jugador humano en ese instante. Sus esquives irian para
 ## donde te estas moviendo vos.
 func dash_hacia(dir: Vector3) -> bool:
-	if _dash_cd_left > 0.0 or _dash_left > 0.0:
+	if _dash_cd_left > 0.0 or _dash_left > 0.0 or Cinematica.activa:
 		return false
 	if caster.is_channeling or health.is_dead or not status.can_act():
 		return false
@@ -470,6 +478,14 @@ func _process_bot(delta: float) -> void:
 	# de seguir cayendo para siempre.
 	if global_position.y < -5.0:
 		global_position = home_position + Vector3.UP * 0.5
+		velocity = Vector3.ZERO
+		return
+
+	# MUERTO, QUIETO. Morir le apaga la colision, y con la gravedad corriendo el cuerpo se
+	# hundia en el piso, la red de seguridad lo subia a su marca y se volvia a hundir, en
+	# loop, hasta reaparecer. No se ve —el cuerpo se esconde al morir— pero el que revive
+	# donde esta (la escena final de un capitulo) aparecia adentro del piso.
+	if health.is_dead:
 		velocity = Vector3.ZERO
 		return
 
@@ -698,6 +714,10 @@ func _impacto_embestida() -> void:
 ## lo pasa y conserva la direccion con la que entro. NAN = no girar.
 func teleport_to(destino: Vector3, yaw: float = NAN) -> void:
 	if not Net.is_server():
+		return
+	# Un portal de Rick o una teletransportacion de Goku que salieron justo antes de una
+	# escena lo harian aparecer en otro lado a mitad del dialogo.
+	if Cinematica.activa:
 		return
 	# Siempre los dos argumentos por la red, aunque el yaw no se use: un RPC con un
 	# parametro opcional que a veces llega y a veces no es como se arman los "numero de

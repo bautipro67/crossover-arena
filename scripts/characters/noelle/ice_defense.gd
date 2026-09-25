@@ -15,7 +15,9 @@ extends Ability
 ## mas cerca de congelarse, o sea mas cerca de comerse un Snowgrave.
 
 ## Cuanto daño se come el escudo antes de romperse.
-const SHIELD_AMOUNT: float = 55.0
+## Bajo de 55 a 40. Medido en duelos simulados: el escudo entero se lo comia el rival en
+## cada pelea, y sumado al congelamiento Noelle le ganaba a todos (89%).
+const SHIELD_AMOUNT: float = 40.0
 ## Cuanto dura si no se lo rompen antes.
 const DURATION: float = 5.0
 ## Radio de la rafaga de frio al levantarlo.
@@ -29,7 +31,9 @@ func _init() -> void:
 	description = "Escudo de %d por %.0fs. Al levantarlo, +%d de escarcha a todo el que tengas cerca." % [
 		int(SHIELD_AMOUNT), DURATION, CHILL_STACKS]
 	stamina_cost = 30.0
-	cooldown = 9.0
+	# Subio de 9 a 11: con 9 estaba levantado en cada intercambio, y medido en duelos
+	# simulados se comia un tercio del daño de los que pelean de lejos.
+	cooldown = 11.0
 	channel_time = 0.0
 	icon_color = Color(0.58, 0.86, 1.0)
 

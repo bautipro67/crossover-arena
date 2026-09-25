@@ -150,9 +150,17 @@ func _revisar_camino(desde: Vector3, hasta: Vector3) -> bool:
 ## Spawnea el proyectil en el mundo del caster y lo devuelve ya posicionado.
 static func launch(proj: Projectile, caster: Node, origin: Vector3, dir: Vector3, cosmetic: bool, offset: float = 0.8) -> Projectile:
 	if not is_instance_valid(caster):
+		proj.free()
 		return null
 	var world := caster.get_parent()
 	if world == null:
+		proj.free()
+		return null
+	# En una escena no sale nada de verdad: una rafaga de cuchillos o de esferas que ya
+	# venia disparando seguiria soltando proyectiles en medio del dialogo. Los cosmeticos
+	# si salen: son los que usan las escenas para mostrar una tecnica.
+	if Cinematica.activa and not cosmetic:
+		proj.free()
 		return null
 	var safe_dir := dir.normalized()
 	if safe_dir.is_zero_approx():

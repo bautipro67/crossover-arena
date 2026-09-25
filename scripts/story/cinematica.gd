@@ -55,6 +55,9 @@ var _cam_mira: Vector3 = Vector3.ZERO
 ## Cuanto se acerca sola la camara mientras dura el plano, por segundo.
 var _cam_deriva: Vector3 = Vector3.ZERO
 var _plano_elegido: bool = false
+## El par de un plano "dos" en curso. Mientras hablen ellos, la camara va y viene por
+## encima del hombro del que escucha: el plano y contraplano de cualquier dialogo.
+var _dos: Array[StringName] = []
 ## El proximo frame la camara salta al plano nuevo en vez de deslizarse.
 var _cortar: bool = false
 
@@ -74,6 +77,11 @@ var _extras: Array[Node] = []
 ## Los carteles de nombre que habia prendidos, para devolverlos al terminar.
 var _carteles: Array[Label3D] = []
 var _cuantos_extras: int = 0
+## La pose que tenia cada actor antes de la escena: Rick trabajando, alguien tirado. Se
+## devuelve al terminar; lo que la escena les hizo hacer, no.
+var _poses_previas: Dictionary = {}
+## Las auras de potencia que se escondieron para la escena (ver _congelar_pelea).
+var _auras: Array[Node3D] = []
 
 
 # ------------------------------------------------------------------ Correr
@@ -86,11 +94,13 @@ func reproducir() -> void:
 	if is_instance_valid(hud):
 		hud.visible = false
 	Arena.set_bots_active(false)
-	for actor: Node in actores.values():
-		_frenar(actor)
+	_congelar_pelea()
 	# Sin carteles de nombre flotando: en una escena el nombre lo dice el subtitulo, y un
 	# "Rick" verde encima de la cabeza la vuelve una captura de la partida.
-	for p: Node in arena.get_tree().get_nodes_in_group("players"):
+	#
+	# De TODOS los cuerpos de la arena, no solo de los que pelean: uno de reserva esta fuera
+	# del grupo "players", y cuando una escena lo hacia aparecer se le prendia el cartel.
+	for p: Node in arena.get_children():
 		var jugador := p as Player
 		if jugador != null and jugador.name_label.visible:
 			jugador.name_label.visible = false
@@ -106,13 +116,19 @@ func reproducir() -> void:
 
 
 func _terminar() -> void:
-	for actor: Node in actores.values():
+	for id: StringName in actores:
+		var actor := actores[id] as Player
 		_frenar(actor)
 		if is_instance_valid(actor):
-			(actor as Player).visual.dejar_de_actuar()
+			actor.visual.dejar_de_actuar()
+			if _poses_previas.has(id):
+				actor.visual.actuar(_poses_previas[id])
 	for extra: Node in _extras:
 		if is_instance_valid(extra):
 			extra.queue_free()
+	for aura: Node3D in _auras:
+		if is_instance_valid(aura):
+			aura.visible = true
 	for cartel: Label3D in _carteles:
 		if is_instance_valid(cartel):
 			cartel.visible = true
@@ -137,6 +153,38 @@ func _frenar(actor: Node) -> void:
 	p.guion_dir = Vector3.ZERO
 	p.bot_move_dir = Vector3.ZERO
 	p.bot_wants_run = false
+
+
+## LA PELEA SE CONGELA mientras dura la escena.
+##
+## Una escena a mitad de pelea —DIO a media vida, Flowery que se enoja— arranca con todo
+## lo que estaba pasando: cuchillos en el aire, Meeseeks buscando, alguien aturdido o a
+## mitad de un dash, un Snowgrave cargando. Sin esto los cuchillos seguian pegando
+## mientras se hablaba, el aturdido no podia darse vuelta para actuar, el empujado
+## patinaba por la escena y el que cargaba soltaba el ultimate en medio del dialogo.
+## Ademas, mientras hay escena nadie saca vida (ver CombatUtils.deal_damage).
+func _congelar_pelea() -> void:
+	for hijo: Node in arena.get_children():
+		if hijo is Projectile:
+			hijo.queue_free()
+	for id: StringName in actores:
+		var p := actores[id] as Player
+		if p == null or not is_instance_valid(p):
+			continue
+		_frenar(p)
+		p.velocity = Vector3(0.0, minf(p.velocity.y, 0.0), 0.0)
+		p.stop_charge()
+		p.status.clear_all(true)
+		p.caster.cancel_channel()
+		if p.visual._pose_guion != &"":
+			_poses_previas[id] = p.visual._pose_guion
+		# El aura de un potenciado es una capsula brillante que envuelve el cuerpo entero:
+		# en un primer plano, a dos metros, no se ve a nadie adentro. Se esconde mientras
+		# dura la escena y vuelve con la pelea.
+		var aura := p.get_node_or_null(^"AuraSuper") as Node3D
+		if aura != null and aura.visible:
+			aura.visible = false
+			_auras.append(aura)
 
 
 func saltear() -> void:
@@ -198,7 +246,9 @@ func _actor(id: StringName) -> Player:
 
 func _donde(rel: Vector2) -> Vector3:
 	var punto := ancla + Vector3(rel.x, 0.0, rel.y)
-	return arena.find_clear_spot(punto, 0.8) if is_instance_valid(arena) else punto
+	if not is_instance_valid(arena):
+		return punto
+	return MisionHistoria.al_piso(arena, arena.find_clear_spot(punto, 0.8))
 
 
 func _colocar(id: StringName, rel: Vector2, grados: float) -> void:
@@ -390,7 +440,14 @@ func _sin_paredes(desde: Vector3, hasta: Vector3) -> Vector3:
 	var mundo := _camara.get_world_3d()
 	if mundo == null or mundo.direct_space_state == null:
 		return hasta
-	var rayo := PhysicsRayQueryParameters3D.create(desde, hasta)
+	# El rayo arranca un poco despegado de lo que se mira: un plano que mira un punto del
+	# piso (alguien tirado) arrancaba el rayo sobre el mismo piso, lo daba por pared y
+	# dejaba la camara en el suelo.
+	var hacia := hasta - desde
+	if hacia.length() < 0.5:
+		return hasta
+	var inicio := desde + hacia.normalized() * 0.3
+	var rayo := PhysicsRayQueryParameters3D.create(inicio, hasta)
 	rayo.collision_mask = GameConfig.LAYER_WORLD
 	var golpe := mundo.direct_space_state.intersect_ray(rayo)
 	if golpe.is_empty():
@@ -407,6 +464,7 @@ func _plano(p: Array) -> void:
 	var tipo := String(p[1])
 	_cam_deriva = Vector3.ZERO
 	_cortar = true
+	_dos.clear()
 	match tipo:
 		"cerca":
 			var a := _actor(StringName(p[2]))
@@ -416,20 +474,12 @@ func _plano(p: Array) -> void:
 			var a := _actor(StringName(p[2]))
 			var b := _actor(StringName(p[3]))
 			if a != null and b != null:
-				var hacia := (b.global_position - a.global_position)
-				hacia.y = 0.0
-				var dir := hacia.normalized() if hacia.length() > 0.05 else Vector3.FORWARD
-				var lado := dir.cross(Vector3.UP).normalized()
-				_cam_pos = _cabeza(a) - dir * 2.2 + lado * 0.9 + Vector3.UP * 0.25
-				_cam_mira = _cabeza(b) - Vector3.UP * 0.1
-				_cam_deriva = dir * 0.15
+				_dos = [StringName(p[2]), StringName(p[3])]
+				_sobre_el_hombro(a, b)
 		"abajo":
 			var a := _actor(StringName(p[2]))
 			if a != null:
-				var frente := -a.global_transform.basis.z
-				_cam_pos = a.global_position + frente * 3.2 + Vector3.UP * 0.35
-				_cam_mira = _cabeza(a) + Vector3.UP * 0.2
-				_cam_deriva = -frente * 0.12
+				_contrapicado(a)
 		"libre":
 			_cam_pos = ancla + (p[2] as Vector3)
 			_cam_mira = ancla + (p[3] as Vector3)
@@ -439,17 +489,84 @@ func _plano(p: Array) -> void:
 			_plano_general()
 
 
+## LA CAMARA BUSCA UN LUGAR DESDE DONDE SE VEA. Cada plano tiene su posicion ideal —de
+## frente, sobre el hombro, desde abajo— pero el mapa esta lleno de coberturas, y un actor
+## parado cerca de una quedaba tapado de la cintura para abajo, o la camara terminaba
+## pegada a la pared mirando una nuca. Se prueban giros alrededor del personaje, del
+## ideal hacia los costados, y gana el primero desde el que se le ven la cabeza y el pecho
+## sin paredes ni otro personaje en el medio. Si ninguno sirve, queda el ideal y el rayo
+## de _sin_paredes la acerca.
+const GIROS: Array[float] = [0.0, 28.0, -28.0, 55.0, -55.0, 80.0, -80.0]
+
+
+## De frente y un poco al costado, a la altura de la cara.
 func _primer_plano(a: Player) -> void:
-	var frente := -a.global_transform.basis.z
-	var lado := frente.cross(Vector3.UP).normalized()
+	var frente := _frente(a)
 	var cabeza := _cabeza(a)
-	_cam_pos = cabeza + frente * 2.1 + lado * 0.55 + Vector3.UP * 0.05
 	_cam_mira = cabeza - Vector3.UP * 0.12
-	# Se acerca sola mientras habla: el "push in" de cualquier escena de dialogo.
-	_cam_deriva = -frente * 0.10
+	var mejor := -1
+	for giro: float in GIROS:
+		var dir := frente.rotated(Vector3.UP, deg_to_rad(giro))
+		var pos := cabeza + dir * 2.1 + dir.cross(Vector3.UP).normalized() * 0.55 + Vector3.UP * 0.05
+		var nota := _nota(pos, a, [])
+		if nota > mejor:
+			mejor = nota
+			_cam_pos = pos
+			# Se acerca sola mientras habla: el "push in" de cualquier escena de dialogo.
+			_cam_deriva = -dir * 0.10
+		if nota == NOTA_LIMPIA:
+			break
 	_cortar = true
 
 
+## Por encima del hombro de `a`, mirando a `b`. Si ese hombro tiene una pared atras, se
+## prueba el otro, y despues mas cerca. Si ni asi se ve a `b`, primer plano de `b`: mejor
+## perder el hombro que filmar una pared.
+func _sobre_el_hombro(a: Player, b: Player) -> void:
+	var hacia := b.global_position - a.global_position
+	hacia.y = 0.0
+	var dir := hacia.normalized() if hacia.length() > 0.05 else _frente(a)
+	var lado := dir.cross(Vector3.UP).normalized()
+	var mejor := -1
+	for atras: float in [2.2, 1.5]:
+		for signo: float in [1.0, -1.0]:
+			var pos := _cabeza(a) - dir * atras + lado * 0.9 * signo + Vector3.UP * 0.25
+			var nota := _nota(pos, b, [a])
+			if nota > mejor:
+				mejor = nota
+				_cam_pos = pos
+		if mejor == NOTA_LIMPIA:
+			break
+	if mejor < NOTA_SIN_PARED:
+		_primer_plano(b)
+		return
+	_cam_mira = _cabeza(b) - Vector3.UP * 0.1
+	_cam_deriva = dir * 0.15
+	_cortar = true
+
+
+## Desde abajo y de frente: el que habla se ve imponente.
+func _contrapicado(a: Player) -> void:
+	var frente := _frente(a)
+	_cam_mira = _cabeza(a) + Vector3.UP * 0.2
+	var mejor := -1
+	for giro: float in GIROS:
+		var dir := frente.rotated(Vector3.UP, deg_to_rad(giro))
+		var pos := a.global_position + dir * 3.2 + Vector3.UP * 0.35
+		var nota := _nota(pos, a, [])
+		if nota > mejor:
+			mejor = nota
+			_cam_pos = pos
+			_cam_deriva = -dir * 0.12
+		if nota == NOTA_LIMPIA:
+			break
+	_cortar = true
+
+
+## A todos los que estan en escena, desde el lado desde el que se vean mas.
+##
+## La distancia sale del campo visual: la primera version ponia la camara a una distancia
+## fija del centro, y con alguien a nueve metros del resto ese quedaba fuera del cuadro.
 func _plano_general() -> void:
 	var visibles: Array[Player] = []
 	for a: Node in actores.values():
@@ -463,12 +580,94 @@ func _plano_general() -> void:
 	for a: Player in visibles:
 		centro += a.global_position
 	centro /= float(visibles.size())
-	var radio := 2.0
+	var radio := 1.5
 	for a: Player in visibles:
-		radio = maxf(radio, centro.distance_to(a.global_position))
-	_cam_pos = centro + Vector3(radio * 0.6, 2.2 + radio * 0.35, 4.5 + radio * 1.3)
+		var d := a.global_position - centro
+		d.y = 0.0
+		radio = maxf(radio, d.length())
+	var tam := get_viewport().get_visible_rect().size if get_viewport() != null else Vector2(16, 9)
+	var aspecto := tam.x / maxf(1.0, tam.y)
+	var medio_ancho := atan(tan(deg_to_rad(_camara.fov) * 0.5) * aspecto)
+	var dist := maxf(6.0, (radio + 1.2) / tan(medio_ancho) + radio)
+	var alto := 2.2 + radio * 0.35
 	_cam_mira = centro + Vector3.UP * 1.1
-	_cam_deriva = Vector3(-0.25, 0.0, 0.0)
+	# De frente al grupo, si mira para algun lado; si no, el angulo de siempre.
+	var frente := Vector3.ZERO
+	for a: Player in visibles:
+		frente += _frente(a)
+	var base := atan2(frente.x, frente.z) if frente.length() > 0.3 else atan2(0.6, 1.3)
+	var mejor := -1
+	for k: int in range(8):
+		var ang := base + (float((k + 1) / 2) * (1.0 if k % 2 == 1 else -1.0)) * TAU / 8.0
+		var pos := centro + Vector3(sin(ang), 0.0, cos(ang)) * dist + Vector3.UP * alto
+		var vistos := 0
+		for a: Player in visibles:
+			if _nota(pos, a, []) >= NOTA_SIN_PARED:
+				vistos += 1
+		if not _hay_aire(pos):
+			vistos -= 1
+		if vistos > mejor:
+			mejor = vistos
+			_cam_pos = pos
+		if vistos == visibles.size():
+			break
+	_cam_deriva = (_cam_mira - _cam_pos).cross(Vector3.UP).normalized() * 0.25
+
+
+func _frente(a: Player) -> Vector3:
+	var f := -a.global_transform.basis.z
+	f.y = 0.0
+	return f.normalized() if f.length() > 0.01 else Vector3.FORWARD
+
+
+## Cuanto sirve filmar a `a` desde `desde`: 2 si ninguna pared le tapa la cabeza ni el
+## pecho, 1 mas si ningun otro personaje se cruza, y 1 mas si la camara tiene aire
+## alrededor. Los de `ignorar` no cuentan: en un plano sobre el hombro, el hombro tapa a
+## proposito.
+##
+## ES UNA NOTA Y NO UN SI O NO porque a veces ningun angulo es perfecto, y ahi hay que
+## quedarse con el menos malo. Con un si o no, si ninguno pasaba se volvia al ideal, que
+## podia ser justo el que tenia a otro personaje parado delante.
+const NOTA_LIMPIA: int = 4
+const NOTA_SIN_PARED: int = 2
+
+
+func _nota(desde: Vector3, a: Player, ignorar: Array) -> int:
+	var espacio := _camara.get_world_3d().direct_space_state if is_instance_valid(_camara) else null
+	var pared := false
+	var cruzado := false
+	for alto: float in [1.55, 1.0]:
+		var punto := a.global_position + Vector3.UP * alto * a.visual.build_scale.y
+		if espacio != null:
+			var rayo := PhysicsRayQueryParameters3D.create(desde, punto)
+			rayo.collision_mask = GameConfig.LAYER_WORLD
+			if not espacio.intersect_ray(rayo).is_empty():
+				pared = true
+		var seg := punto - desde
+		for otro: Node in actores.values():
+			var o := otro as Player
+			if o == null or not is_instance_valid(o) or o == a or not o.visible or ignorar.has(o):
+				continue
+			for alto_o: float in [1.0, 1.5]:
+				var cuerpo := o.global_position + Vector3.UP * alto_o * o.visual.build_scale.y
+				var t := clampf((cuerpo - desde).dot(seg) / maxf(0.001, seg.length_squared()), 0.0, 1.0)
+				if t > 0.05 and t < 0.92 and (desde + seg * t).distance_to(cuerpo) < 0.4:
+					cruzado = true
+	return (0 if pared else 2) + (0 if cruzado else 1) + (1 if _hay_aire(desde) else 0)
+
+
+## La camara no puede quedar pegada ni adentro de una cobertura.
+func _hay_aire(pos: Vector3) -> bool:
+	if not is_instance_valid(_camara):
+		return true
+	var espacio := _camara.get_world_3d().direct_space_state
+	var forma := PhysicsShapeQueryParameters3D.new()
+	var esfera := SphereShape3D.new()
+	esfera.radius = 0.45
+	forma.shape = esfera
+	forma.collision_mask = GameConfig.LAYER_WORLD
+	forma.transform = Transform3D(Basis.IDENTITY, pos)
+	return espacio.intersect_shape(forma, 1).is_empty()
 
 
 # -------------------------------------------------------------- Texto e UI
@@ -573,7 +772,25 @@ func _barras_de_cine(entrar: bool) -> void:
 
 func _decir(quien: StringName, texto: String) -> void:
 	var a := _actor(quien) if quien != &"" else null
-	if a != null and not _plano_elegido:
+	if a != null and _dos.has(quien) and not _plano_elegido:
+		# PLANO Y CONTRAPLANO. Con un "dos" en curso, cada linea de uno de los dos corta a
+		# por encima del hombro del OTRO: el que habla queda de frente y el que escucha, de
+		# espaldas en primer termino. Antes el plano quedaba fijo sobre el hombro del
+		# primero, y cuando le tocaba hablar a el se le veia la nuca.
+		var otro := _actor(_dos[1] if _dos[0] == quien else _dos[0])
+		if otro != null:
+			var par := _dos.duplicate()
+			_sobre_el_hombro(otro, a)
+			_dos = par
+	elif a != null and _plano_elegido and _dos.size() == 2 and _dos[0] == quien:
+		# El guion pidio "dos" sobre el hombro del que habla: se da vuelta el plano.
+		var otro := _actor(_dos[1])
+		if otro != null:
+			var par := _dos.duplicate()
+			_sobre_el_hombro(otro, a)
+			_dos = par
+	elif a != null and not _plano_elegido:
+		_dos.clear()
 		_primer_plano(a)
 	_plano_elegido = false
 	_panel.visible = true

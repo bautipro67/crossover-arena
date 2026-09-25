@@ -11,8 +11,10 @@ extends Ability
 ## cobertura, y le da al rival el tiempo de vuelo para salirse del circulo.
 
 const IMPACT_DAMAGE: float = 10.0
-const BLAST_DAMAGE: float = 26.0
-const BLAST_RADIUS: float = 4.6
+## Subio de 26 a 32: la granada tarda en caer y se esquiva, y tiene que valer la pena.
+const BLAST_DAMAGE: float = 32.0
+## Subio de 4.6 a 5.2: tarda en caer, y con el radio justo casi nunca agarraba a nadie.
+const BLAST_RADIUS: float = 5.2
 const SPEED: float = 22.0
 ## Mecha. Con la deteccion de impacto arreglada revienta al tocar el piso, asi que esto
 ## solo aplica a una granada tirada al aire libre. 1.6 y no 2.4: el reclamo fue que
@@ -30,7 +32,9 @@ func _init() -> void:
 	description = "La tira en arco. Revienta en %d metros y hace %d." % [
 		int(BLAST_RADIUS), int(BLAST_DAMAGE)]
 	stamina_cost = 30.0
-	cooldown = 8.0
+	# Bajo de 8 a 6: es lo unico que Rick tiene para sacar mucho de golpe, y con 8 salia
+	# una vez por pelea.
+	cooldown = 6.0
 	channel_time = 0.0
 	icon_color = Color(0.6, 1.0, 0.3)
 

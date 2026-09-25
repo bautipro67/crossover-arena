@@ -19,7 +19,9 @@ signal unstunned()
 const MAX_CHILL: int = 5
 ## Cada cuanto se pierde un stack si no te siguen pegando escarcha.
 const CHILL_DECAY_INTERVAL: float = 2.0
-const FREEZE_DURATION: float = 2.5
+## Bajo de 2.5 a 2.0. Medido en duelos simulados: con el congelamiento entero, el rival
+## de Noelle pasaba un tercio de la pelea sin poder hacer nada, y ella le ganaba a todos.
+const FREEZE_DURATION: float = 2.0
 ## Un objetivo congelado recibe 25% mas de daño de cualquier fuente.
 const FROZEN_DAMAGE_TAKEN_MULT: float = 1.25
 
@@ -69,6 +71,13 @@ const INMUNE_TRAS_COMBO: float = 1.0
 ## Cuanto lleva tambaleando sin cortarse.
 var _combo_acumulado: float = 0.0
 var _inmune_left: float = 0.0
+## NO SE TAMBALEA NUNCA. Lo tienen los jefes del modo historia (ver MisionHistoria._sumar).
+##
+## Medido: un solo atacante que pega seguido dejaba a DIO tambaleando o congelado el 75%
+## de la pelea, y "aguanta frente a DIO" se ganaba siempre sin que DIO hiciera nada. Un
+## jefe que no se puede frenar a golpes es el que pide esquivar. Congelar (la escarcha de
+## Noelle) y aturdir (ZA WARUDO) siguen andando: son otra cosa que el tambaleo.
+var sin_tambaleo: bool = false
 
 ## VULNERABLE: recibe mas daño por un rato.
 ##
@@ -188,7 +197,7 @@ func stun_for(duration: float) -> void:
 
 ## SOLO SERVIDOR. El tambaleo de un golpe. Ver TAMBALEO.
 func tambalear(duracion: float) -> void:
-	if not _is_server() or duracion <= 0.0:
+	if not _is_server() or duracion <= 0.0 or sin_tambaleo:
 		return
 	# Recien salido de un combo: el segundo de escape no se puede cortar.
 	if _inmune_left > 0.0:
@@ -314,7 +323,9 @@ func get_stun_remaining() -> float:
 
 
 ## SOLO SERVIDOR. Limpia todo (respawn).
-func clear_all() -> void:
+## `conservar_impulso`: lo malo se va y lo bueno queda. Lo usan las escenas del modo
+## historia: una escena no le saca a Sonic su transformacion ni a un jefe su potencia.
+func clear_all(conservar_impulso: bool = false) -> void:
 	var was_frozen := is_frozen()
 	var was_stunned := is_stunned()
 	chill_stacks = 0
@@ -336,6 +347,8 @@ func clear_all() -> void:
 	# El tambaleo va aparte (ver _avisar_tambaleo): sin esto, un cliente que reaparece en
 	# medio de un combo seguiria clavado lo que le quedaba.
 	_avisar_tambaleo()
+	if conservar_impulso:
+		return
 	_imp_vel = 1.0
 	_imp_resist = 1.0
 	_imp_daño = 1.0

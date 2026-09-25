@@ -8,7 +8,9 @@ extends Ability
 ##
 ## CUESTA STAMINA (26).
 
-const DAMAGE: float = 12.0
+## Bajo de 12 a 10 (36 a 30 los tres): cuchillos y rafaga juntos seguian bajando a
+## cualquiera de 100 en dos habilidades. Medido en duelos simulados, Dio 65%.
+const DAMAGE: float = 10.0
 const SPEED: float = 34.0
 const LIFETIME: float = 2.5
 const KNIFE_COUNT: int = 3
@@ -18,7 +20,7 @@ const SPREAD_DEG: float = 7.0
 func _init() -> void:
 	id = &"knife_throw"
 	display_name = "Knife Throw"
-	description = "Tres cuchillos en abanico, 12 de daño cada uno. De cerca entran los tres."
+	description = "Tres cuchillos en abanico, %d de daño cada uno. De cerca entran los tres." % int(DAMAGE)
 	stamina_cost = 26.0
 	cooldown = 4.0
 	channel_time = 0.0

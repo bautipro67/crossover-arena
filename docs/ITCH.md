@@ -100,7 +100,8 @@ quien la quiere para él.
 ═══ COMBOS ═══
 
 Cada golpe deja al rival tambaleando un instante: alcanza para encadenar el golpe básico
-con tus habilidades antes de que se reponga. El contador de combo cuenta la cadena.
+con tus habilidades antes de que se reponga. El contador de combo cuenta la cadena. Los
+jefes del modo historia son la excepción: no se frenan a golpes, hay que esquivarlos.
 
 ═══ MODOS ═══
 

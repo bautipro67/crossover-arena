@@ -15,7 +15,8 @@ extends Ability
 ## esta mirando, terminas detras de el; si te daba la espalda, igual: la tecnica es
 ## aparecer donde no mira.
 
-const DAMAGE: float = 16.0
+## Subio de 16 a 22: aparecer detras tiene que dar ventaja, no solo reubicarte.
+const DAMAGE: float = 22.0
 const ALCANCE: float = 24.0
 ## Cuan al frente tiene que estar: la que estas mirando, no la que tenes al costado.
 const ANGULO: float = 60.0

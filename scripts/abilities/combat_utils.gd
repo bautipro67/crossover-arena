@@ -100,7 +100,11 @@ static func get_players_in_line(caster: Node3D, origin: Vector3, dir: Vector3,
 ##
 ## Sin equipo (-1) nadie es aliado de nadie, que es el todos contra todos de siempre: por
 ## eso esto no cambia nada fuera del modo historia.
-static func son_aliados(a: Node, b: Node) -> bool:
+##
+## Sin tipo a proposito: el que dispara puede ya no existir —un Meeseeks o un proyectil que
+## sigue volando despues de que su dueño se fue— y un parametro `Node` rechaza un objeto
+## liberado antes de que is_instance_valid llegue a mirarlo.
+static func son_aliados(a, b) -> bool:
 	if not is_instance_valid(a) or not is_instance_valid(b) or a == b:
 		return false
 	var ea: int = int(a.get("equipo")) if a.get("equipo") != null else -1
@@ -137,6 +141,11 @@ static func has_line_of_sight(from_node: Node3D, origin: Vector3, target: Node3D
 ## se paga el siguiente solo: justo lo que estos dos recursos existen para evitar.
 static func deal_damage(target: Node, amount: float, source_id: int, feeds_resources: bool = true) -> float:
 	if not is_instance_valid(target) or amount <= 0.0:
+		return 0.0
+	# EN UNA ESCENA NO SE PELEA. Lo que ya estaba en camino —un golpe encadenado de Here I
+	# Come, una explosion con retardo— llega igual, y sin esta puerta mataba a alguien en
+	# medio del dialogo. Solo pasa en el modo historia: en linea nunca hay escenas.
+	if Cinematica.activa:
 		return 0.0
 	var health := target.get_node_or_null("Health") as Health
 	if health == null or health.is_dead:

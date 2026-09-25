@@ -1196,11 +1196,7 @@ func _on_kill_registered(killer_id: int, victim_id: int) -> void:
 		text = "%s se elimino solo" % Net.get_player_name(victim_id)
 	var label := UITheme.make_label(text, 14, UITheme.TEXT)
 	_kill_feed.add_child(label)
-	var timer := get_tree().create_timer(6.0)
-	timer.timeout.connect(func() -> void:
-		if is_instance_valid(label):
-			label.queue_free()
-	)
+	get_tree().create_timer(6.0).timeout.connect(label.queue_free)
 
 
 func show_match_result(text: String) -> void:

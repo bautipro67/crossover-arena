@@ -13,7 +13,9 @@ extends Node
 ## importar cuánto tarde de verdad: la simulación corre tan rápido como da la máquina.
 
 const MAIN_SCENE: PackedScene = preload("res://scenes/main.tscn")
-const PRUEBAS: int = 15
+## Cuantas peleas por modo. 15 por defecto; PRUEBAS_SIM=30 para calibrar: con 15, un modo
+## sin cambios paso de 7 a 2 victorias entre dos corridas.
+var PRUEBAS: int = int(OS.get_environment("PRUEBAS_SIM")) if OS.get_environment("PRUEBAS_SIM") != "" else 15
 const TOPE_PELEA: float = 70.0
 var _arena: Arena = null
 var _siguiente_id: int = 7000
@@ -32,7 +34,10 @@ func _ready() -> void:
 func _correr() -> void:
 	await get_tree().process_frame
 	Progreso.guardado_activo = false
-	Net.host_game(GameConfig.DEFAULT_PORT + 52, "T")
+	# Un puerto por proceso: dos simulaciones a la vez no pueden escuchar en el mismo.
+	var puerto := int(OS.get_environment("PUERTO_SIM")) if OS.get_environment("PUERTO_SIM") != "" \
+		else GameConfig.DEFAULT_PORT + 52
+	Net.host_game(puerto, "T")
 	await get_tree().process_frame
 	Net.start_match()
 	for _i in range(20): await get_tree().physics_frame
@@ -52,9 +57,133 @@ func _correr() -> void:
 	for m in modos:
 		if m == Modos.HISTORIA:
 			await _medir_historia()
+		elif m == &"personajes":
+			await _medir_personajes()
 		else:
 			await _medir(m)
 	get_tree().quit()
+
+
+## LOS PERSONAJES ENTRE SI: duelos uno contra uno, todos contra todos, y cada par la mitad
+## de las veces de cada lado del mapa. Los dos son el mismo BotBrain y pegan al cien por
+## ciento (ids positivos): lo unico que cambia es el kit. Un bot no juega como una persona,
+## asi que lo que importa son las diferencias grandes, no un 52 contra 48.
+##
+##   -- personajes [duelos por par] [pares, ej. noelle-dio,rick-sonic]
+func _medir_personajes() -> void:
+	var args := OS.get_cmdline_user_args()
+	var n := int(args[1]) if args.size() > 1 else 16
+	var ids := CharacterDB.get_all_ids()
+	var pares: Array = []
+	if args.size() > 2:
+		for par in String(args[2]).split(","):
+			var dos := par.split("-")
+			pares.append([StringName(dos[0]), StringName(dos[1])])
+	else:
+		for i in range(ids.size()):
+			for j in range(i + 1, ids.size()):
+				pares.append([ids[i], ids[j]])
+	Modos.iniciar(Modos.DUELO)
+	var ancla := MisionHistoria.lugar_despejado(_arena, Vector3.ZERO)
+	for par in pares:
+		var ganadas := 0.0
+		var detalle := ""
+		var tiempos := 0.0
+		for k in range(n):
+			var r: Array = await _duelo(par[0], par[1], ancla, k % 2 == 0)
+			tiempos += r[1]
+			if r[0] == 0:
+				ganadas += 1.0
+				detalle += "A"
+			elif r[0] == 1:
+				detalle += "B"
+			else:
+				ganadas += 0.5
+				detalle += "="
+		print("personajes %-8s vs %-8s  %4.1f/%d  (%2.0f%%)  %4.1fs  %s" % [String(par[0]), String(par[1]),
+			ganadas, n, 100.0 * ganadas / n, tiempos / n, detalle])
+
+
+## Un duelo entre dos kits. Devuelve [0 si gano a, 1 si gano b, -1 empate; segundos].
+func _duelo(a: StringName, b: StringName, ancla: Vector3, lado: bool) -> Array:
+	for id in _arena._players.keys().duplicate():
+		if id == Net.local_id():
+			continue
+		var viejo = _arena._players[id]
+		if is_instance_valid(viejo): viejo.queue_free()
+		_arena._players.erase(id)
+	for hijo in _arena.get_children():
+		if hijo is Projectile:
+			hijo.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var cuerpos: Array[Player] = []
+	for i in range(2):
+		var pj: StringName = a if i == 0 else b
+		var x := -7.0 if (i == 0) == lado else 7.0
+		var punto := _arena.find_clear_spot(ancla + Vector3(x, 0.0, 0.0), 1.0)
+		var id := _siguiente_id; _siguiente_id += 1
+		_arena._crear_bot(id, punto, pj)
+		var p: Player = _arena._players[id]
+		p.equipo = i
+		p.health.set_max(CharacterDB.get_character(pj).max_health)
+		p.health.revive_full()
+		p.stamina.restore_full()
+		for conexion in p.died.get_connections():
+			p.died.disconnect(conexion["callable"])
+		var cerebro := p.get_node_or_null("BotBrain") as BotBrain
+		if cerebro != null:
+			cerebro.home = ancla
+		cuerpos.append(p)
+	Arena.set_bots_active(true)
+	# DIAG=1: que usa cada uno, cuanto pega y a que distancia pelean. Para separar un kit
+	# flojo de un bot que no sabe usarlo.
+	var diag := OS.get_environment("DIAG") == "1"
+	var usos: Array = [{}, {}]
+	var recibido: Array = [0.0, 0.0]
+	var cortes: Array = [0, 0]
+	var absorbido: Array = [0.0, 0.0]
+	var trabado: Array = [0.0, 0.0]
+	if diag:
+		for i in range(2):
+			var yo := i
+			cuerpos[i].caster.ability_used.connect(func(idx: int) -> void:
+				var nombre := String(cuerpos[yo].caster.get_ability(idx).id)
+				usos[yo][nombre] = int(usos[yo].get(nombre, 0)) + 1)
+			cuerpos[i].caster.channel_cancelled.connect(func(_idx: int) -> void: cortes[yo] += 1)
+			cuerpos[i].health.damaged.connect(func(cuanto: float, _de: int) -> void: recibido[yo] += cuanto)
+			cuerpos[i].health.shield_absorbed.connect(func(cuanto: float, _q: float) -> void: absorbido[yo] += cuanto)
+	var t := 0.0
+	var dist_suma := 0.0
+	var cuadros := 0
+	var fin := -2
+	while t < 90.0 and fin == -2:
+		await get_tree().physics_frame
+		t += 1.0 / 60.0
+		dist_suma += cuerpos[0].global_position.distance_to(cuerpos[1].global_position)
+		cuadros += 1
+		for i in range(2):
+			if not cuerpos[i].status.can_act():
+				trabado[i] += 1.0 / 60.0
+		if cuerpos[0].health.is_dead:
+			fin = 1
+		elif cuerpos[1].health.is_dead:
+			fin = 0
+	if diag:
+		print("  diag %s %s %4.1fs | %s pega %.0f (+%.0f al escudo), trabado %.1fs, usa %s | %s pega %.0f (+%.0f al escudo), trabado %.1fs, usa %s | dist %.1f m" % [
+			"gana" if fin != -2 else "tiempo", "A" if fin == 0 else "B", t,
+			a, recibido[1], absorbido[1], trabado[0], str(usos[0]),
+			b, recibido[0], absorbido[0], trabado[1], str(usos[1]),
+			dist_suma / maxf(1.0, float(cuadros))])
+	if fin != -2:
+		return [fin, t]
+	# Empate por tiempo: gana el que tenga mas vida, en proporcion a su maximo.
+	var va := cuerpos[0].health.current / cuerpos[0].health.max_health
+	var vb := cuerpos[1].health.current / cuerpos[1].health.max_health
+	if absf(va - vb) < 0.1:
+		return [-1, t]
+	return [0 if va > vb else 1, t]
 
 
 ## Los capitulos de la historia, con su MISION DE VERDAD: aliados, objetivo, eventos,
@@ -62,16 +191,24 @@ func _correr() -> void:
 func _medir_historia() -> void:
 	MisionHistoria.sin_cinematicas = true
 	var args := OS.get_cmdline_user_args()
+	# -- historia [heroe|-] [capitulos, ej. 4,6,7]
+	var heroe: StringName = StringName(args[1]) if args.size() > 1 and args[1] != "-" else &""
+	var solo: Array = []
+	if args.size() > 2:
+		for n in String(args[2]).split(","):
+			solo.append(int(n) - 1)
 	for c in range(Historia.cantidad()):
+		if not solo.is_empty() and not solo.has(c):
+			continue
 		var cap := Historia.capitulo(c)
 		var ganadas := 0
 		var detalle := ""
 		for _prueba in range(PRUEBAS):
 			Modos.iniciar_historia(c)
-			var r: Array = await _pelea_mision(c, cap, StringName(args[1]) if args.size() > 1 else &"")
+			var r: Array = await _pelea_mision(c, cap, heroe)
 			if r[0]:
 				ganadas += 1
-			detalle += "%s(%.0fs) " % ["G" if r[0] else "p", r[1]]
+			detalle += "%s(%.0fs %d%%) " % ["G" if r[0] else "p", r[1], int(r[2] * 100.0)]
 		print("historia %2d %-10s %2d/%d   %s" % [c + 1, String(cap["personaje"]), ganadas, PRUEBAS, detalle])
 	MisionHistoria.sin_cinematicas = false
 
@@ -113,12 +250,38 @@ func _pelea_mision(c: int, cap: Dictionary, heroe: StringName) -> Array:
 	Modos.termino.connect(al_terminar)
 	_arena.add_child(m)
 	var t := 0.0
+	var cerebro := h.get_node_or_null("BotBrain") as BotBrain
+	# DIAG=1: que hace el jefe del capitulo y cuanto le entra al heroe.
+	var diag := OS.get_environment("DIAG") == "1"
+	var usos_jefe := {}
+	var recibido := [0.0]
+	var dist_jefe := [0.0, 0]
+	if diag:
+		h.health.damaged.connect(func(cuanto: float, _de: int) -> void: recibido[0] += cuanto)
+	var jefe_conectado := [false]
 	while fin[0] == null and t < 200.0:
+		if diag and not jefe_conectado[0] and m.jefe() != null:
+			jefe_conectado[0] = true
+			var j := m.jefe()
+			j.caster.ability_used.connect(func(idx: int) -> void:
+				var n := String(j.caster.get_ability(idx).id)
+				usos_jefe[n] = int(usos_jefe.get(n, 0)) + 1)
+		if diag and m.jefe() != null:
+			dist_jefe[0] += m.jefe().global_position.distance_to(h.global_position)
+			dist_jefe[1] += 1
 		await get_tree().physics_frame
 		t += 1.0 / 60.0
+		# Una ZONA se gana parado adentro, y un bot solo persigue: sin esto nunca pisa el
+		# circulo y el capitulo no termina. Se lo ata al centro, peleando desde ahi.
+		if is_instance_valid(m._zona) and cerebro != null:
+			cerebro.home = m._zona.global_position
+			h.set_meta(&"correa", float(cap["objetivo"].get("radio", 6.0)) * 0.7)
 	Modos.termino.disconnect(al_terminar)
+	if diag:
+		print("  diag cap %d: el heroe recibe %.0f, el jefe usa %s, distancia media %.1f m" % [c + 1,
+			recibido[0], str(usos_jefe), dist_jefe[0] / maxf(1.0, float(dist_jefe[1]))])
 	m.queue_free()
-	return [fin[0] == true, t]
+	return [fin[0] == true, t, h.health.current / maxf(1.0, h.health.max_health)]
 
 
 ## Una pelea: el héroe contra `enemigos` bots con la vida y el daño que diga el modo.

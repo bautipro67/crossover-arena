@@ -214,7 +214,8 @@ func _process(delta: float) -> void:
 		_pose = &"embiste"
 	elif en_aire:
 		_pose = &"salto" if _body.velocity.y > 0.5 else &"caida"
-	elif _pose == &"embiste" or _pose == &"impacto" or _pose == &"dolor" 			or _pose == &"salto" or _pose == &"caida":
+	elif _pose == &"embiste" or _pose == &"impacto" or _pose == &"dolor" \
+			or _pose == &"salto" or _pose == &"caida":
 		_pose = &""
 
 	# TIRADO EN EL PISO: el cuerpo entero se acuesta, no solo los brazos. Es la unica pose
@@ -2181,8 +2182,4 @@ func play_dash_trail() -> void:
 	trail.color = _skin.estela if _skin != null and _skin.estela.a > 0.0 else Color(0.9, 0.97, 1.0, 0.7)
 	trail.position = Vector3(0.0, 0.9, 0.0)
 	add_child(trail)
-	var timer := get_tree().create_timer(1.0)
-	timer.timeout.connect(func() -> void:
-		if is_instance_valid(trail):
-			trail.queue_free()
-	)
+	get_tree().create_timer(1.0).timeout.connect(trail.queue_free)

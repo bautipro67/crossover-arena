@@ -29,6 +29,7 @@ func _run() -> void:
 	await _test_controles()
 	await _test_mando_en_menus(main)
 	await _test_historia(main)
+	await _test_escenas_y_peleas(main)
 	await _test_skins_visibles()
 	_test_siluetas()
 	await _test_music()
@@ -770,6 +771,173 @@ func _test_historia(main: Node) -> void:
 	await get_tree().process_frame
 
 
+# ------------------------------------------- Lo que se rompia en escenas y peleas
+
+func _test_escenas_y_peleas(main: Node) -> void:
+	Progreso.guardado_activo = false
+	Progreso.historia = {}
+	MisionHistoria.sin_cinematicas = true
+	var antes_pj := Net.local_character_id
+
+	# --- La espera del resultado es de SU partida ---
+	#
+	# Al terminar un capitulo (o un modo) quedaba una espera de unos segundos que despues te
+	# sacaba al menu. Si en ese rato salias y arrancabas otra partida, la espera vieja la
+	# cortaba a los tres segundos y te dejaba el menu de capitulos encima de la pelea.
+	main.jugar_capitulo(0)
+	var m := await _esperar_pelea()
+	if m != null:
+		m._ganar()
+	await get_tree().create_timer(0.3).timeout
+	_check(Progreso.capitulo_completado(0), "ganar un capitulo lo cobra en el momento, sin esperar el menu")
+	Net.leave_game()
+	main.show_main_menu()
+	main.jugar_capitulo(0)
+	m = await _esperar_pelea()
+	await get_tree().create_timer(3.6).timeout
+	var menu_encima := false
+	for hijo: Node in main.get_children():
+		if hijo is HistoriaMenu:
+			menu_encima = true
+	_check(m != null and is_instance_valid(m) and m._en_pelea and not menu_encima,
+		"salir y arrancar otra partida enseguida: la espera de la anterior no la corta")
+
+	# --- Nadie saca vida durante una escena ---
+	if m != null and is_instance_valid(m):
+		var eco: Player = null
+		for b: Node in m.participantes.values():
+			if (b as Player).equipo == 1:
+				eco = b
+		var vida := eco.health.current if eco != null else 0.0
+		Cinematica.activa = true
+		var hecho := CombatUtils.deal_damage(eco, 20.0, m.jugador().peer_id) if eco != null else -1.0
+		Cinematica.activa = false
+		_check(eco != null and hecho == 0.0 and is_equal_approx(eco.health.current, vida),
+			"durante una escena ningun golpe saca vida")
+
+		# --- Un muerto se queda donde cayo ---
+		if eco != null:
+			eco.health.apply_damage(9999.0, m.jugador().peer_id)
+			await get_tree().physics_frame
+			var y0 := eco.global_position.y
+			await get_tree().create_timer(1.2).timeout
+			_check(absf(eco.global_position.y - y0) < 0.2,
+				"un bot muerto no se hunde en el piso (bajo %.2f m)" % (y0 - eco.global_position.y))
+
+		# --- El ultimate sin carga no cuenta como disponible ---
+		# El estado de la pelea no importa aca: sin tambaleo, sin cooldowns, stamina llena.
+		var p := m.jugador()
+		p.status.clear_all()
+		p.caster.reset_state()
+		p.stamina.restore_full()
+		var carga := p.get_node_or_null("UltimateCharge") as UltimateCharge
+		if carga != null:
+			carga.reset()
+		var ulti := p.caster.abilities.size() - 1
+		var sin_carga := not p.caster.puede_usar(ulti)
+		if carga != null:
+			carga.add_from_damage(9999.0)
+		var con_carga := p.caster.puede_usar(ulti)
+		if carga != null:
+			carga.reset()
+		_check(sin_carga and con_carga and p.caster.puede_usar(0),
+			"con la stamina llena pero sin carga el ultimate no esta disponible, y con carga si (%s %s)" % [
+				sin_carga, con_carga])
+
+	# --- Los jefes no se tambalean ---
+	Net.leave_game()
+	main.show_main_menu()
+	Progreso.historia = {"0": true}
+	main.jugar_capitulo(1)
+	var mj := await _esperar_pelea()
+	var jefe := mj.jefe() if mj != null else null
+	if jefe != null:
+		jefe.status.clear_all()
+		CombatUtils.deal_damage(jefe, 5.0, mj.jugador().peer_id)
+	var jugador_h := mj.jugador() if mj != null else null
+	if jugador_h != null:
+		jugador_h.status.clear_all()
+		CombatUtils.deal_damage(jugador_h, 5.0, -999)
+	_check(jefe != null and not jefe.status.esta_tambaleando() and jugador_h.status.esta_tambaleando(),
+		"un jefe de la historia no se tambalea con los golpes; el jugador si")
+
+	# --- Comparar equipos con alguien que ya no existe ---
+	var ido := Node3D.new()
+	ido.free()
+	_check(not CombatUtils.son_aliados(ido, mj.jugador() if mj != null else null),
+		"son_aliados con un cuerpo liberado responde que no, sin error")
+	Net.leave_game()
+	main.show_main_menu()
+
+	# --- Los que quedan fuera de la pelea siguen parados en el piso ---
+	#
+	# Apagarles la forma de colision los dejaba sin piso: el tirado se hundia, la red de
+	# seguridad lo subia a su marca y se volvia a hundir, en loop.
+	for i: int in range(6):
+		Progreso.historia[str(i)] = true
+	main.jugar_capitulo(6)
+	m = await _esperar_pelea()
+	if m != null:
+		m.jugador().health.set_max(99999.0)
+		m.jugador().health.revive_full()
+	await get_tree().create_timer(2.0).timeout
+	var tirado := m.participantes.get(&"rick_") as Player if m != null else null
+	var piso := -99.0
+	if tirado != null:
+		var desde := tirado.global_position + Vector3.UP * 1.5
+		var rayo := PhysicsRayQueryParameters3D.create(desde, desde + Vector3.DOWN * 8.0)
+		rayo.collision_mask = GameConfig.LAYER_WORLD
+		var golpe := tirado.get_world_3d().direct_space_state.intersect_ray(rayo)
+		if not golpe.is_empty():
+			piso = (golpe["position"] as Vector3).y
+	_check(tirado != null and tirado.visible and tirado.visual._pose_guion == &"tirado"
+		and m._fuera.has(&"rick_") and tirado.global_position.y > piso - 0.3
+		and not tirado.name_label.visible,
+		"los que ZA WARUDO deja tirados siguen tirados en la pelea, en el piso y sin cartel")
+	Net.leave_game()
+	main.show_main_menu()
+	for hijo: Node in main.get_children():
+		if hijo is HistoriaMenu:
+			hijo.queue_free()
+
+	# --- La pantalla de capitulos entra entera ---
+	#
+	# Con los diez capitulos y el cartel de "terminaste la parte 1", el panel media mas que
+	# la pantalla y VOLVER quedaba afuera.
+	for i: int in range(Historia.cantidad()):
+		Progreso.historia[str(i)] = true
+	var menu := HistoriaMenu.new()
+	main.add_child(menu)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var pantalla := get_viewport().get_visible_rect()
+	var afuera := ""
+	for b: Node in menu.find_children("*", "Button", true, false):
+		var boton := b as Button
+		if boton.text == "VOLVER" and not pantalla.encloses(boton.get_global_rect()):
+			afuera = str(boton.get_global_rect())
+	_check(afuera.is_empty(), "con los diez capitulos, VOLVER entra en la pantalla %s" % afuera)
+	menu.queue_free()
+
+	MisionHistoria.sin_cinematicas = false
+	Modos.iniciar(Modos.ONLINE)
+	Net.set_local_character(antes_pj)
+	Progreso.guardado_activo = true
+	Progreso.cargar()
+	await get_tree().process_frame
+
+
+func _esperar_pelea() -> MisionHistoria:
+	var espera := 0.0
+	while espera < 10.0:
+		await get_tree().create_timer(0.1).timeout
+		espera += 0.1
+		var m := Modos.mision as MisionHistoria
+		if m != null and m._en_pelea:
+			return m
+	return null
+
+
 # ------------------------------------------------------ El mando en los menus
 
 func _test_mando_en_menus(main: Node) -> void:
@@ -1155,7 +1323,8 @@ func _test_skins_visibles() -> void:
 		var ms: Array = []
 		_materiales(visual._root, ms)
 		for m: StandardMaterial3D in ms:
-			if m.diffuse_mode == BaseMaterial3D.DIFFUSE_TOON and 					m.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+			if m.diffuse_mode == BaseMaterial3D.DIFFUSE_TOON and \
+					m.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
 				transparentes += "%s " % sid
 				break
 	_check(transparentes.is_empty(),
@@ -1414,7 +1583,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 227
+const CHEQUEOS_MINIMOS: int = 236
 
 
 func _finish() -> void:

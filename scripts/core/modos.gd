@@ -92,18 +92,25 @@ static func bots_en_oleada(n: int) -> int:
 ## - En uno contra uno hay un punto muy marcado: por debajo de unos 150 de vida el heroe
 ##   gana casi siempre, y por arriba de 180 pierde casi siempre. La torre subia 48 por
 ##   jefe y pasaba ese umbral en el segundo, asi que el jefe 1 se ganaba y el 2 no.
+##
+## RECALIBRADO cuando se arreglaron los bots (2026-09-24). Con la barra de stamina llena
+## "intentaban" el ultimate sin carga y se quedaban la pausa entera sin pegar, Rick y
+## Flowery solo disparaban con el rival encima, y nadie apuntaba con adelanto: pegaban
+## bastante menos de lo que podian. Arreglados, los modos contra varios se volvieron mucho
+## mas duros (colina de 60% a 13%) y estos numeros vuelven a dejarlos donde estaban. Con
+## 30 peleas por modo: con 15, el ruido era de doce puntos.
 func vida_bot(id: int = 0) -> float:
 	if actual == HISTORIA:
 		return mision.vida_de(id) if is_instance_valid(mision) else 60.0
 	match actual:
 		PRACTICA: return 170.0
-		DUELO: return 150.0
-		SUPERVIVENCIA: return 40.0 + float(oleada) * 6.0
-		CONTRARRELOJ: return 55.0
-		ULTIMO_EN_PIE: return 50.0
+		DUELO: return 140.0
+		SUPERVIVENCIA: return 30.0 + float(oleada) * 4.0
+		CONTRARRELOJ: return 45.0
+		ULTIMO_EN_PIE: return 42.0
 		# Sube de a poco para no cruzar de golpe el umbral de los 180.
-		JEFES: return 112.0 + float(bajas) * 20.0
-		COLINA: return 60.0
+		JEFES: return 98.0 + float(bajas) * 18.0
+		COLINA: return 44.0
 	return 170.0
 
 
@@ -117,13 +124,13 @@ func daño_bot(id: int = 0) -> float:
 	match actual:
 		PRACTICA: return GameConfig.BOT_DAMAGE_SCALE
 		DUELO: return 0.72
-		SUPERVIVENCIA: return minf(0.21 + float(oleada) * 0.02, 0.40)
-		CONTRARRELOJ: return 0.38
-		ULTIMO_EN_PIE: return 0.31
+		SUPERVIVENCIA: return minf(0.14 + float(oleada) * 0.015, 0.30)
+		CONTRARRELOJ: return 0.26
+		ULTIMO_EN_PIE: return 0.22
 		# Los jefes se endurecen tambien pegando, no solo aguantando: un jefe que solo tiene
 		# mas vida es la misma pelea mas larga.
-		JEFES: return 0.50 + float(bajas) * 0.03
-		COLINA: return 0.34
+		JEFES: return 0.38 + float(bajas) * 0.03
+		COLINA: return 0.20
 	return GameConfig.BOT_DAMAGE_SCALE
 
 var actual: StringName = ONLINE

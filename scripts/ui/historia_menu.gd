@@ -33,6 +33,20 @@ func _ready() -> void:
 	caja.add_child(parte)
 	caja.add_child(UITheme.make_spacer(6))
 
+	# CON SCROLL: diez capitulos, con el titulo y el boton de volver, no entran en 720 de
+	# alto. Sin esto el panel se pasaba de la pantalla y VOLVER quedaba afuera, sin forma de
+	# llegar a el con el mouse. El titulo y VOLVER quedan fijos; se desplaza la lista.
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 440)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Con el mando, el foco que baja por la lista la arrastra con el.
+	scroll.follow_focus = true
+	caja.add_child(scroll)
+	var lista := VBoxContainer.new()
+	lista.add_theme_constant_override("separation", 10)
+	lista.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(lista)
+
 	var primero_disponible: Button = null
 	for i: int in range(Historia.cantidad()):
 		var cap := Historia.capitulo(i)
@@ -57,7 +71,7 @@ func _ready() -> void:
 			Frases.color_de(personaje.id) if abierto else UITheme.TEXT_DIM)
 		con.custom_minimum_size = Vector2(110, 0)
 		fila.add_child(con)
-		caja.add_child(fila)
+		lista.add_child(fila)
 		if abierto and not hecho and primero_disponible == null:
 			primero_disponible = boton
 
@@ -75,3 +89,13 @@ func _ready() -> void:
 	volver.pressed.connect(func() -> void: cerrado.emit())
 	caja.add_child(volver)
 	Mando.anotar(self, volver)
+	# Que se vea el que toca jugar: con la lista desplazable, el capitulo 8 quedaria abajo
+	# de todo al abrir la pantalla.
+	if primero_disponible != null:
+		_mostrar.call_deferred(scroll, primero_disponible)
+
+
+func _mostrar(scroll: ScrollContainer, boton: Control) -> void:
+	await get_tree().process_frame
+	if is_instance_valid(scroll) and is_instance_valid(boton):
+		scroll.ensure_control_visible(boton)

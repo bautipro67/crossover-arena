@@ -13,7 +13,10 @@ extends Ability
 ##
 ## Por eso tampoco clava a Dio en el piso: lo que se premia es perseguir.
 
-const DAMAGE_PER_TICK: float = 13.0
+## Bajo de 13 a 10 (78 a 60 la rafaga entera). Medido en duelos simulados: con
+## cuchillos + rafaga, 114 de daño en dos habilidades contra rivales de 100 de vida, Dio
+## le ganaba a todos en cuatro segundos. Sigue siendo el mejor castigo de cerca del juego.
+const DAMAGE_PER_TICK: float = 10.0
 const TICKS: int = 6
 const TICK_INTERVAL: float = 0.15
 const CONE_RANGE: float = 3.4

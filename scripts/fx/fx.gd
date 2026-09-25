@@ -319,11 +319,15 @@ func spawn_soul_rings(caster: Node, origin: Vector3, radius: float) -> void:
 			spawn_jarona_wave(caster, origin, radius, color)
 			continue
 		var timer := get_tree().create_timer(retardo)
+		# Por referencia debil: si el que la tiro ya no existe cuando vence el retardo, la
+		# funcion lo nota sin que Godot se queje de una captura liberada.
+		var ref: WeakRef = weakref(caster)
 		timer.timeout.connect(func() -> void:
-			if is_instance_valid(caster):
+			var quien: Node = ref.get_ref()
+			if is_instance_valid(quien):
 				# Cada anillo un poco mas chico: el conjunto se lee como una sola onda
 				# con espesor de colores, no como siete ataques.
-				spawn_jarona_wave(caster, origin, radius * (1.0 - 0.06 * float(i)), color, false)
+				spawn_jarona_wave(quien, origin, radius * (1.0 - 0.06 * float(i)), color, false)
 		)
 
 
@@ -513,9 +517,11 @@ func spawn_last_jarona(caster: Node, origin: Vector3, radius: float) -> void:
 	for i: int in range(SOUL_COLORS.size()):
 		var retardo := float(i) * 0.075
 		var timer := get_tree().create_timer(retardo)
+		var ref: WeakRef = weakref(caster)
 		timer.timeout.connect(func() -> void:
-			if is_instance_valid(caster):
-				spawn_jarona_wave(caster, origin,
+			var quien: Node = ref.get_ref()
+			if is_instance_valid(quien):
+				spawn_jarona_wave(quien, origin,
 					radius * (0.45 + 0.09 * float(i)), SOUL_COLORS[i], false)
 		)
 
@@ -1560,10 +1566,12 @@ func release_time_stop_marker(marker: Node3D, target: Node3D) -> void:
 
 	if is_instance_valid(target):
 		var burst_timer := get_tree().create_timer(0.10)
+		var ref: WeakRef = weakref(target)
 		burst_timer.timeout.connect(func() -> void:
-			if is_instance_valid(target):
-				spawn_impact_burst(target, target.global_position + Vector3.UP, Color(1.0, 0.82, 0.3, 0.95))
-				Sfx.play_3d(target, &"knife", target.global_position + Vector3.UP, 1.0)
+			var blanco: Node3D = ref.get_ref()
+			if is_instance_valid(blanco):
+				spawn_impact_burst(blanco, blanco.global_position + Vector3.UP, Color(1.0, 0.82, 0.3, 0.95))
+				Sfx.play_3d(blanco, &"knife", blanco.global_position + Vector3.UP, 1.0)
 				camera_shake(1.1)
 		)
 
@@ -1609,9 +1617,11 @@ func spawn_ice_spikes(caster: Node, origin: Vector3, dir: Vector3, cone_range: f
 		spike.global_position = spot + Vector3.DOWN * mesh.height
 		var rise := spike.create_tween()
 		rise.tween_interval(t * 0.22)
-		rise.tween_property(spike, "global_position", spot + Vector3.UP * (mesh.height * 0.35), 0.13) 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		rise.tween_property(spike, "global_position", spot + Vector3.UP * (mesh.height * 0.35), 0.13) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		rise.tween_interval(1.1)
-		rise.tween_property(spike, "global_position", spot + Vector3.DOWN * mesh.height, 0.5) 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		rise.tween_property(spike, "global_position", spot + Vector3.DOWN * mesh.height, 0.5) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 		rise.tween_callback(spike.queue_free)
 
 
@@ -1677,11 +1687,10 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 
 
 func _auto_free(node: Node, delay: float) -> void:
-	var timer := get_tree().create_timer(delay)
-	timer.timeout.connect(func() -> void:
-		if is_instance_valid(node):
-			node.queue_free()
-	)
+	# Conectado al metodo del nodo y no a una funcion que lo capture: si el nodo se libera
+	# antes —salir de la partida con un efecto en el aire—, la conexion se va con el y no
+	# queda una captura liberada que Godot reporte como error.
+	get_tree().create_timer(delay).timeout.connect(node.queue_free)
 
 
 func _fade_light(light: OmniLight3D, duration: float) -> void:

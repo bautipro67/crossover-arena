@@ -40,7 +40,9 @@ func _init() -> void:
 	display_name = "Pistola de Portales"
 	description = "Abrís un portal donde estés apuntando y aparecés ahí. Sin límite de distancia: todo el mapa."
 	stamina_cost = 32.0
-	cooldown = 7.0
+	# Bajo de 7 a 6: es su unica salida, y contra un rival encima siete segundos es una
+	# eternidad.
+	cooldown = 6.0
 	channel_time = 0.0
 	icon_color = Color(0.45, 0.95, 0.35)
 

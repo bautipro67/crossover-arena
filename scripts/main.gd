@@ -180,15 +180,12 @@ func _devolver_personaje() -> void:
 	_personaje_previo = ""
 
 
-## Termino un capitulo. La escena final ya se vio en la arena: aca solo se cobra y se
-## vuelve a la lista, donde se puede seguir o reintentar.
-func _terminar_capitulo(gano: bool) -> void:
-	var i := _capitulo_en_juego
+## Termino un capitulo. La escena final ya se vio en la arena y el capitulo ya se cobro
+## (ver _on_modo_termino): aca solo se vuelve a la lista, donde se puede seguir o reintentar.
+func _terminar_capitulo() -> void:
 	_capitulo_en_juego = -1
 	Net.leave_game()
 	show_main_menu()
-	if gano:
-		Progreso.completar_capitulo(i)
 	show_historia()
 
 
@@ -337,11 +334,20 @@ func _on_modo_termino(gano: bool, titulo: String, detalle: String) -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	# En la historia el resultado dura menos: lo que importa viene despues, en la charla.
 	var historia := Modos.actual == Modos.HISTORIA and _capitulo_en_juego >= 0
+	# EL CAPITULO SE COBRA YA, no despues de la espera: si en esos segundos el jugador sale
+	# por la pausa, la escena final ya la vio y el capitulo lo gano igual.
+	if historia and gano:
+		Progreso.completar_capitulo(_capitulo_en_juego)
+	# LA ESPERA ES DE ESTA PARTIDA Y DE NINGUNA OTRA. Si en esos segundos el jugador salio
+	# por la pausa y arranco otra —un capitulo, un modo—, al vencer la espera sacaba de la
+	# partida NUEVA: la pelea se cortaba sola a los tres segundos y aparecia el menu de
+	# capitulos encima de la escena. La arena es la marca: cada partida arma la suya.
+	var arena := _arena
 	await get_tree().create_timer(3.0 if historia else 5.0).timeout
-	if not Net.solo_mode:
+	if not Net.solo_mode or not is_instance_valid(arena) or arena != _arena:
 		return
 	if historia:
-		_terminar_capitulo(gano)
+		_terminar_capitulo()
 		return
 	Net.leave_game()
 	show_main_menu()

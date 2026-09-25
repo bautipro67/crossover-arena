@@ -110,9 +110,11 @@ func _register_all() -> void:
 	rick.trouser_color = Color(0.45, 0.33, 0.22)
 	# Alto y flaco tambien, pero encorvado: mas alto que Noelle y mas angosto que Dio.
 	rick.build_scale = Vector3(0.90, 1.08, 0.90)
-	# EL MAS FRAGIL Y EL MAS LENTO, a proposito. Es un viejo flaco que no gana una pelea
-	# de cerca: todo lo que tiene para compensarlo son los aparatos, y el portal.
-	rick.max_health = 82.0
+	# EL MAS LENTO, a proposito. Es un viejo flaco que no gana una pelea de cerca: todo lo
+	# que tiene para compensarlo son los aparatos, y el portal. Era ademas el mas fragil
+	# (82), y medido en duelos simulados ganaba 1 de 80: sin nada que haga mucho daño de
+	# golpe, cualquier combo de otro lo mataba antes de que pudiera irse. Ahora 100.
+	rick.max_health = 100.0
 	rick.max_stamina = 110.0
 	rick.move_speed = 5.7
 	rick.silhouette = &"labcoat"

@@ -168,6 +168,17 @@ func reset_state() -> void:
 		channel_cancelled.emit(index)
 
 
+## ¿Saldria si se pidiera ahora? Las mismas reglas que request_use: cooldown, stamina,
+## carga del ultimate, estado del cuerpo.
+##
+## La usa el bot. Antes miraba solo la stamina, y con la barra llena "podia" tirar el
+## ultimate aunque el medidor estuviera vacio: el pedido fallaba en silencio y el bot se
+## quedaba igual su pausa entre ataques. Rick y Sonic, que tienen mas de 100 de stamina,
+## pasaban asi la mitad de la pelea sin pegar.
+func puede_usar(index: int) -> bool:
+	return _local_reject_reason(index, get_ability(index)) == ""
+
+
 # ------------------------------------------------------------------ Servidor
 
 @rpc("any_peer", "call_remote", "reliable")

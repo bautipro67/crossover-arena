@@ -10,7 +10,8 @@ extends Ability
 ## LA DIRECCION SE RELEE EN CADA ESFERA. La primera sale hacia donde apuntabas al apretar,
 ## las otras dos hacia donde apuntas en ese momento: se puede corregir en el medio.
 
-const DAMAGE: float = 8.0
+## Subio de 8 a 10 (24 a 30 las tres): en duelos simulados Goku ganaba 1 de cada 4.
+const DAMAGE: float = 10.0
 const DISPAROS: int = 3
 ## Entre una esfera y la siguiente.
 const INTERVALO: float = 0.13
