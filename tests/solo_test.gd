@@ -1456,6 +1456,33 @@ func _test_skins_visibles() -> void:
 	_check(faltan.is_empty(),
 		"cada skin recolorea el disfraz y suma lo que le toca por rareza %s" % faltan)
 
+	# --- Y LAS QUE SE PAGAN CARO CAMBIAN LA FORMA, no solo el color ---
+	#
+	# Se pidio que las skins "cambien mas su aspecto": toda epica y toda legendaria trae un
+	# adorno (una capa, una corona, un halo...) o una forma propia (el pelo del Super
+	# Saiyajin, las puas de Super Sonic, el pelo de Mob al 100%).
+	var sin_forma := ""
+	for sid: StringName in SkinDB.todas():
+		var sk := SkinDB.get_skin(sid)
+		if sk.rareza in [&"epica", &"legendaria"] and sk.forma == &"" and sk.accesorio == &"" 				and sk.accesorios.is_empty():
+			sin_forma += "%s " % sid
+	_check(sin_forma.is_empty(), "toda skin epica o legendaria cambia la forma, no solo el color %s" % sin_forma)
+
+	# --- NINGUNA REPETIDA: ni el id ni el nombre ---
+	#
+	# Un "Dark Sonic" del pase tenia el mismo id que el "Sonic Oscuro" de la tienda: lo
+	# pisaba y aparecia dos veces.
+	var ids_vistos: Dictionary = {}
+	var nombres_vistos: Dictionary = {}
+	var repetidas := ""
+	for sid: StringName in SkinDB.todas():
+		var nombre := SkinDB.get_skin(sid).display_name
+		if ids_vistos.has(sid) or nombres_vistos.has(nombre):
+			repetidas += "%s(%s) " % [sid, nombre]
+		ids_vistos[sid] = true
+		nombres_vistos[nombre] = true
+	_check(repetidas.is_empty(), "ninguna skin esta repetida, ni por id ni por nombre %s" % repetidas)
+
 	# --- EL BUG ORIGINAL: la skin tiene que recolorear el disfraz, no solo el torso ---
 	#
 	# Los disfraces tenian sus colores escritos a mano: "Sonic Dorado" salia con las puas y
@@ -1749,7 +1776,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 250
+const CHEQUEOS_MINIMOS: int = 252
 
 
 func _finish() -> void:

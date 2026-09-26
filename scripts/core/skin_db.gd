@@ -234,10 +234,10 @@ func _registrar_temporada_2() -> void:
 			"Con una Flor de Hielo adentro: lo que toca se congela.",
 			Color(0.45, 0.75, 0.98), Color(0.40, 0.70, 0.98),
 			Color(0.99, 0.82, 0.68), Color(0.12, 0.22, 0.58), &"epica", 0),
-		_hacer(&"sonic_oscuro", &"sonic", "Dark Sonic",
-			"Cuando se enoja de verdad: casi negro, y los ojos blancos.",
-			Color(0.10, 0.12, 0.24), Color(0.22, 0.24, 0.38),
-			Color(0.92, 0.84, 0.72), Color(0.10, 0.12, 0.24), &"rara", 0),
+		_hacer(&"sonic_boom", &"sonic", "Sonic Boom",
+			"El de la serie: el pañuelo al cuello y cinta en los brazos.",
+			Color(0.16, 0.42, 0.88), Color(0.86, 0.18, 0.15),
+			Color(0.90, 0.72, 0.54), Color(0.16, 0.42, 0.88), &"rara", 0),
 		_hacer(&"dio_phantom", &"dio", "Dio de Phantom Blood",
 			"El Dio de 1880, todavía con casaca y pañuelo al cuello.",
 			Color(0.18, 0.34, 0.42), Color(0.85, 0.75, 0.40),
@@ -457,10 +457,10 @@ func _detallar() -> void:
 		&"gorra": Color(0.45, 0.75, 0.98), &"m": Color(0.40, 0.70, 0.98),
 		&"overol": Color(0.12, 0.22, 0.58)},
 		&"hielo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.55, 0.85, 1.0, 0.8))
-	_det(&"sonic_oscuro", {
-		&"pua": Color(0.10, 0.12, 0.24), &"pelo": Color(0.10, 0.12, 0.24),
-		&"ojos": Color(0.95, 0.95, 1.00)},
-		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.30, 0.25, 0.55, 0.75))
+	_det(&"sonic_boom", {
+		&"pua": Color(0.16, 0.42, 0.88), &"pelo": Color(0.18, 0.46, 0.92),
+		&"bufanda": Color(0.82, 0.68, 0.46)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.40, 0.65, 1.0, 0.75))
 	_det(&"dio_phantom", {
 		&"tela": Color(0.18, 0.34, 0.42), &"detalle": Color(0.85, 0.75, 0.40),
 		&"musculosa": Color(0.92, 0.90, 0.86)},
@@ -536,6 +536,87 @@ func _detallar() -> void:
 		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.75, 0.20, 0.25, 0.75))
 
 
+## LO QUE CAMBIA LA FORMA, no el color: una forma del constructor (SkinData.forma), los
+## adornos de mas (SkinData.accesorios) y colores de partes que se suman a los de _det.
+	# ------------------------------------------------------------ Las formas
+	#
+	# CADA SKIN CAMBIA ALGO MAS QUE EL COLOR, y todas las epicas y legendarias cambian la
+	# forma (lo exige el arnes). Todo sale del original: la capa de vampiro, el halo de
+	# Heaven, la Mascara de Piedra, la corona de Asgore, las esferas del Rikudo, el pelo
+	# del Super Saiyajin, las puas paradas de Super Sonic, el pelo de Mob al 100%...
+	#
+	# Y LOS ZAPATOS COMBINAN: salen del pantalon oscurecido, y aca se fijan los que tienen
+	# que ser de otro color para que la paleta cierre.
+	var nada: Array[StringName] = []
+	# Noelle
+	_extra(&"noelle_snowgrave", &"", [&"corona_hielo"], {&"zapatos": Color(0.55, 0.75, 0.95)})
+	_extra(&"noelle_fiesta", &"", nada, {&"zapatos": Color(0.12, 0.34, 0.20)})
+	_extra(&"noelle_sombra", &"", [&"bufanda"], {&"bufanda": Color(0.46, 0.47, 0.56)})
+	_extra(&"noelle_reno", &"", nada, {&"zapatos": Color(0.34, 0.22, 0.12)})
+	_extra(&"noelle_otono", &"", [&"bufanda"], {&"bufanda": Color(0.70, 0.28, 0.12),
+		&"zapatos": Color(0.30, 0.18, 0.10)})
+	_extra(&"noelle_aurora", &"", [&"orejeras"], {&"orejeras": Color(0.88, 0.97, 1.0)})
+	_extra(&"noelle_menta", &"", nada, {&"zapatos": Color(0.16, 0.32, 0.30)})
+	_extra(&"noelle_cyber", &"", [&"visor"], {&"visor": Color(0.25, 0.95, 1.0),
+		&"zapatos": Color(0.20, 0.85, 0.95)})
+	# Dio
+	_extra(&"dio_vampiro", &"", [&"capa"], {&"capa": Color(0.40, 0.03, 0.07)})
+	_extra(&"dio_dorado", &"", [&"corona"])
+	_extra(&"dio_noche", &"", nada, {&"zapatos": Color(0.18, 0.10, 0.28)})
+	_extra(&"dio_piedra", &"", [&"mascara"])
+	# Blanco para que se note la sangre: los detalles en rojo, y no dorados como el Cielo.
+	_extra(&"dio_blanco", &"", nada, {&"detalle": Color(0.75, 0.08, 0.12),
+		&"joya": Color(0.80, 0.08, 0.12), &"zapatos": Color(0.86, 0.85, 0.80)})
+	_extra(&"dio_cielo", &"", [&"halo"], {&"zapatos": Color(0.90, 0.75, 0.30)})
+	_extra(&"dio_phantom", &"", [&"bufanda"], {&"bufanda": Color(0.95, 0.94, 0.90),
+		&"zapatos": Color(0.12, 0.10, 0.10)})
+	# Flowery
+	_extra(&"flowery_omega", &"", [&"petalos"], {&"petalos": Color(1.0, 0.55, 0.80)})
+	_extra(&"flowery_dorado", &"", [&"petalos"], {&"petalos": Color(1.0, 0.82, 0.30)})
+	_extra(&"flowery_nocturno", &"", [&"capa"], {&"capa": Color(0.07, 0.07, 0.11)})
+	_extra(&"flowery_primavera", &"", [&"flores"])
+	_extra(&"flowery_asgore", &"", [&"corona", &"capa"], {&"capa": Color(0.40, 0.22, 0.55)})
+	# Rick
+	_extra(&"rick_pickle", &"pepino", nada)
+	_extra(&"rick_maligno", &"", nada, {&"zapatos": Color(0.08, 0.08, 0.10)})
+	_extra(&"rick_cosmico", &"", nada, {&"zapatos": Color(0.20, 0.14, 0.40)})
+	_extra(&"rick_toxico", &"", [&"gafas"], {&"zapatos": Color(0.20, 0.35, 0.10)})
+	_extra(&"rick_gala", &"", [&"mono"], {&"zapatos": Color(0.06, 0.06, 0.08)})
+	# Sonic: las transformaciones levantan las puas.
+	_extra(&"sonic_super", &"super", nada)
+	_extra(&"sonic_oscuro", &"super", nada)
+	_extra(&"sonic_hyper", &"super", nada)
+	_extra(&"sonic_metal", &"", [&"propulsor"])
+	_extra(&"sonic_boom", &"", [&"bufanda"])
+	# Goku
+	_extra(&"goku_ssj", &"ssj", nada)
+	_extra(&"goku_blue", &"ssj", nada)
+	_extra(&"goku_ui", &"ui", nada)
+	# Mario
+	_extra(&"mario_fuego", &"", [&"flor_fuego"])
+	_extra(&"mario_hielo", &"", [&"flor_fuego"], {&"flor_fuego": Color(0.55, 0.85, 1.0)})
+	_extra(&"mario_dorado", &"", [&"moneda"])
+	# Madara
+	_extra(&"madara_edo", &"", [&"grietas"])
+	_extra(&"madara_susanoo", &"", [&"costillas"])
+	_extra(&"madara_rikudo", &"", [&"orbes"])
+	# Mob: al 100% el pelo flota en puntas.
+	_extra(&"mob_cien", &"cien", nada)
+	_extra(&"mob_incognita", &"cien", nada)
+
+
+func _extra(id: StringName, forma: StringName, accesorios: Array[StringName],
+		partes: Dictionary = {}) -> void:
+	var sk := get_skin(id)
+	if sk == null:
+		push_warning("[skins] extra para una skin que no existe: %s" % id)
+		return
+	sk.forma = forma
+	sk.accesorios = accesorios
+	for parte: StringName in partes:
+		sk.partes[parte] = partes[parte]
+
+
 func _det(id: StringName, partes: Dictionary, acabado: StringName, aura: StringName,
 		aura_color: Color, ojos: Color, accesorio: StringName, estela: Color) -> void:
 	var sk := get_skin(id)
@@ -569,6 +650,11 @@ func _hacer(id: StringName, personaje: StringName, nombre: String, desc: String,
 
 
 func _add(s: SkinData) -> void:
+	# UN ID ES UNA SKIN. Con un id repetido la segunda pisaba a la primera y aparecia dos
+	# veces en la tienda: asi quedo un "Dark Sonic" duplicado. Ahora se rechaza.
+	if _skins.has(s.id):
+		push_error("[skins] id repetido: %s" % s.id)
+		return
 	_skins[s.id] = s
 	_orden.append(s.id)
 

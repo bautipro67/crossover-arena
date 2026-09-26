@@ -107,7 +107,7 @@ func _armar_temporada_2() -> Dictionary:
 	var t := _base()
 	# El mismo reparto que la 1 y la 0.
 	_poner(t, 3, null, [SKIN, "mario_hielo"])
-	_poner(t, 7, [SKIN, "sonic_oscuro"], null)
+	_poner(t, 7, [SKIN, "sonic_boom"], null)
 	_poner(t, 10, null, [SKIN, "dio_phantom"])
 	_poner(t, 14, null, [SKIN, "flowery_asgore"])
 	_poner(t, 18, [SKIN, "madara_joven"], null)

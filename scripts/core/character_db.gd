@@ -94,6 +94,8 @@ func _register_all() -> void:
 	flowery.max_stamina = 100.0
 	flowery.move_speed = 6.3
 	flowery.silhouette = &"petals"
+	# Zapatos negros, de la referencia.
+	flowery.shoe_color = Color(0.08, 0.08, 0.09)
 	_add(flowery)
 
 	var rick := CharacterData.new()
@@ -149,6 +151,7 @@ func _register_all() -> void:
 	# escapa de todo caminando.
 	sonic.move_speed = 7.2
 	sonic.silhouette = &"quills"
+	sonic.zapatos_acento = true
 	_add(sonic)
 
 
@@ -180,6 +183,7 @@ func _register_all() -> void:
 	goku.max_stamina = 100.0
 	goku.move_speed = 6.4
 	goku.silhouette = &"gi"
+	goku.zapatos_acento = true
 	_add(goku)
 
 

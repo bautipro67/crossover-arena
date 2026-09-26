@@ -56,6 +56,10 @@ var _mat_body: StandardMaterial3D = null
 var _mat_accent: StandardMaterial3D = null
 var _mat_skin: StandardMaterial3D = null
 var _mat_dark: StandardMaterial3D = null
+## Los zapatos y su suela. Aparte del acento: con el acento, cada skin que lo cambiaba
+## dejaba zapatos rosas, amarillos o celestes que no combinaban con nada.
+var _mat_shoe: StandardMaterial3D = null
+var _mat_sole: StandardMaterial3D = null
 
 # --- Cara ---
 var _eye_l: Node3D = null
@@ -673,6 +677,8 @@ func _build_rig() -> void:
 	_mat_accent = Art.toon(accent_color, OUTLINE_WIDTH, 0.45)
 	_mat_skin = Art.toon(skin_color, OUTLINE_WIDTH)
 	_mat_dark = Art.toon(trouser_color, OUTLINE_WIDTH)
+	_mat_shoe = Art.toon(accent_color, OUTLINE_WIDTH, 0.45)
+	_mat_sole = Art.toon(Color(0.12, 0.12, 0.14), OUTLINE_WIDTH)
 
 	_root = Node3D.new()
 	add_child(_root)
@@ -837,9 +843,16 @@ func _make_arm(side: float) -> Node3D:
 	elbow.position = Vector3(0.0, -0.32, 0.0)
 	shoulder.add_child(elbow)
 	elbow.add_child(Art.capsule(0.064, 0.28, _mat_skin, Vector3(0.0, -0.14, 0.0)))
-	# Mano: una caja redondeada lee mejor que una esfera, que parece una pelota pegada.
-	var hand := Art.box(Vector3(0.12, 0.14, 0.10), _mat_skin, Vector3(0.0, -0.31, 0.0))
-	elbow.add_child(hand)
+	# MANO: palma achatada y un pulgar. Una caja se leia como un bloque pegado al brazo, y
+	# una esfera sola como una pelota; con el pulgar al costado se lee mano.
+	var palma := Art.sphere(0.066, _mat_skin, Vector3(0.0, -0.305, 0.0))
+	palma.scale = Vector3(1.0, 1.25, 0.72)
+	elbow.add_child(palma)
+	# Chico y pegado a la palma: los guantes de Mario y de Sonic son una esfera de 0.086
+	# encima, y un pulgar mas largo asomaba color piel por afuera.
+	var pulgar := Art.capsule(0.020, 0.06, _mat_skin, Vector3(-0.038 * side, -0.29, -0.028))
+	pulgar.rotation_degrees = Vector3(-20.0, 0.0, 28.0 * side)
+	elbow.add_child(pulgar)
 	return shoulder
 
 
@@ -854,7 +867,13 @@ func _make_leg(side: float) -> Node3D:
 	knee.position = Vector3(0.0, -0.40, 0.0)
 	hip.add_child(knee)
 	knee.add_child(Art.capsule(0.078, 0.38, _mat_dark, Vector3(0.0, -0.19, 0.0)))
-	knee.add_child(Art.box(Vector3(0.155, 0.10, 0.27), _mat_accent, Vector3(0.0, -0.41, -0.05)))
+	# ZAPATO: el talon, la punta redonda y la suela. La caja sola de antes se veia como un
+	# ladrillo al final de la pierna.
+	knee.add_child(Art.box(Vector3(0.15, 0.10, 0.15), _mat_shoe, Vector3(0.0, -0.41, 0.01)))
+	var punta := Art.sphere(0.078, _mat_shoe, Vector3(0.0, -0.418, -0.10))
+	punta.scale = Vector3(0.98, 0.66, 1.25)
+	knee.add_child(punta)
+	knee.add_child(Art.box(Vector3(0.158, 0.026, 0.285), _mat_sole, Vector3(0.0, -0.457, -0.05)))
 	return hip
 
 
@@ -895,6 +914,10 @@ func apply_character(data: CharacterData) -> void:
 	_mat_dark.albedo_color = trouser_color
 
 	_skin = SkinDB.get_skin(data.skin_id) if data.skin_id != &"" else null
+	var zapato := data.shoe_color
+	if zapato.a <= 0.0:
+		zapato = accent_color if data.zapatos_acento else trouser_color.darkened(0.35)
+	_mat_shoe.albedo_color = _tono(&"zapatos", zapato)
 	_build_costume(data.silhouette)
 	_aplicar_extras()
 
@@ -921,7 +944,7 @@ func _tono(parte: StringName, defecto: Color) -> Color:
 ## skin: son del cuerpo y viven lo mismo que el. Sin esto, pasar de "Dio Dorado" a la de
 ## fabrica lo dejaba metalico, y de una skin con brillo a otra sin brillo, brillando.
 func _restaurar_base() -> void:
-	for m: StandardMaterial3D in [_mat_body, _mat_accent, _mat_skin, _mat_dark]:
+	for m: StandardMaterial3D in [_mat_body, _mat_accent, _mat_skin, _mat_dark, _mat_shoe]:
 		if m == null:
 			continue
 		m.metallic = 0.0
@@ -947,6 +970,13 @@ func _aplicar_extras() -> void:
 		_ojos_que_brillan(_skin.ojos_brillo)
 	if _skin.accesorio != &"":
 		_crear_accesorio(_skin.accesorio)
+	for extra: StringName in _skin.accesorios:
+		_crear_accesorio(extra)
+
+
+## La skin puesta cambia la forma de esto (ver SkinData.forma).
+func _forma(cual: StringName) -> bool:
+	return _skin != null and _skin.forma == cual
 
 
 ## Cambia la terminacion de todo el cuerpo y el disfraz.
@@ -1160,6 +1190,210 @@ func _crear_accesorio(tipo: StringName) -> void:
 				var lente := Art.cylinder(0.04, 0.045, vidrio, Vector3(0.07 * lado, 0.25, -0.16))
 				lente.rotation_degrees = Vector3(90.0, 0.0, 0.0)
 				_costume_add(_head_pivot, lente)
+		# ------------------------------------------------ Los que cambian la silueta
+		#
+		# Los de arriba son chicos a proposito. Estos no: una skin tiene que cambiar el
+		# aspecto, no solo el color. Igual ninguno tapa la silueta de fabrica —las astas de
+		# Noelle, el pelo de Goku—, que sigue siendo como se reconoce a quien tenes enfrente.
+		# El color sale de la parte de la skin con el mismo nombre (&"capa", &"corona"...), si la
+		# nombra: asi una skin puede tener la capa violeta y la corona dorada a la vez.
+		&"capa":
+			# Del cuello a las rodillas, por la espalda, abriendose hacia abajo.
+			var tela := Art.toon(_tono(&"capa", Color(0.42, 0.05, 0.08)), OUTLINE_WIDTH)
+			var capa := Art.box(Vector3(0.50, 1.00, 0.03), tela, Vector3(0.0, 0.18, 0.235))
+			capa.rotation_degrees = Vector3(9.0, 0.0, 0.0)
+			_costume_add(_torso, capa)
+			for lado: float in [-1.0, 1.0]:
+				var cuello := Art.box(Vector3(0.14, 0.16, 0.03), tela, Vector3(0.17 * lado, 0.74, 0.12))
+				cuello.rotation_degrees = Vector3(-25.0, 18.0 * lado, 0.0)
+				_costume_add(_torso, cuello)
+		&"corona":
+			var oro := Art.metal(_tono(&"corona", Color(1.0, 0.80, 0.28)), OUTLINE_WIDTH)
+			_costume_add(_head_pivot, Art.cylinder(0.15, 0.06, oro, Vector3(0.0, 0.34, 0.02)))
+			for k: int in range(5):
+				var ang := TAU * float(k) / 5.0
+				var pico := MeshInstance3D.new()
+				var cono := CylinderMesh.new()
+				cono.top_radius = 0.0
+				cono.bottom_radius = 0.035
+				cono.height = 0.10
+				pico.mesh = cono
+				pico.material_override = oro
+				pico.position = Vector3(cos(ang) * 0.13, 0.41, 0.02 + sin(ang) * 0.13)
+				_costume_add(_head_pivot, pico)
+		&"halo":
+			var luz := Art.glow(_tono(&"halo", Color(1.0, 0.88, 0.45)), 2.6)
+			var halo := MeshInstance3D.new()
+			var toro := TorusMesh.new()
+			toro.inner_radius = 0.15
+			toro.outer_radius = 0.19
+			halo.mesh = toro
+			halo.material_override = luz
+			halo.position = Vector3(0.0, 0.54, 0.02)
+			halo.rotation_degrees = Vector3(12.0, 0.0, 0.0)
+			_costume_add(_head_pivot, halo)
+		&"orbes":
+			# Las esferas de la verdad del jinchuriki: negras, en arco detras de la espalda.
+			var negro := Art.toon(_tono(&"orbes", Color(0.05, 0.05, 0.07)), OUTLINE_WIDTH, 0.9)
+			for k: int in range(7):
+				var ang := lerpf(-1.2, 1.2, float(k) / 6.0)
+				var orbe := Art.sphere(0.095, negro,
+					Vector3(sin(ang) * 0.55, 0.55 + cos(ang) * 0.36, 0.42))
+				_costume_add(_torso, orbe)
+		&"bufanda":
+			var lana := Art.toon(_tono(&"bufanda", Color(0.82, 0.22, 0.20)), OUTLINE_WIDTH)
+			var vuelta := MeshInstance3D.new()
+			var toro := TorusMesh.new()
+			toro.inner_radius = 0.11
+			toro.outer_radius = 0.20
+			vuelta.mesh = toro
+			vuelta.material_override = lana
+			vuelta.position = Vector3(0.0, 0.72, 0.0)
+			vuelta.scale = Vector3(1.0, 1.6, 1.0)
+			_costume_add(_torso, vuelta)
+			# La punta que cuelga por delante, al costado.
+			var cola := Art.box(Vector3(0.10, 0.30, 0.035), lana, Vector3(0.10, 0.56, -0.20))
+			cola.rotation_degrees = Vector3(0.0, 0.0, 6.0)
+			_costume_add(_torso, cola)
+		&"mascara":
+			# La Mascara de Piedra: una cara de piedra encima de la cara, con los ojos huecos
+			# y las puntas arriba.
+			var piedra := Art.toon(_tono(&"mascara", Color(0.58, 0.55, 0.50)), OUTLINE_WIDTH)
+			var hueco := Art.flat(Color(0.05, 0.04, 0.04))
+			var cara := Art.sphere(0.19, piedra, Vector3(0.0, 0.14, -0.10))
+			cara.scale = Vector3(1.0, 1.08, 0.5)
+			_costume_add(_head_pivot, cara)
+			for lado: float in [-1.0, 1.0]:
+				var ojo := Art.sphere(0.03, hueco, Vector3(0.07 * lado, 0.15, -0.195))
+				ojo.scale = Vector3(1.3, 0.8, 0.4)
+				_costume_add(_head_pivot, ojo)
+			for k: int in range(3):
+				var pico := MeshInstance3D.new()
+				var cono := CylinderMesh.new()
+				cono.top_radius = 0.0
+				cono.bottom_radius = 0.03
+				cono.height = 0.10
+				pico.mesh = cono
+				pico.material_override = piedra
+				pico.position = Vector3((float(k) - 1.0) * 0.08, 0.34, -0.10)
+				_costume_add(_head_pivot, pico)
+		&"visor":
+			var neon := Art.glow(_tono(&"visor", Color(0.25, 0.95, 1.0)), 2.2)
+			var visor := Art.box(Vector3(0.36, 0.07, 0.04), neon, Vector3(0.0, 0.14, -0.205))
+			_costume_add(_head_pivot, visor)
+		&"flores":
+			# Tres flores chicas en el pelo: el centro y cinco petalos cada una.
+			var petalo := Art.toon(_tono(&"flores", Color(1.0, 0.62, 0.78)), OUTLINE_WIDTH)
+			var centro := Art.toon(Color(1.0, 0.86, 0.30), OUTLINE_WIDTH)
+			for sitio: Vector3 in [Vector3(-0.14, 0.31, -0.06), Vector3(0.13, 0.32, -0.02),
+					Vector3(-0.05, 0.36, 0.10), Vector3(0.10, 0.28, 0.14)]:
+				_costume_add(_head_pivot, Art.sphere(0.036, centro, sitio))
+				for k: int in range(5):
+					var ang := TAU * float(k) / 5.0
+					var hoja := Art.sphere(0.036, petalo, sitio + Vector3(cos(ang) * 0.058, 0.0, sin(ang) * 0.058))
+					hoja.scale = Vector3(1.0, 0.5, 1.0)
+					_costume_add(_head_pivot, hoja)
+		&"petalos":
+			# Una corona de petalos grandes alrededor de la cabeza, como una flor abierta.
+			var petalo := Art.toon(_tono(&"petalos", Color(1.0, 0.82, 0.30)), OUTLINE_WIDTH)
+			for k: int in range(8):
+				var ang := TAU * float(k) / 8.0
+				var hoja := Art.sphere(0.07, petalo,
+					Vector3(cos(ang) * 0.27, 0.13 + sin(ang) * 0.27, 0.10))
+				hoja.scale = Vector3(1.0, 1.0, 0.35)
+				hoja.rotation = Vector3(0.0, 0.0, ang)
+				_costume_add(_head_pivot, hoja)
+		&"grietas":
+			# Las marcas del Edo Tensei: grietas oscuras en la cara, bajo los ojos.
+			var grieta := Art.flat(_tono(&"grietas", Color(0.22, 0.20, 0.20)))
+			for lado: float in [-1.0, 1.0]:
+				for k: int in range(2):
+					var linea := Art.box(Vector3(0.012, 0.07, 0.01), grieta,
+						Vector3((0.06 + float(k) * 0.035) * lado, 0.07 - float(k) * 0.02, -0.197))
+					linea.rotation_degrees = Vector3(0.0, 0.0, (18.0 + float(k) * 22.0) * lado)
+					_costume_add(_head_pivot, linea)
+		&"mono":
+			# Un moño en el cuello, al frente.
+			var tela := Art.toon(_tono(&"mono", Color(0.06, 0.06, 0.08)), OUTLINE_WIDTH)
+			for lado: float in [-1.0, 1.0]:
+				var ala := Art.box(Vector3(0.08, 0.06, 0.025), tela, Vector3(0.045 * lado, 0.68, -0.195))
+				ala.rotation_degrees = Vector3(0.0, 0.0, 12.0 * lado)
+				_costume_add(_torso, ala)
+			_costume_add(_torso, Art.sphere(0.022, tela, Vector3(0.0, 0.68, -0.20)))
+		&"propulsor":
+			# El motor del pecho de Metal Sonic: un aro de metal con el centro encendido.
+			var metal := Art.metal(Color(0.62, 0.64, 0.70), OUTLINE_WIDTH)
+			var fuego := Art.glow(_tono(&"propulsor", Color(1.0, 0.35, 0.15)), 2.8)
+			var aro := Art.cylinder(0.08, 0.04, metal, Vector3(0.0, 0.42, -0.205))
+			aro.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			_costume_add(_torso, aro)
+			var nucleo := Art.cylinder(0.05, 0.045, fuego, Vector3(0.0, 0.42, -0.21))
+			nucleo.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			_costume_add(_torso, nucleo)
+		&"moneda":
+			# Una moneda de oro girando arriba de la cabeza: todo lo que toca se vuelve moneda.
+			var oro := Art.metal(_tono(&"moneda", Color(1.0, 0.84, 0.25)), OUTLINE_WIDTH)
+			var moneda := Art.cylinder(0.10, 0.025, oro, Vector3(0.0, 0.64, 0.0))
+			moneda.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+			_costume_add(_head_pivot, moneda)
+			var giro := moneda.create_tween().set_loops()
+			giro.tween_property(moneda, "rotation:y", TAU, 1.4).from(0.0)
+		&"flor_fuego":
+			# La flor del power-up, chica, en el frente de la gorra.
+			var petalo := Art.toon(_tono(&"flor_fuego", Color(1.0, 0.45, 0.12)), OUTLINE_WIDTH)
+			var centro := Art.toon(Color(1.0, 0.93, 0.55), OUTLINE_WIDTH)
+			var sitio := Vector3(0.0, 0.36, -0.17)
+			_costume_add(_head_pivot, Art.sphere(0.028, centro, sitio))
+			for k: int in range(4):
+				var ang := TAU * float(k) / 4.0 + PI * 0.25
+				var hoja := Art.sphere(0.03, petalo, sitio + Vector3(cos(ang) * 0.04, sin(ang) * 0.04, 0.0))
+				hoja.scale = Vector3(1.0, 1.0, 0.45)
+				_costume_add(_head_pivot, hoja)
+		&"orejeras":
+			var abrigo := Art.pelaje(_tono(&"orejeras", Color(0.95, 0.96, 1.0)), OUTLINE_WIDTH)
+			for lado: float in [-1.0, 1.0]:
+				_costume_add(_head_pivot, Art.sphere(0.07, abrigo, Vector3(0.205 * lado, 0.12, 0.0)))
+			var arco := MeshInstance3D.new()
+			var toro := TorusMesh.new()
+			toro.inner_radius = 0.20
+			toro.outer_radius = 0.225
+			arco.mesh = toro
+			arco.material_override = abrigo
+			arco.position = Vector3(0.0, 0.14, 0.0)
+			arco.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+			_costume_add(_head_pivot, arco)
+		&"corona_hielo":
+			# Cristales de hielo alrededor de la cabeza, subiendo entre las astas.
+			# Opaco y brillante, no translucido: una skin no puede dejar a nadie traslucido
+			# (en un PvP es una ventaja comprada), y el arnes lo revisa.
+			var hielo := Art.glow(_tono(&"corona_hielo", Color(0.72, 0.92, 1.0)), 1.4)
+			for k: int in range(6):
+				var ang := TAU * float(k) / 6.0
+				var cristal := MeshInstance3D.new()
+				var cono := CylinderMesh.new()
+				cono.top_radius = 0.0
+				cono.bottom_radius = 0.035
+				cono.height = 0.16 + float(k % 2) * 0.06
+				cristal.mesh = cono
+				cristal.material_override = hielo
+				cristal.position = Vector3(cos(ang) * 0.15, 0.36, 0.02 + sin(ang) * 0.15)
+				cristal.rotation = Vector3(sin(ang) * 0.3, 0.0, -cos(ang) * 0.3)
+				_costume_add(_head_pivot, cristal)
+		&"costillas":
+			# Un Susano'o chico: las costillas de chakra alrededor del pecho, siempre puestas.
+			# Opacas y finas, no translucidas: ver corona_hielo.
+			var chakra := Art.glow(_tono(&"costillas", Color(0.40, 0.55, 1.0)), 2.0)
+			for k: int in range(3):
+				var costilla := MeshInstance3D.new()
+				var toro := TorusMesh.new()
+				toro.inner_radius = 0.32
+				toro.outer_radius = 0.35
+				costilla.mesh = toro
+				costilla.material_override = chakra
+				costilla.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				costilla.position = Vector3(0.0, 0.62 - float(k) * 0.14, 0.0)
+				costilla.scale = Vector3(1.0, 1.0, 0.8)
+				_costume_add(_torso, costilla)
 
 
 ## Lo que distingue a un personaje de otro a 20 metros. Es lo mas importante que
@@ -1391,7 +1625,10 @@ func _build_rick() -> void:
 	# que quedar POR ENCIMA de 0.196 en la parte de adelante.
 	var tupe := Art.sphere(0.196, pelo, Vector3(0.0, 0.255, 0.015))
 	tupe.scale = Vector3(1.04, 0.72, 0.95)
-	_costume_add(_head_pivot, tupe)
+	# PICKLE RICK NO TIENE PELO: es un pepino. Sin tupe ni puntas ni patillas.
+	var pelado := _forma(&"pepino")
+	if not pelado:
+		_costume_add(_head_pivot, tupe)
 
 	# Las puntas salen del tupe hacia arriba y ATRAS, no hacia adelante: es pelo sin
 	# peinar que se fue para atras solo, no un flequillo.
@@ -1407,14 +1644,20 @@ func _build_rick() -> void:
 		punta.material_override = pelo
 		punta.position = Vector3(t * 0.30, 0.345, 0.010 + absf(t) * 0.022)
 		punta.rotation_degrees = Vector3(26.0, 0.0, -t * 58.0)
-		_costume_add(_head_pivot, punta)
+		if not pelado:
+			_costume_add(_head_pivot, punta)
+		else:
+			punta.free()
 
 	# Patillas finas por delante de la oreja. Chicas: anchas se leen como orejeras, que
 	# es lo que me paso con Flowery y con Noelle.
 	for side: float in [-1.0, 1.0]:
 		var patilla := Art.sphere(0.044, pelo, Vector3(0.180 * side, 0.168, -0.030))
 		patilla.scale = Vector3(0.36, 0.95, 0.78)
-		_costume_add(_head_pivot, patilla)
+		if not pelado:
+			_costume_add(_head_pivot, patilla)
+		else:
+			patilla.free()
 
 	# --- LA UNICEJA ---
 	#
@@ -1737,6 +1980,17 @@ func _build_sonic() -> void:
 		{"pos": Vector3(0.14, 0.05, 0.14), "rot": Vector3(112.0, 32.0, 0.0), "len": 0.50},
 		{"pos": Vector3(0.00, -0.02, 0.16), "rot": Vector3(118.0, 0.0, 0.0), "len": 0.44},
 	]
+	# SUPER Y HYPER SONIC LEVANTAN LAS PUAS: en los juegos, al transformarse se le paran
+	# para arriba. Es lo que se ve de lejos antes que el color.
+	if _forma(&"super"):
+		puas = [
+			{"pos": Vector3(0.00, 0.18, 0.12), "rot": Vector3(28.0, 0.0, 0.0), "len": 0.62},
+			{"pos": Vector3(-0.10, 0.18, 0.10), "rot": Vector3(32.0, 0.0, 24.0), "len": 0.56},
+			{"pos": Vector3(0.10, 0.18, 0.10), "rot": Vector3(32.0, 0.0, -24.0), "len": 0.56},
+			{"pos": Vector3(-0.14, 0.10, 0.12), "rot": Vector3(48.0, 0.0, 40.0), "len": 0.46},
+			{"pos": Vector3(0.14, 0.10, 0.12), "rot": Vector3(48.0, 0.0, -40.0), "len": 0.46},
+			{"pos": Vector3(0.00, 0.06, 0.15), "rot": Vector3(70.0, 0.0, 0.0), "len": 0.42},
+		]
 	for p: Dictionary in puas:
 		var pivote := Node3D.new()
 		pivote.position = p["pos"]
@@ -1958,6 +2212,26 @@ func _build_goku() -> void:
 		{"pos": Vector3(0.07, 0.27, -0.13), "rot": Vector3(-145.0, 0.0, -28.0), "len": 0.17, "r": 0.05},
 		{"pos": Vector3(-0.12, 0.25, -0.10), "rot": Vector3(-135.0, 0.0, 40.0), "len": 0.16, "r": 0.05},
 	]
+	# LAS TRANSFORMACIONES CAMBIAN EL PELO, no solo el color: el Super Saiyajin se lo
+	# levanta entero en puntas para arriba y le queda UN mechon adelante; el Ultra Instinto
+	# lo deja con la forma de siempre, apenas mas grande.
+	if _forma(&"ssj"):
+		puntas = [
+			{"pos": Vector3(0.00, 0.27, 0.02), "rot": Vector3(4.0, 0.0, 0.0), "len": 0.46, "r": 0.10},
+			{"pos": Vector3(-0.08, 0.26, 0.03), "rot": Vector3(6.0, 0.0, 18.0), "len": 0.44, "r": 0.10},
+			{"pos": Vector3(0.08, 0.26, 0.03), "rot": Vector3(6.0, 0.0, -18.0), "len": 0.44, "r": 0.10},
+			{"pos": Vector3(-0.14, 0.22, 0.03), "rot": Vector3(10.0, 0.0, 38.0), "len": 0.38, "r": 0.095},
+			{"pos": Vector3(0.14, 0.22, 0.03), "rot": Vector3(10.0, 0.0, -38.0), "len": 0.38, "r": 0.095},
+			{"pos": Vector3(-0.17, 0.14, 0.04), "rot": Vector3(14.0, 0.0, 60.0), "len": 0.28, "r": 0.08},
+			{"pos": Vector3(0.17, 0.14, 0.04), "rot": Vector3(14.0, 0.0, -60.0), "len": 0.28, "r": 0.08},
+			{"pos": Vector3(0.00, 0.22, 0.13), "rot": Vector3(30.0, 0.0, 0.0), "len": 0.40, "r": 0.10},
+			{"pos": Vector3(-0.10, 0.17, 0.13), "rot": Vector3(40.0, -20.0, 0.0), "len": 0.34, "r": 0.09},
+			{"pos": Vector3(0.10, 0.17, 0.13), "rot": Vector3(40.0, 20.0, 0.0), "len": 0.34, "r": 0.09},
+			{"pos": Vector3(0.02, 0.27, -0.14), "rot": Vector3(-160.0, 0.0, -8.0), "len": 0.20, "r": 0.05},
+		]
+	elif _forma(&"ui"):
+		for punta: Dictionary in puntas:
+			punta["len"] = float(punta["len"]) * 1.12
 	for p: Dictionary in puntas:
 		var pivote := Node3D.new()
 		pivote.position = p["pos"]
@@ -2393,19 +2667,41 @@ func _build_mob() -> void:
 	# Un casco de pelo que cubre la cabeza hasta la altura de las orejas, un poco mas grande
 	# que el craneo, y el flequillo recto adelante: un cilindro achatado y cortado justo
 	# arriba de las cejas.
-	var casco := Art.sphere(0.222, pelo, Vector3(0.0, 0.205, 0.035))
-	casco.scale = Vector3(1.03, 0.80, 1.04)
-	_costume_add(_head_pivot, casco)
-	# Justo arriba de las cejas: mas abajo tapaba los ojos y de frente no quedaba cara.
-	var flequillo := Art.box(Vector3(0.40, 0.06, 0.10), pelo, Vector3(0.0, 0.248, -0.158))
-	_costume_add(_head_pivot, flequillo)
-	# A los costados, hasta las orejas: el corte es parejo alrededor.
-	for lado: float in [-1.0, 1.0]:
-		var costado := Art.box(Vector3(0.06, 0.12, 0.24), pelo, Vector3(0.195 * lado, 0.15, 0.03))
-		_costume_add(_head_pivot, costado)
-	var nuca := Art.sphere(0.19, pelo, Vector3(0.0, 0.08, 0.09))
-	nuca.scale = Vector3(1.08, 0.9, 0.85)
-	_costume_add(_head_pivot, nuca)
+	if _forma(&"cien"):
+		# AL 100% EL PELO FLOTA EN PUNTAS, como en la serie: el tazon se levanta entero.
+		var base := Art.sphere(0.21, pelo, Vector3(0.0, 0.20, 0.04))
+		base.scale = Vector3(1.02, 0.72, 1.02)
+		_costume_add(_head_pivot, base)
+		for k: int in range(9):
+			var ang := TAU * float(k) / 9.0
+			var pivote := Node3D.new()
+			pivote.position = Vector3(cos(ang) * 0.12, 0.30, 0.04 + sin(ang) * 0.12)
+			pivote.rotation = Vector3(sin(ang) * 0.55, 0.0, -cos(ang) * 0.55)
+			_head_pivot.add_child(pivote)
+			_costume.append(pivote)
+			var cono := MeshInstance3D.new()
+			var malla := CylinderMesh.new()
+			malla.top_radius = 0.0
+			malla.bottom_radius = 0.06
+			malla.height = 0.26
+			cono.mesh = malla
+			cono.material_override = pelo
+			cono.position = Vector3(0.0, 0.13, 0.0)
+			pivote.add_child(cono)
+	else:
+		var casco := Art.sphere(0.222, pelo, Vector3(0.0, 0.205, 0.035))
+		casco.scale = Vector3(1.03, 0.80, 1.04)
+		_costume_add(_head_pivot, casco)
+		# Justo arriba de las cejas: mas abajo tapaba los ojos y de frente no quedaba cara.
+		var flequillo := Art.box(Vector3(0.40, 0.06, 0.10), pelo, Vector3(0.0, 0.248, -0.158))
+		_costume_add(_head_pivot, flequillo)
+		# A los costados, hasta las orejas: el corte es parejo alrededor.
+		for lado: float in [-1.0, 1.0]:
+			var costado := Art.box(Vector3(0.06, 0.12, 0.24), pelo, Vector3(0.195 * lado, 0.15, 0.03))
+			_costume_add(_head_pivot, costado)
+		var nuca := Art.sphere(0.19, pelo, Vector3(0.0, 0.08, 0.09))
+		nuca.scale = Vector3(1.08, 0.9, 0.85)
+		_costume_add(_head_pivot, nuca)
 
 	# --- OJOS NEGROS, chicos y redondos ---
 	var negro := Art.flat(_tono(&"ojos", Color(0.04, 0.04, 0.05)))

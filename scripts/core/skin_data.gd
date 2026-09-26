@@ -59,6 +59,14 @@ extends Resource
 @export var ojos_brillo: Color = Color(0, 0, 0, 0)
 ## Un adorno chico: &"" (ninguno), &"gorro", &"nariz_roja", &"parche", &"gafas".
 @export var accesorio: StringName = &""
+## Adornos DE MAS, ademas de `accesorio`: capa, corona, halo, bufanda, visor... Ver
+## PlayerVisual._crear_accesorio. Con estos y con `forma`, una skin cambia el aspecto y
+## no solo los colores.
+@export var accesorios: Array[StringName] = []
+## Un cambio de FORMA que interpreta el constructor de cada personaje: &"ssj" y &"ui"
+## (Goku, el pelo), &"super" (Sonic, las puas para arriba), &"cien" (Mob, el pelo que flota
+## en puntas), &"pepino" (Rick, sin pelo). &"" = la de fabrica.
+@export var forma: StringName = &""
 ## Color de la estela del dash. Con alfa 0, la de fabrica.
 @export var estela: Color = Color(0, 0, 0, 0)
 

@@ -16,6 +16,11 @@ extends Resource
 ## Pantalon y cinturon. Hacia falta como campo propio: estaba clavado en un azul oscuro
 ## para todos, y Flowery usa marron.
 @export var trouser_color: Color = Color(0.14, 0.16, 0.25)
+## Los zapatos. Con alfa 0 salen del pantalon, un poco mas oscuros —que combina con
+## cualquier paleta—, o del acento si `zapatos_acento` (Sonic y Goku: sus zapatillas rojas
+## y sus botas azules son parte del diseño). Una skin los cambia con la parte &"zapatos".
+@export var shoe_color: Color = Color(0, 0, 0, 0)
+@export var zapatos_acento: bool = false
 ## PROPORCIONES DEL CUERPO. Escala el modelo, no la capsula de colision.
 ##
 ## Que la colision NO cambie es a proposito: los cuatro ocupan el mismo espacio y reciben
