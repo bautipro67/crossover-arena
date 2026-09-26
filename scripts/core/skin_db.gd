@@ -267,6 +267,20 @@ func _registrar_temporada_2() -> void:
 			"Cuando el medidor llega al tope: los ojos le brillan.",
 			Color(0.09, 0.09, 0.12), Color(0.60, 0.80, 1.00),
 			Color(0.98, 0.88, 0.80), Color(0.08, 0.08, 0.10), &"epica", 1800),
+		# Las de Thanos, en la tienda, cuando llego: la de los comics (el traje azul y
+		# dorado con el casco), la armadura de batalla de Endgame, y la del Thanos Infinito.
+		_hacer(&"thanos_clasico", &"thanos", "Thanos de los Cómics",
+			"El de las viñetas: el traje azul, el dorado y el casco.",
+			Color(0.16, 0.28, 0.66), Color(0.95, 0.76, 0.26),
+			Color(0.58, 0.46, 0.70), Color(0.14, 0.24, 0.58), &"rara", 900),
+		_hacer(&"thanos_endgame", &"thanos", "Thanos de Endgame",
+			"La armadura de batalla, con el casco puesto: vino a pelear.",
+			Color(0.34, 0.37, 0.44), Color(0.86, 0.66, 0.26),
+			Color(0.62, 0.48, 0.68), Color(0.26, 0.28, 0.34), &"epica", 1800),
+		_hacer(&"thanos_infinito", &"thanos", "Thanos Infinito",
+			"Con el poder de las seis gemas, ya es parte del universo.",
+			Color(0.16, 0.09, 0.30), Color(1.00, 0.80, 0.30),
+			Color(0.72, 0.58, 0.86), Color(0.12, 0.07, 0.24), &"legendaria", 2600),
 		_hacer(&"mob_incognita", &"mob", "Mob ???%",
 			"Lo que queda cuando ya no hay nadie adentro: una sombra con los ojos blancos.",
 			Color(0.04, 0.04, 0.06), Color(0.85, 0.92, 1.00),
@@ -600,6 +614,17 @@ func _detallar() -> void:
 	_extra(&"madara_edo", &"", [&"grietas"])
 	_extra(&"madara_susanoo", &"", [&"costillas"])
 	_extra(&"madara_rikudo", &"", [&"orbes"])
+	# Thanos
+	_det(&"thanos_clasico", {&"oro": Color(0.95, 0.76, 0.26), &"lineas": Color(0.40, 0.30, 0.48)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.35, 0.50, 1.0, 0.75))
+	_extra(&"thanos_clasico", &"", [&"casco_titan"])
+	_det(&"thanos_endgame", {&"oro": Color(0.86, 0.66, 0.26), &"guantelete": Color(0.80, 0.62, 0.24)},
+		&"metal", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.90, 0.72, 0.30, 0.8))
+	_extra(&"thanos_endgame", &"", [&"casco_titan"], {&"casco_titan": Color(0.55, 0.58, 0.64)})
+	_det(&"thanos_infinito", {&"oro": Color(1.0, 0.82, 0.32), &"ojos": Color(1.0, 0.85, 0.35)},
+		&"brillo", &"estrellas", Color(0.85, 0.75, 1.0), Color(1.0, 0.82, 0.30), &"",
+		Color(0.80, 0.60, 1.0, 0.85))
+	_extra(&"thanos_infinito", &"", [&"capa"], {&"capa": Color(0.30, 0.12, 0.55)})
 	# Mob: al 100% el pelo flota en puntas.
 	_extra(&"mob_cien", &"cien", nada)
 	_extra(&"mob_incognita", &"cien", nada)

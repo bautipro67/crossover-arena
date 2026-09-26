@@ -24,12 +24,18 @@ const ONLINE: StringName = &"online"
 const DUELO: StringName = &"duelo"
 const JEFES: StringName = &"jefes"
 const COLINA: StringName = &"colina"
+## Todos contra todos: los bots tambien se pelean entre ellos.
+const CAMPAL: StringName = &"campal"
+## Todo mas rapido: recargas cortas, sin stamina y el ultimate en un rato.
+const CAOS: StringName = &"caos"
+## Aguantar mientras llueven meteoritos.
+const METEORITOS: StringName = &"meteoritos"
 ## El modo historia. No va en LISTA: tiene su propio boton y su propia pantalla.
 const HISTORIA: StringName = &"historia"
 
 ## Todos los offline, en el orden en que se muestran: del mas parejo al mas dificil.
-const LISTA: Array[StringName] = [DUELO, CONTRARRELOJ, COLINA, SUPERVIVENCIA,
-	ULTIMO_EN_PIE, JEFES, PRACTICA]
+const LISTA: Array[StringName] = [DUELO, CAOS, CONTRARRELOJ, COLINA, CAMPAL,
+	METEORITOS, SUPERVIVENCIA, ULTIMO_EN_PIE, JEFES, PRACTICA]
 
 ## Cuantas bajas pide contrarreloj.
 ##
@@ -50,6 +56,33 @@ const META_COLINA: float = 45.0
 const BOTS_COLINA: int = 3
 ## Radio de la zona.
 const RADIO_COLINA: float = 9.0
+
+## BATALLA CAMPAL: seis en el mapa, todos contra todos. Los bots se pelean entre ellos tanto
+## como con vos, asi que no es cinco contra uno: es elegir cuando meterse.
+const BOTS_CAMPAL: int = 5
+
+## MODO CAOS: las recargas duran un tercio, nadie gasta stamina y el ultimate se junta tres
+## veces mas rapido. Gana el primero que llega a las bajas; perdes si caes demasiadas veces.
+const RECARGA_CAOS: float = 0.35
+const CARGA_CAOS: float = 3.0
+const META_CAOS: int = 10
+const MUERTES_CAOS: int = 5
+const BOTS_CAOS: int = 3
+
+## LLUVIA DE METEORITOS: aguantar vivo mientras caen del cielo, con dos bots que molestan y
+## que tambien se los comen. Cada vez caen mas seguido, y algunos van derecho a donde
+## estas parado: quedarse quieto no sirve.
+const META_METEORITOS: float = 50.0
+const BOTS_METEORITOS: int = 2
+## Cada cuanto cae uno, al empezar y al final.
+const LLUVIA_INICIO: float = 1.2
+const LLUVIA_FINAL: float = 0.45
+## Cada cuantos, uno va derecho al jugador.
+const LLUVIA_APUNTADOS: int = 4
+const METEORO_RADIO: float = 4.0
+const METEORO_DAÑO: float = 22.0
+## Desde que aparece la sombra hasta que pega. Lo que hay para salir.
+const METEORO_CAIDA: float = 1.7
 
 
 # ------------------------------------------------ Cuanto aguantan los enemigos
@@ -125,6 +158,9 @@ func _vida_base() -> float:
 		# Sube de a poco para no cruzar de golpe el umbral de los 180.
 		JEFES: return 94.0 + float(bajas) * 17.0
 		COLINA: return 57.0
+		CAMPAL: return 72.0
+		CAOS: return 74.0
+		METEORITOS: return 40.0
 	return 170.0
 
 
@@ -145,6 +181,9 @@ func daño_bot(id: int = 0) -> float:
 		# mas vida es la misma pelea mas larga.
 		JEFES: return 0.40 + float(bajas) * 0.03
 		COLINA: return 0.30
+		CAMPAL: return 0.36
+		CAOS: return 0.36
+		METEORITOS: return 0.08
 	return GameConfig.BOT_DAMAGE_SCALE
 
 var actual: StringName = ONLINE
@@ -155,6 +194,8 @@ var tiempo: float = 0.0
 ## Cuantos segundos lleva el jugador adentro del circulo, acumulados.
 var colina_avance: float = 0.0
 var colina_dentro: bool = false
+## Cuantas veces cayo el jugador. Solo lo cuenta el modo caos.
+var muertes: int = 0
 var _terminado: bool = false
 ## El capitulo que se esta jugando en el modo historia. -1 = ninguno.
 var capitulo: int = -1
@@ -173,6 +214,9 @@ func iniciar_historia(i: int) -> void:
 func _process(delta: float) -> void:
 	if activo and not _terminado:
 		tiempo += delta
+		if actual == METEORITOS and tiempo >= META_METEORITOS:
+			_finalizar(true, "¡SOBREVIVISTE A LA LLUVIA!", "%d segundos bajo los meteoritos" % int(
+				META_METEORITOS))
 
 
 # ------------------------------------------------------------------ Consultas
@@ -198,6 +242,35 @@ func premio() -> float:
 	return 1.0
 
 
+## Los bots se eligen entre ellos? Solo en la batalla campal (y en la practica, si el panel
+## lo pide: eso lo mira BotBrain aparte).
+func todos_contra_todos() -> bool:
+	return actual == CAMPAL
+
+
+## Por cuanto se multiplica cada recarga. Solo el modo caos la acorta.
+##
+## ES PARA TODOS, bots incluidos: un caos en el que solo vos tiras el doble no es caos, es
+## ventaja. Fuera de los modos offline siempre da 1, asi que el online no cambia.
+func ritmo_recarga() -> float:
+	return RECARGA_CAOS if actual == CAOS else 1.0
+
+
+## Nadie gasta stamina? Solo en el modo caos.
+func stamina_libre() -> bool:
+	return actual == CAOS
+
+
+## Por cuanto se multiplica lo que carga el ultimate pegando.
+func ritmo_carga() -> float:
+	return CARGA_CAOS if actual == CAOS else 1.0
+
+
+## Cada cuanto cae un meteorito en la lluvia, segun cuanto va de partida: cada vez mas seguido.
+func espera_meteorito() -> float:
+	return lerpf(LLUVIA_INICIO, LLUVIA_FINAL, clampf(tiempo / META_METEORITOS, 0.0, 1.0))
+
+
 func nombre() -> String:
 	match actual:
 		PRACTICA: return "Sala de práctica"
@@ -207,6 +280,9 @@ func nombre() -> String:
 		DUELO: return "Duelo"
 		JEFES: return "Torre de jefes"
 		COLINA: return "Rey de la colina"
+		CAMPAL: return "Batalla campal"
+		CAOS: return "Modo caos"
+		METEORITOS: return "Lluvia de meteoritos"
 		HISTORIA: return "Historia"
 	return "En línea"
 
@@ -227,6 +303,14 @@ func descripcion() -> String:
 			return "%d enemigos, de a uno, cada uno más duro que el anterior." % JEFES_TOTAL
 		COLINA:
 			return "Aguantá %d segundos dentro del círculo. Si te salen, el reloj para." % int(META_COLINA)
+		CAMPAL:
+			return "Seis en el mapa, todos contra todos: los bots también se pelean entre ellos. Quedá último en pie."
+		CAOS:
+			return "Recargas cortísimas, sin stamina y el ultimate en un rato. %d bajas ganan; %d caídas pierden." % [
+				META_CAOS, MUERTES_CAOS]
+		METEORITOS:
+			return "Aguantá %d segundos mientras caen meteoritos, cada vez más seguido. No reapareces." % int(
+				META_METEORITOS)
 		HISTORIA:
 			return String(Historia.capitulo(capitulo).get("titulo", ""))
 	return "Contra otros jugadores."
@@ -242,6 +326,9 @@ func bots_iniciales() -> int:
 		DUELO: return 1
 		JEFES: return 1
 		COLINA: return BOTS_COLINA
+		CAMPAL: return BOTS_CAMPAL
+		CAOS: return BOTS_CAOS
+		METEORITOS: return BOTS_METEORITOS
 		# La arena no pone a nadie: los pone la mision, cada uno con su lado y su papel.
 		HISTORIA: return 0
 	return 0
@@ -249,7 +336,7 @@ func bots_iniciales() -> int:
 
 ## Vuelve el bot despues de morir?
 func reaparecen_bots() -> bool:
-	return actual == PRACTICA or actual == CONTRARRELOJ or actual == COLINA
+	return actual in [PRACTICA, CONTRARRELOJ, COLINA, CAOS, METEORITOS]
 
 
 ## Vuelve el jugador despues de morir?
@@ -257,7 +344,7 @@ func reaparecen_bots() -> bool:
 ## En supervivencia y en ultimo en pie, no: son modos que se pueden PERDER, y un modo que
 ## no se puede perder no se puede ganar tampoco.
 func reaparece_jugador() -> bool:
-	return actual == PRACTICA or actual == CONTRARRELOJ or actual == ONLINE or actual == COLINA
+	return actual in [PRACTICA, CONTRARRELOJ, ONLINE, COLINA, CAOS]
 
 
 # --------------------------------------------------------------------- Partida
@@ -273,6 +360,7 @@ func iniciar(modo: StringName) -> void:
 	oleada = 1 if modo == SUPERVIVENCIA else 0
 	colina_avance = 0.0
 	colina_dentro = false
+	muertes = 0
 	tiempo = 0.0
 	_terminado = false
 	estado_cambio.emit()
@@ -318,6 +406,17 @@ func bot_murio(vivos_restantes: int) -> int:
 			if vivos_restantes <= 0:
 				_finalizar(true, "¡ÚLTIMO EN PIE!", "%d contra uno, en %s" % [
 					BOTS_ULTIMO_EN_PIE, reloj()])
+			return 0
+		CAMPAL:
+			# Cuentan todas las caidas, las tuyas y las que se hicieron entre ellos: lo que
+			# importa es quedar solo.
+			if vivos_restantes <= 0:
+				_finalizar(true, "¡GANASTE LA BATALLA CAMPAL!", "El último de seis, en %s" % reloj())
+			return 0
+		CAOS:
+			if bajas >= META_CAOS:
+				_finalizar(true, "¡DOMINASTE EL CAOS!", "%d bajas y %d caídas en %s" % [
+					bajas, muertes, reloj()])
 			return 0
 		DUELO:
 			_finalizar(true, "¡GANASTE EL DUELO!", "En %s" % reloj())
@@ -368,6 +467,16 @@ func jugador_murio() -> void:
 				bajas + 1, JEFES_TOTAL])
 		ULTIMO_EN_PIE:
 			_finalizar(false, "TE GANARON", "%d de %d" % [bajas, BOTS_ULTIMO_EN_PIE])
+		CAMPAL:
+			_finalizar(false, "QUEDASTE AFUERA", "Cayeron %d de %d antes que vos" % [bajas, BOTS_CAMPAL])
+		CAOS:
+			muertes += 1
+			estado_cambio.emit()
+			if muertes >= MUERTES_CAOS:
+				_finalizar(false, "EL CAOS TE GANÓ", "%d bajas de %d" % [bajas, META_CAOS])
+		METEORITOS:
+			_finalizar(false, "TE APLASTARON", "Aguantaste %s de %d segundos" % [
+				reloj(), int(META_METEORITOS)])
 		HISTORIA:
 			# Tambien la mision: escucha la muerte del jugador por su cuenta.
 			pass
@@ -408,6 +517,12 @@ func marcador() -> String:
 			return "QUEDAN %d    %s" % [maxi(0, BOTS_ULTIMO_EN_PIE - bajas), reloj()]
 		DUELO:
 			return "DUELO    %s" % reloj()
+		CAMPAL:
+			return "QUEDAN %d    %s" % [maxi(0, BOTS_CAMPAL - bajas), reloj()]
+		CAOS:
+			return "%d / %d BAJAS    %d / %d CAÍDAS" % [bajas, META_CAOS, muertes, MUERTES_CAOS]
+		METEORITOS:
+			return "AGUANTÁ %d s" % maxi(0, ceili(META_METEORITOS - tiempo))
 		JEFES:
 			return "JEFE %d / %d    %s" % [mini(bajas + 1, JEFES_TOTAL), JEFES_TOTAL, reloj()]
 		HISTORIA:

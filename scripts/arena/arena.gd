@@ -80,6 +80,13 @@ var _dummy_spawns: Dictionary = {}
 ## Numerador de los bloques de cobertura. Ver _bloque().
 var _cover_index: int = 0
 var _colina: MeshInstance3D = null
+## La lluvia de meteoritos: cuanto falta para el proximo y cuantos cayeron. Arranca con un
+## margen para que el primero no caiga mientras todavia se esta mirando el mapa.
+var _lluvia_espera: float = 2.5
+var _lluvia_cuenta: int = 0
+## A quien persigue la lluvia. Sin nadie, al jugador local. Lo pone el simulador de balance,
+## que pelea con un heroe que no es el jugador.
+var blanco_lluvia: Player = null
 
 var _floor_material: StandardMaterial3D = null
 var _floor_alt_material: StandardMaterial3D = null
@@ -94,6 +101,9 @@ var _marking_material: StandardMaterial3D = null
 
 
 func _ready() -> void:
+	# Los peligros anunciados son de UNA partida: si la anterior termino con meteoritos en
+	# el aire, sus sombras no pueden seguir espantando a los bots de esta.
+	BotBrain.peligros.clear()
 	_make_materials()
 	_build_environment()
 	_build_floor()
@@ -902,6 +912,13 @@ func _spawn_dummies() -> void:
 	var cuantos := DUMMY_COUNT
 	if Net.solo_mode:
 		cuantos = Modos.bots_iniciales() if Modos.es_offline() else Practica.bots
+	# EN LA BATALLA CAMPAL, REPARTIDOS POR TODO EL MAPA. Juntos en el arco de siempre se
+	# peleaban entre ellos antes de que el jugador llegara, y la partida se decidia sola.
+	if Net.solo_mode and Modos.actual == Modos.CAMPAL:
+		puestos.clear()
+		for i: int in range(cuantos):
+			var ang := TAU * float(i) / float(cuantos) + 0.6
+			puestos.append(Vector3(cos(ang), 0.0, sin(ang)) * 36.0)
 	for i: int in range(cuantos):
 		var base: Vector3 = puestos[i] if i < puestos.size() else Vector3(float(i) * 8.0, 0.0, -30.0)
 		_crear_bot(-(i + 1), find_clear_spot(base, 1.0), ids[i % ids.size()])
@@ -1007,7 +1024,13 @@ func _construir_colina() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if not Net.is_server() or Modos.actual != Modos.COLINA:
+	if not Net.is_server():
+		return
+	_descontar_peligros(delta)
+	if Modos.actual == Modos.METEORITOS:
+		_lluvia(delta)
+		return
+	if Modos.actual != Modos.COLINA:
 		return
 	var p := get_local_player()
 	if p == null or p.health.is_dead:
@@ -1024,6 +1047,77 @@ func _physics_process(delta: float) -> void:
 			var quiero := Color(0.45, 1.0, 0.55) if dentro else Color(1.0, 0.82, 0.30)
 			mat.albedo_color = mat.albedo_color.lerp(quiero, delta * 6.0)
 			mat.emission = mat.albedo_color
+
+
+## LA LLUVIA DE METEORITOS. Cada tanto cae uno cerca del jugador, cada vez mas seguido, y
+## uno de cada pocos va derecho a donde esta parado: el que se queda quieto se lo come.
+##
+## Todos se ven venir: la sombra aparece en el piso desde que sale, con el tiempo justo
+## para correrse. Y le pegan a cualquiera, bots incluidos: meterlos abajo de uno es la
+## mejor forma de sacarselos de encima.
+func _lluvia(delta: float) -> void:
+	if not Modos.activo:
+		return
+	var blanco := blanco_lluvia if is_instance_valid(blanco_lluvia) else get_local_player()
+	if blanco == null or blanco.health.is_dead:
+		return
+	_lluvia_espera -= delta
+	if _lluvia_espera > 0.0:
+		return
+	_lluvia_espera = Modos.espera_meteorito()
+	_lluvia_cuenta += 1
+	var punto := blanco.global_position
+	if _lluvia_cuenta % Modos.LLUVIA_APUNTADOS != 0:
+		var ang := randf() * TAU
+		punto += Vector3(cos(ang), 0.0, sin(ang)) * randf_range(3.0, 22.0)
+	var borde := ARENA_SIZE * 0.5 - 2.5
+	punto.x = clampf(punto.x, -borde, borde)
+	punto.z = clampf(punto.z, -borde, borde)
+	tirar_meteorito(_piso_en(punto))
+
+
+## Lo que les falta a los bots para darse cuenta de cada peligro anunciado.
+func _descontar_peligros(delta: float) -> void:
+	for zona: Dictionary in BotBrain.peligros:
+		zona["reaccion"] = float(zona["reaccion"]) - delta
+
+
+## El piso justo debajo de un punto: la sombra y el golpe van donde se pisa, sea el suelo o
+## arriba de una terraza.
+func _piso_en(punto: Vector3) -> Vector3:
+	var espacio := get_world_3d().direct_space_state if get_world_3d() != null else null
+	if espacio == null:
+		return Vector3(punto.x, 0.0, punto.z)
+	var rayo := PhysicsRayQueryParameters3D.create(Vector3(punto.x, punto.y + 12.0, punto.z),
+		Vector3(punto.x, -5.0, punto.z))
+	rayo.collision_mask = GameConfig.LAYER_WORLD
+	var golpe := espacio.intersect_ray(rayo)
+	return golpe["position"] if not golpe.is_empty() else Vector3(punto.x, 0.0, punto.z)
+
+
+## Un meteorito de la lluvia: la sombra ya, y el golpe cuando llega. SOLO SERVIDOR (los
+## modos offline siempre lo son).
+func tirar_meteorito(punto: Vector3) -> void:
+	FX.spawn_meteorito_suelto(self, punto, Modos.METEORO_RADIO, Modos.METEORO_CAIDA)
+	# Los bots tambien ven la sombra, un poco tarde, como una persona. Y deja de ser un
+	# peligro cuando cae, en cualquier modo: si quedara, esquivarian ese lugar para siempre.
+	var zona := {"punto": punto, "radio": Modos.METEORO_RADIO, "reaccion": 0.35}
+	BotBrain.peligros.append(zona)
+	await get_tree().create_timer(Modos.METEORO_CAIDA).timeout
+	BotBrain.peligros.erase(zona)
+	if not is_inside_tree():
+		return
+	for node: Node in get_tree().get_nodes_in_group("players"):
+		var p := node as Player
+		if p == null or p.health.is_dead:
+			continue
+		var plano := Vector2(p.global_position.x - punto.x, p.global_position.z - punto.z)
+		if plano.length() > Modos.METEORO_RADIO or absf(p.global_position.y - punto.y) > 4.0:
+			continue
+		# Sin dueño (peer 0): no paga carga ni cuenta como baja de nadie. Y por VIDA, como
+		# todo el daño del juego, para que aguantar uno no dependa de ese numero.
+		CombatUtils.deal_damage(p, Modos.METEORO_DAÑO * GameConfig.VIDA, 0, false)
+		CombatUtils.apply_knockback(p, p.global_position - punto, 8.0, 3.0)
 
 
 ## Respiro entre oleadas o entre jefes: el jugador vuelve a vida llena.

@@ -1325,9 +1325,14 @@ func spawn_tengai_shinsei(context: Node, punto: Vector3, rumbo: Vector3) -> void
 	if plano.is_zero_approx():
 		plano = Vector3.FORWARD
 	_marca_meteorito(world, punto, TengaiShinsei.RADIO_PRIMERO, TengaiShinsei.CAIDA)
-	_meteorito(world, punto, plano, 55.0, 32.0, TengaiShinsei.CAIDA, TengaiShinsei.RADIO_PRIMERO, 4.2)
-	_meteorito(world, punto, plano, 85.0, 50.0, TengaiShinsei.CAIDA + TengaiShinsei.ENTRE,
-		TengaiShinsei.RADIO_SEGUNDO, 4.8)
+	# GIGANTES, a pedido (2026-09-25): el doble de ancho que antes, rocas que tapan medio
+	# cielo. Salen desde un poco mas lejos pero no el doble: si no, desde lejos se verian
+	# del mismo tamaño que las chicas y solo crecerian al llegar.
+	# La roca mide lo mismo que el golpe: lo que se ve caer es lo que pega.
+	_meteorito(world, punto, plano, 78.0, 44.0, TengaiShinsei.CAIDA, TengaiShinsei.RADIO_PRIMERO,
+		TengaiShinsei.RADIO_PRIMERO)
+	_meteorito(world, punto, plano, 125.0, 70.0, TengaiShinsei.CAIDA + TengaiShinsei.ENTRE,
+		TengaiShinsei.RADIO_SEGUNDO, TengaiShinsei.RADIO_SEGUNDO)
 	# La marca del segundo aparece cuando cae el primero: antes, el que mira arriba ve uno.
 	var tree := world.get_tree()
 	if tree == null:
@@ -1366,7 +1371,7 @@ func _marca_meteorito(world: Node, punto: Vector3, radio: float, dura: float) ->
 ## Un meteorito: la roca, la cola de fuego y la luz, bajando hasta `punto`; y al llegar,
 ## la explosion.
 func _meteorito(world: Node, punto: Vector3, plano: Vector3, alto: float, atras: float,
-		dura: float, radio: float, tamaño: float) -> void:
+		dura: float, radio: float, tamaño: float, fuerte: bool = true) -> void:
 	var roca := Node3D.new()
 	world.add_child(roca)
 	var cuerpo := Art.sphere(tamaño, Art.toon(Color(0.30, 0.20, 0.15), 0.03, 0.2))
@@ -1383,7 +1388,9 @@ func _meteorito(world: Node, punto: Vector3, plano: Vector3, alto: float, atras:
 		roca.add_child(grieta)
 	var cola := CPUParticles3D.new()
 	cola.emitting = true
-	cola.amount = 70
+	# Segun el tamaño: una roca chica de la lluvia no necesita la cola de una montaña, y
+	# caen varias a la vez.
+	cola.amount = int(clampf(tamaño * 14.0, 28.0, 110.0))
 	cola.lifetime = 0.9
 	cola.local_coords = false
 	cola.direction = Vector3.UP
@@ -1414,14 +1421,27 @@ func _meteorito(world: Node, punto: Vector3, plano: Vector3, alto: float, atras:
 	tw.parallel().tween_property(cuerpo, "rotation", Vector3(2.4, 1.1, 0.6), dura)
 	tw.tween_callback(func() -> void:
 		cola.emitting = false
-		_explosion_meteorito(roca, punto, radio))
+		_explosion_meteorito(roca, punto, radio, fuerte))
 	# Se hunde en el crater y se va.
 	tw.tween_property(roca, "scale", Vector3.ONE * 0.15, 0.7).set_trans(Tween.TRANS_QUAD) \
 		.set_ease(Tween.EASE_IN)
 	tw.tween_callback(roca.queue_free)
 
 
-func _explosion_meteorito(context: Node, punto: Vector3, radio: float) -> void:
+## Un meteorito suelto, el de la lluvia: la sombra en el piso y la roca que baja en diagonal
+## desde cualquier lado. Mas chico que los de Madara y sin la sacudida fuerte: caen uno por
+## segundo, y con la de Madara la pantalla no pararia de temblar.
+func spawn_meteorito_suelto(context: Node, punto: Vector3, radio: float, dura: float) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var ang := randf() * TAU
+	_marca_meteorito(world, punto, radio, dura)
+	_meteorito(world, punto, Vector3(cos(ang), 0.0, sin(ang)), 40.0, 20.0, dura, radio, 2.0, false)
+	Sfx.play_3d(context, &"meteorito", punto, -9.0)
+
+
+func _explosion_meteorito(context: Node, punto: Vector3, radio: float, fuerte: bool = true) -> void:
 	spawn_pisoton(context, punto, radio)
 	spawn_plasma_blast(context, punto + Vector3.UP, radio * 0.8)
 	var world := _world_of(context)
@@ -1429,7 +1449,7 @@ func _explosion_meteorito(context: Node, punto: Vector3, radio: float) -> void:
 		var polvo := CPUParticles3D.new()
 		polvo.emitting = true
 		polvo.one_shot = true
-		polvo.amount = 90
+		polvo.amount = 90 if fuerte else 36
 		polvo.lifetime = 1.6
 		polvo.explosiveness = 0.95
 		polvo.direction = Vector3.UP
@@ -1450,9 +1470,120 @@ func _explosion_meteorito(context: Node, punto: Vector3, radio: float) -> void:
 		world.add_child(luz)
 		luz.global_position = punto + Vector3.UP * 2.0
 		_fade_light(luz, 0.9)
-	camera_shake(2.4)
-	Sfx.play_3d(context, &"plasma_blast", punto, 4.0)
-	Sfx.play_3d(context, &"aterrizaje", punto, 6.0)
+	camera_shake(2.4 if fuerte else 0.5)
+	Sfx.play_3d(context, &"plasma_blast", punto, 4.0 if fuerte else -4.0)
+	Sfx.play_3d(context, &"aterrizaje", punto, 6.0 if fuerte else -2.0)
+
+
+# ----------------------------------------------------------------- Thanos
+
+## La Gema del Espacio: el espacio que se abre en azul donde sale y donde llega.
+func spawn_gema_espacio(context: Node, pos: Vector3) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var anillo := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.7
+	toro.outer_radius = 0.85
+	anillo.mesh = toro
+	var mat := Art.glow(Color(0.30, 0.55, 1.0), 2.6)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	anillo.material_override = mat
+	anillo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(anillo)
+	anillo.global_position = pos + Vector3.UP * 1.0
+	anillo.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	var tw := anillo.create_tween().set_parallel()
+	tw.tween_property(anillo, "scale", Vector3.ONE * 1.6, 0.45).from(Vector3.ONE * 0.2)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.5).from(0.9)
+	tw.chain().tween_callback(anillo.queue_free)
+	spawn_impact_burst(context, pos + Vector3.UP, Color(0.35, 0.60, 1.0, 0.95))
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(0.35, 0.55, 1.0)
+	luz.light_energy = 5.0
+	luz.omni_range = 6.0
+	world.add_child(luz)
+	luz.global_position = pos + Vector3.UP
+	_fade_light(luz, 0.5)
+	Sfx.play_3d(context, &"portal", pos, -3.0)
+
+
+## El Chasquido: el destello de las seis gemas desde el Guantelete, y el polvo en cada
+## enemigo, esten donde esten. Corre igual en el servidor y en cada cliente: los enemigos
+## del que chasquea se calculan en cada pantalla con la misma regla.
+func spawn_chasquido(caster: Node3D) -> void:
+	if not is_instance_valid(caster):
+		return
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var gemas: Array[Color] = [Color(0.25, 0.45, 1.0), Color(1.0, 0.85, 0.2), Color(0.95, 0.12, 0.16),
+		Color(0.62, 0.22, 0.95), Color(0.2, 0.9, 0.35), Color(1.0, 0.52, 0.12)]
+	var centro := caster.global_position + Vector3.UP * 1.6
+	for k: int in range(gemas.size()):
+		var anillo := MeshInstance3D.new()
+		var toro := TorusMesh.new()
+		toro.inner_radius = 0.9
+		toro.outer_radius = 1.0
+		anillo.mesh = toro
+		var mat := Art.glow(gemas[k], 3.0)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		anillo.material_override = mat
+		anillo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(anillo)
+		anillo.global_position = centro
+		anillo.rotation_degrees = Vector3(90.0 + float(k) * 30.0, float(k) * 30.0, 0.0)
+		var tw := anillo.create_tween().set_parallel()
+		tw.tween_property(anillo, "scale", Vector3.ONE * (7.0 + float(k)), 0.7).from(Vector3.ONE * 0.2) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(mat, "albedo_color:a", 0.0, 0.7).from(0.85)
+		tw.chain().tween_callback(anillo.queue_free)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.92, 0.75)
+	luz.light_energy = 14.0
+	luz.omni_range = 20.0
+	world.add_child(luz)
+	luz.global_position = centro
+	_fade_light(luz, 0.9)
+	camera_shake(1.6)
+	Sfx.play_3d(caster, &"chasquido", centro, 6.0)
+	for target: Node3D in CombatUtils._living_targets(caster):
+		var estado := target.get_node_or_null("StatusEffects") as StatusEffects
+		if estado != null and estado.es_invencible():
+			continue
+		spawn_polvo_chasquido(target)
+
+
+## El polvo del chasquido: el cuerpo se deshace en ceniza que se lleva el viento.
+func spawn_polvo_chasquido(target: Node3D) -> void:
+	var world := _world_of(target)
+	if world == null:
+		return
+	var polvo := CPUParticles3D.new()
+	polvo.emitting = true
+	polvo.one_shot = true
+	polvo.amount = 70
+	polvo.lifetime = 1.8
+	polvo.explosiveness = 0.35
+	polvo.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	polvo.emission_box_extents = Vector3(0.3, 0.9, 0.2)
+	polvo.direction = Vector3(1.0, 0.6, 0.0)
+	polvo.spread = 35.0
+	polvo.initial_velocity_min = 0.6
+	polvo.initial_velocity_max = 1.8
+	polvo.gravity = Vector3(0.8, 0.3, 0.0)
+	polvo.scale_amount_min = 0.04
+	polvo.scale_amount_max = 0.10
+	var ceniza := Gradient.new()
+	ceniza.set_color(0, Color(0.55, 0.42, 0.32, 0.95))
+	ceniza.set_color(1, Color(0.35, 0.30, 0.28, 0.0))
+	polvo.color_ramp = ceniza
+	world.add_child(polvo)
+	polvo.global_position = target.global_position + Vector3.UP * 1.0
+	_auto_free(polvo, 2.4)
 
 
 # -------------------------------------------------------------------- Mob
@@ -2263,6 +2394,18 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 		&"superestrella":
 			if caster is Node3D:
 				spawn_estrella(caster as Node3D, Superestrella.DURACION)
+		&"puno_titan":
+			spawn_melee_arc(caster, origin, dir)
+		&"gema_poder":
+			GemaPoder.spawn_cosmetic(caster, origin, dir)
+		&"gema_espacio":
+			if caster is Node3D:
+				var c3 := caster as Node3D
+				spawn_gema_espacio(caster, c3.global_position)
+				spawn_gema_espacio(caster, GemaEspacio.calcular_destino(c3, origin, dir))
+		&"chasquido":
+			if caster is Node3D:
+				spawn_chasquido(caster as Node3D)
 		&"onda_psiquica":
 			OndaPsiquica.spawn_cosmetic(caster, origin, dir)
 		&"escombros":

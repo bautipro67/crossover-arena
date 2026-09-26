@@ -78,8 +78,11 @@ func _ready() -> void:
 	# Primero, y no el online: el que baja el juego casi siempre esta solo, y si lo
 	# primero que ve es "hostear / unirse" se va sin jugar.
 	box.add_child(UITheme.make_label("JUGAR SOLO", 13, UITheme.TEXT_DIM))
+	# TRES COLUMNAS desde que son diez modos (2026-09-25): en dos, la grilla sumaba dos filas
+	# y SALIR volvia a quedar fuera de los 720 de alto. Con letra un poco mas chica entran
+	# los nombres largos sin ensanchar el panel.
 	var grilla := GridContainer.new()
-	grilla.columns = 2
+	grilla.columns = 3
 	grilla.add_theme_constant_override("h_separation", 6)
 	grilla.add_theme_constant_override("v_separation", 6)
 	box.add_child(grilla)
@@ -94,6 +97,7 @@ func _ready() -> void:
 		var etiqueta := Modos.nombre().to_upper()
 		Modos.actual = antes
 		var boton := UITheme.make_button(etiqueta, id == Modos.DUELO)
+		_achicar(boton)
 		boton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		boton.pressed.connect(func() -> void: modo_requested.emit(_name_field.text, id))
 		# Al pasar el mouse, el detalle abajo. Evita cuatro renglones de explicacion
@@ -103,10 +107,11 @@ func _ready() -> void:
 		boton.focus_entered.connect(func() -> void: _mostrar_detalle(id))
 		grilla.add_child(boton)
 
-	# LA HISTORIA VA EN LA GRILLA, en el hueco que quedaba al lado de la practica: con siete
-	# modos en dos columnas sobraba una celda. Un boton aparte, a lo ancho, empujaba SALIR
+	# LA HISTORIA VA EN LA GRILLA, en el hueco que queda al lado de la practica: con diez
+	# modos en tres columnas sobran celdas. Un boton aparte, a lo ancho, empujaba SALIR
 	# fuera de los 720 de alto (ver el comentario de arriba del archivo).
 	var b_historia := UITheme.make_button("MODO HISTORIA", true)
+	_achicar(b_historia)
 	b_historia.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b_historia.pressed.connect(func() -> void: historia_requested.emit(_name_field.text))
 	var detalle_historia := func() -> void:
@@ -240,3 +245,10 @@ func _on_join_pressed() -> void:
 	if ip.is_empty():
 		ip = "127.0.0.1"
 	join_requested.emit(_name_field.text, ip, _get_port())
+
+
+## Un boton de la grilla de modos: mas bajo y con letra mas chica que los demas, para que
+## entren tres por fila.
+func _achicar(boton: Button) -> void:
+	boton.custom_minimum_size = Vector2(0, 40)
+	boton.add_theme_font_size_override("font_size", 13)

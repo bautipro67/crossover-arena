@@ -63,13 +63,16 @@ func get_shield() -> float:
 
 
 ## SOLO SERVIDOR. El daño que llega aca ya viene multiplicado por los status del objetivo.
-func apply_damage(amount: float, source_id: int) -> void:
+##
+## `ignora_escudo`: va directo a la vida. Lo usa solo el Chasquido de Thanos, que saca la
+## MITAD DE LA VIDA: un escudo que se comiera parte haria que no fuera la mitad.
+func apply_damage(amount: float, source_id: int, ignora_escudo: bool = false) -> void:
 	if not _is_server() or is_dead or amount <= 0.0:
 		return
 
 	# El escudo va PRIMERO y el sobrante pasa a la vida. Que el sobrante pase importa:
 	# si el escudo frenara el golpe entero, un escudo de 5 anularia un Snowgrave de 260.
-	if shield > 0.0:
+	if shield > 0.0 and not ignora_escudo:
 		var absorbed := minf(shield, amount)
 		amount -= absorbed
 		_set_shield(shield - absorbed)

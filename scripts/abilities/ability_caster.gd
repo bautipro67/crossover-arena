@@ -117,7 +117,7 @@ func request_use(index: int) -> void:
 	if not _is_server():
 		if _stamina != null and ability.stamina_cost > 0.0:
 			_stamina.predict_spend(ability.stamina_cost)
-		_start_cooldown_local(index, ability.cooldown)
+		_start_cooldown_local(index, recarga_de(ability))
 		if ability.channel_time > 0.0:
 			_begin_channel_local(index, ability.channel_time)
 
@@ -136,6 +136,11 @@ func acortar_cooldown(index: int, restante: float) -> void:
 	if index < 0 or index >= _cooldowns.size():
 		return
 	_cooldowns[index] = maxf(0.0, minf(_cooldowns[index], restante))
+
+
+## Cuanto espera esta habilidad despues de usarse. Es la suya, salvo en el modo caos.
+func recarga_de(ability: Ability) -> float:
+	return ability.cooldown * Modos.ritmo_recarga()
 
 
 func get_cooldown_remaining(index: int) -> float:
@@ -255,8 +260,8 @@ func _srv_request_use(index: int, origin: Vector3, dir: Vector3) -> void:
 			_reject_to_owner(index, "sin stamina")
 			return
 
-	_start_cooldown_local(index, ability.cooldown)
-	Net.rpc_ready(self, &"_net_cooldown", [index, ability.cooldown])
+	_start_cooldown_local(index, recarga_de(ability))
+	Net.rpc_ready(self, &"_net_cooldown", [index, recarga_de(ability)])
 
 	if ability.channel_time > 0.0:
 		_channel_origin = origin

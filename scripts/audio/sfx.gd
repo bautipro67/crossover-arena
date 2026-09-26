@@ -327,7 +327,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 43
+const TOTAL_SONIDOS: int = 46
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -351,6 +351,7 @@ func _build_combate() -> void:
 		[&"fuego", _synth_fuego], [&"estrella", _synth_estrella],
 		[&"katon", _synth_katon], [&"susanoo", _synth_susanoo], [&"meteorito", _synth_meteorito],
 		[&"psiquico", _synth_psiquico], [&"explosion_psiquica", _synth_explosion_psiquica],
+		[&"chasquido", _synth_chasquido], [&"gema", _synth_gema],
 		# Las voces al final: son las mas caras de generar —tres resonadores moviles por
 		# palabra— y son las unicas que nadie puede necesitar en el primer segundo,
 		# porque para gritar una habilidad primero hay que tener una habilidad lista.
@@ -368,6 +369,7 @@ func _build_combate() -> void:
 		[&"voz_susanoo", _synth_voz_susanoo],
 		[&"voz_tengai", _synth_voz_tengai],
 		[&"voz_cien", _synth_voz_cien],
+		[&"voz_inevitable", _synth_voz_inevitable],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -843,6 +845,54 @@ func _synth_voz_kamehameha() -> PackedFloat32Array:
 func _synth_voz_ha() -> PackedFloat32Array:
 	return _voz([["a", 0.55, "aire"]], G_TONO + 22.0, G_CUERPO, 0.16, G_DRAMA + 0.3,
 		G_BRILLO, 0.26)
+
+
+# --- THANOS ---
+#
+# La voz mas grave del juego, lenta y sin apuro: un titan que no necesita gritar.
+const TH_TONO: float = 82.0
+const TH_CUERPO: float = 0.88
+const TH_DRAMA: float = 0.5
+const TH_BRILLO: float = 0.7
+const TH_RASGADO: float = 0.3
+
+
+## "SOY INEVITABLE" — so-i-ne-vi-ta-ble. Mientras levanta el Guantelete.
+func _synth_voz_inevitable() -> PackedFloat32Array:
+	return _voz([["o", 0.14, "aire"], ["i", 0.10, ""], ["e", 0.12, "nasal"], ["i", 0.12, "golpe"],
+		["a", 0.14, "golpe"], ["e", 0.30, "golpe"]],
+		TH_TONO, TH_CUERPO, 0.14, TH_DRAMA, TH_BRILLO, TH_RASGADO)
+
+
+## El chasquido de dedos: un chasquido seco y corto, con un eco que se abre.
+func _synth_chasquido() -> PackedFloat32Array:
+	var dur := 1.2
+	var out := _vacio(dur)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var clic: float = _ruido() * exp(-t * 90.0) * 1.2
+		var eco: float = _ruido() * 0.25 * exp(-t * 3.5) * minf(1.0, t * 20.0)
+		out[i] = clic + eco + sin(TAU * 60.0 * t) * 0.3 * exp(-t * 4.0)
+	_pasaaltos(out, 300.0)
+	_normalizar(out, 0.9)
+	_bordes(out, 0.2, 80.0)
+	return out
+
+
+## Una gema que se enciende: un zumbido grave que se abre en un golpe.
+func _synth_gema() -> PackedFloat32Array:
+	var dur := 0.5
+	var out := _vacio(dur)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		var env: float = minf(1.0, t * 30.0) * exp(-p * 3.0)
+		out[i] = (sin(TAU * lerpf(220.0, 90.0, p) * t) * 0.6 + _campana(t, 440.0, 1.5, 1.2) * 0.2) * env
+	_normalizar(out, 0.75)
+	_bordes(out, 2.0, 40.0)
+	return out
 
 
 # --- MOB ---

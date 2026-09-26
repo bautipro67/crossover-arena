@@ -63,7 +63,7 @@ func set_max(value: float) -> void:
 
 
 func has_enough(amount: float) -> bool:
-	if Practica.stamina_infinita:
+	if Practica.stamina_infinita or Modos.stamina_libre():
 		return true
 	return current >= amount
 
@@ -74,7 +74,8 @@ func try_spend(amount: float) -> bool:
 		return true
 	# Panel de practica: ensayar una secuencia de seis habilidades no se puede si la
 	# barra corta el ejercicio en la tercera.
-	if Practica.stamina_infinita:
+	# Y en el modo caos, para todos: nadie gasta.
+	if Practica.stamina_infinita or Modos.stamina_libre():
 		return true
 	if current < amount:
 		return false

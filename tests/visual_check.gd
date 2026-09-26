@@ -204,6 +204,8 @@ func _run() -> void:
 	await _flowery()
 	await _madara()
 	await _mob()
+	await _thanos()
+	await _lluvia()
 
 	# --- Los bots peleando, que es lo que cambia el modo practica ---
 	await _bots_en_combate()
@@ -467,6 +469,65 @@ func _mob() -> void:
 	await _wait(1.0)
 	await _shot("38_mob_al_100")
 	await _wait(CienPorCiento.DURACION)
+	player.health.set_max(100.0)
+
+
+## La lluvia de meteoritos: varios bajando delante del jugador, con sus sombras en el piso.
+## Solo el efecto, sin el daño: la captura es para ver si se leen y cuanto tapan.
+func _lluvia() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	var hud := _find_hud()
+	if hud != null:
+		hud.bind_player(player)
+	_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+	player.health.set_max(3000.0)
+	await _wait(0.8)
+	for k: int in range(5):
+		var punto := player.global_position + Vector3(-9.0 + float(k) * 4.5, 0.0, -7.0 - float(k % 3) * 4.0)
+		FX.spawn_meteorito_suelto(arena, arena._piso_en(punto), Modos.METEORO_RADIO, Modos.METEORO_CAIDA)
+		await _wait(0.12)
+	await _wait(Modos.METEORO_CAIDA * 0.5)
+	await _shot("43_lluvia_de_meteoritos")
+	await _wait(Modos.METEORO_CAIDA * 0.5)
+	await _shot("44_lluvia_impactos")
+	await _wait(1.0)
+	player.health.set_max(100.0)
+
+
+## Thanos: el Guantelete, la Gema del Poder y el Chasquido con el polvo en los maniquies.
+func _thanos() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+	player.setup_character(CharacterDB.get_character(&"thanos"))
+	var hud := _find_hud()
+	if hud != null:
+		hud.bind_player(player)
+	_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+	player.health.set_max(3000.0)
+	player.status.clear_all()
+	await _wait(1.2)
+	await _shot("39_thanos_hud")
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)  # Gema del Poder
+	await _wait(0.35)
+	await _shot("40_gema_poder")
+	await _wait(1.2)
+	player.stamina.restore_full()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.reset_state()
+	player.caster.request_use(3)  # El Chasquido
+	await _wait(0.8)
+	await _shot("41_chasquido_cargando")
+	await _wait(Chasquido.new().channel_time - 0.8 + 0.35)
+	await _shot("42_chasquido")
+	await _wait(1.0)
 	player.health.set_max(100.0)
 
 

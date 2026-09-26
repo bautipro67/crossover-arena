@@ -271,6 +271,32 @@ func _register_all() -> void:
 	mob.requiere_desbloqueo = true
 	_add(mob)
 
+	# -------------------------------------------------------------- Thanos
+	#
+	# Gratis. EL MAS GRANDE Y EL MAS LENTO: un titan. Aguanta mas que nadie y camina menos
+	# que nadie, y su definitiva —el Chasquido— le saca la mitad de la vida a TODOS los
+	# enemigos del mapa. Se equilibra por el otro lado: la carga es larga y a la vista, y
+	# congelarlo o aturdirlo la corta.
+	#
+	# De la referencia del MCU: piel violacea, pelado, el menton enorme con las lineas
+	# verticales, la frente pesada; la armadura oscura con detalles dorados, y el Guantelete
+	# del Infinito en la mano IZQUIERDA con las seis gemas. El cuerpo es la armadura y el
+	# acento es el dorado del Guantelete.
+	var thanos := CharacterData.new()
+	thanos.id = &"thanos"
+	thanos.display_name = "Thanos"
+	thanos.origin_game = "Marvel"
+	thanos.body_color = Color(0.23, 0.26, 0.38)
+	thanos.accent_color = Color(0.86, 0.68, 0.25)
+	thanos.skin_color = Color(0.62, 0.48, 0.68)
+	thanos.trouser_color = Color(0.19, 0.21, 0.30)
+	thanos.build_scale = Vector3(1.22, 1.16, 1.18)
+	thanos.max_health = 110.0
+	thanos.max_stamina = 100.0
+	thanos.move_speed = 5.8
+	thanos.silhouette = &"titan"
+	_add(thanos)
+
 
 func _add(data: CharacterData) -> void:
 	_characters[data.id] = data
@@ -353,6 +379,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(Escombros.new())
 			list.append(BarreraPsiquica.new())
 			list.append(CienPorCiento.new())
+		&"thanos":
+			list.append(PunoTitan.new())
+			list.append(GemaPoder.new())
+			list.append(GemaEspacio.new())
+			list.append(Chasquido.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

@@ -64,6 +64,8 @@ const LINEAS_CARGA: Dictionary = {
 	&"tengai_shinsei": [["¡TENGAI SHINSEI!", 0.0, &"voz_tengai"]],
 	# Mob no grita sus poderes: el unico numero que dice es el que lo desborda.
 	&"cien_por_ciento": [["100%", 0.0, &"voz_cien"]],
+	# Thanos lo dice con el Guantelete en alto, antes del chasquido.
+	&"chasquido": [["SOY INEVITABLE.", 0.0, &"voz_inevitable"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el

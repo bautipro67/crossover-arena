@@ -1190,6 +1190,19 @@ func _crear_accesorio(tipo: StringName) -> void:
 				var lente := Art.cylinder(0.04, 0.045, vidrio, Vector3(0.07 * lado, 0.25, -0.16))
 				lente.rotation_degrees = Vector3(90.0, 0.0, 0.0)
 				_costume_add(_head_pivot, lente)
+		&"casco_titan":
+			# El casco de Thanos: la cupula dorada con las tres crestas y las mejillas.
+			var metal := Art.metal(_tono(&"casco_titan", Color(0.90, 0.72, 0.26)), OUTLINE_WIDTH)
+			var cupula := Art.sphere(0.225, metal, Vector3(0.0, 0.19, 0.02))
+			cupula.scale = Vector3(1.03, 0.92, 1.05)
+			_costume_add(_head_pivot, cupula)
+			for k: int in range(3):
+				var cresta := Art.box(Vector3(0.03, 0.14 - absf(float(k) - 1.0) * 0.05, 0.22),
+					metal, Vector3((float(k) - 1.0) * 0.08, 0.40, 0.03))
+				_costume_add(_head_pivot, cresta)
+			for lado: float in [-1.0, 1.0]:
+				var mejilla := Art.box(Vector3(0.04, 0.16, 0.14), metal, Vector3(0.20 * lado, 0.07, -0.05))
+				_costume_add(_head_pivot, mejilla)
 		# ------------------------------------------------ Los que cambian la silueta
 		#
 		# Los de arriba son chicos a proposito. Estos no: una skin tiene que cambiar el
@@ -1433,6 +1446,8 @@ func _build_costume(kind: StringName) -> void:
 			_build_madara()
 		&"tazon":
 			_build_mob()
+		&"titan":
+			_build_thanos()
 		_:
 			pass
 
@@ -2735,6 +2750,72 @@ func _build_mob() -> void:
 			continue
 		var pie := Art.box(Vector3(0.17, 0.11, 0.30), zapato, Vector3(0.0, -0.405, -0.06))
 		_costume_add(rodilla, pie)
+
+
+## Thanos, con el Guantelete del Infinito.
+##
+## DE LA REFERENCIA (el del MCU), NO DE MEMORIA: piel violacea, pelado, el MENTON enorme
+## con las lineas verticales que lo marcan, la frente pesada sobre los ojos; la armadura
+## oscura con los detalles dorados en los hombros y el cinto; y el Guantelete dorado en la
+## mano IZQUIERDA, con las seis gemas —Espacio, Mente, Realidad, Poder, Tiempo, Alma—.
+##
+## LA SILUETA ES EL TAMAÑO Y EL GUANTELETE: el cuerpo mas grande del juego y un brazo que
+## brilla en seis colores.
+func _build_thanos() -> void:
+	# La frente baja y la boca ancha y recta: seguro de lo que va a hacer.
+	_apply_expression(0.18, -0.012, 0.070)
+	_head_pivot.scale = Vector3.ONE * 1.06
+
+	var oro := Art.metal(_tono(&"oro", accent_color), OUTLINE_WIDTH)
+	var linea := Art.flat(_tono(&"lineas", skin_color.darkened(0.35)))
+	var guantelete := Art.metal(_tono(&"guantelete", Color(0.92, 0.74, 0.28)), OUTLINE_WIDTH)
+
+	# --- EL MENTON y las lineas ---
+	var menton := Art.sphere(0.12, _mat_skin, Vector3(0.0, -0.005, -0.13))
+	menton.scale = Vector3(1.35, 0.85, 0.95)
+	_costume_add(_head_pivot, menton)
+	for k: int in range(5):
+		var x := (float(k) - 2.0) * 0.035
+		var raya := Art.box(Vector3(0.008, 0.075, 0.01), linea, Vector3(x, -0.01, -0.232 + absf(x) * 0.25))
+		_costume_add(_head_pivot, raya)
+	# La frente pesada: un arco sobre los ojos.
+	_costume_add(_head_pivot, Art.box(Vector3(0.34, 0.035, 0.05), _mat_skin, Vector3(0.0, 0.19, -0.175)))
+	# Ojos azules.
+	var iris := Art.flat(_tono(&"ojos", Color(0.30, 0.55, 0.95)))
+	for ojo: Node3D in [_eye_l, _eye_r]:
+		if ojo == null:
+			continue
+		var anillo := Art.sphere(0.026, iris, Vector3(0.0, 0.004, -0.026))
+		anillo.scale = Vector3(1.0, 1.1, 0.55)
+		_costume_add(ojo, anillo)
+
+	# --- LA ARMADURA: hombreras doradas, el cinto y las cintas cruzadas del pecho ---
+	for lado: float in [-1.0, 1.0]:
+		var hombrera := Art.sphere(0.15, oro, Vector3(0.27 * lado, 0.58, 0.0))
+		hombrera.scale = Vector3(1.15, 0.7, 1.1)
+		_costume_add(_torso, hombrera)
+		var cinta := Art.box(Vector3(0.06, 0.46, 0.02), oro, Vector3(0.07 * lado, 0.42, -0.19))
+		cinta.rotation_degrees = Vector3(0.0, 0.0, 22.0 * lado)
+		_costume_add(_torso, cinta)
+	_costume_add(_torso, Art.box(Vector3(0.46, 0.08, 0.32), oro, Vector3(0.0, 0.08, 0.0)))
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla == null:
+			continue
+		_costume_add(rodilla, Art.sphere(0.075, oro, Vector3(0.0, 0.0, -0.06)))
+
+	# --- EL GUANTELETE, en la mano IZQUIERDA ---
+	if _elbow_l != null:
+		_costume_add(_elbow_l, Art.capsule(0.078, 0.26, guantelete, Vector3(0.0, -0.13, 0.0)))
+		var mano := Art.sphere(0.085, guantelete, Vector3(0.0, -0.31, 0.0))
+		mano.scale = Vector3(1.0, 1.15, 0.85)
+		_costume_add(_elbow_l, mano)
+		var gemas: Array[Color] = [Color(0.25, 0.45, 1.0), Color(1.0, 0.85, 0.2), Color(0.95, 0.12, 0.16),
+			Color(0.62, 0.22, 0.95), Color(0.2, 0.9, 0.35), Color(1.0, 0.52, 0.12)]
+		# Cinco en los nudillos y la del Alma en el dorso, como en la pelicula.
+		for k: int in range(6):
+			var sitio := Vector3((float(k) - 2.0) * 0.032, -0.36, -0.06) if k < 5 else Vector3(0.0, -0.28, -0.075)
+			var gema := Art.sphere(0.02 if k < 5 else 0.03, Art.glow(gemas[k], 2.6), sitio)
+			_costume_add(_elbow_l, gema)
 
 
 ## El circulo blanco con el kanji. En la espalda va mirando para atras.

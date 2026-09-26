@@ -68,6 +68,8 @@ func _run() -> void:
 	await _test_mario(player, arena)
 	await _test_madara(player, arena)
 	await _test_mob(player, arena)
+	await _test_thanos(player, arena)
+	await _test_modos_nuevos(player, arena)
 	_test_descripciones()
 	await _test_escena_corta_habilidades(player)
 	await _test_practica(player, arena)
@@ -2043,6 +2045,214 @@ func _test_mob(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+# ------------------------------------------------------------------- Thanos
+
+func _test_thanos(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	_check(CharacterDB.has_character(&"thanos"), "Thanos esta registrado")
+	var data := CharacterDB.get_character(&"thanos")
+	_check(data != null and data.origin_game == "Marvel" and data.silhouette == &"titan"
+		and not data.requiere_desbloqueo,
+		"Thanos viene de Marvel, tiene silueta propia y es gratis")
+	var kit := CharacterDB.build_abilities_for(&"thanos")
+	_check(kit.size() == 4 and kit[0] is PunoTitan and kit[1] is GemaPoder and kit[2] is GemaEspacio
+		and kit[3] is Chasquido,
+		"su kit: puño del titan, gema del poder, gema del espacio y el chasquido")
+	if kit.size() < 4:
+		return
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+	_check(kit[3].stamina_cost == 100.0 and kit[3].requires_charge and kit[3].channel_time > 0.0,
+		"el Chasquido cuesta la barra entera, pide el medidor y se carga a la vista")
+
+	player.setup_character(data)
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, -30.0), 1.5)
+	var rumbo := _carril_libre(player, puesto, 20.0)
+	var yaw := atan2(-rumbo.x, -rumbo.z)
+	player.respawn_at(puesto, yaw)
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	for _i: int in range(24):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+
+	# --- GEMA DEL PODER: la esfera revienta sobre el que tiene adelante ---
+	var blanco := _spawn_dummy(arena, puesto + rumbo * 8.0)
+	blanco.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	var vida := blanco.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	await get_tree().create_timer(0.9).timeout
+	_check(blanco.health.current <= vida - GemaPoder.BLAST_DAMAGE * 0.9,
+		"la gema del poder revienta sobre el que esta a ocho metros (%.0f)" % (vida - blanco.health.current))
+	blanco.queue_free()
+
+	# --- GEMA DEL ESPACIO: cruza hacia donde apunta ---
+	await get_tree().create_timer(0.4).timeout
+	player.respawn_at(puesto, yaw)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var antes := player.global_position
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	await get_tree().create_timer(GemaEspacio.CRUCE + 0.3).timeout
+	var cruzo := Vector3(player.global_position.x - antes.x, 0.0, player.global_position.z - antes.z).length()
+	_check(cruzo >= GemaEspacio.ALCANCE * 0.5,
+		"la gema del espacio lo cruza hacia adelante (%.1f m)" % cruzo)
+
+	# --- EL CHASQUIDO: la MITAD de la vida a TODOS los enemigos ---
+	player.respawn_at(puesto, yaw)
+	player.status.clear_all()
+	var uno := _spawn_dummy(arena, puesto + rumbo * 6.0)
+	var otro := _spawn_dummy(arena, puesto - rumbo * 30.0)
+	var estrella := _spawn_dummy(arena, puesto + rumbo * 12.0)
+	for d: Player in [uno, otro, estrella]:
+		d.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	uno.health.apply_damage(1000.0, 1)
+	otro.health.add_shield(200.0, 10.0)
+	estrella.status.estrella(8.0)
+	var vida_uno := uno.health.current
+	var vida_otro := otro.health.current
+	var vida_estrella := estrella.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.request_use(3)
+	await get_tree().create_timer(Chasquido.new().channel_time + 0.3).timeout
+	_check(is_equal_approx(uno.health.current, vida_uno * 0.5) and is_equal_approx(otro.health.current, vida_otro * 0.5),
+		"el chasquido deja a TODOS los enemigos con la mitad de la vida, esten donde esten (%.0f de %.0f, %.0f de %.0f)" % [
+			uno.health.current, vida_uno, otro.health.current, vida_otro])
+	_check(otro.health.get_shield() >= 199.0,
+		"y no lo frena un escudo: va derecho a la vida (el escudo quedo en %.0f)" % otro.health.get_shield())
+	_check(is_equal_approx(estrella.health.current, vida_estrella),
+		"lo unico que se salva es lo invencible (la Superestrella)")
+	_check(not uno.health.is_dead and not otro.health.is_dead, "y no mata a nadie: es la mitad de lo que queda")
+	_check(player.ultimate.current < 1.0,
+		"y no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
+	for d: Player in [uno, otro, estrella]:
+		d.queue_free()
+
+	# Sus skins: las tres, en la tienda.
+	var en_tienda := 0
+	for sid: StringName in SkinDB.de_personaje(&"thanos"):
+		if SkinDB.get_skin(sid).precio > 0:
+			en_tienda += 1
+	_check(en_tienda >= 3, "Thanos tiene sus tres skins en la tienda (%d)" % en_tienda)
+
+	player.aim_override = Vector3.ZERO
+	player.status.clear_all()
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
+# ------------------------------------------------------------- Modos nuevos
+
+## Lo que los tres modos nuevos cambian ADENTRO de la pelea: los bots que se pelean entre
+## ellos, las recargas y la stamina del caos, y los meteoritos de la lluvia.
+func _test_modos_nuevos(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+	var antes := Modos.actual
+	var puesto := arena.find_clear_spot(Vector3(30.0, 0.6, 30.0), 1.5)
+
+	# --- BATALLA CAMPAL: un bot elige a otro bot, no solo al jugador ---
+	player.respawn_at(puesto + Vector3(0.0, 0.0, 25.0), 0.0)
+	var uno := _spawn_dummy(arena, puesto)
+	var otro := _spawn_dummy(arena, puesto + Vector3(4.0, 0.0, 0.0))
+	var cerebro := BotBrain.new()
+	cerebro.setup(uno, puesto)
+	uno.add_child(cerebro)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	Modos.actual = Modos.DUELO
+	_check(cerebro._pick_target() != otro, "en los modos de siempre un bot no elige a otro bot")
+	Modos.actual = Modos.CAMPAL
+	_check(cerebro._pick_target() == otro,
+		"en la batalla campal si: todos contra todos, y el mas cercano es el otro bot")
+	uno.queue_free()
+	otro.queue_free()
+
+	# --- MODO CAOS: recarga corta, sin gastar stamina, el ultimate mas rapido ---
+	player.setup_character(CharacterDB.get_character(&"thanos"))
+	player.respawn_at(puesto, 0.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	Modos.actual = Modos.CAOS
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	var gema := player.caster.get_ability(1)
+	player.caster.request_use(1)
+	await get_tree().physics_frame
+	var recarga := player.caster.get_cooldown_remaining(1)
+	_check(recarga > 0.0 and recarga <= gema.cooldown * Modos.RECARGA_CAOS + 0.05,
+		"en el caos la recarga dura un tercio (%.1f s de %.1f)" % [recarga, gema.cooldown])
+	_check(player.stamina.current >= player.stamina.max_stamina - 0.5,
+		"y no gasta stamina (%.0f de %.0f)" % [player.stamina.current, player.stamina.max_stamina])
+	player.ultimate.current = 0.0
+	player.ultimate.add_from_damage(10.0)
+	var en_caos := player.ultimate.current
+	Modos.actual = Modos.DUELO
+	player.ultimate.current = 0.0
+	player.ultimate.add_from_damage(10.0)
+	_check(en_caos >= player.ultimate.current * (Modos.CARGA_CAOS - 0.01),
+		"y el ultimate carga %.0f veces mas rapido (%.1f contra %.1f)" % [
+			Modos.CARGA_CAOS, en_caos, player.ultimate.current])
+	player.ultimate.current = 0.0
+	player.caster.reset_state()
+	player.stamina.restore_full()
+	player.caster.request_use(1)
+	await get_tree().physics_frame
+	_check(player.caster.get_cooldown_remaining(1) > gema.cooldown - 0.1
+		and player.stamina.current < player.stamina.max_stamina - 1.0,
+		"y fuera del caos todo vuelve a lo normal")
+	await get_tree().create_timer(1.0).timeout
+
+	# --- LLUVIA DE METEORITOS: pega donde cae, a cualquiera, y solo ahi ---
+	player.respawn_at(puesto + Vector3(0.0, 0.0, 30.0), 0.0)
+	var abajo := _spawn_dummy(arena, puesto)
+	var lejos := _spawn_dummy(arena, puesto + Vector3(Modos.METEORO_RADIO + 4.0, 0.0, 0.0))
+	for d: Player in [abajo, lejos]:
+		d.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	var vida_abajo := abajo.health.current
+	var vida_lejos := lejos.health.current
+	arena.tirar_meteorito(arena._piso_en(abajo.global_position))
+	_check(BotBrain.peligros.size() == 1, "los bots ven la sombra del meteorito como un peligro")
+	await get_tree().create_timer(Modos.METEORO_CAIDA * 0.5).timeout
+	_check(is_equal_approx(abajo.health.current, vida_abajo),
+		"el meteorito se ve venir: mientras baja no pega")
+	await get_tree().create_timer(Modos.METEORO_CAIDA * 0.5 + 0.3).timeout
+	var quito := vida_abajo - abajo.health.current
+	_check(quito >= Modos.METEORO_DAÑO * GameConfig.VIDA * 0.95,
+		"y al caer le pega al que quedo abajo (%.0f)" % quito)
+	_check(is_equal_approx(lejos.health.current, vida_lejos),
+		"pero no al que se corrio a tiempo")
+	_check(BotBrain.peligros.is_empty(), "y cuando cae deja de ser un peligro")
+	abajo.queue_free()
+	lejos.queue_free()
+
+	Modos.actual = antes
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.stamina.restore_full()
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
 func _test_practica(player: Player, arena: Arena) -> void:
 	Practica.restablecer()
 	_check(Practica.bots == 3 and not Practica.invulnerable,
@@ -2247,7 +2457,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 262
+const CHEQUEOS_MINIMOS: int = 287
 
 
 func _finish() -> void:

@@ -40,7 +40,8 @@ var _was_ready: bool = false
 func add_from_damage(amount: float) -> void:
 	if amount <= 0.0:
 		return
-	_add(amount * charge_per_damage, true)
+	# En el modo caos, tres veces mas rapido: el ultimate sale cada rato.
+	_add(amount * charge_per_damage * Modos.ritmo_carga(), true)
 
 
 ## SOLO SERVIDOR.

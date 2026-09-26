@@ -83,6 +83,10 @@ const ESQUIVE_MAX: float = 4.8
 ## Apagable para el chequeo visual, que necesita capturas quietas y reproducibles, y
 ## desde el panel de practica. Arena.set_bots_active() escribe los dos lados.
 static var globally_enabled: bool = true
+## Donde va a caer algo: {punto, radio, reaccion}. Las pone la lluvia de meteoritos y las
+## descuenta y borra la arena; el bot solo las lee. `reaccion` es lo que tarda en darse
+## cuenta: una persona no sale corriendo el mismo frame en que aparece la sombra.
+static var peligros: Array[Dictionary] = []
 
 var home: Vector3 = Vector3.ZERO
 
@@ -193,15 +197,40 @@ func _process(delta: float) -> void:
 		_strafe_dir = -_strafe_dir
 
 	_think_left -= delta
-	if _think_left > 0.0:
-		return
-	_think_left = THINK_INTERVAL
+	if _think_left <= 0.0:
+		_think_left = THINK_INTERVAL
+		var target := _pick_target()
+		if target == null:
+			_go_home()
+		else:
+			_fight(target)
+	_esquivar_peligros()
 
-	var target := _pick_target()
-	if target == null:
-		_go_home()
+
+## Si esta parado donde va a caer algo, sale para afuera, por el lado mas corto. Pisa lo
+## que haya decidido la pelea: primero no comerse el meteorito, despues pegar.
+func _esquivar_peligros() -> void:
+	if peligros.is_empty():
 		return
-	_fight(target)
+	var pos := _body.global_position
+	var salida := Vector3.ZERO
+	for zona: Dictionary in peligros:
+		if float(zona["reaccion"]) > 0.0:
+			continue
+		var centro: Vector3 = zona["punto"]
+		var afuera := Vector3(pos.x - centro.x, 0.0, pos.z - centro.z)
+		var margen := float(zona["radio"]) + 1.0
+		var lejos := afuera.length()
+		if lejos >= margen:
+			continue
+		if lejos < 0.1:
+			afuera = _body.global_transform.basis.x
+			lejos = 0.1
+		salida += afuera / lejos * (margen - lejos)
+	if salida.is_zero_approx():
+		return
+	_body.bot_move_dir = salida.normalized()
+	_body.bot_wants_run = true
 
 
 # ---------------------------------------------------------------------- Decisiones
@@ -216,7 +245,7 @@ func _process(delta: float) -> void:
 func _pick_target() -> Player:
 	var best: Player = null
 	var best_dist := detect_range()
-	var entre_bots: bool = Practica.bots_se_pelean
+	var entre_bots: bool = Practica.bots_se_pelean or Modos.todos_contra_todos()
 	# EL HEROE SIMULADO: un maniqui que pelea como si fuera el jugador.
 	#
 	# Existe solo para medir el balance de los modos, y ningun codigo del juego pone esta
@@ -498,6 +527,15 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 		&"susanoo":
 			# El escudo sirve con el rival encima, y el espadazo llega a cinco metros.
 			return dist < 5.0
+		&"gema_poder":
+			# Una descarga que viaja unos treinta metros y revienta: de media distancia.
+			return dist > 3.0 and dist < 22.0 and _a_la_vista
+		&"gema_espacio":
+			# Para llegar: salta hasta quince metros. De cerca no le hace falta.
+			return dist > 6.0 and dist < 16.0 and _a_la_vista
+		&"chasquido":
+			# Le pega a todos los enemigos del mapa: sirve siempre que haya alguno.
+			return true
 		&"onda_psiquica":
 			# Una onda que se apaga a unos catorce metros, y una pared la frena.
 			return dist < 12.0 and _a_la_vista

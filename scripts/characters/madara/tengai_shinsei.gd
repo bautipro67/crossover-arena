@@ -24,9 +24,12 @@ const RADIO_MIRA: float = 2.5
 ## viendo venir —la sombra aparece desde que salen—, pero ya no alcanza con caminar.
 const CAIDA: float = 1.35
 const ENTRE: float = 1.1
-const RADIO_PRIMERO: float = 7.5
-const RADIO_SEGUNDO: float = 9.5
-const DAMAGE: float = 45.0
+## Y GIGANTES (2026-09-25): el doble de roca, y el golpe del tamaño de la roca (FX usa
+## estos mismos radios para dibujarlas). Mas grandes se esquivan menos: medido con 24
+## duelos por rival, Madara paso de 51% a 60%. Con 35 de daño por roca vuelve a 51%.
+const RADIO_PRIMERO: float = 9.0
+const RADIO_SEGUNDO: float = 11.5
+const DAMAGE: float = 35.0
 const KNOCKBACK: float = 12.0
 const KNOCKBACK_LIFT: float = 5.0
 

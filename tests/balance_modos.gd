@@ -293,7 +293,7 @@ func _pelea_mision(c: int, cap: Dictionary, heroe: StringName) -> Array:
 
 ## Una pelea: el héroe contra `enemigos` bots con la vida y el daño que diga el modo.
 ## Devuelve [gano, segundos, vida_que_le_quedo].
-func _pelea(personaje: StringName, enemigos: int, vida_heroe: float) -> Array:
+func _pelea(personaje: StringName, enemigos: int, vida_heroe: float, radio: float = 11.0) -> Array:
 	for id in _arena._players.keys().duplicate():
 		if id == Net.local_id():
 			continue
@@ -320,7 +320,7 @@ func _pelea(personaje: StringName, enemigos: int, vida_heroe: float) -> Array:
 	for i in range(enemigos):
 		var ang := TAU * float(i) / float(maxi(1, enemigos)) + 0.4
 		var id := _siguiente_malo; _siguiente_malo -= 1
-		_arena._crear_bot(id, _arena.find_clear_spot(base + Vector3(cos(ang), 0, sin(ang)) * 11.0, 1.0),
+		_arena._crear_bot(id, _arena.find_clear_spot(base + Vector3(cos(ang), 0, sin(ang)) * radio, 1.0),
 			ids[(i + 1) % ids.size()])
 		var b: Player = _arena._players[id]
 		# La vida del MODO, puesta a mano: fuera de una partida solo, _crear_bot les da los
@@ -345,6 +345,94 @@ func _pelea(personaje: StringName, enemigos: int, vida_heroe: float) -> Array:
 		if vivos == 0:
 			return [true, t, heroe.health.current]
 	return [false, t, heroe.health.current]
+
+
+## Una partida CON REAPARICION, como en caos y en la lluvia: el que cae vuelve a los pocos
+## segundos. Devuelve [gano, segundos, bajas, muertes]. Con `meta_bajas` en 0 no se gana
+## matando sino llegando vivo a `tope`; `max_muertes` 1 es una muerte y se termina.
+func _pelea_continua(personaje: StringName, enemigos: int, tope: float, meta_bajas: int,
+		max_muertes: int, lluvia: bool) -> Array:
+	for id in _arena._players.keys().duplicate():
+		if id == Net.local_id():
+			continue
+		var b = _arena._players[id]
+		if is_instance_valid(b): b.queue_free()
+		_arena._players.erase(id)
+	await get_tree().process_frame
+
+	var base: Vector3 = _arena.get_free_spawn_point().origin
+	var heroe_id := _siguiente_id; _siguiente_id += 1
+	_arena._crear_bot(heroe_id, base, personaje)
+	var heroe: Player = _arena._players[heroe_id]
+	heroe.set_meta(&"heroe", true)
+	heroe.health.set_max(CharacterDB.get_character(personaje).max_health * GameConfig.VIDA)
+	heroe.health.revive_full()
+	for c in heroe.died.get_connections():
+		heroe.died.disconnect(c["callable"])
+	var ids := CharacterDB.get_all_ids()
+	var malos: Array = []
+	var puestos := {}
+	for i in range(enemigos):
+		var ang := TAU * float(i) / float(maxi(1, enemigos)) + 0.4
+		var id := _siguiente_malo; _siguiente_malo -= 1
+		var pos := _arena.find_clear_spot(base + Vector3(cos(ang), 0, sin(ang)) * 14.0, 1.0)
+		_arena._crear_bot(id, pos, ids[(i + 1) % ids.size()])
+		var b: Player = _arena._players[id]
+		b.health.set_max(Modos.vida_bot())
+		b.health.revive_full()
+		for c in b.died.get_connections():
+			b.died.disconnect(c["callable"])
+		malos.append(b)
+		puestos[b] = pos
+	Arena.set_bots_active(true)
+	if lluvia:
+		_arena.blanco_lluvia = heroe
+		_arena._lluvia_espera = 2.5
+		_arena._lluvia_cuenta = 0
+
+	# DIAG=1: de donde vino el daño que recibio el heroe (0 = la lluvia, negativo = bots).
+	var daño_por := {"lluvia": 0.0, "bots": 0.0}
+	if OS.get_environment("DIAG") == "1":
+		heroe.health.damaged.connect(func(cuanto: float, fuente: int) -> void:
+			daño_por["lluvia" if fuente == 0 else "bots"] += cuanto)
+	var bajas := 0
+	var muertes := 0
+	var vuelven := {}
+	var t := 0.0
+	var fin: Array = [meta_bajas == 0, tope, 0, 0]
+	while t < tope:
+		await get_tree().physics_frame
+		t += 1.0 / 60.0
+		if heroe.health.is_dead and not vuelven.has(heroe):
+			muertes += 1
+			if muertes >= max_muertes:
+				fin = [false, t, bajas, muertes]
+				break
+			vuelven[heroe] = t + GameConfig.RESPAWN_DELAY
+		for b in malos:
+			if b.health.is_dead and not vuelven.has(b):
+				bajas += 1
+				vuelven[b] = t + Arena.DUMMY_RESPAWN_DELAY
+		if meta_bajas > 0 and bajas >= meta_bajas:
+			fin = [true, t, bajas, muertes]
+			break
+		for q in vuelven.keys():
+			if t < vuelven[q]:
+				continue
+			vuelven.erase(q)
+			q.health.revive_full()
+			q.stamina.restore_full()
+			q.status.clear_all()
+			q.caster.reset_state()
+			var donde: Vector3 = _arena.get_free_spawn_point().origin if q == heroe else puestos[q]
+			q._apply_respawn(_arena.find_clear_spot(donde, 1.0), 0.0)
+	fin[2] = bajas
+	fin[3] = muertes
+	_arena.blanco_lluvia = null
+	if OS.get_environment("DIAG") == "1":
+		print("  %s: %.0fs, daño de la lluvia %.0f, de los bots %.0f" % [personaje, fin[1],
+			daño_por["lluvia"], daño_por["bots"]])
+	return fin
 
 
 func _medir(modo: StringName) -> void:
@@ -386,6 +474,20 @@ func _medir(modo: StringName) -> void:
 				nota = "oleada %d" % oleada
 			Modos.CONTRARRELOJ, Modos.COLINA:
 				var r: Array = await _pelea(pj, Modos.bots_iniciales(), 999.0)
+				gano = r[0]
+				nota = "%.0fs" % r[1]
+			Modos.CAMPAL:
+				# Repartidos lejos, como en la arena: si arrancan encima del heroe es otro modo.
+				var r: Array = await _pelea(pj, Modos.BOTS_CAMPAL, 999.0, 30.0)
+				gano = r[0]
+				nota = "%.0fs" % r[1]
+			Modos.CAOS:
+				var r: Array = await _pelea_continua(pj, Modos.BOTS_CAOS, 150.0, Modos.META_CAOS,
+					Modos.MUERTES_CAOS, false)
+				gano = r[0]
+				nota = "%d-%d" % [r[2], r[3]]
+			Modos.METEORITOS:
+				var r: Array = await _pelea_continua(pj, Modos.BOTS_METEORITOS, Modos.META_METEORITOS, 0, 1, true)
 				gano = r[0]
 				nota = "%.0fs" % r[1]
 		if gano:

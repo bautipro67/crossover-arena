@@ -627,6 +627,65 @@ func _test_progresion() -> void:
 			Modos.bots_en_oleada(1), Modos.bots_en_oleada(7)])
 	_check(Modos.bot_murio(2) == 0, "y no trae refuerzos si todavia quedan vivos")
 
+	# --- Batalla campal: todos contra todos, nadie reaparece ---
+	Modos.iniciar(Modos.CAMPAL)
+	_check(Modos.bots_iniciales() == Modos.BOTS_CAMPAL and Modos.todos_contra_todos()
+		and not Modos.reaparecen_bots() and not Modos.reaparece_jugador(),
+		"campal: cinco bots que se pelean entre ellos, y nadie reaparece")
+	var gano_campal := [false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void: gano_campal[0] = g)
+	Modos.bot_murio(1)
+	_check(not gano_campal[0], "campal: mientras quede otro en pie no se gana")
+	Modos.bot_murio(0)
+	_check(gano_campal[0], "y quedar ultimo gana")
+	Modos.iniciar(Modos.DUELO)
+	_check(not Modos.todos_contra_todos(), "fuera de la campal los bots no se pelean entre ellos")
+
+	# --- Modo caos: todo mas rapido, y se gana o se pierde contando ---
+	Modos.iniciar(Modos.CAOS)
+	_check(Modos.ritmo_recarga() < 0.5 and Modos.stamina_libre() and Modos.ritmo_carga() >= 2.0,
+		"caos: recargas cortas, sin stamina y el ultimate mas rapido")
+	_check(Modos.reaparecen_bots() and Modos.reaparece_jugador(), "caos: todos reaparecen")
+	var fin_caos := [0, false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void:
+		fin_caos[0] += 1
+		fin_caos[1] = g)
+	for _i: int in range(Modos.META_CAOS - 1):
+		Modos.bot_murio(3)
+	_check(fin_caos[0] == 0, "caos: una baja antes de la meta todavia no gana")
+	Modos.bot_murio(3)
+	_check(fin_caos[0] == 1 and fin_caos[1], "y la baja %d gana" % Modos.META_CAOS)
+	Modos.iniciar(Modos.CAOS)
+	fin_caos[0] = 0
+	for _i: int in range(Modos.MUERTES_CAOS):
+		Modos.jugador_murio()
+	_check(fin_caos[0] == 1 and not fin_caos[1] and Modos.muertes == Modos.MUERTES_CAOS,
+		"caos: caer %d veces pierde" % Modos.MUERTES_CAOS)
+	# El online no se toca: los multiplicadores son solo del modo caos.
+	Modos.iniciar(Modos.ONLINE)
+	_check(is_equal_approx(Modos.ritmo_recarga(), 1.0) and not Modos.stamina_libre()
+		and is_equal_approx(Modos.ritmo_carga(), 1.0),
+		"en linea las recargas, la stamina y la carga son las de siempre")
+
+	# --- Lluvia de meteoritos: aguantar, cada vez mas seguido ---
+	Modos.iniciar(Modos.METEORITOS)
+	_check(not Modos.reaparece_jugador() and Modos.reaparecen_bots(),
+		"lluvia: no reapareces, los bots si")
+	var al_empezar := Modos.espera_meteorito()
+	Modos.tiempo = Modos.META_METEORITOS * 0.9
+	_check(Modos.espera_meteorito() < al_empezar,
+		"lluvia: al final caen mas seguido (cada %.2f s contra %.2f)" % [Modos.espera_meteorito(), al_empezar])
+	var gano_lluvia := [false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void: gano_lluvia[0] = g)
+	Modos.tiempo = Modos.META_METEORITOS
+	Modos._process(0.01)
+	_check(gano_lluvia[0], "lluvia: llegar vivo al final gana")
+	Modos.iniciar(Modos.METEORITOS)
+	var perdio_lluvia := [false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void: perdio_lluvia[0] = not g)
+	Modos.jugador_murio()
+	_check(perdio_lluvia[0], "lluvia: caer una vez pierde")
+
 	# --- Modo desarrollador: la compra sale y el saldo no baja ---
 	Progreso.borrar_todo()
 	Progreso.modo_dev = true
@@ -1776,7 +1835,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 252
+const CHEQUEOS_MINIMOS: int = 279
 
 
 func _finish() -> void:

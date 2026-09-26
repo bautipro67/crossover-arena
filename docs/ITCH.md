@@ -94,13 +94,19 @@ gente.
 
 ☄ MADARA UCHIHA — Naruto Shippuden  (gratis)
    Control del campo. Un muro de fuego, el Susano'o que lo envuelve y corta, y dos
-   meteoritos gigantes que caen uno tras otro donde apunta.
+   meteoritos GIGANTES —ahora el doble de grandes— que caen uno tras otro donde apunta.
    Gunbai · Katon: Gōka Messhitsu · Susano'o · TENGAI SHINSEI
 
-🌀 MOB — Mob Psycho 100  (NUEVO: se gana completando el pase pro de la Temporada 2)
+🌀 MOB — Mob Psycho 100  (se gana completando el pase pro de la Temporada 2)
    Telequinesis. Empuja de lejos, te tira el piso encima en cuatro piedras, se cubre
    con una barrera que echa a todos, y cuando llega al 100%, revienta.
    Onda Psíquica · Escombros · Barrera · 100%
+
+💎 THANOS — Marvel  (NUEVO, gratis)
+   El titán: el más grande, el que más aguanta y el más lento. Descarga la Gema del
+   Poder, cruza el espacio con la del Espacio, y con las seis gemas chasquea los dedos:
+   TODOS los enemigos pierden la mitad de la vida que les queda.
+   Puño del Titán · Gema del Poder · Gema del Espacio · EL CHASQUIDO
 
 ═══ MODO HISTORIA — TRES PARTES, TREINTA CAPÍTULOS ═══
 
@@ -141,6 +147,12 @@ que la 1, y los jefes un escalón por encima de todo lo demás.
   · Último en pie — 4 contra uno, todos a la vez, nadie reaparece.
   · Torre de jefes — 5 enemigos de a uno, cada uno más duro que el anterior.
   · Rey de la colina — aguantá 45 segundos dentro del círculo.
+  · Batalla campal (NUEVO) — seis en el mapa, todos contra todos: los bots también se
+    pelean entre ellos. Elegí cuándo meterte y quedá último en pie.
+  · Modo caos (NUEVO) — recargas cortísimas, sin stamina y el ultimate a cada rato, para
+    todos. 10 bajas ganan; 5 caídas pierden.
+  · Lluvia de meteoritos (NUEVO) — aguantá 50 segundos mientras caen del cielo, cada vez
+    más seguido. La sombra avisa dónde van a caer, y aplastan a los bots también.
   · Sala de práctica — ver abajo.
 
 ═══ TEMPORADA 2: FUERZA PSÍQUICA (NUEVA) ═══
@@ -156,7 +168,7 @@ El último escalón del pase pro de la 2 es MOB: no se vende ni sale de otro lad
 escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
 tarda subirlo jugando.
 
-47 skins entre el pase y la tienda, 10 nuevas en esta temporada. Cuanto más rara, más
+50 skins entre el pase y la tienda, 13 nuevas en esta temporada. Cuanto más rara, más
 se nota: las raras recolorean el personaje entero, las épicas suman un acabado (metal,
 piedra, sombra) o un accesorio, y las legendarias un aura y ojos que brillan. En la tienda hay un probador para verla
 puesta antes de comprarla.
