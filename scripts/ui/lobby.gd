@@ -9,7 +9,8 @@ signal start_requested()
 signal leave_requested()
 
 var _player_list: VBoxContainer = null
-var _character_list: VBoxContainer = null
+var _character_list: GridContainer = null
+var _character_scroll: ScrollContainer = null
 var _kit_box: VBoxContainer = null
 var _start_button: Button = null
 var _status_label: Label = null
@@ -75,9 +76,20 @@ func _ready() -> void:
 	chars_box.add_theme_constant_override("separation", 6)
 	chars_panel.add_child(chars_box)
 	chars_box.add_child(UITheme.make_heading("PERSONAJE"))
-	_character_list = VBoxContainer.new()
-	_character_list.add_theme_constant_override("separation", 6)
-	chars_box.add_child(_character_list)
+	# EN DOS COLUMNAS Y CON SCROLL, por lo mismo que el kit de al lado: con diez personajes
+	# en fila de a uno la lista crecio mas que la pantalla y empujo "EMPEZAR PARTIDA" y
+	# "VOLVER AL MENU" fuera de los 720px (2026-09-26). En dos columnas entran de sobra, y
+	# el scroll queda de respaldo para los que vengan.
+	_character_scroll = ScrollContainer.new()
+	_character_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_character_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	chars_box.add_child(_character_scroll)
+	_character_list = GridContainer.new()
+	_character_list.columns = 2
+	_character_list.add_theme_constant_override("h_separation", 6)
+	_character_list.add_theme_constant_override("v_separation", 6)
+	_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_character_scroll.add_child(_character_list)
 
 	# --- Columna 3: kit del personaje ---
 	#
@@ -146,15 +158,36 @@ func _build_character_list() -> void:
 		var data := CharacterDB.get_character(id)
 		# BLOQUEADO SE MUESTRA IGUAL, y diciendo como se gana. Esconderlo haria que nadie
 		# supiera que existe, y un premio que no se ve no motiva a nadie.
+		# Solo el nombre: la serie de la que viene sale arriba del kit, y con ella el boton
+		# no entraba en media columna.
 		if not Progreso.puede_usar_personaje(id):
-			var cerrado := UITheme.make_button("🔒  %s  ·  completá el pase pro de la temporada %d" % [
-				data.display_name, Pase.TEMPORADA])
+			var cerrado := UITheme.make_button("🔒  %s  ·  pase pro T%d" % [data.display_name, Pase.TEMPORADA])
+			cerrado.tooltip_text = "Completá el pase pro de la temporada %d para jugarlo." % Pase.TEMPORADA
 			cerrado.disabled = true
-			_character_list.add_child(cerrado)
+			_boton_de_lista(cerrado)
 			continue
-		var button := UITheme.make_button("%s  ·  %s" % [data.display_name, data.origin_game], id == _selected_id)
+		var button := UITheme.make_button(data.display_name, id == _selected_id)
+		button.tooltip_text = data.origin_game
 		button.pressed.connect(_on_character_picked.bind(id))
-		_character_list.add_child(button)
+		_boton_de_lista(button)
+
+
+## Un boton de la lista de personajes: mas bajo que los demas y estirado a su columna.
+func _boton_de_lista(boton: Button) -> void:
+	boton.custom_minimum_size = Vector2(0, 42)
+	boton.add_theme_font_size_override("font_size", 15)
+	boton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	boton.clip_text = true
+	_character_list.add_child(boton)
+
+
+## Entran todos los personajes sin tener que bajar, y los botones de abajo en la pantalla?
+## Lo mira el test: es la pregunta que hay que volver a hacerse cada vez que llega uno.
+func todo_a_la_vista() -> bool:
+	var alto := get_viewport_rect().size.y
+	var lista_entra := _character_list.get_combined_minimum_size().y <= _character_scroll.size.y + 0.5
+	return lista_entra and _start_button.get_global_rect().end.y <= alto \
+		and _character_scroll.get_global_rect().end.y <= alto
 
 
 func _on_character_picked(id: StringName) -> void:

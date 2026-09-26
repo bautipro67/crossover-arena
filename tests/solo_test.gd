@@ -28,6 +28,7 @@ func _run() -> void:
 	await _test_progresion()
 	await _test_controles()
 	await _test_mando_en_menus(main)
+	await _test_sala_entra(main)
 	await _test_historia(main)
 	await _test_escenas_y_peleas(main)
 	await _test_skins_visibles()
@@ -1172,6 +1173,23 @@ func _esperar_pelea() -> MisionHistoria:
 
 # ------------------------------------------------------ El mando en los menus
 
+## La sala de espera entra en la pantalla con TODOS los personajes: con diez en fila de a
+## uno, "EMPEZAR PARTIDA" quedaba afuera y no habia forma de arrancar.
+func _test_sala_entra(main: Node) -> void:
+	main.show_lobby()
+	for _i: int in range(4):
+		await get_tree().process_frame
+	var sala: Lobby = null
+	for hijo: Node in main.get_children():
+		if hijo is Lobby and not hijo.is_queued_for_deletion():
+			sala = hijo
+	_check(sala != null and sala.todo_a_la_vista(),
+		"la sala de espera muestra los %d personajes y los botones de abajo en 720 de alto" % (
+			CharacterDB.get_all_ids().size()))
+	main.show_main_menu()
+	await get_tree().process_frame
+
+
 func _test_mando_en_menus(main: Node) -> void:
 	get_viewport().gui_release_focus()
 	var menu := Mando.capa_de_arriba()
@@ -1835,7 +1853,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 279
+const CHEQUEOS_MINIMOS: int = 280
 
 
 func _finish() -> void:
