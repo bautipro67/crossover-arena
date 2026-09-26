@@ -24,7 +24,7 @@ extends Node
 ##   ["pose", quien, pose, segundos]    un gesto (ver PlayerVisual.actuar)
 ##   ["grito", quien, texto, voz]       el cartel grande y la voz
 ##   ["habilidad", quien, id]           los efectos de una tecnica, sin daño
-##   ["aparecer", quien, personaje, Vector2, efecto]   efecto: portal, teletransporte, caida, sombra
+##   ["aparecer", quien, personaje, Vector2, efecto]   efecto: portal, teletransporte, caida, sombra, fuego
 ##   ["desaparecer", quien, efecto]
 ##   ["temblor", fuerza]  ["esperar", segundos]  ["fundido", "negro"/"claro", segundos]
 ##   ["titulo", texto, subtitulo]
@@ -386,6 +386,12 @@ func _aparecer(id: StringName, personaje: StringName, rel: Vector2, efecto: Stri
 		"teletransporte":
 			FX.spawn_teletransporte(a, punto)
 			a.global_position = punto + Vector3.UP * 0.1
+		"fuego":
+			# Como entra Scorpion: una columna del fuego del Inframundo, y adentro esta el.
+			FX.spawn_llamas_infierno(a, punto)
+			Sfx.play_3d(a, &"fuego", punto, -2.0)
+			await _espera(0.25)
+			a.global_position = punto + Vector3.UP * 0.1
 		"sombra":
 			a.visual.volverse_eco()
 			a.global_position = punto + Vector3.UP * 0.1
@@ -406,6 +412,9 @@ func _desaparecer(id: StringName, efecto: String) -> void:
 			Sfx.play_3d(a, &"portal", a.global_position, -2.0)
 		"teletransporte":
 			FX.spawn_teletransporte(a, a.global_position)
+		"fuego":
+			FX.spawn_llamas_infierno(a, a.global_position)
+			Sfx.play_3d(a, &"fuego", a.global_position, -2.0)
 		_:
 			FX.spawn_impact_burst(a, a.global_position + Vector3.UP, Color(0.25, 0.15, 0.4, 0.9))
 	await _espera(0.35)

@@ -35,6 +35,11 @@ extends RefCounted
 ##   Mob      Shigeo Kageyama. Timido, educado, con la cara siempre igual; dice su
 ##            porcentaje cuando se le junta lo que siente. "No me gusta pelear". Nombra a
 ##            su maestro (Reigen) como si fuera un sabio. Exorciza espiritus desde chico.
+##   Scorpion Hanzo Hasashi, gran maestro del Shirai Ryu, vuelto del Inframundo por venganza.
+##            Serio, de pocas palabras, orgulloso de su clan; habla de su esposa y su hijo.
+##            "¡Get over here!". Ya le mintieron una vez sobre quien mato a su clan.
+##   Thanos   llega en la parte 4 por la Gema del Alma. Calmo, seguro, habla de equilibrio y
+##            de pagar el precio; "soy inevitable".
 ##   Mario    llega en la parte 2 por una tuberia equivocada. Habla poco y contento —
 ##            "¡Mamma mia!", "¡Wahoo!", "okey-dokey", "¡Let's-a go!"— y rescatar gente es
 ##            lo que hace siempre. Lo esperan la princesa Peach y un pastel.
@@ -47,6 +52,11 @@ extends RefCounted
 ## LA PARTE 3. Abajo de todo desperto el ESPIRITU DE LA ARENA: lo que sintieron mil años
 ## de peleadores, junto, con hambre. Posee ecos, posee a DIO y a Madara, y quiere lo que
 ## Mob guarda. Termina con Mob exorcizandolo cuando lo que siente deja de ser solo suyo.
+##
+## LA PARTE 4. El piso quedo abierto, y la grieta mas honda da al Inframundo. Sube Scorpion,
+## un espectro que vuelve por venganza; DIO le miente que el culpable es Rick y baja a
+## tragarse el fuego de las almas. Thanos llega a cerrar la puerta. Termina con Scorpion
+## arrastrando a DIO de vuelta al fuego y quedandose en la Arena.
 ##
 ## TODO LO QUE SE DICE ES ORIGINAL. De las obras salen los personajes y las frases que son
 ## su marca, nada mas.
@@ -61,6 +71,7 @@ const PARTES: Array[Dictionary] = [
 	{"titulo": "PARTE 1: LA GRIETA", "capitulos": 10},
 	{"titulo": "PARTE 2: EL TORNEO DEL NÚCLEO", "capitulos": 10},
 	{"titulo": "PARTE 3: EL ESPÍRITU DE LA ARENA", "capitulos": 10},
+	{"titulo": "PARTE 4: EL FUEGO DEL INFRAMUNDO", "capitulos": 10},
 ]
 const NARRADOR: StringName = &"narrador"
 
@@ -2060,6 +2071,520 @@ static func _armar() -> Array[Dictionary]:
 			["decir", &"noelle", "Volvé cuando quieras. Esta vez sin que se abra el piso."],
 			["fundido", "negro", 1.0],
 			["titulo", "FIN DE LA PARTE 3", "La historia continuará"],
+		],
+	})
+
+	# ================================================================ PARTE 4
+	#
+	# EL FUEGO DEL INFRAMUNDO. Al irse el espiritu, el piso de la Arena quedo abierto, y la
+	# grieta mas honda da al Inframundo: el mundo de fuego donde van las almas que no
+	# descansan. Por ahi sube SCORPION, un espectro que volvio de la muerte para vengar a su
+	# clan. DIO —que en la parte 3 ayudo a Mob solo por orgullo— le miente que el culpable
+	# es Rick, como ya le mintieron una vez en su propia historia sobre quien mato al Shirai
+	# Ryu, y mientras Scorpion lo busca, baja a tragarse el fuego de las almas.
+	#
+	# THANOS llega por la Gema del Alma: del otro lado de esa puerta hay mas almas que
+	# estrellas, y si se derraman desequilibran todos los mundos. Quiere cerrarla, al precio
+	# que sea. MOB, que ve espiritus, es el que entiende que Scorpion es uno: lo sostiene la
+	# venganza, y si la suelta, descansa.
+	#
+	# MOB SIGUE SIN JUGARSE (premio del pase). Scorpion y Thanos, que son gratis, si.
+
+	# ------------------------------------------------------------------ 31
+	c.append({
+		"titulo": "Del otro lado del fuego",
+		"personaje": &"scorpion",
+		"enemigos": [
+			_eco("p1", &"rick", Vector2(-5, -12), 32.0, 0.17),
+			_eco("p2", &"noelle", Vector2(5, -12), 32.0, 0.17),
+			_eco("p3", &"mario", Vector2(0, -14), 32.0, 0.17),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Abrite paso entre los ecos"},
+		"eventos": [
+			[["inicio"], [["decir", &"scorpion", "No sé qué son. Pero se interponen."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sonic", Vector2(-6, -14), 32.0, 0.17, false),
+					_eco("p5", &"goku", Vector2(6, -14), 32.0, 0.17, false)]],
+				["decir", &"scorpion", "Sombras sin alma. Ni en el Inframundo vi algo tan vacío."]]],
+		],
+		"intro": [
+			["plano", "general"],
+			["narrar", "El espíritu se fue, pero el piso de la Arena quedó abierto. Y muy abajo, algo arde."],
+			["temblor", 0.8],
+			["aparecer", &"scorpion", &"scorpion", Vector2(0, 0), "fuego"],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Esto no es el Inframundo. Ni la Tierra. ¿Qué lugar es este?"],
+			["aparecer", &"p1", &"rick", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"noelle", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"mario", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"scorpion"],
+			["pose", &"scorpion", &"desafio", 1.2],
+			["decir", &"scorpion", "Soy Hanzo Hasashi, del Shirai Ryu. El que se cruce, arde."],
+		],
+		"outro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["aparecer", &"dio", &"dio", Vector2(0, -6), ""],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Un espectro que sale del fuego. Qué entrada tan elegante. ¿Buscás a alguien?"],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "A los que mataron a mi clan. Y a mi familia."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Conozco al culpable. Un viejo de bata que abre puertas entre los mundos: Rick Sanchez. Él abrió la tuya."],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "Entonces lo voy a traer ante mí. Y va a pagar."],
+			["fundido", "negro", 0.8],
+			["narrar", "DIO sonríe. No dijo una sola palabra verdadera."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 32
+	c.append({
+		"titulo": "Get over here",
+		"personaje": &"rick",
+		"enemigos": [
+			{"id": &"scorpion", "personaje": &"scorpion", "nombre": "Scorpion", "vida": 170.0,
+				"daño": 0.28, "pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"scorpion", "hasta": 0.5, "texto": "Sacate de encima al espectro"},
+		"eventos": [
+			[["inicio"], [["decir", &"rick", "Un ninja zombi con una soga. Genial. Justo lo que faltaba en mi semana."]]],
+			[["vida", &"scorpion", 0.75], [["decir", &"scorpion", "No vas a escapar por ningún portal. ¡Get over here!"]]],
+		],
+		"intro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"rick"],
+			["narrar", "En su rincón de la Arena, Rick arregla la pistola de portales por quinta vez en el día."],
+			["decir", &"rick", "*burp* Si esto vuelve a abrir una grieta entre mundos, me jubilo."],
+			["temblor", 0.6],
+			["aparecer", &"scorpion", &"scorpion", Vector2(0, -9), "fuego"],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Rick Sanchez. Destruiste el Shirai Ryu."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Destruí muchas cosas, amigo. Planetas, gobiernos, un casamiento. ¿Clanes ninja? No me suena."],
+			["plano", "abajo", &"scorpion"],
+			["pose", &"scorpion", &"desafio", 1.2],
+			["decir", &"scorpion", "Mentís como un cobarde. Vas a arder como uno."],
+		],
+		"outro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["colocar", &"scorpion", Vector2(0, -5), 180.0],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Peleás sin honor. Pero no peleás como un asesino."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Gracias. Creo. ¿Quién te dijo que fui yo?"],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Un vampiro de ojos rojos."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "¡DIO! Obvio que fue DIO. Ese tipo miente hasta cuando dice la hora."],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Lo voy a averiguar. Y si me mentiste vos, vuelvo."],
+			["desaparecer", &"scorpion", "fuego"],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Morty, anotá: ninja zombi, con cadena, con muchísimo resentimiento. No, Morty no está. Hablo solo."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 33
+	c.append({
+		"titulo": "Un espíritu con nombre",
+		"personaje": &"noelle",
+		"aliados": [_aliado(&"mob", "Mob", Vector2(2.5, 1.5), 90.0, 0.5)],
+		"enemigos": [
+			_eco("p1", &"madara", Vector2(-5, -12), 34.0, 0.18),
+			_eco("p2", &"flowery", Vector2(5, -12), 34.0, 0.18),
+			_eco("p3", &"dio", Vector2(0, -14), 34.0, 0.18),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos junto a Mob"},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "¡Perdón, perdón! ¡Estos aparecieron solos, no los llamé yo!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"thanos", Vector2(-7, -14), 34.0, 0.18, false),
+					_eco("p5", &"sonic", Vector2(7, -14), 34.0, 0.18, false)]],
+				["decir", &"mob", "Los atrae el calor que sale de abajo. Como polillas."]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.5), 0.0],
+			["plano", "cerca", &"mob"],
+			["pose", &"mob", &"pensar", 1.2],
+			["decir", &"mob", "Hay un espíritu nuevo en la Arena. No tiene hambre, como el otro. Tiene bronca. Una bronca muy vieja."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "¿Otro fantasma? ¿No podía ser un gatito, aunque sea una vez?"],
+			["aparecer", &"p1", &"madara", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"flowery", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"dio", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Bueno. Primero esto, después los fantasmas."],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 200.0],
+			["plano", "dos", &"noelle", &"mob"],
+			["decir", &"mob", "Ya sé qué es. Un espectro. Lo trajo de vuelta la venganza, y la venganza lo mantiene acá."],
+			["decir", &"noelle", "¿Y si se le pasa la bronca?"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Descansa. Pero para eso tiene que soltarla. Y a veces uno no suelta lo único que le quedó."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "...Entonces hay que darle otra cosa a la que agarrarse."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 34
+	c.append({
+		"titulo": "Un rival que no miente",
+		"personaje": &"scorpion",
+		"enemigos": [
+			{"id": &"goku", "personaje": &"goku", "nombre": "Goku", "vida": 185.0, "daño": 0.27,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"goku", "hasta": 0.5, "texto": "Medite con Goku"},
+		"eventos": [
+			[["inicio"], [["decir", &"goku", "¡Dale con todo! ¡No me aguantes nada!"]]],
+			[["vida", &"goku", 0.75], [["decir", &"goku", "¡Esa cadena es genial! ¡Me trajiste como a un pescado!"]]],
+		],
+		"intro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"scorpion"],
+			["narrar", "Scorpion recorre la Arena buscando al vampiro. Alguien lo encuentra antes."],
+			["aparecer", &"goku", &"goku", Vector2(0, -9), "teletransporte"],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Hola, soy Goku! ¡Vos sos el ninja del fuego! Rick me contó todo. ¿Peleamos?"],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "No tengo tiempo para juegos."],
+			["plano", "cerca", &"goku"],
+			["pose", &"goku", &"desafio", 1.2],
+			["decir", &"goku", "¡No es un juego! Es la mejor forma de conocer a alguien. ¡Los puños no mienten!"],
+		],
+		"outro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(0, -5), 180.0],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Qué fuerte sos! Pero tus golpes tienen tanta bronca que casi no te dejan ver."],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Mataron a mi clan. A mi esposa. A mi hijo. La bronca es lo único que me trajo de vuelta."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "...Y Rick no fue. Rick es un desastre, pero no le hace eso a nadie. El que miente así es DIO."],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Los puños no mienten, dijiste. Los tuyos tampoco. Te creo."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 35
+	c.append({
+		"titulo": "Lo que grabó el portal",
+		"personaje": &"sonic",
+		"aliados": [
+			{"id": &"rick", "personaje": &"rick", "nombre": "Rick", "vida": 110.0, "daño": 0.5,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"pensar"},
+		],
+		"enemigos": [
+			_eco("p1", &"goku", Vector2(-5, -12), 36.0, 0.18),
+			_eco("p2", &"madara", Vector2(5, -12), 36.0, 0.18),
+			_eco("p3", &"scorpion", Vector2(0, -14), 36.0, 0.18),
+		],
+		"objetivo": {"tipo": "proteger", "id": &"rick", "segundos": 40.0,
+			"texto": "Protegé a Rick mientras busca la grabación del portal"},
+		"eventos": [
+			[["inicio"], [["decir", &"sonic", "¡Cuarenta segundos! Para mí es una eternidad."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"noelle", Vector2(-8, -14), 36.0, 0.18, false),
+					_eco("p5", &"mario", Vector2(8, -14), 36.0, 0.18, false)]],
+				["decir", &"rick", "¡Más rápido, erizo! ¡Me están mirando la nuca!"]]],
+		],
+		"intro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(0, 3), 180.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "La pistola de portales graba todo. Sí, todo. No preguntes por qué. Si alguien abrió la puerta del Inframundo, está acá."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "¿Y cuánto tarda en encontrarlo?"],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Cuarenta segundos, si nadie me rompe la cabeza mientras tanto."],
+			["aparecer", &"p1", &"goku", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"madara", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"scorpion", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"sonic"],
+			["pose", &"sonic", &"senalar", 1.0],
+			["decir", &"sonic", "Nadie toca al abuelo. Esa es la regla."],
+		],
+		"outro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(0, 3), 180.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Acá está. No abrí ninguna puerta. Se abrió sola cuando Mob echó al espíritu. Y el primero en pararse al lado, frotándose las manos, fue..."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "DIO. Siempre es DIO. Bueno, o Eggman."],
+			["aparecer", &"scorpion", &"scorpion", Vector2(-3, -4), "fuego"],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Mostrame."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Mirá. El vampiro, solo, hablándole a la grieta. Ni siquiera le da vergüenza."],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Ya me mintieron una vez sobre quién mató a mi clan. Seguí al hombre equivocado años. No va a pasar dos veces."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 36
+	c.append({
+		"titulo": "El vampiro miente",
+		"personaje": &"scorpion",
+		"enemigos": [
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 165.0, "daño": 0.25,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"dio", "hasta": 0.5, "texto": "Hacé que DIO diga la verdad"},
+		"eventos": [
+			[["inicio"], [["decir", &"dio", "¿Un muerto, contra DIO? Ya estás muerto una vez. ¡Te lo repito!"]]],
+			[["vida", &"dio", 0.75], [["decir", &"scorpion", "La verdad, vampiro. ¡Get over here!"]]],
+		],
+		"intro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["aparecer", &"dio", &"dio", Vector2(0, -9), ""],
+			["plano", "general"],
+			["narrar", "Al borde de la grieta, el calor hace temblar el aire. DIO lo mira como quien mira un banquete."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Espectro. ¿Viniste a darme las gracias? ¿Ya quemaste al viejo?"],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "Vine por la verdad."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "La verdad es que tu clan murió hace siglos, en tu mundo, y a nadie le importa. Yo solo te di un nombre para odiar. El odio te mantiene de pie, ¿no? Deberías agradecérmelo."],
+			["plano", "cerca", &"scorpion"],
+			["pose", &"scorpion", &"desafio", 1.2],
+			["decir", &"scorpion", "Entonces el odio ahora tiene tu nombre."],
+		],
+		"outro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["colocar", &"dio", Vector2(0, -6), 180.0],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Suficiente. Mientras jugabas a la venganza, yo encontré lo que buscaba: el fuego de todas las almas del Inframundo."],
+			["decir", &"dio", "Con eso, DIO no va a necesitar la Arena. ¡Va a ser el infierno mismo!"],
+			["desaparecer", &"dio", "fuego"],
+			["plano", "general"],
+			["narrar", "DIO se tira por la grieta, hacia el fondo, donde arden las almas."],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "El Inframundo no perdona a los vivos. Ni a los que se creen dioses."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 37
+	c.append({
+		"titulo": "Un titán a la puerta",
+		"personaje": &"madara",
+		"enemigos": [
+			{"id": &"thanos", "personaje": &"thanos", "nombre": "Thanos", "vida": 215.0, "daño": 0.28,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"thanos", "hasta": 0.5, "texto": "Frená al titán"},
+		"eventos": [
+			[["inicio"], [["decir", &"thanos", "No tengo nada contra vos, Uchiha. Pero no vas a detenerme."]]],
+			[["vida", &"thanos", 0.75], [["decir", &"madara", "Seis piedras en la mano, y todavía necesitás los puños."]]],
+		],
+		"intro": [
+			["colocar", &"madara", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "De la grieta sube un calor que se siente en todos los mundos. Del otro lado del universo, alguien lo sintió en una gema."],
+			["aparecer", &"thanos", &"thanos", Vector2(0, -9), "portal"],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Esa puerta tiene detrás más almas que estrellas. Si se abre del todo, se derraman sobre todos los mundos. Voy a cerrarla. Al precio que sea."],
+			["plano", "cerca", &"madara"],
+			["pose", &"madara", &"brazos_cruzados", 1.4],
+			["decir", &"madara", "¿Y quién te nombró guardián de todos los mundos?"],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Nadie. Por eso lo hago yo."],
+			["plano", "cerca", &"madara"],
+			["decir", &"madara", "Despertá a la realidad, titán: el que decide por todos termina solo."],
+		],
+		"outro": [
+			["colocar", &"madara", Vector2(0, 0), 0.0],
+			["colocar", &"thanos", Vector2(0, -5), 180.0],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Peleás bien. Pero no vine a pelear con vos. El vampiro está abajo, tragándose el fuego de las almas. Cuando salga, no va a alcanzar ni tu ojo ni mi guantelete."],
+			["plano", "cerca", &"madara"],
+			["decir", &"madara", "Entonces cerrá esa puerta. Pero con él adentro."],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Eso sí sería equilibrio."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 38
+	c.append({
+		"titulo": "Almas en llamas",
+		"personaje": &"flowery",
+		"aliados": [_aliado(&"scorpion", "Scorpion", Vector2(2.5, 1.5), 100.0, 0.45)],
+		"enemigos": [
+			_eco("p1", &"scorpion", Vector2(-5, -12), 36.0, 0.18),
+			_eco("p2", &"thanos", Vector2(5, -12), 36.0, 0.18),
+			_eco("p3", &"dio", Vector2(0, -14), 36.0, 0.18),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -8), "radio": 6.0, "segundos": 35.0,
+			"texto": "Aguantá en el círculo mientras Thanos abre el camino"},
+		"eventos": [
+			[["inicio"], [["decir", &"flowery", "¡Groovy! ¡Una fiesta en el infierno! ¿Quién trajo la música?"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"goku", Vector2(-8, -16), 36.0, 0.18, false),
+					_eco("p5", &"madara", Vector2(8, -16), 36.0, 0.18, false)]],
+				["decir", &"scorpion", "Son almas que no descansan. Toman la forma de lo que tienen cerca."]]],
+		],
+		"intro": [
+			["colocar", &"flowery", Vector2(0, 0), 0.0],
+			["colocar", &"scorpion", Vector2(2.5, 1.5), 0.0],
+			["plano", "general"],
+			["narrar", "Thanos, desde el borde, abre con la Gema del Espacio un camino hacia el fondo de la grieta. Mientras tanto, las almas suben."],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "No es una fiesta. Son los que no pudieron descansar nunca."],
+			["plano", "cerca", &"flowery"],
+			["pose", &"flowery", &"desafio", 1.2],
+			["decir", &"flowery", "¡Entonces les hace falta una fiesta más que a nadie! ¡Asgore dice que nadie está tan triste como para no bailar!"],
+			["aparecer", &"p1", &"scorpion", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"thanos", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"dio", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"flowery", Vector2(0, 0), 0.0],
+			["colocar", &"scorpion", Vector2(2.5, 1.0), 200.0],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "El camino está abierto. Abajo me espera el vampiro. Es mi venganza: voy solo."],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "¡Ni loco! Nadie baja solo al lugar más oscuro. Eso lo sé yo mejor que nadie."],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "...Hace mucho que nadie peleaba a mi lado."],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "¡Acostumbrate, compadre! ¡Jarona!"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 39
+	c.append({
+		"titulo": "La puerta del Inframundo",
+		"personaje": &"thanos",
+		"aliados": [_aliado(&"mob", "Mob", Vector2(2.5, 1.5), 95.0, 0.5)],
+		"enemigos": [
+			_eco("p1", &"noelle", Vector2(-5, -12), 36.0, 0.18),
+			_eco("p2", &"rick", Vector2(5, -12), 36.0, 0.18),
+			_eco("p3", &"flowery", Vector2(0, -14), 36.0, 0.18),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "limite": 120.0,
+			"texto": "Limpiá la puerta antes de que se abra del todo"},
+		"eventos": [
+			[["inicio"], [["decir", &"thanos", "Cuanto más tarde, más almas salen. No hay tiempo."]]],
+			[["tiempo", 50.0], [["decir", &"mob", "La puerta se está abriendo más. Lo siento en los dientes."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"mob", Vector2(-8, -14), 36.0, 0.18, false),
+					_eco("p5", &"sonic", Vector2(8, -14), 36.0, 0.18, false)]],
+				["decir", &"mob", "...Ese tiene mi forma. No me gusta."]]],
+		],
+		"intro": [
+			["colocar", &"thanos", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.5), 0.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Scorpion bajó. Y el espíritu de DIO... ya no parece de DIO. Lo están llenando."],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Las almas. Se lo están tragando a él mientras él se las traga a ellas. Pronto no va a quedar nada suyo."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Como el espíritu de la Arena. Solo hambre."],
+			["aparecer", &"p1", &"noelle", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"rick", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"flowery", Vector2(0, -14), "sombra"],
+			["plano", "abajo", &"thanos"],
+			["pose", &"thanos", &"desafio", 1.2],
+			["decir", &"thanos", "Yo soy inevitable. Ustedes no."],
+		],
+		"outro": [
+			["colocar", &"thanos", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 200.0],
+			["temblor", 1.4],
+			["plano", "general"],
+			["narrar", "Desde el fondo sube una risa. Ya no es solo la de DIO: es la de mil almas a la vez."],
+			["aparecer", &"dio", &"dio", Vector2(0, -8), "fuego"],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "¡Soy DIO! ¡Y ahora también soy el Inframundo entero!"],
+			["aparecer", &"scorpion", &"scorpion", Vector2(-3, -3), "fuego"],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "No. Sos el que me mintió. Nada más."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 40
+	c.append({
+		"titulo": "Venganza",
+		"personaje": &"scorpion",
+		"aliados": [
+			_aliado(&"goku", "Goku", Vector2(2.5, 1.5), 100.0, 0.42),
+			_aliado(&"rick", "Rick", Vector2(-2.5, 1.5), 100.0, 0.42),
+			_aliado(&"flowery", "Flowery", Vector2(0, 2.5), 100.0, 0.42),
+			{"id": &"thanos", "personaje": &"thanos", "nombre": "Thanos", "vida": 110.0, "daño": 0.45,
+				"pos": Vector2(0, 3.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO del Inframundo", "vida": 330.0, "daño": 0.28,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"dio", "texto": "Derrotá a DIO del Inframundo"},
+		"eventos": [
+			[["inicio"], [["decir", &"dio", "¡Mil almas en un solo cuerpo! ¡El cuerpo de DIO!"]]],
+			[["vida", &"dio", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"dio"],
+					["decir", &"dio", "¡Las almas me obedecen! ¡Ni el tiempo ni la muerte pueden con DIO!"],
+					["aparecer", &"thanos", &"thanos", Vector2(0, 3.5), "portal"],
+					["plano", "abajo", &"thanos"],
+					["decir", &"thanos", "Espectro. Traelo hacia la puerta. Yo la cierro."],
+					["plano", "cerca", &"scorpion"],
+					["grito", &"scorpion", "¡GET OVER HERE!", &"voz_get_over_here"],
+				]],
+				["entrar", &"thanos"],
+				["potenciar", &"dio", 12.0],
+				["objetivo", {"tipo": "derrotar", "id": &"dio", "texto": "Terminá con DIO junto a Thanos"}]]],
+		],
+		"intro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"rick", Vector2(-2.5, 1.5), 0.0],
+			["colocar", &"flowery", Vector2(0, 2.5), 0.0],
+			["aparecer", &"dio", &"dio", Vector2(0, -9), "fuego"],
+			["plano", "general"],
+			["narrar", "DIO flota sobre la grieta, envuelto en el fuego de las almas que se tragó."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "¿Un fantasma, un saiyajin, un borracho y una flor? ¿Esto es lo mejor que tiene la Arena contra un dios?"],
+			["plano", "cerca", &"flowery"],
+			["decir", &"flowery", "¡Te dije que no bajaba solo, compadre! ¡Groovy!"],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Te sorprenderías de lo lejos que llega un borracho con un arma de plasma."],
+			["plano", "cerca", &"goku"],
+			["pose", &"goku", &"desafio", 1.2],
+			["decir", &"goku", "¡Qué ki tan horrible tenés, DIO! ¡Da miedo! ¡Y me encanta!"],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "Mi clan no va a volver. Pero vos vas a pagar por usarlo."],
+		],
+		"outro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"rick", Vector2(-2.5, 1.0), -20.0],
+			["colocar", &"flowery", Vector2(0, 2.5), 0.0],
+			["colocar", &"thanos", Vector2(0, 3.5), 0.0],
+			["colocar", &"dio", Vector2(0, -8), 180.0],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "¡No! ¡Las almas se van! ¡Son MÍAS! ¡Soy DIO!"],
+			["plano", "cerca", &"scorpion"],
+			["habilidad", &"scorpion", &"lanza"],
+			["decir", &"scorpion", "Llevalas vos de vuelta. Y quedate con ellas."],
+			["desaparecer", &"dio", "fuego"],
+			["plano", "abajo", &"thanos"],
+			["narrar", "Thanos cierra el puño. Las seis gemas brillan, y la grieta se cierra como una herida."],
+			["temblor", 1.0],
+			["fundido", "claro", 1.0],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "Mi clan sigue muerto. La venganza no me lo devolvió."],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Nunca lo hace. Lo sé mejor que nadie."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Quedate en la Arena! ¡Acá hay un montón de gente fuerte, y todos los días hay con quién pelear!"],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "...El Shirai Ryu nunca rechazó un desafío. Me quedo."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Genial. Un ninja zombi de vecino. Ahora sí mi vida es una serie animada."],
+			["fundido", "negro", 1.0],
+			["titulo", "FIN DE LA PARTE 4", "La historia continuará"],
 		],
 	})
 

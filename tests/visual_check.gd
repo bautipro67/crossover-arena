@@ -205,6 +205,7 @@ func _run() -> void:
 	await _madara()
 	await _mob()
 	await _thanos()
+	await _scorpion()
 	await _lluvia()
 
 	# --- Los bots peleando, que es lo que cambia el modo practica ---
@@ -495,6 +496,45 @@ func _lluvia() -> void:
 	await _wait(Modos.METEORO_CAIDA * 0.5)
 	await _shot("44_lluvia_impactos")
 	await _wait(1.0)
+	player.health.set_max(100.0)
+
+
+## Scorpion: la lanza en el aire, el tiron, la columna de fuego y la calavera de la Fatality.
+func _scorpion() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+	player.setup_character(CharacterDB.get_character(&"scorpion"))
+	var hud := _find_hud()
+	if hud != null:
+		hud.bind_player(player)
+	_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+	player.health.set_max(3000.0)
+	player.status.clear_all()
+	await _wait(1.2)
+	await _shot("45_scorpion_hud")
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)  # Lanza
+	await _wait(0.18)
+	await _shot("46_lanza")
+	await _wait(1.2)
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)  # Fuego del Infierno
+	await _wait(FuegoInfernal.AVISO + 0.15)
+	await _shot("47_fuego_infernal")
+	await _wait(1.2)
+	player.stamina.restore_full()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.reset_state()
+	player.caster.request_use(3)  # Aliento del Infierno
+	await _wait(0.7)
+	await _shot("48_calavera")
+	await _wait(AlientoInfierno.new().channel_time - 0.7 + 0.2)
+	await _shot("49_aliento_infierno")
+	await _wait(1.2)
 	player.health.set_max(100.0)
 
 

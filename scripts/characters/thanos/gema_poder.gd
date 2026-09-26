@@ -8,7 +8,7 @@ extends Ability
 
 const IMPACT_DAMAGE: float = 8.0
 const BLAST_DAMAGE: float = 18.0
-const BLAST_RADIUS: float = 3.2
+const BLAST_RADIUS: float = 3.6
 const SPEED: float = 26.0
 const LIFETIME: float = 1.2
 const KNOCKBACK: float = 9.0

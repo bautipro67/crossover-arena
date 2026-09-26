@@ -746,10 +746,11 @@ func _test_historia(main: Node) -> void:
 	Progreso.historia = {}
 
 	# --- Los datos: que todo lo que nombra la historia exista ---
-	_check(Historia.cantidad() == 30 and Historia.PARTES.size() == 3 and Historia.parte_de(10) == 1
-		and Historia.parte_de(20) == 2 and Historia.titulo_capitulo(20) == "PARTE 3 · CAPÍTULO 1"
+	_check(Historia.cantidad() == 40 and Historia.PARTES.size() == 4 and Historia.parte_de(10) == 1
+		and Historia.parte_de(20) == 2 and Historia.parte_de(30) == 3
+		and Historia.titulo_capitulo(30) == "PARTE 4 · CAPÍTULO 1"
 		and Historia.titulo_capitulo(10) == "PARTE 2 · CAPÍTULO 1",
-		"la historia tiene tres partes de diez capitulos, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
+		"la historia tiene cuatro partes de diez capitulos, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
 
 	# --- NUNCA MAS DE TRES ENEMIGOS A LA VEZ ---
 	#

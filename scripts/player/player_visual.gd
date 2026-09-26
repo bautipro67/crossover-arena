@@ -72,6 +72,10 @@ var _blink_wait: float = 3.0
 var _blink_t: float = 0.0
 ## Inclinacion base de las cejas: define la expresion de reposo del personaje.
 var _brow_tilt: float = 0.0
+## Las piezas de la mascara de Scorpion: se esconden cuando aparece la calavera, la de la
+## skin legendaria o la de la carga del Aliento del Infierno.
+var _mascara_scorpion: Array[Node3D] = []
+var _calavera_carga: Node3D = null
 
 var _costume: Array[Node3D] = []
 ## La cabeza y el cuello, guardados para poder cambiarles el material. Todos los
@@ -609,6 +613,11 @@ func _on_channel_started(index: int, _duration: float) -> void:
 		# El canalizado mas el estallido: la forma se queda un rato despues de soltar.
 		OmegaForm.create(self, ability.channel_time + 1.4)
 
+	# LA FATALITY: Scorpion se saca la mascara mientras carga, y abajo esta la calavera.
+	# Se queda mientras escupe el fuego y despues vuelve la mascara.
+	if ability.id == &"aliento_infierno" and not _mascara_escondida():
+		_poner_calavera_de_carga(ability.channel_time + 0.9)
+
 
 func _on_channel_finished(_index: int) -> void:
 	_clear_channel_fx()
@@ -625,6 +634,38 @@ func _on_channel_finished(_index: int) -> void:
 func _on_channel_cancelled(_index: int) -> void:
 	_clear_channel_fx()
 	_pose = &""
+	_sacar_calavera_de_carga()
+
+
+## La calavera que aparece durante la carga del Aliento del Infierno, por `segundos`.
+func _poner_calavera_de_carga(segundos: float) -> void:
+	_sacar_calavera_de_carga()
+	if _head_pivot == null:
+		return
+	_calavera_carga = FX.armar_calavera(_head_pivot, Color(0.92, 0.88, 0.78), true)
+	_mostrar_mascara(false)
+	get_tree().create_timer(segundos).timeout.connect(_sacar_calavera_de_carga)
+
+
+func _sacar_calavera_de_carga() -> void:
+	if is_instance_valid(_calavera_carga):
+		_calavera_carga.queue_free()
+		_mostrar_mascara(true)
+	_calavera_carga = null
+
+
+func _mostrar_mascara(visible_: bool) -> void:
+	for pieza: Node3D in _mascara_scorpion:
+		if is_instance_valid(pieza):
+			pieza.visible = visible_
+
+
+## La mascara ya esta escondida por la skin: la calavera ya esta puesta.
+func _mascara_escondida() -> bool:
+	for pieza: Node3D in _mascara_scorpion:
+		if is_instance_valid(pieza) and not pieza.visible:
+			return true
+	return false
 
 
 func _clear_channel_fx() -> void:
@@ -1203,6 +1244,10 @@ func _crear_accesorio(tipo: StringName) -> void:
 			for lado: float in [-1.0, 1.0]:
 				var mejilla := Art.box(Vector3(0.04, 0.16, 0.14), metal, Vector3(0.20 * lado, 0.07, -0.05))
 				_costume_add(_head_pivot, mejilla)
+		&"calavera":
+			# Scorpion sin la mascara: la calavera en llamas del Inframundo.
+			_costume.append(FX.armar_calavera(_head_pivot, _tono(&"calavera", Color(0.92, 0.88, 0.78)), true))
+			_mostrar_mascara(false)
 		# ------------------------------------------------ Los que cambian la silueta
 		#
 		# Los de arriba son chicos a proposito. Estos no: una skin tiene que cambiar el
@@ -1448,6 +1493,8 @@ func _build_costume(kind: StringName) -> void:
 			_build_mob()
 		&"titan":
 			_build_thanos()
+		&"ninja":
+			_build_scorpion()
 		_:
 			pass
 
@@ -2816,6 +2863,145 @@ func _build_thanos() -> void:
 			var sitio := Vector3((float(k) - 2.0) * 0.032, -0.36, -0.06) if k < 5 else Vector3(0.0, -0.28, -0.075)
 			var gema := Art.sphere(0.02 if k < 5 else 0.03, Art.glow(gemas[k], 2.6), sitio)
 			_costume_add(_elbow_l, gema)
+
+
+## Scorpion (Hanzo Hasashi), del Shirai Ryu.
+##
+## DE LA REFERENCIA (el traje de Mortal Kombat 9, el que quedo como el de siempre), NO DE
+## MEMORIA: la capucha negra, la mascara amarilla de la nariz para abajo y los ojos blancos
+## sin pupila; el chaleco amarillo con los bordes negros sobre la ropa negra, el cinturon
+## negro con el faldon amarillo; los protectores amarillos de brazos y canillas, y los tabi
+## negros. El kunai con la soga a la cadera y la espada a la espalda.
+##
+## LA SILUETA ES LA CAPUCHA Y LA ESPADA: la cabeza lisa y oscura, y el mango asomando por
+## arriba del hombro derecho.
+func _build_scorpion() -> void:
+	_mascara_scorpion.clear()
+	# Cejas bajas y fruncidas: no se ven sobre la capucha, pero le bajan los ojos.
+	_apply_expression(0.34, -0.02, 0.05)
+
+	var capucha := Art.toon(_tono(&"capucha", Color(0.07, 0.07, 0.08)), OUTLINE_WIDTH)
+	var amarillo := Art.toon(_tono(&"traje", body_color), OUTLINE_WIDTH)
+	var negro := Art.toon(_tono(&"ropa", accent_color), OUTLINE_WIDTH)
+	var mascara := Art.toon(_tono(&"mascara", body_color.lightened(0.06)), OUTLINE_WIDTH)
+	var soga := Art.toon(_tono(&"soga", Color(0.52, 0.40, 0.25)), OUTLINE_WIDTH)
+	var metal := Art.metal(_tono(&"metal", Color(0.76, 0.76, 0.80)), OUTLINE_WIDTH)
+	var ojo := Art.glow(_tono(&"ojos", Color(1.0, 0.98, 0.90)), 2.2)
+
+	# --- LA CAPUCHA: la cabeza entera, con la caida por la nuca ---
+	if is_instance_valid(_head_mesh):
+		_head_mesh.material_override = capucha
+	if is_instance_valid(_neck_mesh):
+		_neck_mesh.material_override = capucha
+	var nuca := Art.sphere(0.15, capucha, Vector3(0.0, 0.0, 0.11))
+	nuca.scale = Vector3(1.1, 0.95, 0.9)
+	_costume_add(_head_pivot, nuca)
+
+	# --- LA MASCARA: de la nariz para abajo, con la costura del medio ---
+	#
+	# UNA MEDIA ESFERA apenas mas grande que la cabeza, con la cupula mirando para abajo y
+	# para adelante: tapa la boca, la nariz y el menton, y el borde pasa justo debajo de los
+	# ojos. Una esfera entera, aplastada, bajaba hasta el cuello y se fundia con el chaleco.
+	var tapa := MeshInstance3D.new()
+	var media := SphereMesh.new()
+	media.radius = 0.205
+	media.height = 0.205
+	media.is_hemisphere = true
+	tapa.mesh = media
+	tapa.material_override = mascara
+	tapa.position = Vector3(0.0, 0.07, 0.0)
+	tapa.rotation_degrees = Vector3(-165.0, 0.0, 0.0)
+	_costume_add(_head_pivot, tapa)
+	var sobre_nariz := Art.box(Vector3(0.05, 0.06, 0.06), mascara, Vector3(0.0, 0.078, -0.19))
+	_costume_add(_head_pivot, sobre_nariz)
+	var costura := Art.box(Vector3(0.012, 0.11, 0.02), negro, Vector3(0.0, 0.0, -0.215))
+	_costume_add(_head_pivot, costura)
+	_mascara_scorpion.append_array([tapa, sobre_nariz, costura])
+
+	# --- LOS OJOS: blancos, sin pupila, entrecerrados ---
+	for o: Node3D in [_eye_l, _eye_r]:
+		if o == null:
+			continue
+		var blanco := Art.sphere(0.05, ojo, Vector3(0.0, 0.0, -0.032))
+		blanco.scale = Vector3(0.95, 0.62, 0.5)
+		_costume_add(o, blanco)
+
+	# --- EL CHALECO: amarillo, en V al frente, con los bordes negros y la ropa de abajo ---
+	# El cuello negro alto: separa la mascara del chaleco, que si no se funden en un amarillo.
+	_costume_add(_torso, Art.cylinder(0.13, 0.10, negro, Vector3(0.0, 0.66, 0.0)))
+	for lado: float in [-1.0, 1.0]:
+		var borde := Art.box(Vector3(0.045, 0.40, 0.03), negro, Vector3(0.075 * lado, 0.47, -0.19))
+		borde.rotation_degrees = Vector3(0.0, 0.0, -16.0 * lado)
+		_costume_add(_torso, borde)
+		# Las hombreras amarillas, con la correa negra.
+		var hombrera := Art.sphere(0.115, amarillo, Vector3(0.28 * lado, 0.60, 0.0))
+		hombrera.scale = Vector3(1.1, 0.6, 1.05)
+		_costume_add(_torso, hombrera)
+	# El cinturon negro, ancho, y el faldon amarillo adelante y atras.
+	_costume_add(_torso, Art.box(Vector3(0.44, 0.10, 0.30), negro, Vector3(0.0, 0.05, 0.0)))
+	for z: float in [-0.155, 0.155]:
+		var faldon := Art.box(Vector3(0.24, 0.30, 0.03), amarillo, Vector3(0.0, -0.12, z))
+		_costume_add(_torso, faldon)
+		var ribete := Art.box(Vector3(0.245, 0.03, 0.035), negro, Vector3(0.0, -0.26, z))
+		_costume_add(_torso, ribete)
+
+	# --- LOS BRAZOS: la manga negra, el protector amarillo y los guantes ---
+	for hombro: Node3D in [_shoulder_l, _shoulder_r]:
+		if hombro != null:
+			_costume_add(hombro, Art.capsule(0.078, 0.33, negro, Vector3(0.0, -0.16, 0.0)))
+	var lados: Array = [[_elbow_l, -1.0], [_elbow_r, 1.0]]
+	for par: Array in lados:
+		var codo := par[0] as Node3D
+		var lado: float = par[1]
+		if codo == null:
+			continue
+		_costume_add(codo, Art.capsule(0.070, 0.29, negro, Vector3(0.0, -0.14, 0.0)))
+		_costume_add(codo, Art.cylinder(0.082, 0.16, amarillo, Vector3(0.0, -0.15, 0.0)))
+		for y: float in [-0.08, -0.22]:
+			_costume_add(codo, Art.cylinder(0.086, 0.018, negro, Vector3(0.0, y, 0.0)))
+		var guante := Art.sphere(0.072, negro, Vector3(0.0, -0.305, 0.0))
+		guante.scale = Vector3(1.0, 1.25, 0.75)
+		_costume_add(codo, guante)
+		var pulgar := Art.capsule(0.024, 0.065, negro, Vector3(-0.038 * lado, -0.29, -0.028))
+		pulgar.rotation_degrees = Vector3(-20.0, 0.0, 28.0 * lado)
+		_costume_add(codo, pulgar)
+
+	# --- LAS CANILLAS: el protector amarillo con las correas ---
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla == null:
+			continue
+		_costume_add(rodilla, Art.box(Vector3(0.14, 0.24, 0.05), amarillo, Vector3(0.0, -0.20, -0.07)))
+		for y: float in [-0.12, -0.28]:
+			_costume_add(rodilla, Art.box(Vector3(0.15, 0.02, 0.055), negro, Vector3(0.0, y, -0.072)))
+
+	# --- EL KUNAI Y LA SOGA, a la cadera derecha ---
+	var rollo := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.05
+	toro.outer_radius = 0.085
+	rollo.mesh = toro
+	rollo.material_override = soga
+	rollo.position = Vector3(0.245, 0.02, -0.02)
+	rollo.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+	_costume_add(_torso, rollo)
+	var kunai := Art.box(Vector3(0.03, 0.12, 0.015), metal, Vector3(0.25, -0.12, -0.03))
+	kunai.rotation_degrees = Vector3(0.0, 0.0, 45.0)
+	kunai.scale = Vector3(1.0, 1.0, 1.0)
+	_costume_add(_torso, kunai)
+
+	# --- LA ESPADA A LA ESPALDA: del hombro derecho a la cadera izquierda ---
+	var giro := Vector3(0.0, 0.0, -35.0)
+	var eje := Vector3(sin(deg_to_rad(35.0)), cos(deg_to_rad(35.0)), 0.0)
+	var centro := Vector3(0.0, 0.40, 0.215)
+	var vaina := Art.box(Vector3(0.045, 0.72, 0.035), negro, centro)
+	vaina.rotation_degrees = giro
+	_costume_add(_torso, vaina)
+	var guarda := Art.cylinder(0.05, 0.015, metal, centro + eje * 0.37)
+	guarda.rotation_degrees = giro
+	_costume_add(_torso, guarda)
+	var mango := Art.cylinder(0.024, 0.18, amarillo, centro + eje * 0.47)
+	mango.rotation_degrees = giro
+	_costume_add(_torso, mango)
 
 
 ## El circulo blanco con el kanji. En la espalda va mirando para atras.

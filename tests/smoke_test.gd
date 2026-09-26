@@ -69,6 +69,7 @@ func _run() -> void:
 	await _test_madara(player, arena)
 	await _test_mob(player, arena)
 	await _test_thanos(player, arena)
+	await _test_scorpion(player, arena)
 	await _test_modos_nuevos(player, arena)
 	_test_descripciones()
 	await _test_escena_corta_habilidades(player)
@@ -2156,6 +2157,134 @@ func _test_thanos(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+# ----------------------------------------------------------------- Scorpion
+
+func _test_scorpion(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	_check(CharacterDB.has_character(&"scorpion"), "Scorpion esta registrado")
+	var data := CharacterDB.get_character(&"scorpion")
+	_check(data != null and data.origin_game == "Mortal Kombat" and data.silhouette == &"ninja"
+		and not data.requiere_desbloqueo,
+		"Scorpion viene de Mortal Kombat, tiene silueta propia y es gratis")
+	var kit := CharacterDB.build_abilities_for(&"scorpion")
+	_check(kit.size() == 4 and kit[0] is KatanaScorpion and kit[1] is Lanza and kit[2] is FuegoInfernal
+		and kit[3] is AlientoInfierno,
+		"su kit: katana, la lanza, el fuego del infierno y el aliento del infierno")
+	if kit.size() < 4:
+		return
+	_check(is_zero_approx(kit[0].stamina_cost), "su basico NO cuesta stamina")
+	_check(kit[3].stamina_cost == 100.0 and kit[3].requires_charge and kit[3].channel_time > 0.0,
+		"el Aliento del Infierno cuesta la barra entera, pide el medidor y se carga a la vista")
+	_check(Frases.LINEAS.has(&"lanza") and String(Frases.LINEAS[&"lanza"][0][0]).contains("GET OVER HERE")
+		and Sfx._bank.has(&"voz_get_over_here"),
+		"la lanza se anuncia con su grito: GET OVER HERE, con voz")
+
+	player.setup_character(data)
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, 30.0), 1.5)
+	var rumbo := _carril_libre(player, puesto, 20.0)
+	var yaw := atan2(-rumbo.x, -rumbo.z)
+	player.respawn_at(puesto, yaw)
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	for _i: int in range(24):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+
+	# --- LA LANZA: el que ensarta a doce metros termina adelante de Scorpion ---
+	var lejos := _spawn_dummy(arena, puesto + rumbo * 12.0)
+	lejos.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	var vida := lejos.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	await get_tree().create_timer(1.0).timeout
+	var queda := Vector2(lejos.global_position.x - player.global_position.x,
+		lejos.global_position.z - player.global_position.z).length()
+	_check(lejos.health.current <= vida - Lanza.DAMAGE * 0.9,
+		"la lanza ensarta al que esta a doce metros (%.0f de daño)" % (vida - lejos.health.current))
+	_check(queda < Lanza.QUEDA + 1.6,
+		"y lo arrastra hasta tenerlo adelante: quedo a %.1f m" % queda)
+	lejos.queue_free()
+
+	# --- Lo invencible no se trae ---
+	await get_tree().create_timer(0.3).timeout
+	player.respawn_at(puesto, yaw)
+	var estrella := _spawn_dummy(arena, puesto + rumbo * 12.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	estrella.status.estrella(8.0)
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(1)
+	await get_tree().create_timer(1.0).timeout
+	var sigue := Vector2(estrella.global_position.x - player.global_position.x,
+		estrella.global_position.z - player.global_position.z).length()
+	_check(sigue > 9.0, "a la Superestrella la lanza no la trae (sigue a %.1f m)" % sigue)
+	estrella.queue_free()
+
+	# --- EL FUEGO DEL INFIERNO: la columna sale bajo el que apunta ---
+	await get_tree().create_timer(0.3).timeout
+	player.respawn_at(puesto, yaw)
+	var blanco := _spawn_dummy(arena, puesto + rumbo * 9.0)
+	blanco.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = blanco.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.caster.request_use(2)
+	await get_tree().create_timer(FuegoInfernal.AVISO * 0.5).timeout
+	_check(is_equal_approx(blanco.health.current, vida), "el fuego avisa: mientras sale el circulo no pega")
+	await get_tree().create_timer(FuegoInfernal.AVISO * 0.5 + 0.3).timeout
+	_check(blanco.health.current <= vida - FuegoInfernal.DAMAGE * 0.9,
+		"y despues la columna le pega al que apuntaba a nueve metros (%.0f)" % (vida - blanco.health.current))
+	blanco.queue_free()
+
+	# --- EL ALIENTO DEL INFIERNO: la calavera y el fuego ---
+	await get_tree().create_timer(0.3).timeout
+	player.respawn_at(puesto, yaw)
+	var quemado := _spawn_dummy(arena, puesto + rumbo * 5.0)
+	quemado.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	vida = quemado.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.request_use(3)
+	await get_tree().create_timer(0.3).timeout
+	_check(is_instance_valid(player.visual._calavera_carga) and player.visual._mascara_escondida(),
+		"mientras carga se saca la mascara: se ve la calavera")
+	await get_tree().create_timer(AlientoInfierno.new().channel_time).timeout
+	_check(quemado.health.current <= vida - AlientoInfierno.DAMAGE * 0.9,
+		"y escupe el fuego sobre el que tiene adelante (%.0f)" % (vida - quemado.health.current))
+	_check(player.ultimate.current < 1.0, "y no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
+	await get_tree().create_timer(1.2).timeout
+	_check(not is_instance_valid(player.visual._calavera_carga) and not player.visual._mascara_escondida(),
+		"y despues vuelve a ponerse la mascara")
+	quemado.queue_free()
+
+	# Sus skins: las tres, en la tienda.
+	var en_tienda := 0
+	for sid: StringName in SkinDB.de_personaje(&"scorpion"):
+		if SkinDB.get_skin(sid).precio > 0:
+			en_tienda += 1
+	_check(en_tienda >= 3, "Scorpion tiene sus tres skins en la tienda (%d)" % en_tienda)
+
+	player.aim_override = Vector3.ZERO
+	player.status.clear_all()
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
 # ------------------------------------------------------------- Modos nuevos
 
 ## Lo que los tres modos nuevos cambian ADENTRO de la pelea: los bots que se pelean entre
@@ -2457,7 +2586,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 287
+const CHEQUEOS_MINIMOS: int = 303
 
 
 func _finish() -> void:

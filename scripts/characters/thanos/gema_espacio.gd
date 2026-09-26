@@ -22,7 +22,7 @@ func _init() -> void:
 	description = "Abre el espacio y aparece hasta %d m adelante, con una onda de %d de daño al llegar." % [
 		int(ALCANCE), int(DAMAGE)]
 	stamina_cost = 26.0
-	cooldown = 12.0
+	cooldown = 10.5
 	channel_time = 0.0
 	icon_color = Color(0.25, 0.50, 1.0)
 

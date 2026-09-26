@@ -1475,6 +1475,137 @@ func _explosion_meteorito(context: Node, punto: Vector3, radio: float, fuerte: b
 	Sfx.play_3d(context, &"aterrizaje", punto, 6.0 if fuerte else -2.0)
 
 
+# --------------------------------------------------------------- Scorpion
+
+## El Fuego del Infierno: el circulo de brasas que avisa y, al vencer el aviso, la columna.
+##
+## El reloj sale de FuegoInfernal.AVISO, el mismo con el que el servidor decide cuando
+## pega: las llamas suben cuando se pierde la vida.
+func spawn_fuego_infernal(context: Node, punto: Vector3, radio: float, aviso: float) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	_marca_meteorito(world, punto, radio, aviso)
+	Sfx.play_3d(context, &"fuego", punto, -2.0)
+	var tree := world.get_tree()
+	if tree == null:
+		return
+	var ref: WeakRef = weakref(world)
+	tree.create_timer(aviso).timeout.connect(func() -> void:
+		var w := ref.get_ref() as Node
+		if w != null and w.is_inside_tree():
+			_columna_fuego(w, punto, radio, true))
+
+
+## Llamas del Inframundo alrededor de un cuerpo: como entra y como se va Scorpion en las
+## escenas, que es su teletransporte de siempre.
+func spawn_llamas_infierno(context: Node, pos: Vector3) -> void:
+	var world := _world_of(context)
+	if world != null:
+		_columna_fuego(world, pos, 1.1, false)
+
+
+## Una columna de fuego que sube desde el piso.
+func _columna_fuego(world: Node, punto: Vector3, radio: float, fuerte: bool) -> void:
+	var fuego := Gradient.new()
+	fuego.set_color(0, Color(1.0, 0.62, 0.15, 0.55))
+	fuego.set_color(1, Color(0.40, 0.04, 0.0, 0.0))
+	fuego.add_point(0.35, Color(1.0, 0.30, 0.04, 0.45))
+	var llamas := CPUParticles3D.new()
+	llamas.emitting = true
+	llamas.one_shot = true
+	llamas.amount = 110 if fuerte else 60
+	llamas.lifetime = 0.8
+	llamas.explosiveness = 0.75
+	llamas.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	llamas.emission_sphere_radius = radio * 0.7
+	llamas.direction = Vector3.UP
+	llamas.spread = 12.0
+	llamas.initial_velocity_min = 6.0 if fuerte else 3.5
+	llamas.initial_velocity_max = 12.0 if fuerte else 6.0
+	llamas.damping_min = 4.0
+	llamas.damping_max = 7.0
+	llamas.gravity = Vector3(0.0, 2.0, 0.0)
+	llamas.scale_amount_min = 0.4
+	llamas.scale_amount_max = 1.1 if fuerte else 0.8
+	llamas.color_ramp = fuego
+	var malla := QuadMesh.new()
+	malla.size = Vector2(1.0, 1.0)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = Art.punto_suave()
+	malla.material = mat
+	llamas.mesh = malla
+	world.add_child(llamas)
+	llamas.global_position = punto + Vector3.UP * 0.2
+	_auto_free(llamas, 1.6)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.45, 0.12)
+	luz.light_energy = 9.0 if fuerte else 4.0
+	luz.omni_range = radio * 4.0
+	world.add_child(luz)
+	luz.global_position = punto + Vector3.UP * 1.5
+	_fade_light(luz, 0.7)
+	spawn_impact_burst(world, punto + Vector3.UP, Color(1.0, 0.50, 0.12, 0.95))
+	if fuerte:
+		camera_shake(0.6)
+		Sfx.play_3d(world, &"katon", punto, -1.0)
+
+
+## El Aliento del Infierno: el fuego del Katon, corrido al rojo del Inframundo, saliendo de
+## la calavera.
+func spawn_aliento_infierno(caster: Node, origin: Vector3, dir: Vector3, alcance: float, angulo: float) -> void:
+	spawn_katon(caster, origin, dir, alcance, angulo)
+	camera_shake(1.0)
+
+
+## La calavera de Scorpion: lo que hay abajo de la mascara. La usan la carga del Aliento
+## del Infierno (un rato, mientras escupe) y la skin legendaria (para siempre).
+##
+## OPACA a proposito: un disfraz que deja ver a traves es una ventaja en un PvP.
+func armar_calavera(padre: Node3D, hueso: Color, con_llamas: bool) -> Node3D:
+	var calavera := Node3D.new()
+	calavera.name = &"Calavera"
+	padre.add_child(calavera)
+	calavera.position = Vector3(0.0, 0.11, 0.0)
+	var mat_hueso := Art.toon(hueso, 0.012)
+	var negro := Art.flat(Color(0.04, 0.02, 0.02))
+	var brasa := Art.glow(Color(1.0, 0.45, 0.10), 3.0)
+	var craneo := Art.sphere(0.218, mat_hueso)
+	craneo.scale = Vector3(0.95, 1.02, 1.0)
+	calavera.add_child(craneo)
+	for lado: float in [-1.0, 1.0]:
+		var cuenca := Art.sphere(0.055, negro, Vector3(0.075 * lado, 0.02, -0.180))
+		cuenca.scale = Vector3(1.1, 1.0, 0.5)
+		calavera.add_child(cuenca)
+		calavera.add_child(Art.sphere(0.02, brasa, Vector3(0.075 * lado, 0.02, -0.205)))
+	var nariz := Art.box(Vector3(0.04, 0.05, 0.02), negro, Vector3(0.0, -0.05, -0.205))
+	calavera.add_child(nariz)
+	var mandibula := Art.box(Vector3(0.20, 0.07, 0.16), mat_hueso, Vector3(0.0, -0.17, -0.06))
+	calavera.add_child(mandibula)
+	for k: int in range(6):
+		var diente := Art.box(Vector3(0.018, 0.03, 0.01), negro,
+			Vector3((float(k) - 2.5) * 0.028, -0.12, -0.192))
+		calavera.add_child(diente)
+	if con_llamas:
+		for k: int in range(5):
+			var llama := MeshInstance3D.new()
+			var cono := CylinderMesh.new()
+			cono.top_radius = 0.0
+			cono.bottom_radius = 0.06
+			cono.height = 0.16 + float(k % 2) * 0.06
+			llama.mesh = cono
+			llama.material_override = brasa
+			llama.position = Vector3((float(k) - 2.0) * 0.07, 0.24 - absf(float(k) - 2.0) * 0.03, 0.03)
+			llama.rotation_degrees = Vector3(-8.0, 0.0, (float(k) - 2.0) * -12.0)
+			calavera.add_child(llama)
+	return calavera
+
+
 # ----------------------------------------------------------------- Thanos
 
 ## La Gema del Espacio: el espacio que se abre en azul donde sale y donde llega.
@@ -2406,6 +2537,16 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 		&"chasquido":
 			if caster is Node3D:
 				spawn_chasquido(caster as Node3D)
+		&"katana_scorpion":
+			spawn_slash_arc(caster, origin, dir, Color(1.0, 0.80, 0.35))
+		&"lanza":
+			Lanza.spawn_cosmetic(caster, origin, dir)
+		&"fuego_infernal":
+			if caster is Node3D:
+				spawn_fuego_infernal(caster, FuegoInfernal.donde(caster as Node3D, origin, dir),
+					FuegoInfernal.RADIO, FuegoInfernal.AVISO)
+		&"aliento_infierno":
+			spawn_aliento_infierno(caster, origin, dir, AlientoInfierno.ALCANCE, AlientoInfierno.ANGULO)
 		&"onda_psiquica":
 			OndaPsiquica.spawn_cosmetic(caster, origin, dir)
 		&"escombros":

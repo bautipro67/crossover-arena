@@ -47,6 +47,9 @@ const LINEAS: Dictionary = {
 	&"super_salto": [["¡WAHOO!", 0.0, &"voz_wahoo"]],
 	# --- MADARA (Naruto) ---
 	&"susanoo": [["¡SUSANO'O!", 0.0, &"voz_susanoo"]],
+	# --- SCORPION (Mortal Kombat) ---
+	# SU grito, desde 1992: sale junto con la lanza, que es cuando lo dice en el juego.
+	&"lanza": [["¡GET OVER HERE!", 0.0, &"voz_get_over_here"]],
 }
 
 ## Frases que salen AL EMPEZAR a canalizar, no al soltar.
@@ -66,6 +69,8 @@ const LINEAS_CARGA: Dictionary = {
 	&"cien_por_ciento": [["100%", 0.0, &"voz_cien"]],
 	# Thanos lo dice con el Guantelete en alto, antes del chasquido.
 	&"chasquido": [["SOY INEVITABLE.", 0.0, &"voz_inevitable"]],
+	# Scorpion, al sacarse la mascara para la Fatality.
+	&"aliento_infierno": [["¡VENGANZA!", 0.0, &"voz_venganza"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el

@@ -527,6 +527,15 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 		&"susanoo":
 			# El escudo sirve con el rival encima, y el espadazo llega a cinco metros.
 			return dist < 5.0
+		&"lanza":
+			# Para traerlo: de media distancia, con la cadena a la vista. De cerca ya lo tiene.
+			return dist > 4.0 and dist < 21.0 and _a_la_vista
+		&"fuego_infernal":
+			# Cae bajo el que apunta, hasta veinte metros.
+			return dist < 19.0 and _a_la_vista
+		&"aliento_infierno":
+			# Un cono de fuego de doce metros despues de la carga: de cerca, o no llega.
+			return dist < 9.0 and _a_la_vista
 		&"gema_poder":
 			# Una descarga que viaja unos treinta metros y revienta: de media distancia.
 			return dist > 3.0 and dist < 22.0 and _a_la_vista

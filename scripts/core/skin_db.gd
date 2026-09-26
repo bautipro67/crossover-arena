@@ -269,6 +269,21 @@ func _registrar_temporada_2() -> void:
 			Color(0.98, 0.88, 0.80), Color(0.08, 0.08, 0.10), &"epica", 1800),
 		# Las de Thanos, en la tienda, cuando llego: la de los comics (el traje azul y
 		# dorado con el casco), la armadura de batalla de Endgame, y la del Thanos Infinito.
+		# Las de Scorpion, en la tienda, cuando llego: la del primer Mortal Kombat (el
+		# amarillo de 1992), la de Mortal Kombat 11 con la capa del Shirai Ryu, y la del
+		# Scorpion del Inframundo, sin mascara, con la calavera en llamas.
+		_hacer(&"scorpion_clasico", &"scorpion", "Scorpion Clásico",
+			"El de 1992: el amarillo de siempre y la capucha negra.",
+			Color(1.00, 0.84, 0.10), Color(0.10, 0.10, 0.10),
+			Color(0.84, 0.66, 0.52), Color(0.95, 0.80, 0.12), &"rara", 900),
+		_hacer(&"scorpion_shirai", &"scorpion", "Scorpion del Shirai Ryu",
+			"El líder del clan, con la capa y la armadura de gala.",
+			Color(0.80, 0.56, 0.10), Color(0.14, 0.10, 0.08),
+			Color(0.84, 0.66, 0.52), Color(0.16, 0.12, 0.10), &"epica", 1800),
+		_hacer(&"scorpion_infernal", &"scorpion", "Scorpion del Inframundo",
+			"Sin la máscara: la calavera en llamas del espectro que volvió por venganza.",
+			Color(0.20, 0.06, 0.04), Color(1.00, 0.45, 0.08),
+			Color(0.92, 0.88, 0.78), Color(0.12, 0.04, 0.03), &"legendaria", 2600),
 		_hacer(&"thanos_clasico", &"thanos", "Thanos de los Cómics",
 			"El de las viñetas: el traje azul, el dorado y el casco.",
 			Color(0.16, 0.28, 0.66), Color(0.95, 0.76, 0.26),
@@ -614,6 +629,19 @@ func _detallar() -> void:
 	_extra(&"madara_edo", &"", [&"grietas"])
 	_extra(&"madara_susanoo", &"", [&"costillas"])
 	_extra(&"madara_rikudo", &"", [&"orbes"])
+	# Scorpion
+	_det(&"scorpion_clasico", {&"traje": Color(1.00, 0.84, 0.10), &"mascara": Color(1.00, 0.88, 0.20),
+		&"ropa": Color(0.10, 0.10, 0.10)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.85, 0.25, 0.75))
+	_det(&"scorpion_shirai", {&"traje": Color(0.80, 0.56, 0.10), &"mascara": Color(0.86, 0.62, 0.14),
+		&"ropa": Color(0.14, 0.10, 0.08), &"metal": Color(0.85, 0.70, 0.35)},
+		&"metal", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.70, 0.25, 0.8))
+	_extra(&"scorpion_shirai", &"", [&"capa"], {&"capa": Color(0.10, 0.08, 0.07)})
+	_det(&"scorpion_infernal", {&"traje": Color(0.20, 0.06, 0.04), &"ropa": Color(0.12, 0.04, 0.03),
+		&"calavera": Color(0.92, 0.88, 0.78), &"ojos": Color(1.0, 0.55, 0.15)},
+		&"", &"chispas", Color(1.0, 0.50, 0.12), Color(1.0, 0.50, 0.12), &"",
+		Color(1.0, 0.42, 0.10, 0.85))
+	_extra(&"scorpion_infernal", &"", [&"calavera"])
 	# Thanos
 	_det(&"thanos_clasico", {&"oro": Color(0.95, 0.76, 0.26), &"lineas": Color(0.40, 0.30, 0.48)},
 		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.35, 0.50, 1.0, 0.75))

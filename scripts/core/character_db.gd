@@ -293,9 +293,37 @@ func _register_all() -> void:
 	thanos.build_scale = Vector3(1.22, 1.16, 1.18)
 	thanos.max_health = 110.0
 	thanos.max_stamina = 100.0
-	thanos.move_speed = 5.8
+	# Un poco mas rapido desde el 2026-09-26: con 5.8 era el que menos ganaba de los que
+	# se venden (44% en duelos), y caminando no alcanzaba a nadie.
+	thanos.move_speed = 6.1
 	thanos.silhouette = &"titan"
 	_add(thanos)
+
+	# ------------------------------------------------------------- Scorpion
+	#
+	# Gratis. EL QUE TE TRAE: la lanza arrastra al que ensarta hasta tenerlo adelante, y el
+	# resto del kit castiga de cerca —el tajo, la columna de fuego, el aliento de la
+	# Fatality—. Es un peleador de media distancia que convierte la media distancia en
+	# cuerpo a cuerpo. Se equilibra con vida de ninja: aguanta menos que un titan.
+	#
+	# De la referencia (Mortal Kombat 9): capucha negra, mascara amarilla, chaleco amarillo
+	# sobre ropa negra, protectores amarillos, tabi negros. El cuerpo es el amarillo del
+	# traje y el acento es el negro de abajo.
+	var scorpion := CharacterData.new()
+	scorpion.id = &"scorpion"
+	scorpion.display_name = "Scorpion"
+	scorpion.origin_game = "Mortal Kombat"
+	scorpion.body_color = Color(0.95, 0.74, 0.12)
+	scorpion.accent_color = Color(0.08, 0.08, 0.09)
+	scorpion.skin_color = Color(0.84, 0.66, 0.52)
+	scorpion.trouser_color = Color(0.10, 0.10, 0.11)
+	scorpion.shoe_color = Color(0.06, 0.06, 0.07)
+	scorpion.build_scale = Vector3(1.08, 1.07, 0.98)
+	scorpion.max_health = 105.0
+	scorpion.max_stamina = 100.0
+	scorpion.move_speed = 6.5
+	scorpion.silhouette = &"ninja"
+	_add(scorpion)
 
 
 func _add(data: CharacterData) -> void:
@@ -384,6 +412,11 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(GemaPoder.new())
 			list.append(GemaEspacio.new())
 			list.append(Chasquido.new())
+		&"scorpion":
+			list.append(KatanaScorpion.new())
+			list.append(Lanza.new())
+			list.append(FuegoInfernal.new())
+			list.append(AlientoInfierno.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

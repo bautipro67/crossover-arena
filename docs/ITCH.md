@@ -102,13 +102,19 @@ gente.
    con una barrera que echa a todos, y cuando llega al 100%, revienta.
    Onda Psíquica · Escombros · Barrera · 100%
 
-💎 THANOS — Marvel  (NUEVO, gratis)
-   El titán: el más grande, el que más aguanta y el más lento. Descarga la Gema del
-   Poder, cruza el espacio con la del Espacio, y con las seis gemas chasquea los dedos:
-   TODOS los enemigos pierden la mitad de la vida que les queda.
+💎 THANOS — Marvel  (gratis)
+   El titán: el más grande y el que más aguanta. Descarga la Gema del Poder, cruza el
+   espacio con la del Espacio, y con las seis gemas chasquea los dedos: TODOS los
+   enemigos pierden la mitad de la vida que les queda.
    Puño del Titán · Gema del Poder · Gema del Espacio · EL CHASQUIDO
 
-═══ MODO HISTORIA — TRES PARTES, TREINTA CAPÍTULOS ═══
+🦂 SCORPION — Mortal Kombat  (NUEVO, gratis)
+   ¡GET OVER HERE! Tira el kunai con la cadena y arrastra al que ensarta hasta tenerlo
+   adelante. Después, la katana, una columna del fuego del Inframundo bajo los pies del
+   rival, y la Fatality: se saca la máscara y escupe fuego por la calavera.
+   Katana · Lanza · Fuego del Infierno · ALIENTO DEL INFIERNO
+
+═══ MODO HISTORIA — CUATRO PARTES, CUARENTA CAPÍTULOS ═══
 
 PARTE 1: LA GRIETA. Un experimento de Rick rompe la pared entre los mundos, y todo lo que
 cae por la grieta termina en la Arena: un coliseo entre mundos que vive de las peleas.
@@ -123,16 +129,22 @@ tubería equivocada, camino al castillo de la princesa—. Juntar los fragmentos
 la torre del centro y sacarle el núcleo a DIO antes de que se convierta en la Arena.
 Se abre al terminar la parte 1.
 
-PARTE 3: EL ESPÍRITU DE LA ARENA (NUEVA). Mil años de peleas no dejaron solo energía:
+PARTE 3: EL ESPÍRITU DE LA ARENA. Mil años de peleas no dejaron solo energía:
 dejaron lo que sintieron los que pelearon, y eso despertó con hambre. Un espíritu que se
 mete adentro de los ecos, de DIO y de Madara, y que quiere lo que Mob guarda. Diez
 capítulos con Goku —ahora de todos— y Madara jugables, y Mob a tu lado. Se abre al
 terminar la parte 2.
 
+PARTE 4: EL FUEGO DEL INFRAMUNDO (NUEVA). El piso de la Arena quedó abierto, y la grieta
+más honda da al Inframundo. De ahí sube Scorpion buscando venganza, y DIO le miente que
+el culpable es Rick mientras baja a tragarse el fuego de las almas. Thanos llega a
+cerrar la puerta al precio que sea. Diez capítulos con Scorpion y Thanos jugables. Se
+abre al terminar la parte 3.
+
 DIFICULTAD. Fácil, Normal o Difícil, y se cambia cuando quieras desde la pantalla
 de capítulos. Fácil paga la mitad de monedas y experiencia; Difícil, un 50% más. Y en
-cualquiera de las tres, cada capítulo es un poco más duro que el anterior, la parte 2 más
-que la 1, y los jefes un escalón por encima de todo lo demás.
+cualquiera de las tres, cada capítulo es un poco más duro que el anterior, cada parte más
+que la anterior, y los jefes un escalón por encima de todo lo demás.
 
 ═══ MODOS ═══
 
@@ -168,7 +180,7 @@ El último escalón del pase pro de la 2 es MOB: no se vende ni sale de otro lad
 escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
 tarda subirlo jugando.
 
-50 skins entre el pase y la tienda, 13 nuevas en esta temporada. Cuanto más rara, más
+53 skins entre el pase y la tienda, 16 nuevas en esta temporada. Cuanto más rara, más
 se nota: las raras recolorean el personaje entero, las épicas suman un acabado (metal,
 piedra, sombra) o un accesorio, y las legendarias un aura y ojos que brillan. En la tienda hay un probador para verla
 puesta antes de comprarla.
@@ -252,7 +264,7 @@ titulares quiere que se baje, se baja.
 |---|---|
 | **Classification** | Games |
 | **Genre** | Action |
-| **Tags** | `3d`, `arena`, `fangame`, `fighting`, `multiplayer`, `pvp`, `singleplayer`, `third-person`, `deltarune`, `jojos-bizarre-adventure`, `rick-and-morty`, `sonic-the-hedgehog`, `dragon-ball` |
+| **Tags** | `3d`, `arena`, `fangame`, `fighting`, `multiplayer`, `pvp`, `singleplayer`, `third-person`, `deltarune`, `jojos-bizarre-adventure`, `rick-and-morty`, `sonic-the-hedgehog`, `dragon-ball`, `mortal-kombat` |
 | **Made with** | Godot |
 | **Inputs** | Keyboard, Mouse, Gamepad (any), Touchscreen |
 | **Average session** | A few minutes |

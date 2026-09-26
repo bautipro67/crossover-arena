@@ -327,7 +327,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 46
+const TOTAL_SONIDOS: int = 49
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -352,6 +352,7 @@ func _build_combate() -> void:
 		[&"katon", _synth_katon], [&"susanoo", _synth_susanoo], [&"meteorito", _synth_meteorito],
 		[&"psiquico", _synth_psiquico], [&"explosion_psiquica", _synth_explosion_psiquica],
 		[&"chasquido", _synth_chasquido], [&"gema", _synth_gema],
+		[&"cadena", _synth_cadena],
 		# Las voces al final: son las mas caras de generar —tres resonadores moviles por
 		# palabra— y son las unicas que nadie puede necesitar en el primer segundo,
 		# porque para gritar una habilidad primero hay que tener una habilidad lista.
@@ -370,6 +371,8 @@ func _build_combate() -> void:
 		[&"voz_tengai", _synth_voz_tengai],
 		[&"voz_cien", _synth_voz_cien],
 		[&"voz_inevitable", _synth_voz_inevitable],
+		[&"voz_get_over_here", _synth_voz_get_over_here],
+		[&"voz_venganza", _synth_voz_venganza],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -845,6 +848,48 @@ func _synth_voz_kamehameha() -> PackedFloat32Array:
 func _synth_voz_ha() -> PackedFloat32Array:
 	return _voz([["a", 0.55, "aire"]], G_TONO + 22.0, G_CUERPO, 0.16, G_DRAMA + 0.3,
 		G_BRILLO, 0.26)
+
+
+# --- SCORPION ---
+#
+# Grave y rasposa, del Inframundo: el mas rasgado del juego despues de nadie. Grita corto y
+# fuerte, que es como se grita un "¡Get over here!".
+const SC_TONO: float = 118.0
+const SC_CUERPO: float = 0.92
+const SC_DRAMA: float = 1.1
+const SC_BRILLO: float = 0.8
+const SC_RASGADO: float = 0.75
+
+
+## "¡GET OVER HERE!" — get-o-ver-hi-ar. Lo grita al tirar la lanza.
+func _synth_voz_get_over_here() -> PackedFloat32Array:
+	return _voz([["e", 0.12, "golpe"], ["o", 0.10, ""], ["e", 0.12, "aire"], ["i", 0.13, "aire"],
+		["a", 0.26, ""]], SC_TONO, SC_CUERPO, 0.18, SC_DRAMA, SC_BRILLO, SC_RASGADO)
+
+
+## "¡VENGANZA!" — ven-gan-za. Al empezar la Fatality.
+func _synth_voz_venganza() -> PackedFloat32Array:
+	return _voz([["e", 0.14, "aire"], ["a", 0.16, "golpe"], ["a", 0.30, "aire"]],
+		SC_TONO, SC_CUERPO, 0.2, SC_DRAMA, SC_BRILLO, SC_RASGADO)
+
+
+## La cadena: eslabones que chocan, un traqueteo metalico que se corta.
+func _synth_cadena() -> PackedFloat32Array:
+	var dur := 0.45
+	var out := _vacio(dur)
+	var n := out.size()
+	for i: int in range(n):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		# Doce golpecitos de metal en el recorrido, cada uno con su campana corta.
+		var fase := fmod(t * 26.0, 1.0)
+		var golpe := exp(-fase * 18.0)
+		out[i] = (_campana(t, 1800.0 + 400.0 * sin(t * 40.0), 1.41, 1.5) * 0.45 + _ruido() * 0.35) \
+			* golpe * (1.0 - p * 0.6)
+	_pasaaltos(out, 700.0)
+	_normalizar(out, 0.7)
+	_bordes(out, 2.0, 60.0)
+	return out
 
 
 # --- THANOS ---
