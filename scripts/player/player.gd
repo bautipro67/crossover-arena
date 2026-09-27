@@ -161,6 +161,10 @@ func setup_character(data: CharacterData) -> void:
 	var stand := get_node_or_null("TheWorld")
 	if stand != null:
 		stand.queue_free()
+	# Y el aura de una transformacion (Super Sonic, Gear Fifth): es del personaje de antes.
+	var aura := get_node_or_null("AuraSuper")
+	if aura != null:
+		aura.queue_free()
 
 
 func is_local_player() -> bool:

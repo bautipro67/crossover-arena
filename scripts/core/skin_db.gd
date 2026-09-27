@@ -118,6 +118,7 @@ func _registrar_todas() -> void:
 
 	_registrar_temporada_1()
 	_registrar_temporada_2()
+	_registrar_temporada_3()
 
 
 # ------------------------------------------------------------- Temporada 1
@@ -303,6 +304,113 @@ func _registrar_temporada_2() -> void:
 	]
 	for sk: SkinData in nuevas:
 		sk.temporada = 2
+		_add(sk)
+
+
+# ------------------------------------------------------------- Temporada 3
+#
+# EL MISMO REPARTO: siete en el pase —dos en la via gratuita— y tres de cada personaje nuevo
+# en la tienda. Gojo es el premio del ultimo escalon del pro, asi que sus skins se compran
+# recien cuando ya lo tenes.
+#
+# TODAS SALEN DE ALGO DEL ORIGINAL: el Hokage y el manto de Kurama de Naruto, el Luffy de
+# Wano, el traje simbionte, el Sans de Snowdin, la sombra de Scorpion (los ninjas de MK),
+# la escarcha de la ruta Snowgrave para Noelle.
+func _registrar_temporada_3() -> void:
+	var nuevas: Array[SkinData] = [
+		# --- El pase ---
+		_hacer(&"naruto_hokage", &"naruto", "Naruto Hokage",
+			"El Séptimo Hokage, con el manto blanco del cargo.",
+			Color(0.95, 0.52, 0.12), Color(0.10, 0.10, 0.14),
+			Color(0.98, 0.82, 0.66), Color(0.10, 0.10, 0.14), &"epica", 0),
+		_hacer(&"luffy_wano", &"luffy", "Luffy de Wano",
+			"El kimono azul con el que llegó al país de los samuráis.",
+			Color(0.22, 0.35, 0.70), Color(0.92, 0.92, 0.90),
+			Color(0.96, 0.78, 0.62), Color(0.85, 0.78, 0.60), &"rara", 0),
+		_hacer(&"spiderman_simbionte", &"spiderman", "Spider-Man Simbionte",
+			"El traje negro que vino del espacio, con la araña blanca.",
+			Color(0.06, 0.06, 0.08), Color(0.10, 0.10, 0.12),
+			Color(0.06, 0.06, 0.08), Color(0.06, 0.06, 0.08), &"epica", 0),
+		_hacer(&"sans_invierno", &"sans", "Sans de Snowdin",
+			"Bufanda y orejeras: en el pueblo nevado siempre hace frío.",
+			Color(0.24, 0.36, 0.62), Color(0.95, 0.95, 0.95),
+			Color(0.95, 0.95, 0.92), Color(0.12, 0.12, 0.16), &"epica", 0),
+		_hacer(&"scorpion_sombra", &"scorpion", "Scorpion Sombra",
+			"El gris de los ninjas de las sombras, con la máscara apagada.",
+			Color(0.28, 0.28, 0.32), Color(0.07, 0.07, 0.08),
+			Color(0.84, 0.66, 0.52), Color(0.09, 0.09, 0.10), &"rara", 0),
+		_hacer(&"noelle_escarcha", &"noelle", "Noelle Escarcha",
+			"El frío que se le queda adentro cuando sigue un camino que no es el suyo.",
+			Color(0.62, 0.82, 0.98), Color(0.25, 0.45, 0.80),
+			Color(0.90, 0.92, 0.98), Color(0.18, 0.26, 0.45), &"epica", 0),
+		_hacer(&"naruto_kurama", &"naruto", "Naruto Modo Kurama",
+			"El manto de chakra del zorro de nueve colas.",
+			Color(1.00, 0.70, 0.15), Color(0.10, 0.08, 0.06),
+			Color(1.00, 0.86, 0.62), Color(1.00, 0.62, 0.12), &"legendaria", 0),
+		# --- La tienda: los nuevos ---
+		_hacer(&"sans_clasico", &"sans", "Sans del Laboratorio",
+			"La campera azul oscura y el short marrón del laboratorio de Snowdin.",
+			Color(0.16, 0.24, 0.48), Color(0.95, 0.95, 0.95),
+			Color(0.95, 0.95, 0.92), Color(0.30, 0.20, 0.12), &"rara", 900),
+		_hacer(&"sans_juez", &"sans", "Sans, el Juez",
+			"El que te espera al final del pasillo dorado.",
+			Color(0.08, 0.08, 0.10), Color(0.95, 0.80, 0.30),
+			Color(0.95, 0.95, 0.92), Color(0.08, 0.08, 0.10), &"epica", 1800),
+		_hacer(&"sans_mal_rato", &"sans", "Sans (Mal Rato)",
+			"El ojo le brilla azul. Vas a pasar un mal rato.",
+			Color(0.30, 0.52, 0.86), Color(0.30, 0.60, 1.00),
+			Color(0.95, 0.95, 0.92), Color(0.08, 0.08, 0.10), &"legendaria", 2600),
+		_hacer(&"naruto_genin", &"naruto", "Naruto Genin",
+			"El de la academia: el naranja con los hombros azules.",
+			Color(1.00, 0.56, 0.12), Color(0.18, 0.28, 0.62),
+			Color(0.98, 0.82, 0.66), Color(1.00, 0.56, 0.12), &"rara", 900),
+		_hacer(&"naruto_sabio", &"naruto", "Naruto Modo Sabio",
+			"El manto rojo del sabio de los sapos.",
+			Color(1.00, 0.50, 0.10), Color(0.10, 0.10, 0.14),
+			Color(0.98, 0.82, 0.66), Color(1.00, 0.50, 0.10), &"epica", 1800),
+		_hacer(&"naruto_seis", &"naruto", "Naruto de los Seis Caminos",
+			"El chakra del sabio de los seis caminos, con las esferas a la espalda.",
+			Color(1.00, 0.84, 0.35), Color(0.06, 0.05, 0.05),
+			Color(1.00, 0.90, 0.70), Color(1.00, 0.80, 0.30), &"legendaria", 2600),
+		_hacer(&"luffy_east_blue", &"luffy", "Luffy del East Blue",
+			"El de antes del salto: el chaleco rojo y el short azul claro.",
+			Color(0.90, 0.16, 0.16), Color(0.95, 0.85, 0.35),
+			Color(0.96, 0.78, 0.62), Color(0.30, 0.48, 0.82), &"rara", 900),
+		_hacer(&"luffy_capitan", &"luffy", "Luffy Capitán",
+			"Con el abrigo rojo de capitán sobre los hombros.",
+			Color(0.80, 0.12, 0.12), Color(0.95, 0.80, 0.25),
+			Color(0.96, 0.78, 0.62), Color(0.18, 0.30, 0.62), &"epica", 1800),
+		_hacer(&"luffy_nika", &"luffy", "Luffy Gear 5",
+			"El despertar: todo blanco, el pelo en llamas de nube, y la risa.",
+			Color(0.97, 0.97, 0.96), Color(0.96, 0.96, 0.94),
+			Color(0.99, 0.92, 0.85), Color(0.95, 0.95, 0.94), &"legendaria", 2600),
+		_hacer(&"spiderman_clasico", &"spiderman", "Spider-Man Clásico",
+			"El de las primeras historietas: el rojo y el azul de 1962.",
+			Color(0.90, 0.14, 0.14), Color(0.14, 0.30, 0.78),
+			Color(0.90, 0.14, 0.14), Color(0.14, 0.30, 0.78), &"rara", 900),
+		_hacer(&"spiderman_iron", &"spiderman", "Iron Spider",
+			"El traje de metal rojo y dorado, con las cuatro patas mecánicas.",
+			Color(0.75, 0.10, 0.12), Color(0.90, 0.72, 0.28),
+			Color(0.75, 0.10, 0.12), Color(0.90, 0.72, 0.28), &"epica", 1800),
+		_hacer(&"spiderman_2099", &"spiderman", "Spider-Man 2099",
+			"El del futuro: azul oscuro, la araña roja y la capa de tela.",
+			Color(0.10, 0.14, 0.30), Color(0.85, 0.12, 0.14),
+			Color(0.10, 0.14, 0.30), Color(0.06, 0.06, 0.10), &"legendaria", 2600),
+		_hacer(&"gojo_blanco", &"gojo", "Gojo de Blanco",
+			"La camisa blanca de los días libres, sin el uniforme.",
+			Color(0.92, 0.92, 0.95), Color(0.40, 0.65, 1.0),
+			Color(0.98, 0.88, 0.80), Color(0.07, 0.07, 0.10), &"rara", 900),
+		_hacer(&"gojo_joven", &"gojo", "Gojo Joven",
+			"El del colegio: los lentes redondos oscuros en vez de la venda.",
+			Color(0.08, 0.08, 0.14), Color(0.40, 0.65, 1.0),
+			Color(0.98, 0.88, 0.80), Color(0.08, 0.08, 0.14), &"epica", 1800),
+		_hacer(&"gojo_dominio", &"gojo", "Gojo: Vacío Infinito",
+			"Expansión de dominio: sin la venda, con los Seis Ojos a la vista.",
+			Color(0.06, 0.06, 0.12), Color(0.55, 0.80, 1.0),
+			Color(0.98, 0.90, 0.84), Color(0.06, 0.06, 0.12), &"legendaria", 2600),
+	]
+	for sk: SkinData in nuevas:
+		sk.temporada = 3
 		_add(sk)
 
 
@@ -629,6 +737,82 @@ func _detallar() -> void:
 	_extra(&"madara_edo", &"", [&"grietas"])
 	_extra(&"madara_susanoo", &"", [&"costillas"])
 	_extra(&"madara_rikudo", &"", [&"orbes"])
+	# ------------------------------------------------------------ Temporada 3
+	_det(&"naruto_hokage", {&"negro": Color(0.10, 0.10, 0.14), &"capa": Color(0.96, 0.96, 0.94)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.70, 0.30, 0.75))
+	_det(&"luffy_wano", {&"faja": Color(0.92, 0.92, 0.90), &"ruedo": Color(0.80, 0.72, 0.55)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.45, 0.60, 0.95, 0.7))
+	_det(&"spiderman_simbionte", {&"rojo": Color(0.06, 0.06, 0.08), &"azul": Color(0.10, 0.10, 0.12),
+		&"emblema": Color(0.96, 0.96, 0.98), &"lineas": Color(0.20, 0.20, 0.24)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.35, 0.35, 0.45, 0.75))
+	_det(&"sans_invierno", {&"campera": Color(0.24, 0.36, 0.62), &"short": Color(0.12, 0.12, 0.16)},
+		&"", &"nieve", Color(0.92, 0.96, 1.0), Color(0, 0, 0, 0), &"", Color(0.80, 0.90, 1.0, 0.7))
+	_det(&"scorpion_sombra", {&"traje": Color(0.28, 0.28, 0.32), &"mascara": Color(0.34, 0.34, 0.38),
+		&"ropa": Color(0.07, 0.07, 0.08)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.55, 0.55, 0.60, 0.7))
+	_det(&"noelle_escarcha", {&"sueter_a": Color(0.62, 0.82, 0.98), &"sueter_b": Color(0.25, 0.45, 0.80),
+		&"pelo": Color(0.85, 0.92, 1.0), &"astas": Color(0.80, 0.94, 1.0)},
+		&"hielo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.60, 0.85, 1.0, 0.8))
+	_det(&"naruto_kurama", {&"pelo": Color(1.0, 0.72, 0.18), &"negro": Color(0.10, 0.08, 0.06)},
+		&"brillo", &"chispas", Color(1.0, 0.65, 0.15), Color(1.0, 0.60, 0.15), &"",
+		Color(1.0, 0.60, 0.15, 0.85))
+	_det(&"sans_clasico", {&"campera": Color(0.16, 0.24, 0.48), &"short": Color(0.30, 0.20, 0.12)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.50, 0.65, 0.95, 0.7))
+	_det(&"sans_juez", {&"campera": Color(0.08, 0.08, 0.10), &"capa": Color(0.10, 0.10, 0.14),
+		&"remera": Color(0.95, 0.80, 0.30)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.80, 0.30, 0.75))
+	_det(&"sans_mal_rato", {&"pupilas": Color(0.35, 0.65, 1.0), &"orbes": Color(0.25, 0.50, 1.0)},
+		&"", &"chispas", Color(0.35, 0.60, 1.0), Color(0.35, 0.65, 1.0), &"",
+		Color(0.35, 0.60, 1.0, 0.85))
+	_det(&"naruto_genin", {&"negro": Color(0.18, 0.28, 0.62), &"bandana": Color(0.18, 0.28, 0.62)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.65, 0.25, 0.7))
+	_det(&"naruto_sabio", {&"negro": Color(0.10, 0.10, 0.14), &"capa": Color(0.75, 0.12, 0.10),
+		&"ojos": Color(0.95, 0.75, 0.20)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.40, 0.20, 0.75))
+	_det(&"naruto_seis", {&"pelo": Color(1.0, 0.92, 0.55), &"negro": Color(0.06, 0.05, 0.05),
+		&"orbes": Color(0.05, 0.05, 0.07)},
+		&"brillo", &"chispas", Color(1.0, 0.85, 0.40), Color(1.0, 0.80, 0.30), &"",
+		Color(1.0, 0.85, 0.40, 0.85))
+	_det(&"luffy_east_blue", {&"faja": Color(0.95, 0.85, 0.35), &"ruedo": Color(0.45, 0.62, 0.90)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.40, 0.35, 0.7))
+	_det(&"luffy_capitan", {&"capa": Color(0.70, 0.08, 0.08), &"faja": Color(0.95, 0.80, 0.25)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.35, 0.30, 0.75))
+	_det(&"luffy_nika", {&"pelo": Color(0.98, 0.98, 0.98), &"faja": Color(0.96, 0.96, 0.96),
+		&"ruedo": Color(0.92, 0.92, 0.92), &"cinta": Color(0.90, 0.18, 0.18)},
+		&"brillo", &"estrellas", Color(1.0, 1.0, 1.0), Color(0.95, 0.30, 0.30), &"",
+		Color(1.0, 1.0, 1.0, 0.85))
+	_det(&"spiderman_clasico", {&"rojo": Color(0.90, 0.14, 0.14), &"azul": Color(0.14, 0.30, 0.78)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.30, 0.30, 0.7))
+	_det(&"spiderman_iron", {&"rojo": Color(0.75, 0.10, 0.12), &"azul": Color(0.90, 0.72, 0.28),
+		&"emblema": Color(0.95, 0.80, 0.35), &"lentes": Color(1.0, 0.95, 0.80)},
+		&"metal", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.75, 0.30, 0.8))
+	_det(&"spiderman_2099", {&"rojo": Color(0.10, 0.14, 0.30), &"azul": Color(0.06, 0.06, 0.10),
+		&"emblema": Color(0.85, 0.12, 0.14), &"lentes": Color(0.95, 0.30, 0.25)},
+		&"", &"chispas", Color(0.90, 0.20, 0.20), Color(0.95, 0.25, 0.25), &"",
+		Color(0.90, 0.20, 0.25, 0.85))
+	_det(&"gojo_blanco", {&"uniforme": Color(0.92, 0.92, 0.95), &"venda": Color(0.06, 0.06, 0.08)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.55, 0.75, 1.0, 0.7))
+	_det(&"gojo_joven", {&"uniforme": Color(0.08, 0.08, 0.14), &"boton": Color(0.80, 0.68, 0.35)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"lentes_oscuros", Color(0.55, 0.75, 1.0, 0.75))
+	_det(&"gojo_dominio", {&"uniforme": Color(0.06, 0.06, 0.12), &"ojos": Color(0.55, 0.85, 1.0)},
+		&"", &"estrellas", Color(0.70, 0.85, 1.0), Color(0.55, 0.85, 1.0), &"",
+		Color(0.55, 0.80, 1.0, 0.85))
+	_extra(&"naruto_hokage", &"", [&"capa"])
+	_extra(&"spiderman_simbionte", &"", [&"patas_arana"], {&"patas_arana": Color(0.06, 0.06, 0.08)})
+	_extra(&"sans_invierno", &"", [&"bufanda", &"orejeras"], {&"bufanda": Color(0.85, 0.20, 0.25),
+		&"orejeras": Color(0.95, 0.95, 0.95)})
+	_extra(&"noelle_escarcha", &"", [&"corona_hielo"])
+	_extra(&"naruto_kurama", &"kurama", [])
+	_extra(&"sans_juez", &"", [&"capa"])
+	_extra(&"sans_mal_rato", &"", [&"orbes"])
+	_extra(&"naruto_sabio", &"", [&"capa"])
+	_extra(&"naruto_seis", &"kurama", [&"orbes"])
+	_extra(&"luffy_capitan", &"", [&"capa"])
+	_extra(&"luffy_nika", &"nika", [])
+	_extra(&"spiderman_iron", &"", [&"patas_arana"])
+	_extra(&"spiderman_2099", &"", [&"capa"], {&"capa": Color(0.55, 0.08, 0.10)})
+	_extra(&"gojo_joven", &"sin_venda", [])
+	_extra(&"gojo_dominio", &"sin_venda", [])
 	# Scorpion
 	_det(&"scorpion_clasico", {&"traje": Color(1.00, 0.84, 0.10), &"mascara": Color(1.00, 0.88, 0.20),
 		&"ropa": Color(0.10, 0.10, 0.10)},

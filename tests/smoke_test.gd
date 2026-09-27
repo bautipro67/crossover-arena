@@ -70,6 +70,7 @@ func _run() -> void:
 	await _test_mob(player, arena)
 	await _test_thanos(player, arena)
 	await _test_scorpion(player, arena)
+	await _test_temporada_3(player, arena)
 	await _test_modos_nuevos(player, arena)
 	_test_descripciones()
 	await _test_escena_corta_habilidades(player)
@@ -1933,8 +1934,11 @@ func _test_mob(player: Player, arena: Arena) -> void:
 	var data := CharacterDB.get_character(&"mob")
 	_check(data != null and data.origin_game == "Mob Psycho 100" and data.silhouette == &"tazon",
 		"Mob viene de Mob Psycho 100 y tiene silueta propia: el tazon")
-	_check(data != null and data.requiere_desbloqueo and Pase.recompensa(Pase.ESCALONES, true) == [Pase.PERSONAJE, "mob"],
-		"Mob NO viene de fabrica: es el ultimo escalon del pase pro de la temporada 2")
+	_check(data != null and not data.requiere_desbloqueo,
+		"Mob es de todos desde que termino la temporada 2, como Goku con la 1")
+	var gojo := CharacterDB.get_character(&"gojo")
+	_check(gojo != null and gojo.requiere_desbloqueo and Pase.recompensa(Pase.ESCALONES, true) == [Pase.PERSONAJE, "gojo"],
+		"Gojo NO viene de fabrica: es el ultimo escalon del pase pro de la temporada 3")
 	# ES UN PREMIO Y NO PUEDE SER EL MAS FUERTE. Un personaje que se gana jugando y que
 	# ademas le gana a los otros convertiria el pase en un requisito para competir.
 	var vida_max := 0.0
@@ -2285,6 +2289,166 @@ func _test_scorpion(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+# --------------------------------------------------------- Temporada 3
+
+## Tira la habilidad `slot` del personaje del jugador contra un blanco a `metros`, y
+## devuelve [daño que le hizo, el blanco]. El blanco queda vivo para mirarlo despues; lo
+## borra el que llama.
+func _probar_habilidad(player: Player, arena: Arena, puesto: Vector3, rumbo: Vector3, slot: int,
+		metros: float, espera: float) -> Array:
+	var yaw := atan2(-rumbo.x, -rumbo.z)
+	player.respawn_at(puesto, yaw)
+	player.status.clear_all()
+	if is_instance_valid(player.camera_pivot):
+		player.camera_pivot.set_yaw(yaw)
+	var blanco := _spawn_dummy(arena, puesto + rumbo * metros)
+	blanco.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+	var vida := blanco.health.current
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	if slot == 3:
+		player.ultimate.current = UltimateCharge.MAX_CHARGE
+	player.caster.request_use(slot)
+	await get_tree().create_timer(espera).timeout
+	return [vida - blanco.health.current, blanco]
+
+
+func _test_temporada_3(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	var kits := {
+		&"sans": [HuesoSans, HuesosPiso, AlmaAzul, GasterBlaster],
+		&"naruto": [TaijutsuNaruto, KageBunshin, Rasengan, Rasenshuriken],
+		&"luffy": [GomuPistol, GomuGatling, GomuRocket, GearFifth],
+		&"spiderman": [GolpeAracnido, Telarana, Balanceo, RedTotal],
+		&"gojo": [GolpeGojo, Azul, Rojo, Purpura],
+	}
+	var mal := ""
+	for pj: StringName in kits:
+		var data := CharacterDB.get_character(pj)
+		var kit := CharacterDB.build_abilities_for(pj)
+		var clases: Array = kits[pj]
+		if data == null or kit.size() != 4:
+			mal += "%s:kit " % pj
+			continue
+		for k: int in range(4):
+			if not is_instance_of(kit[k], clases[k]):
+				mal += "%s:%d " % [pj, k]
+		if not is_zero_approx(kit[0].stamina_cost) or not kit[3].requires_charge or kit[3].stamina_cost != 100.0:
+			mal += "%s:costos " % pj
+		var en_tienda := 0
+		for sid: StringName in SkinDB.de_personaje(pj):
+			if SkinDB.get_skin(sid).precio > 0:
+				en_tienda += 1
+		if en_tienda < 3:
+			mal += "%s:skins(%d) " % [pj, en_tienda]
+	_check(mal.is_empty(), "los cinco de la temporada 3 tienen su kit, basico gratis, definitiva con medidor y tres skins en la tienda %s" % mal)
+	_check(not CharacterDB.get_character(&"sans").requiere_desbloqueo
+		and not CharacterDB.get_character(&"naruto").requiere_desbloqueo
+		and not CharacterDB.get_character(&"luffy").requiere_desbloqueo
+		and not CharacterDB.get_character(&"spiderman").requiere_desbloqueo
+		and CharacterDB.get_character(&"gojo").requiere_desbloqueo,
+		"Sans, Naruto, Luffy y Spider-Man son gratis; Gojo es del pase")
+
+	var puesto := arena.find_clear_spot(Vector3(30.0, 0.6, -30.0), 1.5)
+	player.respawn_at(puesto, 0.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var rumbo := _carril_libre(player, puesto, 22.0)
+
+	# --- SANS ---
+	player.setup_character(CharacterDB.get_character(&"sans"))
+	var r := await _probar_habilidad(player, arena, puesto, rumbo, 0, 9.0, 0.6)
+	_check(r[0] >= HuesoSans.DAMAGE * 0.9, "el hueso de Sans pega a nueve metros (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 8.0, HuesosPiso.AVISO + 0.3)
+	_check(r[0] >= HuesosPiso.DAMAGE * 0.9, "los huesos del piso salen en la fila y pegan (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 2, 10.0, 0.3)
+	var lento: bool = r[1].status.get_move_speed_multiplier() < 0.9
+	_check(r[0] >= AlmaAzul.DAMAGE * 0.9 and lento, "el alma azul pega y deja lento al que apunta (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, GasterBlaster.CRUCE, GasterBlaster.new().channel_time + 0.3)
+	_check(r[0] >= GasterBlaster.DAMAGE * 2.5,
+		"en el cruce de los Gaster Blaster pegan los tres rayos (%.0f)" % r[0])
+	r[1].queue_free()
+
+	# --- NARUTO ---
+	player.setup_character(CharacterDB.get_character(&"naruto"))
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 8.0, 1.6)
+	_check(r[0] >= KageBunshin.DAMAGE * 0.9, "los clones de sombra corren a pegarle (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 2, 6.0, Rasengan.CARGA + Rasengan.DURATION + 0.3)
+	_check(r[0] >= Rasengan.DAMAGE * 0.9, "el Rasengan se lo estampa al que alcanza (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, 12.0, Rasenshuriken.new().channel_time + 1.0)
+	_check(r[0] >= Rasenshuriken.DAMAGE * 0.9, "el Rasen-Shuriken revienta sobre el que esta a doce metros (%.0f)" % r[0])
+	r[1].queue_free()
+
+	# --- LUFFY ---
+	player.setup_character(CharacterDB.get_character(&"luffy"))
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 0, GomuPistol.LARGO - 1.0, 0.3)
+	_check(r[0] >= GomuPistol.DAMAGE * 0.9, "el brazo de goma llega a cinco metros (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 2, 11.0, GomuRocket.DURATION + 0.4)
+	_check(r[0] >= GomuRocket.DAMAGE * 0.9, "el Rocket lo lleva encima del que esta a once metros (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, 3.0, GearFifth.new().channel_time + 0.3)
+	_check(r[0] >= GearFifth.DAÑO_ESTALLIDO * 0.9 and player.status.esta_impulsado(),
+		"el Gear Fifth revienta alrededor y lo deja transformado (%.0f)" % r[0])
+	r[1].queue_free()
+	player.status.clear_all()
+
+	# --- SPIDER-MAN ---
+	player.setup_character(CharacterDB.get_character(&"spiderman"))
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 12.0, 0.6)
+	lento = r[1].status.get_move_speed_multiplier() < 0.9
+	_check(r[0] >= Telarana.DAMAGE * 0.9 and lento, "la telaraña pega y lo deja pegoteado (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, 10.0, RedTotal.new().channel_time + 0.3)
+	lento = r[1].status.get_move_speed_multiplier() < 0.5
+	_check(r[0] >= RedTotal.DAMAGE * 0.9 and lento, "la Red Total le llega al que ve y lo pega al piso (%.0f)" % r[0])
+	r[1].queue_free()
+
+	# --- GOJO ---
+	player.setup_character(CharacterDB.get_character(&"gojo"))
+	var costado := rumbo.cross(Vector3.UP).normalized()
+	var lejos := _spawn_dummy(arena, puesto + rumbo * 9.0 + costado * 4.5)
+	lejos.health.set_max(3000.0)
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 9.0, 0.6)
+	var junto := Vector2(lejos.global_position.x - r[1].global_position.x,
+		lejos.global_position.z - r[1].global_position.z).length()
+	_check(r[0] >= Azul.DAMAGE * 0.9 and junto < 3.0,
+		"el Azul atrae al de al lado hacia el punto (quedo a %.1f m)" % junto)
+	r[1].queue_free()
+	lejos.queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 2, 10.0, 0.6)
+	_check(r[0] >= Rojo.DAMAGE * 0.9, "el Rojo revienta sobre el que alcanza (%.0f)" % r[0])
+	r[1].queue_free()
+	var detras := _spawn_dummy(arena, puesto + rumbo * 16.0)
+	detras.health.set_max(3000.0)
+	var vida_detras := detras.health.current
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, 8.0, Purpura.new().channel_time + 1.2)
+	_check(r[0] >= Purpura.DAMAGE * 0.9 and detras.health.current <= vida_detras - Purpura.DAMAGE * 0.9,
+		"el Púrpura atraviesa al primero y le pega también al de atrás (%.0f y %.0f)" % [
+			r[0], vida_detras - detras.health.current])
+	r[1].queue_free()
+	detras.queue_free()
+
+	player.aim_override = Vector3.ZERO
+	player.status.clear_all()
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
 # ------------------------------------------------------------- Modos nuevos
 
 ## Lo que los tres modos nuevos cambian ADENTRO de la pelea: los bots que se pelean entre
@@ -2586,7 +2750,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 303
+const CHEQUEOS_MINIMOS: int = 321
 
 
 func _finish() -> void:

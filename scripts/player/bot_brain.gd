@@ -430,6 +430,10 @@ func distancia_de_pelea() -> float:
 			return 6.0
 		&"onda_psiquica":
 			return 7.0
+		&"hueso":
+			return 7.0
+		&"gomu_pistol":
+			return 4.2
 	return MELEE_RANGE
 
 
@@ -527,6 +531,50 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 		&"susanoo":
 			# El escudo sirve con el rival encima, y el espadazo llega a cinco metros.
 			return dist < 5.0
+		&"hueso":
+			# El hueso vuela unos trece metros.
+			return dist < 12.5 and _a_la_vista
+		&"huesos_piso":
+			# La fila sale catorce metros adelante.
+			return dist < 13.0 and _a_la_vista
+		&"alma_azul":
+			return dist < 17.0 and _a_la_vista
+		&"gaster_blaster":
+			# Los tres rayos se cruzan a doce metros: de ahi a veinte, alguno llega.
+			return dist < 20.0 and _a_la_vista
+		&"kage_bunshin":
+			# Los clones salen a buscarlo solos.
+			return dist < 20.0 and _a_la_vista
+		&"rasengan":
+			# Corre unos diez metros a estamparselo.
+			return dist > 2.0 and dist < 10.0
+		&"rasenshuriken":
+			return dist < 24.0 and _a_la_vista
+		&"gomu_pistol":
+			# El brazo llega a seis metros.
+			return dist < 5.8 and _a_la_vista
+		&"gomu_gatling":
+			return dist < 4.2
+		&"gomu_rocket":
+			# Para caerle encima: de media distancia.
+			return dist > 5.0 and dist < 13.0
+		&"gear_fifth":
+			return dist < 8.0
+		&"telarana":
+			# La tela deja lento: sirve tambien de cerca, para que no se escape.
+			return dist < 19.0 and _a_la_vista
+		&"balanceo":
+			# Patea en el camino: sirve de cerca (lo atraviesa) y para llegar.
+			return dist > 1.5 and dist < 13.0
+		&"red_total":
+			return dist < 15.0 and _a_la_vista
+		&"azul":
+			return dist < 15.0 and _a_la_vista
+		&"rojo":
+			return dist > 2.5 and dist < 20.0 and _a_la_vista
+		&"purpura":
+			# Atraviesa todo, pero va despacio: de lejos se esquiva caminando.
+			return dist < 24.0
 		&"lanza":
 			# Para traerlo: de media distancia, con la cadena a la vista. De cerca ya lo tiene.
 			return dist > 4.0 and dist < 21.0 and _a_la_vista

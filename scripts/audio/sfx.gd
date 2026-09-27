@@ -327,7 +327,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 49
+const TOTAL_SONIDOS: int = 60
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -353,6 +353,7 @@ func _build_combate() -> void:
 		[&"psiquico", _synth_psiquico], [&"explosion_psiquica", _synth_explosion_psiquica],
 		[&"chasquido", _synth_chasquido], [&"gema", _synth_gema],
 		[&"cadena", _synth_cadena],
+		[&"hueso", _synth_hueso], [&"telarana", _synth_telarana], [&"goma", _synth_goma],
 		# Las voces al final: son las mas caras de generar —tres resonadores moviles por
 		# palabra— y son las unicas que nadie puede necesitar en el primer segundo,
 		# porque para gritar una habilidad primero hay que tener una habilidad lista.
@@ -373,6 +374,14 @@ func _build_combate() -> void:
 		[&"voz_inevitable", _synth_voz_inevitable],
 		[&"voz_get_over_here", _synth_voz_get_over_here],
 		[&"voz_venganza", _synth_voz_venganza],
+		[&"voz_kage_bunshin", _synth_voz_kage_bunshin],
+		[&"voz_rasengan", _synth_voz_rasengan],
+		[&"voz_rasenshuriken", _synth_voz_rasenshuriken],
+		[&"voz_gomu_gomu", _synth_voz_gomu_gomu],
+		[&"voz_gear_fifth", _synth_voz_gear_fifth],
+		[&"voz_mal_rato", _synth_voz_mal_rato],
+		[&"voz_vecino", _synth_voz_vecino],
+		[&"voz_purpura", _synth_voz_purpura],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -848,6 +857,112 @@ func _synth_voz_kamehameha() -> PackedFloat32Array:
 func _synth_voz_ha() -> PackedFloat32Array:
 	return _voz([["a", 0.55, "aire"]], G_TONO + 22.0, G_CUERPO, 0.16, G_DRAMA + 0.3,
 		G_BRILLO, 0.26)
+
+
+# --- TEMPORADA 3 ---
+#
+# Naruto y Luffy, jovenes y a los gritos; Spider-Man, joven y canchero; Gojo, tranquilo y
+# seguro; Sans, grave y sin ganas, en minuscula.
+const NA_TONO: float = 215.0
+const LU_TONO: float = 195.0
+const SP_TONO: float = 172.0
+const GO_TONO: float = 138.0
+const SA_TONO: float = 96.0
+
+
+## "¡KAGE BUNSHIN NO JUTSU!" — ka-ge-bun-shin-no-ju-tsu.
+func _synth_voz_kage_bunshin() -> PackedFloat32Array:
+	return _voz([["a", 0.10, "golpe"], ["e", 0.09, "golpe"], ["u", 0.10, "golpe"], ["i", 0.10, "aire"],
+		["o", 0.09, "nasal"], ["u", 0.10, "aire"], ["u", 0.16, "golpe"]],
+		NA_TONO, 1.0, 0.12, 1.4, 1.3, 0.1)
+
+
+## "¡RASENGAN!" — ra-sen-gan.
+func _synth_voz_rasengan() -> PackedFloat32Array:
+	return _voz([["a", 0.13, ""], ["e", 0.14, "aire"], ["a", 0.30, "golpe"]],
+		NA_TONO, 1.0, 0.14, 1.5, 1.3, 0.15)
+
+
+## "¡RASEN-SHURIKEN!" — ra-sen-shu-ri-ken.
+func _synth_voz_rasenshuriken() -> PackedFloat32Array:
+	return _voz([["a", 0.11, ""], ["e", 0.12, "aire"], ["u", 0.11, "aire"], ["i", 0.10, ""],
+		["e", 0.28, "golpe"]], NA_TONO, 1.0, 0.14, 1.5, 1.3, 0.15)
+
+
+## "¡GOMU GOMU NO...!" — go-mu-go-mu-no. Lo que Luffy dice antes de cada tecnica.
+func _synth_voz_gomu_gomu() -> PackedFloat32Array:
+	return _voz([["o", 0.11, "golpe"], ["u", 0.10, "nasal"], ["o", 0.11, "golpe"], ["u", 0.10, "nasal"],
+		["o", 0.22, "nasal"]], LU_TONO, 1.0, 0.12, 1.5, 1.2, 0.1)
+
+
+## "¡GEAR FIFTH!" — gi-a-fifs.
+func _synth_voz_gear_fifth() -> PackedFloat32Array:
+	return _voz([["i", 0.12, "golpe"], ["a", 0.16, ""], ["i", 0.26, "aire"]],
+		LU_TONO, 1.0, 0.12, 1.6, 1.2, 0.15)
+
+
+## "vas a pasar un mal rato." — grave, lento, sin levantar la voz.
+func _synth_voz_mal_rato() -> PackedFloat32Array:
+	return _voz([["a", 0.14, "aire"], ["a", 0.10, "aire"], ["a", 0.10, "golpe"], ["a", 0.12, "aire"],
+		["u", 0.10, ""], ["a", 0.12, "nasal"], ["a", 0.12, ""], ["o", 0.24, "golpe"]],
+		SA_TONO, 0.95, 0.10, 0.4, 0.6, 0.05)
+
+
+## "¡TU AMIGABLE VECINO!" — tu-a-mi-ga-ble-ve-ci-no.
+func _synth_voz_vecino() -> PackedFloat32Array:
+	return _voz([["u", 0.09, "golpe"], ["a", 0.08, ""], ["i", 0.09, "nasal"], ["a", 0.09, "golpe"],
+		["e", 0.09, "golpe"], ["e", 0.09, "aire"], ["i", 0.09, "aire"], ["o", 0.20, "nasal"]],
+		SP_TONO, 1.0, 0.10, 1.2, 1.2, 0.0)
+
+
+## "¡PÚRPURA!" — pur-pu-ra. Al soltar la esfera.
+func _synth_voz_purpura() -> PackedFloat32Array:
+	return _voz([["u", 0.16, "golpe"], ["u", 0.12, "golpe"], ["a", 0.28, ""]],
+		GO_TONO, 1.0, 0.1, 0.8, 1.0, 0.05)
+
+
+## Un hueso: dos golpecitos huecos, como madera.
+func _synth_hueso() -> PackedFloat32Array:
+	var dur := 0.22
+	var out := _vacio(dur)
+	for i: int in range(out.size()):
+		var t := float(i) / MIX_RATE
+		var golpe := exp(-t * 60.0) + exp(-maxf(0.0, t - 0.07) * 60.0) * (1.0 if t > 0.07 else 0.0) * 0.7
+		out[i] = (sin(TAU * 820.0 * t) * 0.6 + _ruido() * 0.4) * golpe
+	_normalizar(out, 0.6)
+	_bordes(out, 0.5, 30.0)
+	return out
+
+
+## La telaraña: el "thwip", un soplido que cae rapido.
+func _synth_telarana() -> PackedFloat32Array:
+	var dur := 0.2
+	var out := _vacio(dur)
+	var fase := 0.0
+	for i: int in range(out.size()):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		fase += TAU * lerpf(2600.0, 500.0, p) / MIX_RATE
+		out[i] = (sin(fase) * 0.4 + _ruido() * 0.6) * exp(-p * 4.0) * minf(1.0, t * 200.0)
+	_pasaaltos(out, 400.0)
+	_normalizar(out, 0.6)
+	_bordes(out, 0.5, 30.0)
+	return out
+
+
+## La goma: un estiron que sube y vibra.
+func _synth_goma() -> PackedFloat32Array:
+	var dur := 0.34
+	var out := _vacio(dur)
+	var fase := 0.0
+	for i: int in range(out.size()):
+		var t := float(i) / MIX_RATE
+		var p := t / dur
+		fase += TAU * (lerpf(120.0, 420.0, p) + sin(t * 70.0) * 30.0) / MIX_RATE
+		out[i] = sin(fase) * exp(-p * 2.5) * minf(1.0, t * 80.0)
+	_normalizar(out, 0.55)
+	_bordes(out, 1.0, 40.0)
+	return out
 
 
 # --- SCORPION ---

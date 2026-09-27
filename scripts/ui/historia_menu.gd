@@ -51,6 +51,10 @@ func _ready() -> void:
 		# UN TITULO POR PARTE, arriba de sus capitulos. Una parte cerrada lo dice: si no, la
 		# parte 2 entera se veia como diez candados sin explicacion.
 		var k := Historia.parte_de(i)
+		# LA RUTA SECRETA NO SE VE hasta que se abre: ni su titulo ni sus candados. Si se viera
+		# cerrada, dejaria de ser secreta.
+		if Historia.es_secreta(k) and not Progreso.ruta_snowgrave_abierta():
+			continue
 		if k != parte_actual:
 			parte_actual = k
 			if k > 0:
@@ -58,7 +62,8 @@ func _ready() -> void:
 			var abierta := Progreso.capitulo_disponible(Historia.primero_de(k))
 			var cabecera := UITheme.make_label(Historia.titulo_parte(k) if abierta
 				else "%s  ·  se abre al terminar la parte %d" % [Historia.titulo_parte(k), k], 15,
-				UITheme.GOLD if abierta else UITheme.TEXT_DIM)
+				(Color(0.65, 0.88, 1.0) if Historia.es_secreta(k) else UITheme.GOLD) if abierta
+				else UITheme.TEXT_DIM)
 			cabecera.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			lista.add_child(cabecera)
 		var n := i - Historia.primero_de(k) + 1
@@ -89,13 +94,26 @@ func _ready() -> void:
 			primero_disponible = boton
 
 	var todos := true
+	var partes := 0
+	for k: int in range(Historia.PARTES.size()):
+		if not Historia.es_secreta(k):
+			partes += 1
 	for i: int in range(Historia.cantidad()):
-		todos = todos and Progreso.capitulo_completado(i)
+		if not Historia.capitulo_secreto(i):
+			todos = todos and Progreso.capitulo_completado(i)
 	if todos:
-		var fin := UITheme.make_label("Terminaste la parte %d. La historia continuará." % Historia.PARTES.size(),
+		var fin := UITheme.make_label("Terminaste la parte %d. La historia continuará." % partes,
 			12, UITheme.GOLD)
 		fin.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		caja.add_child(fin)
+	# Lo unico que se ve de la ruta mientras esta cerrada: cuantos pasos van, y solo despues
+	# de haber dado el primero. Sin eso el que lo encontro de casualidad no sabria que hay mas.
+	var pasos := Progreso.pasos_snowgrave()
+	if pasos > 0 and not Progreso.ruta_snowgrave_abierta():
+		var frio := UITheme.make_label("❄ Algo frío se quedó adentro de Noelle.  (%d / %d)" % [
+			pasos, Historia.PASOS_SNOWGRAVE], 12, Color(0.65, 0.88, 1.0))
+		frio.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caja.add_child(frio)
 
 	caja.add_child(UITheme.make_spacer(4))
 	var volver := UITheme.make_button("VOLVER")

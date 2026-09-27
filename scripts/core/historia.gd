@@ -38,6 +38,15 @@ extends RefCounted
 ##   Scorpion Hanzo Hasashi, gran maestro del Shirai Ryu, vuelto del Inframundo por venganza.
 ##            Serio, de pocas palabras, orgulloso de su clan; habla de su esposa y su hijo.
 ##            "¡Get over here!". Ya le mintieron una vez sobre quien mato a su clan.
+##   Naruto   el de Shippuden: ruidoso, terco, "¡de veras!", nunca se rinde, "mi camino ninja".
+##   Luffy    alegre y simple, siempre con hambre, "¡voy a ser el Rey de los Piratas!",
+##            se rie "shishishi".
+##   Spider-Man  canchero, hace chistes cuando esta nervioso, "tu amigable vecino"; la
+##            responsabilidad es lo que lo mueve.
+##   Sans     vago, habla en minuscula y sin apuro, chistes malos, su hermano Papyrus; ve
+##            las "rutas" y no le gustan las que terminan mal.
+##   Gojo     el mas fuerte y lo sabe: juguetón, aburrido, seguro; "en el cielo y en la
+##            tierra, solo yo soy el honrado".
 ##   Thanos   llega en la parte 4 por la Gema del Alma. Calmo, seguro, habla de equilibrio y
 ##            de pagar el precio; "soy inevitable".
 ##   Mario    llega en la parte 2 por una tuberia equivocada. Habla poco y contento —
@@ -58,6 +67,10 @@ extends RefCounted
 ## tragarse el fuego de las almas. Thanos llega a cerrar la puerta. Termina con Scorpion
 ## arrastrando a DIO de vuelta al fuego y quedandose en la Arena.
 ##
+## LA PARTE 5. Sin nada que la alimente, la Arena llama a los mas fuertes: Naruto, Luffy,
+## Spider-Man, Sans y Gojo. Copia el Infinito de Gojo y arma un eco que no se puede tocar.
+## Adentro esta escondida la RUTA SNOWGRAVE (ver PASOS_SNOWGRAVE).
+##
 ## TODO LO QUE SE DICE ES ORIGINAL. De las obras salen los personajes y las frases que son
 ## su marca, nada mas.
 ##
@@ -72,7 +85,20 @@ const PARTES: Array[Dictionary] = [
 	{"titulo": "PARTE 2: EL TORNEO DEL NÚCLEO", "capitulos": 10},
 	{"titulo": "PARTE 3: EL ESPÍRITU DE LA ARENA", "capitulos": 10},
 	{"titulo": "PARTE 4: EL FUEGO DEL INFRAMUNDO", "capitulos": 10},
+	{"titulo": "PARTE 5: SIN LÍMITES", "capitulos": 10},
+	# SECRETA: no se muestra ni se juega hasta cumplir los tres pasos (ver PASOS_SNOWGRAVE).
+	{"titulo": "❄ RUTA SNOWGRAVE", "capitulos": 3, "secreta": true},
 ]
+
+## LA RUTA SNOWGRAVE: tres cosas especificas que hay que hacer en la parte 5, jugando con
+## Noelle, en orden. Como la ruta de Deltarune, nadie te las dice de frente: las insinuan
+## Sans y la propia Noelle, y cada una avisa al terminar el capitulo si se cumplio.
+##   1. capitulo 43: que TODOS los enemigos caigan congelados.
+##   2. capitulo 46: encontrar el anillo de espinas escondido en el mapa (solo aparece si
+##      el paso 1 esta hecho).
+##   3. capitulo 48: terminar al jefe con Snowgrave (con los pasos 1 y 2 hechos).
+## Con los tres, al terminar la parte 5 se abre la ruta.
+const PASOS_SNOWGRAVE: int = 3
 const NARRADOR: StringName = &"narrador"
 
 
@@ -119,6 +145,33 @@ static func primero_de(k: int) -> int:
 	for j: int in range(mini(k, PARTES.size())):
 		desde += int(PARTES[j]["capitulos"])
 	return desde
+
+
+## La parte `k` es secreta? Solo la ruta Snowgrave.
+static func es_secreta(k: int) -> bool:
+	return bool(PARTES[clampi(k, 0, PARTES.size() - 1)].get("secreta", false))
+
+
+static func capitulo_secreto(i: int) -> bool:
+	return es_secreta(parte_de(i))
+
+
+## El capitulo que hay que haber ganado para jugar el `i`. -1 = ninguno.
+##
+## El anterior, salvo el primero de una parte, que pide el ultimo de la parte anterior QUE
+## NO SEA SECRETA: una parte que venga despues de la ruta no puede pedir haberla jugado.
+static func requisito(i: int) -> int:
+	if i <= 0:
+		return -1
+	var k := parte_de(i)
+	if i != primero_de(k):
+		return i - 1
+	var j := k - 1
+	while j >= 0 and es_secreta(j):
+		j -= 1
+	if j < 0:
+		return -1
+	return primero_de(j) + int(PARTES[j]["capitulos"]) - 1
 
 
 static func titulo_parte(k: int) -> String:
@@ -2585,6 +2638,626 @@ static func _armar() -> Array[Dictionary]:
 			["decir", &"rick", "Genial. Un ninja zombi de vecino. Ahora sí mi vida es una serie animada."],
 			["fundido", "negro", 1.0],
 			["titulo", "FIN DE LA PARTE 4", "La historia continuará"],
+		],
+	})
+
+	# ================================================================ PARTE 5
+	#
+	# SIN LIMITES. Con la puerta del Inframundo cerrada, la Arena se quedo sin nada que la
+	# alimente, y hace lo unico que sabe: llama a los mas fuertes de cada mundo para que
+	# peleen. Llegan Naruto, Luffy, Spider-Man, Sans y GOJO, que dice ser el mas fuerte y se
+	# aburre. La Arena, hambrienta, copia la tecnica de Gojo —el Infinito— y arma un eco que
+	# no se puede tocar: el Eco del Infinito.
+	#
+	# GOJO NO SE JUEGA: es el premio del pase de la temporada 3. Mob, que ya es de todos, si.
+	#
+	# Y ADENTRO DE ESTA PARTE ESTA LA RUTA SNOWGRAVE: tres capitulos de Noelle (43, 46, 48)
+	# tienen un paso escondido. Ver PASOS_SNOWGRAVE.
+
+	# ------------------------------------------------------------------ 41
+	c.append({
+		"titulo": "Mi camino ninja",
+		"personaje": &"naruto",
+		"enemigos": [
+			_eco("p1", &"goku", Vector2(-5, -12), 27.0, 0.14),
+			_eco("p2", &"rick", Vector2(5, -12), 27.0, 0.14),
+			_eco("p3", &"sonic", Vector2(0, -14), 27.0, 0.14),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos"},
+		"eventos": [
+			[["inicio"], [["decir", &"naruto", "¡No sé dónde estoy, pero no me voy a rendir! ¡De veras!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"madara", Vector2(-6, -14), 27.0, 0.14, false),
+					_eco("p5", &"thanos", Vector2(6, -14), 27.0, 0.14, false)]],
+				["decir", &"naruto", "¡Más! ¡Kage Bunshin, a trabajar!"]]],
+		],
+		"intro": [
+			["plano", "general"],
+			["narrar", "La puerta del Inframundo está cerrada. Y sin nada que la alimente, la Arena hace lo único que sabe: llama a los más fuertes."],
+			["aparecer", &"naruto", &"naruto", Vector2(0, 0), "caida"],
+			["plano", "cerca", &"naruto"],
+			["decir", &"naruto", "¡Ay! ¿Dónde estoy? Esto no es la Aldea de la Hoja..."],
+			["aparecer", &"p1", &"goku", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"rick", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"sonic", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"naruto"],
+			["pose", &"naruto", &"desafio", 1.2],
+			["decir", &"naruto", "¡Soy Naruto Uzumaki, y voy a ser Hokage! ¡Vengan de a uno o de a todos!"],
+		],
+		"outro": [
+			["colocar", &"naruto", Vector2(0, 0), 0.0],
+			["aparecer", &"madara", &"madara", Vector2(0, -6), ""],
+			["plano", "abajo", &"madara"],
+			["decir", &"madara", "Naruto Uzumaki. Hasta en otro mundo te encuentro."],
+			["plano", "cerca", &"naruto"],
+			["decir", &"naruto", "¡¿MADARA?! ¡¿Vos no estabas muerto?!"],
+			["plano", "abajo", &"madara"],
+			["decir", &"madara", "En esta Arena nadie está del todo muerto. Ni del todo vivo. Acostumbrate."],
+			["plano", "cerca", &"naruto"],
+			["decir", &"naruto", "...Bueno. Pero si hacés algo raro, te pego. ¡De veras!"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 42
+	c.append({
+		"titulo": "El que va a ser rey",
+		"personaje": &"luffy",
+		"aliados": [_aliado(&"goku", "Goku", Vector2(2.5, 1.5), 100.0, 0.45)],
+		"enemigos": [
+			_eco("p1", &"dio", Vector2(-5, -12), 34.0, 0.17),
+			_eco("p2", &"mario", Vector2(5, -12), 34.0, 0.17),
+			_eco("p3", &"scorpion", Vector2(0, -14), 34.0, 0.17),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos junto a Goku"},
+		"eventos": [
+			[["inicio"], [["decir", &"luffy", "¡Shishishi! ¡Esto es una aventura!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"flowery", Vector2(-7, -14), 34.0, 0.17, false),
+					_eco("p5", &"noelle", Vector2(7, -14), 34.0, 0.17, false)]],
+				["decir", &"goku", "¡Ja! ¡Son un montón! ¡Qué divertido!"]]],
+		],
+		"intro": [
+			["colocar", &"luffy", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["plano", "dos", &"luffy", &"goku"],
+			["decir", &"luffy", "¡Hola! Soy Luffy. ¡Voy a ser el Rey de los Piratas! ¿Tenés carne?"],
+			["decir", &"goku", "¡Hola, soy Goku! No tengo carne... ¡Pero tengo hambre también!"],
+			["plano", "cerca", &"luffy"],
+			["decir", &"luffy", "¡Entonces peleamos, ganamos y comemos! ¡Así funciona!"],
+			["aparecer", &"p1", &"dio", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"mario", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"scorpion", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"goku"],
+			["pose", &"goku", &"desafio", 1.2],
+			["decir", &"goku", "¡Me gusta cómo pensás!"],
+		],
+		"outro": [
+			["colocar", &"luffy", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.0), 200.0],
+			["plano", "dos", &"luffy", &"goku"],
+			["decir", &"luffy", "¡Sos fortísimo! ¿Querés entrar en mi tripulación?"],
+			["decir", &"goku", "¿Tripulación? ¿Hay comida en el barco?"],
+			["plano", "cerca", &"luffy"],
+			["decir", &"luffy", "¡Hay un cocinero que hace la mejor carne del mundo!"],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "...Lo voy a pensar muy en serio."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 43
+	c.append({
+		"titulo": "Hielo que no se derrite",
+		"personaje": &"noelle",
+		# PASO 1 DE LA RUTA SNOWGRAVE: que todos caigan congelados.
+		"paso_snowgrave": 1,
+		"condicion": "congelados",
+		"enemigos": [
+			_eco("p1", &"luffy", Vector2(-5, -12), 25.0, 0.13),
+			_eco("p2", &"naruto", Vector2(5, -12), 25.0, 0.13),
+			_eco("p3", &"spiderman", Vector2(0, -14), 25.0, 0.13),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos de los recién llegados"},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "Perdón, perdón... pero no voy a dejar que me toquen."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sans", Vector2(-7, -14), 25.0, 0.13, false),
+					_eco("p5", &"gojo", Vector2(7, -14), 25.0, 0.13, false)]],
+				["decir", &"noelle", "Hace... mucho frío hoy. Y no me molesta. ¿Eso es raro?"]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "La Arena ya copió a los recién llegados. Sus ecos esperan a Noelle en la plaza."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "El hielo se siente distinto hoy. Como si me pidiera algo."],
+			["decir", &"noelle", "Si los congelo a todos antes de que caigan... No sé por qué pensé eso."],
+			["aparecer", &"p1", &"luffy", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"naruto", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"spiderman", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"noelle"],
+			["pose", &"noelle", &"desafio", 1.2],
+			["decir", &"noelle", "¡Bueno! ¡Acá voy!"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "...Listo. Ya está."],
+			["narrar", "Noelle se mira las manos. Todavía brillan de escarcha."],
+			["decir", &"noelle", "Tengo que contarle a Susie cuando vuelva. Bueno... a lo mejor no."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 44
+	c.append({
+		"titulo": "Un esqueleto con atajos",
+		"personaje": &"sans",
+		"enemigos": [
+			_eco("p1", &"madara", Vector2(-5, -12), 26.0, 0.14),
+			_eco("p2", &"mob", Vector2(5, -12), 26.0, 0.14),
+			_eco("p3", &"thanos", Vector2(0, -14), 26.0, 0.14),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a los ecos (sin esforzarte mucho)"},
+		"eventos": [
+			[["inicio"], [["decir", &"sans", "heh. yo vine por un atajo. no sabía que terminaba en una pelea."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"luffy", Vector2(-7, -14), 26.0, 0.14, false),
+					_eco("p5", &"rick", Vector2(7, -14), 26.0, 0.14, false)]],
+				["decir", &"sans", "más ecos. qué pesados. literalmente, son de un material muy denso."]]],
+		],
+		"intro": [
+			["plano", "general"],
+			["narrar", "Detrás de una cobertura hay alguien durmiendo. Nadie sabe hace cuánto."],
+			["aparecer", &"sans", &"sans", Vector2(0, 0), "teletransporte"],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "hola. soy sans. sans el esqueleto."],
+			["decir", &"sans", "mi hermano papyrus me mandó a buscar trabajo. esto parece trabajo. qué mala suerte."],
+			["aparecer", &"p1", &"madara", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"mob", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"thanos", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "bueno. terminemos rápido, que tengo una siesta pendiente."],
+		],
+		"outro": [
+			["colocar", &"sans", Vector2(0, 0), 0.0],
+			["aparecer", &"noelle", &"noelle", Vector2(2.5, -3), ""],
+			["plano", "dos", &"sans", &"noelle"],
+			["decir", &"noelle", "¡Hola! Perdón... ¿Vos sos de Snowdin? Hay un pueblo así cerca de mi casa."],
+			["decir", &"sans", "algo así, chica. oye... tu hielo tiene un olor raro. frío de más."],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "hay gente que usa el frío para cosas que no debería. si alguna vez encontrás un anillo con espinas..."],
+			["decir", &"sans", "...no te lo pongas. hazme ese favor."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "¿Un anillo? No, no. Yo no... Claro que no."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 45
+	c.append({
+		"titulo": "Tu amigable vecino",
+		"personaje": &"spiderman",
+		"aliados": [
+			{"id": &"rick", "personaje": &"rick", "nombre": "Rick", "vida": 110.0, "daño": 0.5,
+				"pos": Vector2(0, -8), "quieto": true, "pose": &"pensar"},
+		],
+		"enemigos": [
+			_eco("p1", &"naruto", Vector2(-6, -18), 34.0, 0.17),
+			_eco("p2", &"gojo", Vector2(6, -18), 34.0, 0.17),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -8), "radio": 6.0, "segundos": 32.0,
+			"texto": "Quedate en el círculo mientras Rick estabiliza el portal"},
+		"eventos": [
+			[["inicio"], [["decir", &"spiderman", "¡Ningún eco toca al científico! Bueno, mientras yo esté."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p3", &"luffy", Vector2(-8, -20), 34.0, 0.17, false),
+					_eco("p4", &"sans", Vector2(8, -20), 34.0, 0.17, false)]],
+				["decir", &"rick", "¡Más rápido, arácnido! *burp* ¡Esto no se cierra solo!"]]],
+		],
+		"intro": [
+			["colocar", &"spiderman", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(0, -8), 180.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Alguien abrió una grieta desde un universo con demasiadas arañas. ¿Vos sos de ahí?"],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "Culpable. Estaba persiguiendo a un tipo con cuatro brazos de metal y ¡pum! Terminé acá."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Dame treinta segundos para cerrarla, y no dejes que nadie me pise la bata."],
+			["aparecer", &"p1", &"naruto", Vector2(-6, -18), "sombra"],
+			["aparecer", &"p2", &"gojo", Vector2(6, -18), "sombra"],
+			["plano", "cerca", &"spiderman"],
+			["pose", &"spiderman", &"senalar", 1.0],
+			["decir", &"spiderman", "Tranquilo. Soy tu amigable vecino."],
+		],
+		"outro": [
+			["colocar", &"spiderman", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(0, -3), 180.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Listo. Grieta cerrada. Ahora estás atrapado acá con nosotros, felicidades."],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "Genial. Mi tía May va a pensar que falté a la cena otra vez."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Mirá el lado bueno: acá nadie te pide las fotos del diario."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 46
+	c.append({
+		"titulo": "Espinas",
+		"personaje": &"noelle",
+		# PASO 2 DE LA RUTA SNOWGRAVE: el anillo de espinas, escondido atras del punto de
+		# partida. Solo aparece si el paso 1 ya esta hecho.
+		"paso_snowgrave": 2,
+		"condicion": "anillo",
+		"anillo": Vector2(-24, 22),
+		"aliados": [_aliado(&"mob", "Mob", Vector2(2.5, 1.5), 95.0, 0.45)],
+		"enemigos": [
+			_eco("p1", &"goku", Vector2(-5, -12), 34.0, 0.17),
+			_eco("p2", &"scorpion", Vector2(5, -12), 34.0, 0.17),
+			_eco("p3", &"flowery", Vector2(0, -14), 34.0, 0.17),
+		],
+		"objetivo": {"tipo": "sobrevivir", "segundos": 40.0, "texto": "Aguantá junto a Mob"},
+		"eventos": [
+			[["inicio"], [["decir", &"mob", "Los ecos vienen de todos lados. Hay que aguantar hasta que se cansen."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"naruto", Vector2(-8, -14), 34.0, 0.17, false),
+					_eco("p5", &"luffy", Vector2(8, -14), 34.0, 0.17, false)]],
+				["decir", &"noelle", "¡Siguen viniendo! Perdón, Mob, ¿estás bien?"]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.5), 0.0],
+			["plano", "dos", &"noelle", &"mob"],
+			["decir", &"mob", "Noelle. Tu espíritu está más frío que la última vez."],
+			["decir", &"noelle", "¿Sí? Debe ser el invierno. En mi pueblo siempre es invierno en esta época."],
+			["plano", "cerca", &"mob"],
+			["pose", &"mob", &"pensar", 1.2],
+			["decir", &"mob", "No es el invierno. Pero no sé qué es."],
+			["aparecer", &"p1", &"goku", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"scorpion", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"flowery", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 200.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Se fueron. ¿Estás bien? Tenés la mano cerrada."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "¡Sí! No es nada. Nada, nada. ¿Vamos?"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 47
+	c.append({
+		"titulo": "El más fuerte",
+		"personaje": &"goku",
+		"enemigos": [
+			{"id": &"gojo", "personaje": &"gojo", "nombre": "Gojo", "vida": 185.0, "daño": 0.27,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"gojo", "hasta": 0.5, "texto": "Probá tu fuerza contra Gojo"},
+		"eventos": [
+			[["inicio"], [["decir", &"gojo", "Tranquilo. No te voy a lastimar... mucho."]]],
+			[["vida", &"gojo", 0.75], [["decir", &"gojo", "¡Oh! Me tocaste. Hace años que nadie me toca. ¡Esto se puso divertido!"]]],
+		],
+		"intro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["aparecer", &"gojo", &"gojo", Vector2(0, -9), "teletransporte"],
+			["plano", "general"],
+			["narrar", "Uno de los recién llegados no parece preocupado por nada. Camina por la Arena como si fuera suya."],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Satoru Gojo. El hechicero más fuerte. Me dijeron que vos sos el más fuerte de acá."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡No sé si soy el más fuerte! ¡Pero me encantaría averiguarlo con vos!"],
+			["plano", "abajo", &"gojo"],
+			["pose", &"gojo", &"brazos_cruzados", 1.4],
+			["decir", &"gojo", "En el cielo y en la tierra, solo yo soy el honrado. Pero dale, probá."],
+		],
+		"outro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["colocar", &"gojo", Vector2(0, -5), 180.0],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Ok, ok. Sos fuerte de verdad. Me divertí."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Yo también! ¿Hacemos otra? ¿Mañana? ¿Ahora?"],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Ahora no. Hay algo raro en esta Arena. Me estuvo mirando pelear... y aprendiendo."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 48
+	c.append({
+		"titulo": "El frío de adentro",
+		"personaje": &"noelle",
+		# PASO 3 DE LA RUTA SNOWGRAVE: terminar al jefe con Snowgrave.
+		"paso_snowgrave": 3,
+		"condicion": "snowgrave_jefe",
+		"jefe_snowgrave": &"eco_titan",
+		"enemigos": [
+			{"id": &"eco_titan", "personaje": &"thanos", "nombre": "Eco del Titán", "vida": 125.0,
+				"daño": 0.19, "pos": Vector2(0, -9), "jefe": true, "eco": true, "oculto": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"eco_titan", "texto": "Derrotá al Eco del Titán"},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "Es enorme... Pero el hielo no tiene miedo. Yo tampoco. Creo."]]],
+			[["vida", &"eco_titan", 0.4], [["decir", &"noelle", "Si lo congelo... si uso eso... se termina. ¿No?"]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "La Arena no solo copia a los recién llegados. También copia a los que ya se fueron."],
+			["aparecer", &"eco_titan", &"thanos", Vector2(0, -9), "sombra"],
+			["plano", "abajo", &"eco_titan"],
+			["decir", &"eco_titan", "..."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Es el eco de Thanos. Pero sin nadie adentro. Solo el tamaño."],
+			["pose", &"noelle", &"desafio", 1.2],
+			["decir", &"noelle", "Está bien. Puedo sola."],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"eco_titan", Vector2(0, -6), 180.0],
+			["plano", "abajo", &"eco_titan"],
+			["narrar", "El eco se deshace en escarcha."],
+			["desaparecer", &"eco_titan", "sombra"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Lo hice sola. Nadie me ayudó. Y... no me temblaron las manos."],
+			["decir", &"noelle", "Eso es bueno, ¿no? Tiene que ser bueno."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 49
+	c.append({
+		"titulo": "Vacío infinito",
+		"personaje": &"mob",
+		"aliados": [
+			_aliado(&"luffy", "Luffy", Vector2(2.5, 1.5), 100.0, 0.45),
+			_aliado(&"spiderman", "Spider-Man", Vector2(-2.5, 1.5), 95.0, 0.45),
+		],
+		"enemigos": [
+			_eco("p1", &"gojo", Vector2(-5, -12), 40.0, 0.19),
+			_eco("p2", &"gojo", Vector2(5, -12), 40.0, 0.19),
+			_eco("p3", &"sans", Vector2(0, -14), 40.0, 0.19),
+		],
+		"objetivo": {"tipo": "sobrevivir", "segundos": 45.0,
+			"texto": "Aguantá mientras Gojo busca de dónde salen los ecos"},
+		"eventos": [
+			[["inicio"], [["decir", &"mob", "Estos ecos tienen la técnica de Gojo. No se los puede tocar del todo."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"naruto", Vector2(-8, -14), 40.0, 0.19, false),
+					_eco("p5", &"gojo", Vector2(8, -14), 40.0, 0.19, false)]],
+				["decir", &"luffy", "¡No importa si no se los puede tocar! ¡Les pego igual! ¡Gomu gomu no...!"]]],
+		],
+		"intro": [
+			["colocar", &"mob", Vector2(0, 0), 0.0],
+			["colocar", &"luffy", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"spiderman", Vector2(-2.5, 1.5), 0.0],
+			["aparecer", &"gojo", &"gojo", Vector2(0, -5), "teletransporte"],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Malas noticias. La Arena me copió. Mi técnica, el Infinito. Está haciendo ecos que no se pueden tocar."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Entonces la Arena tiene hambre otra vez."],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Y yo soy su comida favorita. Qué halago. Aguanten acá, que voy a buscar el corazón de todo esto."],
+			["desaparecer", &"gojo", "teletransporte"],
+			["aparecer", &"p1", &"gojo", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"gojo", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"sans", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "¿Dos Gojos? Mi sentido arácnido está gritando."],
+		],
+		"outro": [
+			["colocar", &"mob", Vector2(0, 0), 0.0],
+			["colocar", &"luffy", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"spiderman", Vector2(-2.5, 1.0), -20.0],
+			["temblor", 1.4],
+			["plano", "general"],
+			["narrar", "En el centro de la Arena, algo se abre: un vacío negro lleno de estrellas."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Ahí está. Algo con la forma de Gojo. Sin nadie adentro."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 50
+	c.append({
+		"titulo": "Sin límites",
+		"personaje": &"naruto",
+		"aliados": [
+			_aliado(&"luffy", "Luffy", Vector2(2.5, 1.5), 100.0, 0.40),
+			_aliado(&"sans", "Sans", Vector2(-2.5, 1.5), 90.0, 0.40),
+			{"id": &"gojo", "personaje": &"gojo", "nombre": "Gojo", "vida": 110.0, "daño": 0.45,
+				"pos": Vector2(0, 3.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"eco_infinito", "personaje": &"gojo", "nombre": "Eco del Infinito", "vida": 280.0,
+				"daño": 0.24, "pos": Vector2(0, -9), "jefe": true, "eco": true, "oculto": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"eco_infinito", "texto": "Derrotá al Eco del Infinito"},
+		"eventos": [
+			[["inicio"], [["decir", &"naruto", "¡Que no se pueda tocar no quiere decir que no se pueda ganar! ¡De veras!"]]],
+			[["vida", &"eco_infinito", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"eco_infinito"],
+					["decir", &"eco_infinito", "..."],
+					["aparecer", &"gojo", &"gojo", Vector2(0, 3.5), "teletransporte"],
+					["plano", "abajo", &"gojo"],
+					["decir", &"gojo", "¿Una copia mía sin nadie adentro? Qué falta de respeto. Yo me encargo del final."],
+					["plano", "cerca", &"naruto"],
+					["pose", &"naruto", &"victoria", 1.0],
+					["decir", &"naruto", "¡Juntos, entonces! ¡Ese es mi camino ninja!"],
+				]],
+				["entrar", &"gojo"],
+				["potenciar", &"eco_infinito", 12.0],
+				["objetivo", {"tipo": "derrotar", "id": &"eco_infinito", "texto": "Terminá con el eco junto a Gojo"}]]],
+		],
+		"intro": [
+			["colocar", &"naruto", Vector2(0, 0), 0.0],
+			["colocar", &"luffy", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"sans", Vector2(-2.5, 1.5), 0.0],
+			["temblor", 1.0],
+			["aparecer", &"eco_infinito", &"gojo", Vector2(0, -9), "sombra"],
+			["plano", "abajo", &"eco_infinito"],
+			["narrar", "Del vacío sale una sombra alta, con la venda y las manos en los bolsillos. No dice nada. No le hace falta."],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "heh. esa cosa es un eco sin límites. no se cansa, no duerme, no se rinde."],
+			["decir", &"sans", "tres cosas que yo hago muy bien. al revés."],
+			["plano", "cerca", &"luffy"],
+			["decir", &"luffy", "¡No me importa lo que sea! ¡Le pego hasta que se canse!"],
+			["plano", "cerca", &"naruto"],
+			["pose", &"naruto", &"desafio", 1.2],
+			["decir", &"naruto", "¡Yo nunca me rindo! ¡Vamos!"],
+		],
+		"outro": [
+			["colocar", &"naruto", Vector2(0, 0), 0.0],
+			["colocar", &"luffy", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"sans", Vector2(-2.5, 1.0), -20.0],
+			["colocar", &"gojo", Vector2(0, 3.5), 0.0],
+			["colocar", &"eco_infinito", Vector2(0, -8), 180.0],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Azul. Rojo."],
+			["habilidad", &"gojo", &"purpura"],
+			["desaparecer", &"eco_infinito", "sombra"],
+			["plano", "general"],
+			["narrar", "El eco desaparece, y el vacío se cierra detrás de él."],
+			["plano", "cerca", &"naruto"],
+			["decir", &"naruto", "¡Lo logramos! ¡Todos juntos! ¡De veras!"],
+			["plano", "cerca", &"luffy"],
+			["decir", &"luffy", "¡Ahora sí! ¡A comer! ¡Carne para todos!"],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Esta Arena es divertida. Creo que me quedo un tiempo. Alguien tiene que enseñarles."],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "yo me quedo porque me da fiaca volver. razones distintas, mismo resultado."],
+			["fundido", "negro", 1.0],
+			["titulo", "FIN DE LA PARTE 5", "La historia continuará"],
+		],
+	})
+
+	# =========================================================== RUTA SNOWGRAVE
+	#
+	# LA RUTA SECRETA. Se abre con los tres pasos de la parte 5 (PASOS_SNOWGRAVE) y cuenta lo
+	# que en Deltarune es la ruta Snowgrave: Noelle, con el anillo de espinas, siguiendo una
+	# voz que le dice "segui" aunque ella no quiera. Es la voz del que juega: por eso habla el
+	# narrador, entre parentesis. Noelle con la skin congelada, sola, y un final distinto.
+	#
+	# Nada de esto es de Deltarune palabra por palabra: la idea de la ruta si, el texto no.
+
+	# ------------------------------------------------------------------ S1
+	c.append({
+		"titulo": "Seguí",
+		"personaje": &"noelle",
+		"skin": &"noelle_snowgrave",
+		"enemigos": [
+			_eco("p1", &"spiderman", Vector2(-5, -12), 24.0, 0.13),
+			_eco("p2", &"naruto", Vector2(5, -12), 24.0, 0.13),
+			_eco("p3", &"luffy", Vector2(0, -14), 24.0, 0.13),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Seguí."},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "No quiero... pero las manos se mueven solas."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sans", Vector2(-7, -14), 24.0, 0.13, false),
+					_eco("p5", &"mob", Vector2(7, -14), 24.0, 0.13, false)]],
+				["decir", &"noelle", "Hay más. Siempre hay más. Y yo... sigo."]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "La Arena está en silencio. Noelle tiene puesto el anillo de espinas."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "¿Otra vez vos? ¿Quién sos? ¿Por qué me hablás desde adentro?"],
+			["narrar", "(Seguí.)"],
+			["decir", &"noelle", "...Está bien. Lo hago. Pero después me dejás tranquila."],
+			["aparecer", &"p1", &"spiderman", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"naruto", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"luffy", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Me duele el anillo. Pero ya no siento el frío."],
+			["decir", &"noelle", "...Eso está mal, ¿no? No sentir el frío."],
+			["narrar", "(Seguí.)"],
+		],
+	})
+
+	# ------------------------------------------------------------------ S2
+	c.append({
+		"titulo": "Los que te quieren",
+		"personaje": &"noelle",
+		"skin": &"noelle_snowgrave",
+		"enemigos": [
+			{"id": &"spiderman", "personaje": &"spiderman", "nombre": "Spider-Man", "vida": 175.0,
+				"daño": 0.25, "pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"spiderman", "hasta": 0.4, "texto": "Seguí."},
+		"eventos": [
+			[["inicio"], [["decir", &"spiderman", "¡Noelle, pará! ¡No quiero pelear con vos!"]]],
+			[["vida", &"spiderman", 0.7], [["decir", &"spiderman", "¡Esa no sos vos! ¡Soltá ese anillo!"]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["aparecer", &"spiderman", &"spiderman", Vector2(0, -9), "caida"],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "Mi sentido arácnido me trajo acá. Y nunca se había puesto tan frío."],
+			["decir", &"spiderman", "Noelle... ¿estás bien? Los chicos te están buscando."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "No te acerques. Por favor. No sé qué voy a hacer."],
+			["narrar", "(Seguí.)"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"spiderman", Vector2(0, -5), 180.0],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "Alguien me dijo una vez que un gran poder trae una gran responsabilidad."],
+			["decir", &"spiderman", "Vos tenés muchísimo poder, Noelle. La responsabilidad es tuya. No de esa voz."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "...Ya sé. Ya sé. Pero no la puedo hacer callar."],
+		],
+	})
+
+	# ------------------------------------------------------------------ S3
+	c.append({
+		"titulo": "Snowgrave",
+		"personaje": &"noelle",
+		"skin": &"noelle_snowgrave",
+		"enemigos": [
+			{"id": &"sans", "personaje": &"sans", "nombre": "Sans", "vida": 155.0, "daño": 0.25,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"sans", "hasta": 0.3, "texto": "Seguí."},
+		"eventos": [
+			[["inicio"], [["decir", &"sans", "te pedí una sola cosa, chica. una sola."]]],
+			[["vida", &"sans", 0.6], [["decir", &"sans", "heh. esa voz te está haciendo pasar un mal rato. a los dos, en realidad."]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["aparecer", &"sans", &"sans", Vector2(0, -9), "teletransporte"],
+			["plano", "general"],
+			["narrar", "La Arena está cubierta de hielo. En el medio, alguien espera con las manos en los bolsillos."],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "qué lindo día para quedarse en casa, ¿no?"],
+			["decir", &"sans", "sé lo que es esa voz. ya la escuché antes, en otro mundo. siempre termina igual."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Ayudame. Por favor. No me puedo sacar el anillo."],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "eso intento. aunque me cueste un mal rato."],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"sans", Vector2(0, -6), 180.0],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "...bueno. hice lo que pude."],
+			["plano", "cerca", &"noelle"],
+			["narrar", "(Snowgrave.)"],
+			["decir", &"noelle", "No. No, no, no..."],
+			["habilidad", &"noelle", &"snowgrave"],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "ya lo sabía. los que siguen esa voz... nunca se detienen solos."],
+			["desaparecer", &"sans", "sombra"],
+			["fundido", "negro", 1.2],
+			["plano", "cerca", &"noelle"],
+			["narrar", "Noelle se queda sola en la Arena helada. El anillo ya no le duele."],
+			["decir", &"noelle", "...Perdón. Perdón. Perdón."],
+			["fundido", "negro", 1.2],
+			["titulo", "FIN DE LA RUTA SNOWGRAVE", "Algunas rutas no deberían tomarse"],
 		],
 	})
 

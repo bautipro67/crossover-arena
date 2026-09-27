@@ -474,17 +474,26 @@ func _test_progresion() -> void:
 	_check(not Pase.comprar_escalon() and Progreso.monedas == Progreso.PRECIO_ESCALON,
 		"con el pase completo no se puede comprar mas, ni se cobra")
 
-	# --- MOB: solo con el pase pro COMPLETO de la temporada 2 ---
+	# --- GOJO: solo con el pase pro COMPLETO de la temporada 3 ---
 	#
-	# Como Goku en la 1: completar todo el pase pro. Ni la via gratuita completa, ni el pro
-	# a medias, ni la tienda. Y Goku, que era el premio de la 1, ya es de todos.
+	# Como Goku en la 1 y Mob en la 2: completar todo el pase pro. Ni la via gratuita
+	# completa, ni el pro a medias, ni la tienda. Y Goku y Mob, los premios de antes, ya son
+	# de todos.
 	Progreso.borrar_todo()
-	_check(Pase.TEMPORADA == 2, "estamos en la temporada 2")
-	_check(Progreso.puede_usar_personaje(&"goku"), "Goku ya es de todos: se termino la temporada 1")
+	_check(Pase.TEMPORADA == 3, "estamos en la temporada 3")
+	_check(Progreso.puede_usar_personaje(&"goku") and Progreso.puede_usar_personaje(&"mob"),
+		"Goku y Mob ya son de todos: se terminaron la temporada 1 y la 2")
 	var final_pro := Pase.recompensa(Pase.ESCALONES, true)
-	_check(final_pro[0] == Pase.PERSONAJE and StringName(final_pro[1]) == &"mob",
-		"el ultimo escalon del pase pro es Mob")
-	_check(not Progreso.puede_usar_personaje(&"mob"), "de entrada Mob esta bloqueado")
+	_check(final_pro[0] == Pase.PERSONAJE and StringName(final_pro[1]) == &"gojo",
+		"el ultimo escalon del pase pro es Gojo")
+	_check(not Progreso.puede_usar_personaje(&"gojo"), "de entrada Gojo esta bloqueado")
+	var pase_existe := true
+	for i: int in range(1, Pase.ESCALONES + 1):
+		for pro: bool in [false, true]:
+			var r := Pase.recompensa(i, pro)
+			if r[0] == Pase.SKIN and SkinDB.get_skin(StringName(r[1])) == null:
+				pase_existe = false
+	_check(pase_existe, "todas las skins del pase de la temporada 3 existen")
 	_check(Progreso.puede_usar_personaje(&"noelle") and Progreso.puede_usar_personaje(&"sonic"),
 		"y los demas no: vienen de fabrica")
 	var premio_en_otro_lado := false
@@ -496,15 +505,15 @@ func _test_progresion() -> void:
 	_check(not premio_en_otro_lado, "y no aparece en ningun otro escalon ni en la via gratuita")
 	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
 	Pase.reclamar_todo()
-	_check(not Progreso.puede_usar_personaje(&"mob"),
-		"con toda la via gratuita cobrada, Mob sigue bloqueado")
+	_check(not Progreso.puede_usar_personaje(&"gojo"),
+		"con toda la via gratuita cobrada, Gojo sigue bloqueado")
 	Progreso.pase_exp = Pase.EXP_POR_ESCALON * (Pase.ESCALONES - 1)
 	Progreso.pase_pro = true
 	Pase.reclamar_todo()
-	_check(not Progreso.puede_usar_personaje(&"mob"), "con el pro a un escalon del final, tampoco")
+	_check(not Progreso.puede_usar_personaje(&"gojo"), "con el pro a un escalon del final, tampoco")
 	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
-	_check(not Pase.reclamar(Pase.ESCALONES, true).is_empty() and Progreso.puede_usar_personaje(&"mob"),
-		"completando el pase pro, Mob queda desbloqueado")
+	_check(not Pase.reclamar(Pase.ESCALONES, true).is_empty() and Progreso.puede_usar_personaje(&"gojo"),
+		"completando el pase pro, Gojo queda desbloqueado")
 
 	# --- El cierre de la temporada 1 ---
 	#
@@ -529,14 +538,32 @@ func _test_progresion() -> void:
 		"y lo tuyo queda: skins, nivel, y las monedas pendientes se suman (%d)" % Progreso.monedas)
 	_check(Progreso.pase_exp == 0 and not Progreso.pase_pro and Progreso.reclamados.is_empty()
 		and Progreso.temporada == Pase.TEMPORADA,
-		"y el pase de la temporada 2 arranca de cero, pro incluido")
+		"y el pase de la temporada nueva arranca de cero, pro incluido")
 	var aviso := Pase.tomar_aviso()
-	_check(aviso.contains("Temporada 1") and aviso.contains("pendientes") and aviso.contains("Goku"),
-		"y avisa que termino, que Goku es de todos y cuanto se cobro solo: %s" % aviso)
+	_check(aviso.contains("Temporada 1") and aviso.contains("pendientes") and aviso.contains("Goku")
+		and aviso.contains("Mob"),
+		"y avisa que termino, que Goku y Mob son de todos y cuanto se cobro solo: %s" % aviso)
 	_check(Pase.tomar_aviso().is_empty(), "el aviso se muestra una sola vez")
 	var antes_cierre := Progreso.monedas
 	Pase._cerrar_temporada_vieja()
 	_check(Progreso.monedas == antes_cierre, "cerrar una temporada ya cerrada no da nada de nuevo")
+
+	# --- El cierre de la temporada 2 ---
+	#
+	# Un archivo de la 2 con el pro y el pase casi entero: se cobran solas sus skins —y Mob,
+	# que estaba en el ultimo escalon—, y el aviso dice que Mob es de todos, no Goku.
+	Progreso.borrar_todo()
+	Progreso.temporada = 2
+	Progreso.pase_pro = true
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON * 12
+	Pase._cerrar_temporada_vieja()
+	_check(Progreso.tiene_skin(&"mario_hielo") and Progreso.tiene_skin(&"sonic_boom")
+		and not Progreso.tiene_skin(&"sonic_hyper"),
+		"al cerrar la temporada 2 se cobran solas las skins alcanzadas, y no las demas")
+	var aviso2 := Pase.tomar_aviso()
+	_check(aviso2.contains("Temporada 2") and aviso2.contains("Mob") and not aviso2.contains("Goku")
+		and Progreso.temporada == 3,
+		"y avisa que termino la 2 y que Mob es de todos: %s" % aviso2)
 
 	# --- Modos ---
 	#
@@ -744,13 +771,14 @@ func _test_historia(main: Node) -> void:
 	# corre esto no lo gano.
 	Progreso.guardado_activo = false
 	Progreso.historia = {}
+	Progreso.snowgrave = {}
 
 	# --- Los datos: que todo lo que nombra la historia exista ---
-	_check(Historia.cantidad() == 40 and Historia.PARTES.size() == 4 and Historia.parte_de(10) == 1
-		and Historia.parte_de(20) == 2 and Historia.parte_de(30) == 3
-		and Historia.titulo_capitulo(30) == "PARTE 4 · CAPÍTULO 1"
+	_check(Historia.cantidad() == 53 and Historia.PARTES.size() == 6 and Historia.parte_de(10) == 1
+		and Historia.parte_de(20) == 2 and Historia.parte_de(30) == 3 and Historia.parte_de(40) == 4
+		and Historia.titulo_capitulo(40) == "PARTE 5 · CAPÍTULO 1"
 		and Historia.titulo_capitulo(10) == "PARTE 2 · CAPÍTULO 1",
-		"la historia tiene cuatro partes de diez capitulos, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
+		"la historia tiene cinco partes de diez capitulos y la ruta secreta, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
 
 	# --- NUNCA MAS DE TRES ENEMIGOS A LA VEZ ---
 	#
@@ -860,6 +888,34 @@ func _test_historia(main: Node) -> void:
 	_check(Progreso.capitulo_disponible(0) and not Progreso.capitulo_disponible(1),
 		"de entrada solo se puede jugar el capitulo 1")
 
+	# --- LA RUTA SNOWGRAVE: secreta hasta cumplir los tres pasos ---
+	var ruta := -1
+	for k: int in range(Historia.PARTES.size()):
+		if Historia.es_secreta(k):
+			ruta = Historia.primero_de(k)
+	_check(ruta == 50 and Historia.requisito(ruta) == 49 and Historia.requisito(ruta + 1) == ruta,
+		"la ruta Snowgrave va despues de la parte 5 y pide haberla terminado")
+	var pasos_en := ""
+	for i: int in range(Historia.cantidad()):
+		var n := int(Historia.capitulo(i).get("paso_snowgrave", 0))
+		if n > 0:
+			pasos_en += "%d:%d " % [i + 1, n]
+			if StringName(Historia.capitulo(i)["personaje"]) != &"noelle":
+				pasos_en += "(no-es-noelle) "
+	_check(pasos_en == "43:1 46:2 48:3 ", "los tres pasos estan en capitulos de Noelle de la parte 5 (%s)" % pasos_en)
+	for i: int in range(ruta):
+		Progreso.historia[str(i)] = true
+	_check(not Progreso.capitulo_disponible(ruta),
+		"con la parte 5 terminada pero sin los pasos, la ruta sigue cerrada")
+	Progreso.snowgrave = {"1": true, "2": true}
+	_check(not Progreso.capitulo_disponible(ruta) and Progreso.pasos_snowgrave() == 2,
+		"con dos de tres, tambien")
+	Progreso.snowgrave = {"1": true, "2": true, "3": true}
+	_check(Progreso.capitulo_disponible(ruta) and not Progreso.capitulo_disponible(ruta + 1),
+		"con los tres, se abre: primero su capitulo 1")
+	Progreso.historia = {}
+	Progreso.snowgrave = {}
+
 	# --- TODOS LOS CAPITULOS DE PUNTA A PUNTA, con sus escenas ---
 	#
 	# Las escenas pasan solas (Cinematica.automatica) y la pelea se fuerza: lo que se prueba
@@ -904,6 +960,44 @@ func _test_historia(main: Node) -> void:
 				and jefe.health.max_health > float(datos_jefe["vida"]),
 				"en la pelea, el jefe entra con la cuesta del capitulo encima (%.0f de vida, el capitulo dice %.0f)" % [
 					jefe.health.max_health if jefe != null else -1.0, float(datos_jefe.get("vida", -1.0))])
+		# LOS PASOS DE LA RUTA, jugando de verdad lo que cada uno pide.
+		if i == 42:
+			_check(mision._paso == 1, "en el capitulo 43, con Noelle, el paso 1 esta activo")
+			var enemigos: Array[Player] = []
+			for id: StringName in mision.participantes:
+				var b := mision.participantes[id] as Player
+				if b != p and b.equipo == 1 and not b.health.is_dead:
+					b.status.freeze_for(3.0)
+					enemigos.append(b)
+			for _f: int in range(3):
+				await get_tree().physics_frame
+			for b: Player in enemigos:
+				mision._paso_al_caer(b)
+			_check(mision._paso_ok, "si todos caen congelados, el paso se sigue cumpliendo")
+			if not enemigos.is_empty():
+				enemigos[0].status.clear_all()
+				await get_tree().create_timer(0.6).timeout
+				mision._paso_al_caer(enemigos[0])
+				_check(not mision._paso_ok, "pero uno que cae sin estar congelado lo rompe")
+			mision._paso_ok = true
+		if i == 45:
+			_check(mision._paso == 2 and is_instance_valid(mision._anillo),
+				"con el paso 1 hecho, en el capitulo 46 aparece el anillo de espinas")
+			if is_instance_valid(mision._anillo):
+				p.global_position = mision._anillo.global_position
+				for _f: int in range(6):
+					await get_tree().physics_frame
+			_check(mision._anillo_tomado, "y Noelle lo toma al pasar por encima")
+		if i == 47:
+			var titan := mision.participantes.get(&"eco_titan") as Player
+			_check(mision._paso == 3 and titan != null, "con los pasos 1 y 2, en el 48 el paso 3 esta activo")
+			if titan != null:
+				mision._paso_al_caer(titan)
+				_check(not mision._paso_ok, "si el jefe no cae con Snowgrave, no cuenta")
+				mision._paso_ok = true
+				titan.set_meta(&"snowgrave_ms", Time.get_ticks_msec())
+				mision._paso_al_caer(titan)
+				_check(mision._paso_ok, "y si cae con Snowgrave, si")
 		if i == 2:
 			var rick := mision.participantes.get(&"rick") as Player
 			var antes := rick.health.current if rick != null else 0.0
@@ -943,11 +1037,19 @@ func _test_historia(main: Node) -> void:
 		await get_tree().create_timer(3.4).timeout
 		if not Progreso.capitulo_completado(i):
 			fallas += "cap%d:no-se-guardo " % (i + 1)
+		if i == 42 and not Progreso.paso_snowgrave(1):
+			fallas += "cap43:sin-paso-1 "
+		if i == 45 and not Progreso.paso_snowgrave(2):
+			fallas += "cap46:sin-paso-2 "
+		if i == 47 and not Progreso.paso_snowgrave(3):
+			fallas += "cap48:sin-paso-3 "
+		if i == 49 and not Progreso.capitulo_disponible(50):
+			fallas += "cap50:no-abrio-la-ruta "
 		for hijo: Node in main.get_children():
 			if hijo is HistoriaMenu:
 				hijo.queue_free()
 	_check(fallas.is_empty(),
-		"los treinta capitulos corren enteros: escena de entrada, eventos, pelea y escena final %s" % fallas)
+		"todos los capitulos corren enteros, con los pasos de la ruta Snowgrave: escena de entrada, eventos, pelea y escena final %s" % fallas)
 	_check(Progreso.capitulo_completado(Historia.cantidad() - 1) and Net.local_character_id == "dio",
 		"ganar el ultimo cierra la historia, y te devuelve el personaje que tenias elegido")
 	Cinematica.automatica = false
@@ -1854,7 +1956,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 280
+const CHEQUEOS_MINIMOS: int = 296
 
 
 func _finish() -> void:

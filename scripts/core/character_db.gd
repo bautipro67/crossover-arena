@@ -268,7 +268,7 @@ func _register_all() -> void:
 	mob.max_stamina = 110.0
 	mob.move_speed = 6.0
 	mob.silhouette = &"tazon"
-	mob.requiere_desbloqueo = true
+	# Premio del pase de la temporada 2. Termino el 2026-09-27 y quedo de todos, como Goku.
 	_add(mob)
 
 	# -------------------------------------------------------------- Thanos
@@ -324,6 +324,115 @@ func _register_all() -> void:
 	scorpion.move_speed = 6.5
 	scorpion.silhouette = &"ninja"
 	_add(scorpion)
+
+	# ======================================================== Temporada 3
+	#
+	# CINCO PERSONAJES: Sans, Naruto, Luffy y Spider-Man gratis, y Gojo, el premio del pase
+	# pro de la temporada 3 —como Goku en la 1 y Mob en la 2— que por lo mismo no puede ser
+	# el mas fuerte.
+
+	# ----------------------------------------------------------------- Sans
+	#
+	# De Undertale. Bajo, ancho y con la vida mas baja del juego, como en su pelea (no
+	# aguanta nada, pero todo lo esquiva). Pelea de lejos: huesos, el alma azul que te deja
+	# pesado, y los Gaster Blaster.
+	var sans := CharacterData.new()
+	sans.id = &"sans"
+	sans.display_name = "Sans"
+	sans.origin_game = "Undertale"
+	sans.body_color = Color(0.33, 0.55, 0.88)
+	sans.accent_color = Color(0.95, 0.95, 0.95)
+	sans.skin_color = Color(0.95, 0.95, 0.92)
+	sans.trouser_color = Color(0.10, 0.10, 0.12)
+	sans.shoe_color = Color(0.96, 0.58, 0.72)
+	sans.build_scale = Vector3(1.00, 0.84, 1.00)
+	sans.max_health = 84.0
+	sans.max_stamina = 110.0
+	sans.move_speed = 6.4
+	sans.silhouette = &"esqueleto"
+	_add(sans)
+
+	# --------------------------------------------------------------- Naruto
+	#
+	# De Naruto Shippuden. Cuerpo a cuerpo con clones: los clones de sombra corren a pegar,
+	# el Rasengan cierra la distancia y el Rasen-Shuriken revienta en area.
+	var naruto := CharacterData.new()
+	naruto.id = &"naruto"
+	naruto.display_name = "Naruto"
+	naruto.origin_game = "Naruto Shippuden"
+	naruto.body_color = Color(1.0, 0.52, 0.10)
+	naruto.accent_color = Color(0.10, 0.10, 0.14)
+	naruto.skin_color = Color(0.98, 0.82, 0.66)
+	naruto.trouser_color = Color(1.0, 0.52, 0.10)
+	naruto.shoe_color = Color(0.12, 0.14, 0.28)
+	naruto.build_scale = Vector3(1.00, 0.98, 0.98)
+	naruto.max_health = 100.0
+	naruto.max_stamina = 105.0
+	naruto.move_speed = 6.6
+	naruto.silhouette = &"shinobi"
+	_add(naruto)
+
+	# ---------------------------------------------------------------- Luffy
+	#
+	# De One Piece. Goma: el basico con mas alcance de los de cuerpo a cuerpo, la lluvia de
+	# piñas, el cohete que lo tira encima del rival y el Gear Fifth.
+	var luffy := CharacterData.new()
+	luffy.id = &"luffy"
+	luffy.display_name = "Luffy"
+	luffy.origin_game = "One Piece"
+	luffy.body_color = Color(0.82, 0.12, 0.12)
+	luffy.accent_color = Color(0.95, 0.80, 0.25)
+	luffy.skin_color = Color(0.96, 0.78, 0.62)
+	luffy.trouser_color = Color(0.22, 0.38, 0.72)
+	luffy.shoe_color = Color(0.55, 0.38, 0.22)
+	luffy.build_scale = Vector3(0.98, 1.02, 0.95)
+	luffy.max_health = 100.0
+	luffy.max_stamina = 100.0
+	luffy.move_speed = 6.5
+	luffy.silhouette = &"sombrero"
+	_add(luffy)
+
+	# ----------------------------------------------------------- Spider-Man
+	#
+	# De Marvel. El mas agil despues de Sonic: telarañas que dejan lento, el balanceo para
+	# llegar o irse, y una definitiva que pega a todos los que ve. Aguanta poco.
+	var spiderman := CharacterData.new()
+	spiderman.id = &"spiderman"
+	spiderman.display_name = "Spider-Man"
+	spiderman.origin_game = "Marvel"
+	spiderman.body_color = Color(0.82, 0.10, 0.12)
+	spiderman.accent_color = Color(0.10, 0.22, 0.62)
+	spiderman.skin_color = Color(0.82, 0.10, 0.12)
+	spiderman.trouser_color = Color(0.12, 0.24, 0.66)
+	spiderman.shoe_color = Color(0.82, 0.10, 0.12)
+	spiderman.build_scale = Vector3(0.96, 1.01, 0.90)
+	spiderman.max_health = 100.0
+	spiderman.max_stamina = 110.0
+	spiderman.move_speed = 6.9
+	spiderman.silhouette = &"arana"
+	_add(spiderman)
+
+	# ----------------------------------------------------------------- Gojo
+	#
+	# De Jujutsu Kaisen. LA RECOMPENSA FINAL DEL PASE PRO DE LA TEMPORADA 3, como Goku y Mob:
+	# no viene de fabrica y no puede ser el mas fuerte. El Azul atrae, el Rojo empuja, y el
+	# Purpura atraviesa todo.
+	var gojo := CharacterData.new()
+	gojo.id = &"gojo"
+	gojo.display_name = "Gojo"
+	gojo.origin_game = "Jujutsu Kaisen"
+	gojo.body_color = Color(0.07, 0.07, 0.10)
+	gojo.accent_color = Color(0.40, 0.65, 1.0)
+	gojo.skin_color = Color(0.98, 0.88, 0.80)
+	gojo.trouser_color = Color(0.07, 0.07, 0.10)
+	gojo.shoe_color = Color(0.05, 0.05, 0.06)
+	gojo.build_scale = Vector3(1.04, 1.12, 0.96)
+	gojo.max_health = 100.0
+	gojo.max_stamina = 110.0
+	gojo.move_speed = 6.5
+	gojo.silhouette = &"venda"
+	gojo.requiere_desbloqueo = true
+	_add(gojo)
 
 
 func _add(data: CharacterData) -> void:
@@ -417,6 +526,31 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(Lanza.new())
 			list.append(FuegoInfernal.new())
 			list.append(AlientoInfierno.new())
+		&"sans":
+			list.append(HuesoSans.new())
+			list.append(HuesosPiso.new())
+			list.append(AlmaAzul.new())
+			list.append(GasterBlaster.new())
+		&"naruto":
+			list.append(TaijutsuNaruto.new())
+			list.append(KageBunshin.new())
+			list.append(Rasengan.new())
+			list.append(Rasenshuriken.new())
+		&"luffy":
+			list.append(GomuPistol.new())
+			list.append(GomuGatling.new())
+			list.append(GomuRocket.new())
+			list.append(GearFifth.new())
+		&"spiderman":
+			list.append(GolpeAracnido.new())
+			list.append(Telarana.new())
+			list.append(Balanceo.new())
+			list.append(RedTotal.new())
+		&"gojo":
+			list.append(GolpeGojo.new())
+			list.append(Azul.new())
+			list.append(Rojo.new())
+			list.append(Purpura.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

@@ -206,6 +206,7 @@ func _run() -> void:
 	await _mob()
 	await _thanos()
 	await _scorpion()
+	await _temporada_3()
 	await _lluvia()
 
 	# --- Los bots peleando, que es lo que cambia el modo practica ---
@@ -496,6 +497,39 @@ func _lluvia() -> void:
 	await _wait(Modos.METEORO_CAIDA * 0.5)
 	await _shot("44_lluvia_impactos")
 	await _wait(1.0)
+	player.health.set_max(100.0)
+
+
+## Los cinco de la temporada 3, cada uno con su definitiva en pantalla.
+func _temporada_3() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+	var tomas: Array = [
+		[&"sans", 3, GasterBlaster.new().channel_time + 0.08, "50_gaster_blaster"],
+		[&"naruto", 3, Rasenshuriken.new().channel_time + 0.35, "51_rasenshuriken"],
+		[&"luffy", 3, GearFifth.new().channel_time + 0.3, "52_gear_fifth"],
+		[&"spiderman", 2, 0.25, "53_balanceo"],
+		[&"gojo", 3, Purpura.new().channel_time + 0.5, "54_purpura"],
+	]
+	for t: Array in tomas:
+		player.setup_character(CharacterDB.get_character(t[0]))
+		var hud := _find_hud()
+		if hud != null:
+			hud.bind_player(player)
+		_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+		player.health.set_max(3000.0)
+		player.status.clear_all()
+		await _wait(0.8)
+		player.stamina.restore_full()
+		player.ultimate.current = UltimateCharge.MAX_CHARGE
+		player.caster.reset_state()
+		player.caster.request_use(t[1])
+		await _wait(t[2])
+		await _shot(t[3])
+		await _wait(1.0)
+		player.status.clear_all()
 	player.health.set_max(100.0)
 
 

@@ -97,7 +97,7 @@ gente.
    meteoritos GIGANTES —ahora el doble de grandes— que caen uno tras otro donde apunta.
    Gunbai · Katon: Gōka Messhitsu · Susano'o · TENGAI SHINSEI
 
-🌀 MOB — Mob Psycho 100  (se gana completando el pase pro de la Temporada 2)
+🌀 MOB — Mob Psycho 100  (gratis desde que terminó la Temporada 2)
    Telequinesis. Empuja de lejos, te tira el piso encima en cuatro piedras, se cubre
    con una barrera que echa a todos, y cuando llega al 100%, revienta.
    Onda Psíquica · Escombros · Barrera · 100%
@@ -108,13 +108,39 @@ gente.
    enemigos pierden la mitad de la vida que les queda.
    Puño del Titán · Gema del Poder · Gema del Espacio · EL CHASQUIDO
 
-🦂 SCORPION — Mortal Kombat  (NUEVO, gratis)
+🦂 SCORPION — Mortal Kombat  (gratis)
    ¡GET OVER HERE! Tira el kunai con la cadena y arrastra al que ensarta hasta tenerlo
    adelante. Después, la katana, una columna del fuego del Inframundo bajo los pies del
    rival, y la Fatality: se saca la máscara y escupe fuego por la calavera.
    Katana · Lanza · Fuego del Infierno · ALIENTO DEL INFIERNO
 
-═══ MODO HISTORIA — CUATRO PARTES, CUARENTA CAPÍTULOS ═══
+💀 SANS — Undertale  (NUEVO, gratis)
+   Bajito, con la menor vida del juego y todo a distancia: huesos que vuelan, una fila de
+   huesos que sale del piso, el alma azul que te deja pesado, y tres Gaster Blaster que
+   disparan al mismo punto.
+   Hueso · Huesos del Piso · Alma Azul · GASTER BLASTER
+
+🍥 NARUTO — Naruto Shippuden  (NUEVO, gratis)
+   ¡De veras! Clones de sombra que corren a pegar, el Rasengan que se estampa en el
+   primero que alcanza, y el Rasen-Shuriken que revienta en un área enorme.
+   Taijutsu · Kage Bunshin · Rasengan · RASEN-SHURIKEN
+
+👒 LUFFY — One Piece  (NUEVO, gratis)
+   Goma: el golpe de más alcance, la lluvia de piñas del Gatling, el Rocket que lo tira
+   encima del rival, y el Gear Fifth que lo vuelve más rápido y más fuerte.
+   Gomu Gomu no Pistol · Gatling · Rocket · GEAR FIFTH
+
+🕷 SPIDER-MAN — Marvel  (NUEVO, gratis)
+   El más ágil: telarañas que te dejan pegoteado, el balanceo para entrar o salir, y la
+   Red Total, que le pega a todos los que ve.
+   Golpe Arácnido · Telaraña · Balanceo · RED TOTAL
+
+♾ GOJO — Jujutsu Kaisen  (NUEVO, se gana completando el pase pro de la Temporada 3)
+   El Azul atrae a todos a un punto, el Rojo los manda lejos, y el Púrpura —una esfera
+   enorme— atraviesa todo lo que tiene adelante.
+   Golpe · Azul · Rojo · PÚRPURA
+
+═══ MODO HISTORIA — CINCO PARTES, CINCUENTA CAPÍTULOS (Y UNA RUTA SECRETA) ═══
 
 PARTE 1: LA GRIETA. Un experimento de Rick rompe la pared entre los mundos, y todo lo que
 cae por la grieta termina en la Arena: un coliseo entre mundos que vive de las peleas.
@@ -135,11 +161,20 @@ mete adentro de los ecos, de DIO y de Madara, y que quiere lo que Mob guarda. Di
 capítulos con Goku —ahora de todos— y Madara jugables, y Mob a tu lado. Se abre al
 terminar la parte 2.
 
-PARTE 4: EL FUEGO DEL INFRAMUNDO (NUEVA). El piso de la Arena quedó abierto, y la grieta
+PARTE 4: EL FUEGO DEL INFRAMUNDO. El piso de la Arena quedó abierto, y la grieta
 más honda da al Inframundo. De ahí sube Scorpion buscando venganza, y DIO le miente que
 el culpable es Rick mientras baja a tragarse el fuego de las almas. Thanos llega a
 cerrar la puerta al precio que sea. Diez capítulos con Scorpion y Thanos jugables. Se
 abre al terminar la parte 3.
+
+PARTE 5: SIN LÍMITES (NUEVA). Sin nada que la alimente, la Arena llama a los más fuertes
+de cada mundo: Naruto, Luffy, Spider-Man, Sans... y Gojo, que dice ser el más fuerte y se
+aburre. La Arena copia su Infinito y arma un eco que no se puede tocar. Se abre al
+terminar la parte 4.
+
+Y ESCONDIDA EN LA PARTE 5 HAY UNA RUTA SECRETA. Nadie te la va a decir de frente: hay que
+hacer ciertas cosas, con Noelle, de cierta manera. Sans sabe algo. Si lo que hiciste
+cuenta, el final del capítulo te lo avisa.
 
 DIFICULTAD. Fácil, Normal o Difícil, y se cambia cuando quieras desde la pantalla
 de capítulos. Fácil paga la mitad de monedas y experiencia; Difícil, un 50% más. Y en
@@ -159,28 +194,28 @@ que la anterior, y los jefes un escalón por encima de todo lo demás.
   · Último en pie — 4 contra uno, todos a la vez, nadie reaparece.
   · Torre de jefes — 5 enemigos de a uno, cada uno más duro que el anterior.
   · Rey de la colina — aguantá 45 segundos dentro del círculo.
-  · Batalla campal (NUEVO) — seis en el mapa, todos contra todos: los bots también se
+  · Batalla campal — seis en el mapa, todos contra todos: los bots también se
     pelean entre ellos. Elegí cuándo meterte y quedá último en pie.
-  · Modo caos (NUEVO) — recargas cortísimas, sin stamina y el ultimate a cada rato, para
+  · Modo caos — recargas cortísimas, sin stamina y el ultimate a cada rato, para
     todos. 10 bajas ganan; 5 caídas pierden.
-  · Lluvia de meteoritos (NUEVO) — aguantá 50 segundos mientras caen del cielo, cada vez
+  · Lluvia de meteoritos — aguantá 50 segundos mientras caen del cielo, cada vez
     más seguido. La sombra avisa dónde van a caer, y aplastan a los bots también.
   · Sala de práctica — ver abajo.
 
-═══ TEMPORADA 2: FUERZA PSÍQUICA (NUEVA) ═══
+═══ TEMPORADA 3: SIN LÍMITES (NUEVA) ═══
 
 Jugar da experiencia y monedas: subís de nivel (del 1 al 60) y avanzás los 30 escalones
 del pase, con skins, monedas y experiencia de premio. El pase pro se desbloquea con
 monedas que se ganan peleando, fuera de la sala de práctica.
 
-Terminó la Temporada 1, y GOKU, que era su premio, ahora es de todos. Lo pendiente de
-la 1 se cobra solo al entrar.
+Terminó la Temporada 2, y MOB, que era su premio, ahora es de todos (como Goku con la 1).
+Lo pendiente de las temporadas anteriores se cobra solo al entrar.
 
-El último escalón del pase pro de la 2 es MOB: no se vende ni sale de otro lado. Los
+El último escalón del pase pro de la 3 es GOJO: no se vende ni sale de otro lado. Los
 escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
 tarda subirlo jugando.
 
-53 skins entre el pase y la tienda, 16 nuevas en esta temporada. Cuanto más rara, más
+75 skins entre el pase y la tienda, 22 nuevas en esta temporada. Cuanto más rara, más
 se nota: las raras recolorean el personaje entero, las épicas suman un acabado (metal,
 piedra, sombra) o un accesorio, y las legendarias un aura y ojos que brillan. En la tienda hay un probador para verla
 puesta antes de comprarla.

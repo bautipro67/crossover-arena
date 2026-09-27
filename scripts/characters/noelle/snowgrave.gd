@@ -48,6 +48,9 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	var targets := CombatUtils.get_players_in_cone(caster as Node3D, origin, dir, CONE_RANGE, CONE_ANGLE)
 
 	for target: Node3D in targets:
+		# La marca de que el golpe fue de Snowgrave, antes del daño: la ruta Snowgrave pide
+		# que el jefe caiga justo con esto (ver MisionHistoria, paso 3).
+		target.set_meta(&"snowgrave_ms", Time.get_ticks_msec())
 		var push := target.global_position - origin
 		if CombatUtils.is_frozen(target):
 			# Ejecucion. Esto es Snowgrave haciendo lo que hace en Deltarune.

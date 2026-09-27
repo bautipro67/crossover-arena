@@ -613,6 +613,16 @@ func _on_channel_started(index: int, _duration: float) -> void:
 		# El canalizado mas el estallido: la forma se queda un rato despues de soltar.
 		OmegaForm.create(self, ability.channel_time + 1.4)
 
+	# Las calaveras de los Gaster Blaster aparecen durante la carga, apuntando a donde van a
+	# tirar; la esfera del Rasen-Shuriken y la del Purpura se arman en la mano.
+	var cuerpo := get_parent() as Node3D
+	if ability.id == &"gaster_blaster" and cuerpo != null:
+		FX.spawn_blasters_carga(cuerpo, ability.channel_time)
+	elif ability.id == &"rasenshuriken" and cuerpo != null:
+		FX.spawn_esfera_mano(cuerpo, Color(0.70, 0.90, 1.0), ability.channel_time)
+	elif ability.id == &"purpura" and cuerpo != null:
+		FX.spawn_esfera_mano(cuerpo, Color(0.70, 0.30, 1.0), ability.channel_time)
+
 	# LA FATALITY: Scorpion se saca la mascara mientras carga, y abajo esta la calavera.
 	# Se queda mientras escupe el fuego y despues vuelve la mascara.
 	if ability.id == &"aliento_infierno" and not _mascara_escondida():
@@ -1244,6 +1254,23 @@ func _crear_accesorio(tipo: StringName) -> void:
 			for lado: float in [-1.0, 1.0]:
 				var mejilla := Art.box(Vector3(0.04, 0.16, 0.14), metal, Vector3(0.20 * lado, 0.07, -0.05))
 				_costume_add(_head_pivot, mejilla)
+		&"lentes_oscuros":
+			# Los lentes redondos negros de Gojo de joven, sobre los ojos.
+			var marco := Art.toon(Color(0.12, 0.12, 0.14), OUTLINE_WIDTH)
+			var vidrio := Art.flat(_tono(&"lentes_oscuros", Color(0.05, 0.05, 0.08)))
+			for lado: float in [-1.0, 1.0]:
+				var lente := Art.cylinder(0.05, 0.02, vidrio, Vector3(0.076 * lado, 0.13, -0.19))
+				lente.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+				_costume_add(_head_pivot, lente)
+			_costume_add(_head_pivot, Art.box(Vector3(0.05, 0.012, 0.012), marco, Vector3(0.0, 0.135, -0.195)))
+		&"patas_arana":
+			# Las cuatro patas mecanicas de la espalda, las del traje de Iron Spider.
+			var metal := Art.metal(_tono(&"patas_arana", Color(0.90, 0.72, 0.28)), OUTLINE_WIDTH)
+			for lado: float in [-1.0, 1.0]:
+				for k: int in range(2):
+					var pata := Art.capsule(0.022, 0.62, metal, Vector3(0.14 * lado, 0.48 - float(k) * 0.14, 0.24))
+					pata.rotation_degrees = Vector3(-35.0, 0.0, (55.0 + float(k) * 25.0) * -lado)
+					_costume_add(_torso, pata)
 		&"calavera":
 			# Scorpion sin la mascara: la calavera en llamas del Inframundo.
 			_costume.append(FX.armar_calavera(_head_pivot, _tono(&"calavera", Color(0.92, 0.88, 0.78)), true))
@@ -1495,6 +1522,16 @@ func _build_costume(kind: StringName) -> void:
 			_build_thanos()
 		&"ninja":
 			_build_scorpion()
+		&"esqueleto":
+			_build_sans()
+		&"shinobi":
+			_build_naruto()
+		&"sombrero":
+			_build_luffy()
+		&"arana":
+			_build_spiderman()
+		&"venda":
+			_build_gojo()
 		_:
 			pass
 
@@ -2863,6 +2900,357 @@ func _build_thanos() -> void:
 			var sitio := Vector3((float(k) - 2.0) * 0.032, -0.36, -0.06) if k < 5 else Vector3(0.0, -0.28, -0.075)
 			var gema := Art.sphere(0.02 if k < 5 else 0.03, Art.glow(gemas[k], 2.6), sitio)
 			_costume_add(_elbow_l, gema)
+
+
+## Pelo en puntas: un cono por punta, con el mismo sistema de Goku y Madara (el cono nace
+## apuntando a +Y; girar en X positivo lo tira hacia atras, en Z positivo hacia la izquierda).
+func _puntas_de_pelo(puntas: Array, mat: Material) -> void:
+	for p: Dictionary in puntas:
+		var pivote := Node3D.new()
+		pivote.position = p["pos"]
+		pivote.rotation_degrees = p["rot"]
+		_head_pivot.add_child(pivote)
+		_costume.append(pivote)
+		var largo: float = p["len"]
+		var cono := MeshInstance3D.new()
+		var malla := CylinderMesh.new()
+		malla.top_radius = 0.0
+		malla.bottom_radius = p["r"]
+		malla.height = largo
+		cono.mesh = malla
+		cono.material_override = mat
+		cono.position = Vector3(0.0, largo * 0.5, 0.0)
+		pivote.add_child(cono)
+
+
+## Sans, de Undertale.
+##
+## DE LA REFERENCIA: bajo y ancho, la calavera redonda y grande con la sonrisa de siempre,
+## las cuencas negras con las pupilas blancas chiquitas; la campera celeste con la capucha
+## de piel blanca caida en la espalda, la remera blanca, el short negro con la raya blanca,
+## las canillas de hueso y las pantuflas rosas.
+func _build_sans() -> void:
+	_apply_expression(0.0, 0.0, 0.0)
+	_head_pivot.scale = Vector3.ONE * 1.22
+	var hueso := Art.toon(_tono(&"hueso", skin_color), OUTLINE_WIDTH)
+	var negro := Art.flat(Color(0.03, 0.03, 0.05))
+	var campera := Art.toon(_tono(&"campera", body_color), OUTLINE_WIDTH)
+	var piel_capucha := Art.toon(_tono(&"piel", Color(0.96, 0.96, 0.96)), OUTLINE_WIDTH)
+	var remera := Art.toon(_tono(&"remera", Color(0.97, 0.97, 0.97)), OUTLINE_WIDTH)
+	var short_ := Art.toon(_tono(&"short", trouser_color), OUTLINE_WIDTH)
+	var pupila := Art.glow(_tono(&"pupilas", Color(1.0, 1.0, 1.0)), 1.8)
+	if is_instance_valid(_head_mesh):
+		_head_mesh.material_override = hueso
+		_head_mesh.scale = Vector3(1.06, 1.0, 1.02)
+	# --- LA CARA: las cuencas negras con la pupila blanca, la nariz y la sonrisa ---
+	for ojo: Node3D in [_eye_l, _eye_r]:
+		if ojo == null:
+			continue
+		var cuenca := Art.sphere(0.056, negro, Vector3(0.0, 0.0, -0.022))
+		cuenca.scale = Vector3(1.0, 1.05, 0.5)
+		_costume_add(ojo, cuenca)
+		_costume_add(ojo, Art.sphere(0.014, pupila, Vector3(0.0, 0.0, -0.046)))
+	_costume_add(_head_pivot, Art.box(Vector3(0.035, 0.03, 0.02), negro, Vector3(0.0, 0.078, -0.198)))
+	var sonrisa := Art.box(Vector3(0.20, 0.014, 0.02), negro, Vector3(0.0, 0.028, -0.192))
+	_costume_add(_head_pivot, sonrisa)
+	for k: int in range(6):
+		var diente := Art.box(Vector3(0.008, 0.04, 0.02), negro, Vector3((float(k) - 2.5) * 0.034, 0.028, -0.193))
+		_costume_add(_head_pivot, diente)
+	# --- LA CAMPERA abierta, la remera, y la capucha de piel caida atras ---
+	_costume_add(_torso, Art.box(Vector3(0.16, 0.44, 0.02), remera, Vector3(0.0, 0.44, -0.186)))
+	for lado: float in [-1.0, 1.0]:
+		var cordon := Art.box(Vector3(0.012, 0.16, 0.012), remera, Vector3(0.05 * lado, 0.56, -0.2))
+		_costume_add(_torso, cordon)
+	var capucha := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.12
+	toro.outer_radius = 0.22
+	capucha.mesh = toro
+	capucha.material_override = piel_capucha
+	capucha.position = Vector3(0.0, 0.70, 0.07)
+	capucha.rotation_degrees = Vector3(-18.0, 0.0, 0.0)
+	_costume_add(_torso, capucha)
+	# Mangas celestes hasta la muñeca: la mano es hueso.
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo != null:
+			_costume_add(codo, Art.capsule(0.074, 0.25, campera, Vector3(0.0, -0.12, 0.0)))
+			_costume_add(codo, Art.cylinder(0.078, 0.04, piel_capucha, Vector3(0.0, -0.245, 0.0)))
+	# El short con la raya, y las canillas de hueso.
+	for cadera: Node3D in [_hip_l, _hip_r]:
+		if cadera != null:
+			_costume_add(cadera, Art.capsule(0.1, 0.30, short_, Vector3(0.0, -0.16, 0.0)))
+			_costume_add(cadera, Art.box(Vector3(0.015, 0.26, 0.2), remera, Vector3(0.0, -0.17, 0.0)))
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla != null:
+			# Mas gruesa que la pierna de abajo: si no, el hueso queda adentro y no se ve.
+			_costume_add(rodilla, Art.capsule(0.084, 0.34, hueso, Vector3(0.0, -0.18, 0.0)))
+
+
+## Naruto Uzumaki, de Naruto Shippuden.
+##
+## DE LA REFERENCIA: el pelo rubio en puntas para todos lados, la bandana de Konoha con la
+## placa de metal, los tres bigotes en cada mejilla y los ojos celestes; la campera naranja
+## con la parte de arriba negra, el pantalon naranja y las sandalias oscuras.
+func _build_naruto() -> void:
+	_apply_expression(-0.12, 0.0, 0.07)
+	var kurama := _forma(&"kurama")
+	var pelo := Art.glow(_tono(&"pelo", Color(1.0, 0.72, 0.18)), 2.2) if kurama \
+		else Art.toon(_tono(&"pelo", Color(1.0, 0.85, 0.25)), OUTLINE_WIDTH)
+	var negro := Art.toon(_tono(&"negro", accent_color), OUTLINE_WIDTH)
+	var tela := Art.toon(_tono(&"bandana", Color(0.10, 0.12, 0.20)), OUTLINE_WIDTH)
+	var metal := Art.metal(_tono(&"placa", Color(0.78, 0.80, 0.84)), OUTLINE_WIDTH)
+	var linea := Art.flat(Color(0.25, 0.14, 0.10))
+	var iris := Art.flat(_tono(&"ojos", Color(0.25, 0.55, 0.95)))
+	var casquete := Art.sphere(0.205, pelo, Vector3(0.0, 0.19, 0.03))
+	casquete.scale = Vector3(1.06, 0.82, 1.04)
+	_costume_add(_head_pivot, casquete)
+	var puntas: Array = []
+	for k: int in range(11):
+		var ang := -150.0 + float(k) * 30.0
+		var x := sin(deg_to_rad(ang)) * 0.15
+		var z := cos(deg_to_rad(ang)) * 0.15
+		puntas.append({"pos": Vector3(x, 0.24, z * 0.9 + 0.03),
+			"rot": Vector3(cos(deg_to_rad(ang)) * 55.0, 0.0, -sin(deg_to_rad(ang)) * 55.0),
+			"len": 0.22 if kurama else 0.17, "r": 0.075})
+	puntas.append({"pos": Vector3(0.0, 0.30, 0.02), "rot": Vector3(10.0, 0.0, 0.0), "len": 0.16, "r": 0.08})
+	if kurama:
+		# El manto del zorro: las dos puntas que se paran como orejas.
+		for lado: float in [-1.0, 1.0]:
+			puntas.append({"pos": Vector3(0.10 * lado, 0.30, 0.0), "rot": Vector3(-5.0, 0.0, -20.0 * lado),
+				"len": 0.30, "r": 0.07})
+	_puntas_de_pelo(puntas, pelo)
+	# La bandana: la tela alrededor de la frente y la placa con la espiral.
+	var cinta := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.196
+	toro.outer_radius = 0.215
+	cinta.mesh = toro
+	cinta.material_override = tela
+	cinta.position = Vector3(0.0, 0.215, 0.0)
+	_costume_add(_head_pivot, cinta)
+	_costume_add(_head_pivot, Art.box(Vector3(0.20, 0.07, 0.02), metal, Vector3(0.0, 0.215, -0.205)))
+	var espiral := MeshInstance3D.new()
+	var giro := TorusMesh.new()
+	giro.inner_radius = 0.012
+	giro.outer_radius = 0.022
+	espiral.mesh = giro
+	espiral.material_override = linea
+	espiral.position = Vector3(0.0, 0.215, -0.216)
+	espiral.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	_costume_add(_head_pivot, espiral)
+	# Los bigotes: tres por mejilla.
+	for lado: float in [-1.0, 1.0]:
+		for k: int in range(3):
+			var bigote := Art.box(Vector3(0.05, 0.006, 0.01), linea,
+				Vector3(0.10 * lado, 0.085 - float(k) * 0.02, -0.172))
+			bigote.rotation_degrees = Vector3(0.0, -22.0 * lado, 0.0)
+			_costume_add(_head_pivot, bigote)
+	for ojo: Node3D in [_eye_l, _eye_r]:
+		if ojo != null:
+			var anillo := Art.sphere(0.028, iris, Vector3(0.0, 0.004, -0.026))
+			anillo.scale = Vector3(1.0, 1.2, 0.55)
+			_costume_add(ojo, anillo)
+	# La campera: la parte de arriba negra, el cierre y el cuello.
+	_costume_add(_torso, Art.box(Vector3(0.48, 0.16, 0.36), negro, Vector3(0.0, 0.60, 0.0)))
+	_costume_add(_torso, Art.cylinder(0.12, 0.08, negro, Vector3(0.0, 0.69, 0.0)))
+	_costume_add(_torso, Art.box(Vector3(0.018, 0.40, 0.02), Art.flat(Color(0.85, 0.85, 0.88)), Vector3(0.0, 0.34, -0.19)))
+	for hombro: Node3D in [_shoulder_l, _shoulder_r]:
+		if hombro != null:
+			_costume_add(hombro, Art.sphere(0.085, negro, Vector3(0.0, -0.02, 0.0)))
+	# Las mangas largas, naranjas hasta la muñeca.
+	var manga := Art.toon(_tono(&"campera", body_color), OUTLINE_WIDTH)
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo != null:
+			_costume_add(codo, Art.capsule(0.07, 0.26, manga, Vector3(0.0, -0.12, 0.0)))
+	# El remolino de los Uzumaki en la espalda.
+	var remolino := MeshInstance3D.new()
+	var rueda := TorusMesh.new()
+	rueda.inner_radius = 0.05
+	rueda.outer_radius = 0.075
+	remolino.mesh = rueda
+	remolino.material_override = Art.toon(_tono(&"remolino", Color(0.85, 0.20, 0.12)), OUTLINE_WIDTH)
+	remolino.position = Vector3(0.0, 0.42, 0.19)
+	remolino.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	_costume_add(_torso, remolino)
+
+
+## Monkey D. Luffy, de One Piece.
+##
+## DE LA REFERENCIA: el sombrero de paja con la cinta roja, el pelo negro revuelto, la
+## cicatriz debajo del ojo izquierdo; el chaleco rojo abierto con la cicatriz en X del pecho,
+## la faja amarilla, el short azul con el ruedo doblado, las piernas al aire y las sandalias.
+func _build_luffy() -> void:
+	_apply_expression(-0.18, 0.0, 0.08)
+	var nika := _forma(&"nika")
+	var paja := Art.toon(_tono(&"sombrero", Color(0.95, 0.82, 0.45)), OUTLINE_WIDTH)
+	var cinta := Art.toon(_tono(&"cinta", Color(0.82, 0.12, 0.12)), OUTLINE_WIDTH)
+	var pelo := Art.glow(_tono(&"pelo", Color(0.98, 0.98, 0.98)), 1.6) if nika \
+		else Art.toon(_tono(&"pelo", Color(0.06, 0.06, 0.08)), OUTLINE_WIDTH)
+	var piel := _mat_skin
+	var faja := Art.toon(_tono(&"faja", accent_color), OUTLINE_WIDTH)
+	var ruedo := Art.toon(_tono(&"ruedo", trouser_color.lightened(0.25)), OUTLINE_WIDTH)
+	var cicatriz := Art.flat(Color(0.55, 0.22, 0.18))
+	# --- EL PELO, abajo del sombrero ---
+	var casquete := Art.sphere(0.205, pelo, Vector3(0.0, 0.17, 0.03))
+	casquete.scale = Vector3(1.05, 0.85, 1.05)
+	_costume_add(_head_pivot, casquete)
+	var mechas: Array = []
+	for k: int in range(7):
+		var ang := -90.0 + float(k) * 30.0
+		mechas.append({"pos": Vector3(sin(deg_to_rad(ang)) * 0.17, 0.12, cos(deg_to_rad(ang)) * 0.15),
+			"rot": Vector3(cos(deg_to_rad(ang)) * 110.0, 0.0, -sin(deg_to_rad(ang)) * 110.0),
+			"len": 0.22 if nika else 0.11, "r": 0.06})
+	_puntas_de_pelo(mechas, pelo)
+	# --- EL SOMBRERO DE PAJA ---
+	_costume_add(_head_pivot, Art.cylinder(0.37, 0.02, paja, Vector3(0.0, 0.26, 0.0)))
+	_costume_add(_head_pivot, Art.cylinder(0.20, 0.15, paja, Vector3(0.0, 0.34, 0.0)))
+	_costume_add(_head_pivot, Art.cylinder(0.205, 0.045, cinta, Vector3(0.0, 0.29, 0.0)))
+	# La cicatriz de debajo del ojo izquierdo (el izquierdo del personaje es -X).
+	for k: int in range(2):
+		var marca := Art.box(Vector3(0.035, 0.006, 0.01), cicatriz, Vector3(-0.076, 0.085 - float(k) * 0.012, -0.176))
+		_costume_add(_head_pivot, marca)
+	# --- EL CHALECO ROJO abierto: el pecho al aire con la X, y los brazos al aire ---
+	_costume_add(_torso, Art.box(Vector3(0.13, 0.40, 0.02), piel, Vector3(0.0, 0.44, -0.186)))
+	for lado: float in [-1.0, 1.0]:
+		var raya := Art.box(Vector3(0.012, 0.18, 0.012), cicatriz, Vector3(0.0, 0.50, -0.198))
+		raya.rotation_degrees = Vector3(0.0, 0.0, 38.0 * lado)
+		_costume_add(_torso, raya)
+	for hombro: Node3D in [_shoulder_l, _shoulder_r]:
+		if hombro != null:
+			_costume_add(hombro, Art.capsule(0.074, 0.3, piel, Vector3(0.0, -0.17, 0.0)))
+	# La faja amarilla, con el nudo al costado.
+	_costume_add(_torso, Art.box(Vector3(0.44, 0.10, 0.30), faja, Vector3(0.0, 0.05, 0.0)))
+	var nudo := Art.box(Vector3(0.06, 0.18, 0.04), faja, Vector3(0.20, -0.06, -0.12))
+	nudo.rotation_degrees = Vector3(0.0, 0.0, 12.0)
+	_costume_add(_torso, nudo)
+	# --- EL SHORT: el ruedo doblado a la rodilla, y abajo, piernas al aire ---
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla != null:
+			_costume_add(rodilla, Art.cylinder(0.095, 0.06, ruedo, Vector3(0.0, -0.02, 0.0)))
+			_costume_add(rodilla, Art.capsule(0.08, 0.34, piel, Vector3(0.0, -0.21, 0.0)))
+
+
+## Spider-Man, de Marvel.
+##
+## DE LA REFERENCIA (el traje clasico): todo el cuerpo cubierto, rojo arriba con los
+## costados azules, la mascara roja con los ojos blancos grandes de borde negro, las lineas
+## de la tela y la araña negra en el pecho; las piernas azules con las botas rojas.
+func _build_spiderman() -> void:
+	var rojo := Art.toon(_tono(&"rojo", body_color), OUTLINE_WIDTH)
+	var azul := Art.toon(_tono(&"azul", trouser_color), OUTLINE_WIDTH)
+	var negro := Art.flat(_tono(&"lineas", Color(0.04, 0.04, 0.06)))
+	var lente := Art.glow(_tono(&"lentes", Color(0.97, 0.97, 1.0)), 1.4)
+	var emblema := Art.flat(_tono(&"emblema", Color(0.04, 0.04, 0.06)))
+	if is_instance_valid(_head_mesh):
+		_head_mesh.material_override = rojo
+	if is_instance_valid(_neck_mesh):
+		_neck_mesh.material_override = rojo
+	# --- LA MASCARA: los ojos grandes con el borde negro, y las lineas de la tela ---
+	for par: Array in [[_eye_l, -1.0], [_eye_r, 1.0]]:
+		var ojo := par[0] as Node3D
+		var lado: float = par[1]
+		if ojo == null:
+			continue
+		var borde := Art.sphere(0.072, negro, Vector3(0.0, 0.0, -0.02))
+		borde.scale = Vector3(1.0, 1.25, 0.4)
+		borde.rotation_degrees = Vector3(0.0, 0.0, 28.0 * lado)
+		_costume_add(ojo, borde)
+		var blanco := Art.sphere(0.062, lente, Vector3(0.0, 0.0, -0.028))
+		blanco.scale = Vector3(1.0, 1.25, 0.4)
+		blanco.rotation_degrees = Vector3(0.0, 0.0, 28.0 * lado)
+		_costume_add(ojo, blanco)
+	# Las lineas de la tela en la cabeza: tres aros que la envuelven.
+	for k: int in range(3):
+		var aro := MeshInstance3D.new()
+		var toro := TorusMesh.new()
+		toro.inner_radius = 0.199
+		toro.outer_radius = 0.206
+		aro.mesh = toro
+		aro.material_override = negro
+		aro.position = Vector3(0.0, 0.11, 0.0)
+		aro.rotation_degrees = Vector3(90.0, float(k) * 60.0, 0.0)
+		_costume_add(_head_pivot, aro)
+	# --- EL CUERPO: los costados azules y la araña en el pecho ---
+	for lado: float in [-1.0, 1.0]:
+		_costume_add(_torso, Art.box(Vector3(0.06, 0.46, 0.30), azul, Vector3(0.20 * lado, 0.36, 0.0)))
+	var cuerpo_arana := Art.sphere(0.035, emblema, Vector3(0.0, 0.52, -0.195))
+	cuerpo_arana.scale = Vector3(0.8, 1.4, 0.4)
+	_costume_add(_torso, cuerpo_arana)
+	for lado: float in [-1.0, 1.0]:
+		for k: int in range(4):
+			var pata := Art.box(Vector3(0.07, 0.008, 0.01), emblema,
+				Vector3(0.04 * lado, 0.55 - float(k) * 0.02, -0.197))
+			pata.rotation_degrees = Vector3(0.0, 0.0, (40.0 - float(k) * 25.0) * lado)
+			_costume_add(_torso, pata)
+	# Brazos: el de arriba azul por abajo; antebrazo y guante rojos.
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo != null:
+			_costume_add(codo, Art.capsule(0.068, 0.29, rojo, Vector3(0.0, -0.14, 0.0)))
+			var guante := Art.sphere(0.07, rojo, Vector3(0.0, -0.305, 0.0))
+			guante.scale = Vector3(1.0, 1.25, 0.75)
+			_costume_add(codo, guante)
+	# Las botas rojas, de la mitad de la canilla para abajo.
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla != null:
+			_costume_add(rodilla, Art.capsule(0.084, 0.24, rojo, Vector3(0.0, -0.27, 0.0)))
+
+
+## Satoru Gojo, de Jujutsu Kaisen.
+##
+## DE LA REFERENCIA: alto, el pelo blanco parado para arriba, la venda negra tapandole los
+## ojos; el uniforme negro de Jujutsu con el cuello alto hasta la barbilla y el boton en
+## espiral, el pantalon y los zapatos negros.
+func _build_gojo() -> void:
+	_apply_expression(-0.05, 0.0, 0.05)
+	var sin_venda := _forma(&"sin_venda")
+	var pelo := Art.toon(_tono(&"pelo", Color(0.96, 0.96, 0.98)), OUTLINE_WIDTH)
+	var venda := Art.toon(_tono(&"venda", Color(0.06, 0.06, 0.08)), OUTLINE_WIDTH)
+	var negro := Art.toon(_tono(&"uniforme", body_color), OUTLINE_WIDTH)
+	var boton := Art.metal(_tono(&"boton", Color(0.75, 0.62, 0.30)), OUTLINE_WIDTH)
+	var casquete := Art.sphere(0.205, pelo, Vector3(0.0, 0.19, 0.03))
+	casquete.scale = Vector3(1.04, 0.84, 1.04)
+	_costume_add(_head_pivot, casquete)
+	var puntas: Array = []
+	for k: int in range(9):
+		var ang := -120.0 + float(k) * 30.0
+		puntas.append({"pos": Vector3(sin(deg_to_rad(ang)) * 0.11, 0.27, cos(deg_to_rad(ang)) * 0.1),
+			"rot": Vector3(cos(deg_to_rad(ang)) * 22.0, 0.0, -sin(deg_to_rad(ang)) * 22.0),
+			"len": 0.24, "r": 0.075})
+	puntas.append({"pos": Vector3(0.0, 0.30, -0.08), "rot": Vector3(-20.0, 0.0, 0.0), "len": 0.2, "r": 0.07})
+	_puntas_de_pelo(puntas, pelo)
+	if sin_venda:
+		# Los Seis Ojos sin nada que los tape: celestes y brillando.
+		var cielo := Art.glow(_tono(&"ojos", Color(0.45, 0.80, 1.0)), 3.0)
+		for ojo: Node3D in [_eye_l, _eye_r]:
+			if ojo != null:
+				var brillo := Art.sphere(0.03, cielo, Vector3(0.0, 0.004, -0.028))
+				brillo.scale = Vector3(1.0, 1.2, 0.5)
+				_costume_add(ojo, brillo)
+	else:
+		# La venda: la franja sobre los ojos y la vuelta alrededor de la cabeza.
+		_costume_add(_head_pivot, Art.box(Vector3(0.34, 0.085, 0.05), venda, Vector3(0.0, 0.135, -0.17)))
+		var vuelta := MeshInstance3D.new()
+		var toro := TorusMesh.new()
+		toro.inner_radius = 0.19
+		toro.outer_radius = 0.215
+		vuelta.mesh = toro
+		vuelta.material_override = venda
+		vuelta.position = Vector3(0.0, 0.135, 0.0)
+		_costume_add(_head_pivot, vuelta)
+	# El cuello alto y el boton en espiral.
+	_costume_add(_torso, Art.cylinder(0.12, 0.16, negro, Vector3(0.0, 0.72, 0.0)))
+	var espiral := MeshInstance3D.new()
+	var giro := TorusMesh.new()
+	giro.inner_radius = 0.012
+	giro.outer_radius = 0.026
+	espiral.mesh = giro
+	espiral.material_override = boton
+	espiral.position = Vector3(0.0, 0.70, -0.125)
+	espiral.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	_costume_add(_torso, espiral)
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo != null:
+			_costume_add(codo, Art.capsule(0.07, 0.27, negro, Vector3(0.0, -0.13, 0.0)))
 
 
 ## Scorpion (Hanzo Hasashi), del Shirai Ryu.

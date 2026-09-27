@@ -58,6 +58,16 @@ var _fuera: Dictionary = {}
 var _en_pelea: bool = false
 var terminada: bool = false
 var ancla: Vector3 = Vector3.ZERO
+## LA RUTA SNOWGRAVE (ver Historia.PASOS_SNOWGRAVE). El paso de este capitulo, si tiene
+## uno y se juega con Noelle con los pasos anteriores hechos; 0 = ninguno.
+var _paso: int = 0
+## Se sigue cumpliendo. Lo rompe un enemigo que cae sin estar congelado, o un jefe que no
+## cae con Snowgrave.
+var _paso_ok: bool = true
+## La ultima vez que cada enemigo estuvo congelado, en segundos de pelea.
+var _congelado_t: Dictionary = {}
+var _anillo: Node3D = null
+var _anillo_tomado: bool = false
 ## Para el arnes: se salta las escenas.
 static var sin_cinematicas: bool = false
 
@@ -102,6 +112,14 @@ func _arrancar() -> void:
 	Arena.set_bots_active(false)
 	p.equipo = 0
 	var id_jugador := StringName(datos.get("personaje", p.character_id))
+	# Un capitulo puede ponerle una skin al personaje: la ruta Snowgrave es Noelle congelada.
+	if datos.has("skin"):
+		p.setup_character(SkinDB.aplicar(CharacterDB.get_character(id_jugador), StringName(datos["skin"])))
+		# setup_character le da las habilidades a su propio peer. A un bot —el heroe de la
+		# simulacion— hay que devolverselas al servidor, como hace Arena._crear_bot: si no,
+		# se queda sin poder tirar nada.
+		if p.is_dummy:
+			p.caster.owner_peer_id = Net.local_id()
 	participantes[id_jugador] = p
 	# La muerte del jugador la escucha la mision: es la que sabe que eso pierde el capitulo.
 	p.died.connect(func(_asesino: int) -> void: _al_morir(id_jugador))
@@ -266,6 +284,7 @@ func _comenzar() -> void:
 			b.visual.actuar(StringName(d["pose"]))
 	Arena.set_bots_active(true)
 	_en_pelea = true
+	_armar_paso_snowgrave()
 	if is_instance_valid(hud) and hud.has_method("anunciar"):
 		hud.anunciar(String(objetivo.get("texto", "¡A pelear!")).to_upper(), 2.2)
 	_revisar_eventos()
@@ -295,8 +314,85 @@ func _process(delta: float) -> void:
 		if mat != null:
 			mat.albedo_color = mat.albedo_color.lerp(
 				Color(0.45, 1.0, 0.55) if dentro else Color(0.45, 0.85, 1.0), delta * 6.0)
+	_vigilar_paso_snowgrave()
 	_revisar_eventos()
 	_revisar_objetivo()
+
+
+# ---------------------------------------------------------- La ruta Snowgrave
+
+## El paso de este capitulo, si corresponde: con Noelle, y con los anteriores hechos.
+func _armar_paso_snowgrave() -> void:
+	var n := int(datos.get("paso_snowgrave", 0))
+	var p := jugador()
+	if n <= 0 or p == null or p.character_id != &"noelle" or Progreso.paso_snowgrave(n):
+		return
+	for k: int in range(1, n):
+		if not Progreso.paso_snowgrave(k):
+			return
+	_paso = n
+	_paso_ok = true
+	if String(datos.get("condicion", "")) == "anillo":
+		var rel: Vector2 = datos.get("anillo", Vector2(-24.0, 20.0))
+		var donde := al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 1.0))
+		_anillo = FX.armar_anillo_espinas(arena, donde)
+		dijo.emit(&"noelle", "...¿Qué es eso que brilla allá atrás? Tiene... espinas.")
+
+
+func _vigilar_paso_snowgrave() -> void:
+	if _paso <= 0:
+		return
+	match String(datos.get("condicion", "")):
+		"congelados":
+			for b: Node in participantes.values():
+				var bot := b as Player
+				if bot != null and is_instance_valid(bot) and bot.equipo == 1 and bot.status.is_frozen():
+					_congelado_t[bot] = tiempo
+		"anillo":
+			var p := jugador()
+			if _anillo_tomado or p == null or not is_instance_valid(_anillo):
+				return
+			var d := Vector2(p.global_position.x - _anillo.global_position.x,
+				p.global_position.z - _anillo.global_position.z).length()
+			if d <= 1.8:
+				_anillo_tomado = true
+				FX.spawn_impact_burst(_anillo, _anillo.global_position + Vector3.UP * 0.5, Color(0.6, 0.85, 1.0, 1.0))
+				_anillo.queue_free()
+				dijo.emit(&"noelle", "Un anillo de espinas... Duele. Pero el frío... el frío se siente bien.")
+
+
+## Un enemigo cayo: si el paso pide congelados o un Snowgrave final, se revisa ahi.
+func _paso_al_caer(b: Player) -> void:
+	if _paso <= 0 or b == null or b.equipo != 1:
+		return
+	match String(datos.get("condicion", "")):
+		"congelados":
+			# Congelado HASTA el golpe: la muerte limpia los estados, asi que se mira si lo
+			# estaba en el ultimo instante.
+			if tiempo - float(_congelado_t.get(b, -99.0)) > 0.35:
+				_paso_ok = false
+		"snowgrave_jefe":
+			if StringName(_datos_de(b).get("id", "")) == StringName(datos.get("jefe_snowgrave", "")):
+				var hace := Time.get_ticks_msec() - int(b.get_meta(&"snowgrave_ms", -99999))
+				if hace > 400:
+					_paso_ok = false
+
+
+## Al ganar: si el paso se cumplio, se guarda, y el cartel del final lo dice.
+func _cerrar_paso_snowgrave() -> String:
+	var extra := ""
+	if _paso > 0 and _paso_ok and (String(datos.get("condicion", "")) != "anillo" or _anillo_tomado):
+		Progreso.cumplir_paso_snowgrave(_paso)
+		extra = "\n❄ Algo frío se quedó adentro de Noelle. (%d / %d)" % [
+			Progreso.pasos_snowgrave(), Historia.PASOS_SNOWGRAVE]
+	# El ultimo capitulo de la parte 5 es el que abre la ruta, si los tres pasos estan.
+	var primero_ruta := -1
+	for k: int in range(Historia.PARTES.size()):
+		if Historia.es_secreta(k):
+			primero_ruta = Historia.primero_de(k)
+	if primero_ruta >= 0 and Historia.requisito(primero_ruta) == capitulo and Progreso.ruta_snowgrave_abierta():
+		extra += "\n❄ Se abrió la RUTA SNOWGRAVE."
+	return extra
 
 
 func _revisar_objetivo() -> void:
@@ -330,6 +426,7 @@ func _al_morir(id: StringName) -> void:
 	if participantes.get(id) == p:
 		_perder("CAÍSTE")
 		return
+	_paso_al_caer(participantes.get(id) as Player)
 	if objetivo.get("tipo", "") == "proteger" and StringName(objetivo.get("id", "")) == id:
 		_perder("NO PUDISTE PROTEGER A %s" % Historia.nombre_de(_personaje_de(id)).to_upper())
 		return
@@ -634,9 +731,10 @@ func _ganar() -> void:
 			if aura != null:
 				aura.queue_free()
 	_fuera.clear()
+	var frio := _cerrar_paso_snowgrave()
 	await _escena(datos.get("outro", []))
 	Modos.terminar_historia(true, "¡%s COMPLETADO!" % Historia.titulo_capitulo(capitulo),
-		String(datos.get("titulo", "")))
+		String(datos.get("titulo", "")) + frio)
 
 
 func _perder(titulo: String) -> void:

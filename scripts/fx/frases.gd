@@ -50,6 +50,14 @@ const LINEAS: Dictionary = {
 	# --- SCORPION (Mortal Kombat) ---
 	# SU grito, desde 1992: sale junto con la lanza, que es cuando lo dice en el juego.
 	&"lanza": [["¡GET OVER HERE!", 0.0, &"voz_get_over_here"]],
+	# --- NARUTO ---
+	&"kage_bunshin": [["¡KAGE BUNSHIN NO JUTSU!", 0.0, &"voz_kage_bunshin"]],
+	&"rasengan": [["¡RASENGAN!", 0.0, &"voz_rasengan"]],
+	# --- LUFFY: "Gomu Gomu no..." antes de cada tecnica, como en la serie ---
+	&"gomu_gatling": [["¡GOMU GOMU NO... GATLING!", 0.0, &"voz_gomu_gomu"]],
+	&"gomu_rocket": [["¡GOMU GOMU NO... ROCKET!", 0.0, &"voz_gomu_gomu"]],
+	# --- GOJO: el nombre sale al soltar la esfera ---
+	&"purpura": [["¡PÚRPURA!", 0.0, &"voz_purpura"]],
 }
 
 ## Frases que salen AL EMPEZAR a canalizar, no al soltar.
@@ -71,6 +79,11 @@ const LINEAS_CARGA: Dictionary = {
 	&"chasquido": [["SOY INEVITABLE.", 0.0, &"voz_inevitable"]],
 	# Scorpion, al sacarse la mascara para la Fatality.
 	&"aliento_infierno": [["¡VENGANZA!", 0.0, &"voz_venganza"]],
+	&"rasenshuriken": [["¡RASEN-SHURIKEN!", 0.0, &"voz_rasenshuriken"]],
+	&"gear_fifth": [["¡GEAR FIFTH!", 0.0, &"voz_gear_fifth"]],
+	# Sans lo dice en minuscula, como en el juego: no grita nunca.
+	&"gaster_blaster": [["vas a pasar un mal rato.", 0.0, &"voz_mal_rato"]],
+	&"red_total": [["¡TU AMIGABLE VECINO!", 0.0, &"voz_vecino"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el

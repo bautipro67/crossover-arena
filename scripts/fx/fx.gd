@@ -1475,6 +1475,435 @@ func _explosion_meteorito(context: Node, punto: Vector3, radio: float, fuerte: b
 	Sfx.play_3d(context, &"aterrizaje", punto, 6.0 if fuerte else -2.0)
 
 
+# ------------------------------------------------------- Temporada 3: comunes
+
+## El anillo de espinas de la ruta Snowgrave: un aro celeste con puas, flotando y girando en
+## un rincon del mapa. Se queda hasta que alguien lo toma (lo saca la mision).
+func armar_anillo_espinas(context: Node, pos: Vector3) -> Node3D:
+	var world := _world_of(context)
+	if world == null:
+		return null
+	var anillo := Node3D.new()
+	anillo.name = &"AnilloEspinas"
+	world.add_child(anillo)
+	anillo.global_position = pos + Vector3.UP * 0.9
+	var hielo := Art.glow(Color(0.60, 0.85, 1.0), 2.4)
+	var aro := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.16
+	toro.outer_radius = 0.22
+	aro.mesh = toro
+	aro.material_override = hielo
+	aro.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+	anillo.add_child(aro)
+	for k: int in range(8):
+		var ang := TAU * float(k) / 8.0
+		var pua := MeshInstance3D.new()
+		var cono := CylinderMesh.new()
+		cono.top_radius = 0.0
+		cono.bottom_radius = 0.025
+		cono.height = 0.12
+		pua.mesh = cono
+		pua.material_override = hielo
+		pua.position = Vector3(cos(ang) * 0.24, sin(ang) * 0.24, 0.0)
+		pua.rotation = Vector3(0.0, 0.0, ang - PI * 0.5)
+		anillo.add_child(pua)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(0.60, 0.85, 1.0)
+	luz.light_energy = 2.0
+	luz.omni_range = 4.0
+	anillo.add_child(luz)
+	var tw := anillo.create_tween().set_loops()
+	tw.tween_property(anillo, "rotation:y", TAU, 2.4).from(0.0)
+	return anillo
+
+
+
+## Un material de brillo que se puede desvanecer. Todos los efectos de abajo lo usan.
+func _brillo_alfa(color: Color, energia: float, alfa: float) -> StandardMaterial3D:
+	var mat := Art.glow(color, energia)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	mat.albedo_color.a = alfa
+	return mat
+
+
+## Una barra entre dos puntos, orientada. La usan los rayos, los brazos de goma y los hilos.
+func _barra(world: Node, desde: Vector3, hasta: Vector3, radio: float, mat: Material) -> MeshInstance3D:
+	var barra := MeshInstance3D.new()
+	var malla := CylinderMesh.new()
+	malla.top_radius = radio
+	malla.bottom_radius = radio
+	malla.height = 1.0
+	malla.radial_segments = 8
+	barra.mesh = malla
+	barra.material_override = mat
+	barra.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(barra)
+	var tramo := hasta - desde
+	var largo := maxf(0.05, tramo.length())
+	var eje := tramo / largo
+	var base := Basis(Vector3.RIGHT, PI) if eje.dot(Vector3.UP) < -0.999 else Basis(Quaternion(Vector3.UP, eje))
+	barra.global_transform = Transform3D(base * Basis.from_scale(Vector3(1.0, largo, 1.0)), (desde + hasta) * 0.5)
+	return barra
+
+
+## Humo blanco: como se van y vienen los clones de sombra.
+func spawn_humo(context: Node, pos: Vector3) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var humo := CPUParticles3D.new()
+	humo.emitting = true
+	humo.one_shot = true
+	humo.amount = 28
+	humo.lifetime = 0.7
+	humo.explosiveness = 0.9
+	humo.direction = Vector3.UP
+	humo.spread = 90.0
+	humo.initial_velocity_min = 1.0
+	humo.initial_velocity_max = 2.6
+	humo.damping_min = 2.0
+	humo.damping_max = 4.0
+	humo.gravity = Vector3(0.0, 0.8, 0.0)
+	humo.scale_amount_min = 0.25
+	humo.scale_amount_max = 0.55
+	humo.color = Color(0.92, 0.92, 0.94, 0.8)
+	world.add_child(humo)
+	humo.global_position = pos + Vector3.UP * 0.6
+	_auto_free(humo, 1.2)
+	Sfx.play_3d(context, &"dash", pos, -8.0)
+
+
+# ------------------------------------------------------------------- Sans
+
+## Huesos del piso: la linea que avisa en el piso y, al vencer el aviso, los huesos.
+func spawn_huesos_piso(context: Node, desde: Vector3, rumbo: Vector3, largo: float, aviso: float) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var plano := Vector3(rumbo.x, 0.0, rumbo.z).normalized()
+	if plano.is_zero_approx():
+		return
+	var marca := _barra(world, desde + Vector3.UP * 0.06, desde + plano * largo + Vector3.UP * 0.06, 0.9,
+		_brillo_alfa(Color(0.75, 0.88, 1.0), 1.4, 0.25))
+	marca.scale = Vector3(1.0, 1.0, 0.04)
+	_auto_free(marca, aviso)
+	var tree := world.get_tree()
+	if tree == null:
+		return
+	var ref: WeakRef = weakref(world)
+	tree.create_timer(aviso).timeout.connect(func() -> void:
+		var w := ref.get_ref() as Node
+		if w == null or not w.is_inside_tree():
+			return
+		var blanco := Art.toon(Color(0.96, 0.96, 0.93), 0.01)
+		var n := int(largo / 0.8)
+		for k: int in range(n):
+			var hueso := Art.capsule(0.07, 1.2, blanco)
+			w.add_child(hueso)
+			hueso.global_position = desde + plano * (0.8 + float(k) * 0.8) + Vector3.DOWN * 0.6
+			var tw := hueso.create_tween()
+			tw.tween_property(hueso, "position:y", hueso.position.y + 1.1, 0.12)
+			tw.tween_interval(0.35)
+			tw.tween_property(hueso, "position:y", hueso.position.y - 0.2, 0.2)
+			tw.tween_callback(hueso.queue_free)
+		Sfx.play_3d(w, &"hueso", desde + plano * largo * 0.5, 2.0))
+
+
+## Alma azul: el corazon azul que le queda arriba al que la recibio, mientras dura.
+func spawn_alma_azul(context: Node, origin: Vector3, blanco: Node3D) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	Sfx.play_3d(context, &"gema", origin, -2.0)
+	if blanco == null or not is_instance_valid(blanco):
+		spawn_impact_burst(context, origin + (context as Node3D).global_transform.basis.z * -2.0 if context is Node3D else origin,
+			Color(0.3, 0.5, 1.0, 0.8))
+		return
+	var linea := _barra(world, origin, blanco.global_position + Vector3.UP, 0.05, _brillo_alfa(Color(0.35, 0.55, 1.0), 2.0, 0.7))
+	var tw := linea.create_tween()
+	tw.tween_property(linea.material_override, "albedo_color:a", 0.0, 0.3)
+	tw.tween_callback(linea.queue_free)
+	var corazon := Node3D.new()
+	var azul := Art.glow(Color(0.25, 0.45, 1.0), 2.6)
+	for lado: float in [-1.0, 1.0]:
+		corazon.add_child(Art.sphere(0.09, azul, Vector3(0.06 * lado, 0.04, 0.0)))
+	var punta := Art.box(Vector3(0.13, 0.13, 0.09), azul, Vector3(0.0, -0.04, 0.0))
+	punta.rotation_degrees = Vector3(0.0, 0.0, 45.0)
+	corazon.add_child(punta)
+	blanco.add_child(corazon)
+	corazon.position = Vector3(0.0, 2.35, 0.0)
+	_auto_free(corazon, AlmaAzul.LENTO_DURA)
+	spawn_impact_burst(context, blanco.global_position + Vector3.UP, Color(0.3, 0.5, 1.0, 0.95))
+
+
+## Una calavera de dragon, la de los Gaster Blaster, mirando hacia `rumbo`.
+func _calavera_blaster(world: Node, pos: Vector3, rumbo: Vector3) -> Node3D:
+	var c := Node3D.new()
+	world.add_child(c)
+	c.global_position = pos
+	var arriba := Vector3.FORWARD if absf(rumbo.normalized().y) > 0.98 else Vector3.UP
+	c.look_at(pos + rumbo, arriba)
+	var hueso := Art.toon(Color(0.96, 0.96, 0.94), 0.012)
+	var negro := Art.flat(Color(0.03, 0.03, 0.05))
+	var craneo := Art.sphere(0.45, hueso)
+	craneo.scale = Vector3(1.0, 0.8, 1.35)
+	c.add_child(craneo)
+	var hocico := Art.box(Vector3(0.5, 0.25, 0.55), hueso, Vector3(0.0, -0.1, -0.55))
+	c.add_child(hocico)
+	for lado: float in [-1.0, 1.0]:
+		c.add_child(Art.sphere(0.11, negro, Vector3(0.2 * lado, 0.12, -0.42)))
+		c.add_child(Art.sphere(0.04, Art.glow(Color(0.55, 0.85, 1.0), 3.0), Vector3(0.2 * lado, 0.12, -0.5)))
+		var cuerno := Art.box(Vector3(0.08, 0.08, 0.5), hueso, Vector3(0.32 * lado, 0.25, 0.35))
+		cuerno.rotation_degrees = Vector3(-25.0, 18.0 * lado, 0.0)
+		c.add_child(cuerno)
+	return c
+
+
+## Las calaveras durante la carga: aparecen donde van a tirar y miran al cruce.
+func spawn_blasters_carga(caster: Node3D, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var world := _world_of(caster)
+	if world == null:
+		return
+	for r: Array in GasterBlaster.rayos_de(caster, -caster.global_transform.basis.z):
+		var c := _calavera_blaster(world, r[0], r[1])
+		c.scale = Vector3.ONE * 0.2
+		var tw := c.create_tween()
+		tw.tween_property(c, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		_auto_free(c, duracion + 0.05)
+
+
+## Los Gaster Blaster: las calaveras y los tres rayos.
+func spawn_gaster_blaster(caster: Node, rayos: Array, largo: float) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	for r: Array in rayos:
+		var desde: Vector3 = r[0]
+		var rumbo: Vector3 = r[1]
+		var c := _calavera_blaster(world, desde, rumbo)
+		_auto_free(c, 0.7)
+		var mat := _brillo_alfa(Color(0.92, 0.97, 1.0), 2.2, 0.8)
+		var rayo := _barra(world, desde + rumbo * 0.8, desde + rumbo * largo, 0.42, mat)
+		var tw := rayo.create_tween().set_parallel()
+		tw.tween_property(rayo, "scale:x", 0.05, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(rayo, "scale:z", 0.05, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(mat, "albedo_color:a", 0.0, 0.55)
+		tw.chain().tween_callback(rayo.queue_free)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(0.85, 0.95, 1.0)
+	luz.light_energy = 10.0
+	luz.omni_range = 16.0
+	world.add_child(luz)
+	luz.global_position = (rayos[0][0] as Vector3)
+	_fade_light(luz, 0.6)
+	camera_shake(1.8)
+	Sfx.play_3d(caster, &"snowgrave", (rayos[0][0] as Vector3), 0.0)
+
+
+# ----------------------------------------------------------------- Naruto
+
+## La esfera que se arma en la mano: el Rasengan mientras se carga y mientras corre.
+func spawn_esfera_mano(caster: Node3D, color: Color, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var esfera := Node3D.new()
+	caster.add_child(esfera)
+	esfera.position = Vector3(0.32, 1.15, -0.45)
+	esfera.add_child(Art.sphere(0.18, Art.glow(color.lightened(0.4), 3.0)))
+	var anillo := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.2
+	toro.outer_radius = 0.26
+	anillo.mesh = toro
+	anillo.material_override = Art.glow(color, 2.4)
+	esfera.add_child(anillo)
+	var luz := OmniLight3D.new()
+	luz.light_color = color
+	luz.light_energy = 2.5
+	luz.omni_range = 3.5
+	esfera.add_child(luz)
+	var tw := esfera.create_tween().set_loops(int(duracion / 0.2) + 1)
+	tw.tween_property(anillo, "rotation:y", TAU, 0.2).from(0.0)
+	_auto_free(esfera, duracion)
+
+
+# ------------------------------------------------------------------ Luffy
+
+## El brazo de goma: se estira hasta la punta y vuelve.
+func spawn_brazo_goma(caster: Node3D, origin: Vector3, rumbo: Vector3, largo: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var piel := Art.toon(Color(0.96, 0.78, 0.62), 0.01)
+	var punta := origin + rumbo.normalized() * largo
+	var brazo := _barra(world, origin, punta, 0.07, piel)
+	var puño := Art.sphere(0.14, piel)
+	world.add_child(puño)
+	puño.global_position = punta
+	var tw := brazo.create_tween()
+	tw.tween_interval(0.08)
+	tw.tween_callback(puño.queue_free)
+	tw.tween_callback(brazo.queue_free)
+	Sfx.play_3d(caster, &"goma", origin, -6.0)
+
+
+## El Gear Fifth: el aura blanca con las nubes, mientras dura.
+func spawn_gear_fifth(caster: Node3D, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var viejo := caster.get_node_or_null(^"AuraSuper")
+	if viejo != null:
+		viejo.queue_free()
+	var aura := Node3D.new()
+	aura.name = &"AuraSuper"
+	caster.add_child(aura)
+	aura.position = Vector3(0.0, 1.0, 0.0)
+	var cascara := MeshInstance3D.new()
+	var capsula := CapsuleMesh.new()
+	capsula.radius = 0.75
+	capsula.height = 2.5
+	cascara.mesh = capsula
+	# TENUE A PROPOSITO: blanca y con mucho brillo tapaba a Luffy entero, y un efecto que
+	# esconde al personaje es una ventaja en un PvP.
+	var mat := _brillo_alfa(Color(1.0, 1.0, 0.98), 0.7, 0.10)
+	cascara.material_override = mat
+	cascara.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	aura.add_child(cascara)
+	# Las nubes blancas del Nika, alrededor de los hombros: suben despacio y se abren.
+	var nubes := CPUParticles3D.new()
+	nubes.emitting = true
+	nubes.amount = 26
+	nubes.lifetime = 1.2
+	nubes.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	nubes.emission_sphere_radius = 0.7
+	nubes.direction = Vector3.UP
+	nubes.spread = 40.0
+	nubes.initial_velocity_min = 0.3
+	nubes.initial_velocity_max = 1.0
+	nubes.gravity = Vector3(0.0, 0.6, 0.0)
+	nubes.scale_amount_min = 0.2
+	nubes.scale_amount_max = 0.45
+	nubes.color = Color(1.0, 1.0, 1.0, 0.8)
+	aura.add_child(nubes)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.98, 0.92)
+	luz.light_energy = 2.4
+	luz.omni_range = 7.0
+	aura.add_child(luz)
+	var tw := cascara.create_tween()
+	tw.set_loops(int(duracion / 0.5) + 1)
+	tw.tween_property(mat, "albedo_color:a", 0.14, 0.25)
+	tw.tween_property(mat, "albedo_color:a", 0.07, 0.25)
+	_auto_free(aura, duracion)
+	spawn_pisoton(caster, caster.global_position, GearFifth.RADIO_ESTALLIDO)
+	camera_shake(1.4)
+	Sfx.play_3d(caster, &"estrella", caster.global_position, 0.0)
+
+
+# ------------------------------------------------------------- Spider-Man
+
+## La tela pegada en el que la comio: una mancha blanca que dura lo que dura lo lento.
+func spawn_telarana_pegada(target: Node3D) -> void:
+	if not is_instance_valid(target):
+		return
+	var tela := Node3D.new()
+	target.add_child(tela)
+	tela.position = Vector3(0.0, 0.9, 0.0)
+	var blanco := Art.toon(Color(0.95, 0.95, 0.97), 0.0)
+	for k: int in range(5):
+		var hilo := Art.box(Vector3(0.7, 0.02, 0.02), blanco)
+		hilo.rotation_degrees = Vector3(float(k) * 36.0, float(k) * 36.0, 30.0)
+		tela.add_child(hilo)
+	_auto_free(tela, Telarana.LENTO_DURA)
+
+
+## El balanceo: el hilo que sube desde la mano hacia un punto alto, adelante.
+func spawn_hilo_balanceo(caster: Node3D, rumbo: Vector3, duracion: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var ancla := caster.global_position + rumbo * 7.0 + Vector3.UP * 12.0
+	var mat := Art.toon(Color(0.95, 0.95, 0.97), 0.0)
+	var hilo := _barra(world, caster.global_position + Vector3.UP * 1.4, ancla, 0.025, mat)
+	var tw := hilo.create_tween()
+	tw.tween_interval(duracion)
+	tw.tween_callback(hilo.queue_free)
+
+
+## Red Total: un hilo a cada uno que alcanza, y la tela encima.
+func spawn_red_total(caster: Node3D, blancos: Array) -> void:
+	if not is_instance_valid(caster):
+		return
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var mat := Art.toon(Color(0.95, 0.95, 0.97), 0.0)
+	var desde := caster.global_position + Vector3.UP * 1.3
+	for t: Node3D in blancos:
+		if not is_instance_valid(t):
+			continue
+		var hilo := _barra(world, desde, t.global_position + Vector3.UP, 0.03, mat)
+		var tw := hilo.create_tween()
+		tw.tween_interval(0.35)
+		tw.tween_callback(hilo.queue_free)
+		var pegada := Node3D.new()
+		t.add_child(pegada)
+		pegada.position = Vector3(0.0, 0.9, 0.0)
+		for k: int in range(6):
+			var h := Art.box(Vector3(0.9, 0.02, 0.02), mat)
+			h.rotation_degrees = Vector3(float(k) * 30.0, float(k) * 30.0, 25.0)
+			pegada.add_child(h)
+		_auto_free(pegada, RedTotal.LENTO_DURA)
+	spawn_impact_burst(caster, desde, Color(0.95, 0.95, 1.0, 0.9))
+	camera_shake(0.9)
+	Sfx.play_3d(caster, &"telarana", desde, 3.0)
+
+
+# ------------------------------------------------------------------- Gojo
+
+## Azul: el punto que atrae, con el remolino que se cierra hacia el centro.
+func spawn_azul(context: Node, punto: Vector3, radio: float) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var esfera := Art.sphere(0.45, Art.glow(Color(0.35, 0.60, 1.0), 3.0))
+	world.add_child(esfera)
+	esfera.global_position = punto
+	var tw := esfera.create_tween()
+	tw.tween_property(esfera, "scale", Vector3.ONE * 1.4, 0.5).from(Vector3.ONE * 0.3)
+	tw.tween_property(esfera, "scale", Vector3.ONE * 0.05, 0.3)
+	tw.tween_callback(esfera.queue_free)
+	var anillo := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = radio * 0.92
+	toro.outer_radius = radio
+	anillo.mesh = toro
+	var mat := _brillo_alfa(Color(0.35, 0.60, 1.0), 2.0, 0.6)
+	anillo.material_override = mat
+	world.add_child(anillo)
+	anillo.global_position = punto + Vector3.DOWN * 0.8
+	var tw2 := anillo.create_tween().set_parallel()
+	tw2.tween_property(anillo, "scale", Vector3.ONE * 0.1, 0.6)
+	tw2.tween_property(mat, "albedo_color:a", 0.0, 0.6)
+	tw2.chain().tween_callback(anillo.queue_free)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(0.35, 0.60, 1.0)
+	luz.light_energy = 5.0
+	luz.omni_range = radio * 1.6
+	world.add_child(luz)
+	luz.global_position = punto
+	_fade_light(luz, 0.8)
+	Sfx.play_3d(context, &"portal", punto, -1.0)
+
+
 # --------------------------------------------------------------- Scorpion
 
 ## El Fuego del Infierno: el circulo de brasas que avisa y, al vencer el aviso, la columna.
@@ -2537,6 +2966,54 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 		&"chasquido":
 			if caster is Node3D:
 				spawn_chasquido(caster as Node3D)
+		&"hueso":
+			HuesoSans.spawn_cosmetic(caster, origin, dir)
+		&"huesos_piso":
+			if caster is Node3D:
+				spawn_huesos_piso(caster, (caster as Node3D).global_position,
+					HuesosPiso.rumbo_de(caster as Node3D, dir), HuesosPiso.LARGO, HuesosPiso.AVISO)
+		&"alma_azul":
+			if caster is Node3D:
+				spawn_alma_azul(caster, origin, AlmaAzul.primero_en_la_mira(caster as Node3D, origin, dir))
+		&"gaster_blaster":
+			if caster is Node3D:
+				spawn_gaster_blaster(caster, GasterBlaster.rayos_de(caster as Node3D, dir), GasterBlaster.LARGO)
+		&"taijutsu_naruto", &"golpe_aracnido", &"golpe_gojo":
+			spawn_melee_arc(caster, origin, dir)
+		&"kage_bunshin":
+			KageBunshin.spawn_cosmetic(caster, origin, dir)
+		&"rasengan":
+			if caster is Node3D:
+				spawn_esfera_mano(caster as Node3D, Color(0.45, 0.75, 1.0), Rasengan.CARGA + Rasengan.DURATION)
+		&"rasenshuriken":
+			Rasenshuriken.spawn_cosmetic(caster, origin, dir)
+		&"gomu_pistol":
+			if caster is Node3D:
+				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(), GomuPistol.LARGO)
+		&"gomu_gatling":
+			if caster is Node3D:
+				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(), GomuGatling.CONE_RANGE)
+		&"gomu_rocket":
+			if caster is Node3D:
+				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(), 9.0)
+		&"gear_fifth":
+			if caster is Node3D:
+				spawn_gear_fifth(caster as Node3D, GearFifth.DURACION)
+		&"telarana":
+			Telarana.spawn_cosmetic(caster, origin, dir)
+		&"balanceo":
+			if caster is Node3D:
+				spawn_hilo_balanceo(caster as Node3D, Vector3(dir.x, 0.0, dir.z).normalized(), Balanceo.DURATION)
+		&"red_total":
+			if caster is Node3D:
+				spawn_red_total(caster as Node3D, RedTotal.alcanzados(caster as Node3D, origin))
+		&"azul":
+			if caster is Node3D:
+				spawn_azul(caster, Azul.donde(caster as Node3D, origin, dir), Azul.RADIO)
+		&"rojo":
+			Rojo.spawn_cosmetic(caster, origin, dir)
+		&"purpura":
+			Purpura.spawn_cosmetic(caster, origin, dir)
 		&"katana_scorpion":
 			spawn_slash_arc(caster, origin, dir, Color(1.0, 0.80, 0.35))
 		&"lanza":
