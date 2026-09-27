@@ -2887,7 +2887,7 @@ static func _armar() -> Array[Dictionary]:
 		# partida. Solo aparece si el paso 1 ya esta hecho.
 		"paso_snowgrave": 2,
 		"condicion": "anillo",
-		"anillo": Vector2(-24, 22),
+		"anillo": Vector2(-16, 16),
 		"aliados": [_aliado(&"mob", "Mob", Vector2(2.5, 1.5), 95.0, 0.45)],
 		"enemigos": [
 			_eco("p1", &"goku", Vector2(-5, -12), 34.0, 0.17),

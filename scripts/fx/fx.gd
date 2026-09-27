@@ -1479,6 +1479,11 @@ func _explosion_meteorito(context: Node, punto: Vector3, radio: float, fuerte: b
 
 ## El anillo de espinas de la ruta Snowgrave: un aro celeste con puas, flotando y girando en
 ## un rincon del mapa. Se queda hasta que alguien lo toma (lo saca la mision).
+##
+## SE TIENE QUE PODER ENCONTRAR. La primera version era un aro de cuarenta centimetros
+## con una luz chica, y desde donde arranca Noelle no se veia: estar escondido no puede
+## querer decir estar invisible. Ahora es mas grande, brilla mas y tiene una columna de
+## destellos de hielo que sube y se ve desde lejos.
 func armar_anillo_espinas(context: Node, pos: Vector3) -> Node3D:
 	var world := _world_of(context)
 	if world == null:
@@ -1486,35 +1491,64 @@ func armar_anillo_espinas(context: Node, pos: Vector3) -> Node3D:
 	var anillo := Node3D.new()
 	anillo.name = &"AnilloEspinas"
 	world.add_child(anillo)
-	anillo.global_position = pos + Vector3.UP * 0.9
-	var hielo := Art.glow(Color(0.60, 0.85, 1.0), 2.4)
+	anillo.global_position = pos + Vector3.UP * 1.1
+	var hielo := Art.glow(Color(0.60, 0.85, 1.0), 3.0)
+	var giro := Node3D.new()
+	anillo.add_child(giro)
 	var aro := MeshInstance3D.new()
 	var toro := TorusMesh.new()
-	toro.inner_radius = 0.16
-	toro.outer_radius = 0.22
+	toro.inner_radius = 0.34
+	toro.outer_radius = 0.46
 	aro.mesh = toro
 	aro.material_override = hielo
 	aro.rotation_degrees = Vector3(90.0, 0.0, 0.0)
-	anillo.add_child(aro)
-	for k: int in range(8):
-		var ang := TAU * float(k) / 8.0
+	giro.add_child(aro)
+	for k: int in range(10):
+		var ang := TAU * float(k) / 10.0
 		var pua := MeshInstance3D.new()
 		var cono := CylinderMesh.new()
 		cono.top_radius = 0.0
-		cono.bottom_radius = 0.025
-		cono.height = 0.12
+		cono.bottom_radius = 0.05
+		cono.height = 0.24
 		pua.mesh = cono
 		pua.material_override = hielo
-		pua.position = Vector3(cos(ang) * 0.24, sin(ang) * 0.24, 0.0)
+		pua.position = Vector3(cos(ang) * 0.52, sin(ang) * 0.52, 0.0)
 		pua.rotation = Vector3(0.0, 0.0, ang - PI * 0.5)
-		anillo.add_child(pua)
+		giro.add_child(pua)
+	# La columna de destellos: lo que se ve de lejos, por encima de las coberturas.
+	var destellos := CPUParticles3D.new()
+	destellos.emitting = true
+	destellos.amount = 40
+	destellos.lifetime = 2.2
+	destellos.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	destellos.emission_sphere_radius = 0.5
+	destellos.direction = Vector3.UP
+	destellos.spread = 8.0
+	destellos.initial_velocity_min = 1.6
+	destellos.initial_velocity_max = 2.6
+	destellos.gravity = Vector3.ZERO
+	destellos.scale_amount_min = 0.08
+	destellos.scale_amount_max = 0.16
+	destellos.color = Color(0.70, 0.90, 1.0, 0.9)
+	var punto := QuadMesh.new()
+	punto.size = Vector2(1.0, 1.0)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = Art.punto_suave()
+	punto.material = mat
+	destellos.mesh = punto
+	anillo.add_child(destellos)
 	var luz := OmniLight3D.new()
 	luz.light_color = Color(0.60, 0.85, 1.0)
-	luz.light_energy = 2.0
-	luz.omni_range = 4.0
+	luz.light_energy = 3.5
+	luz.omni_range = 7.0
 	anillo.add_child(luz)
-	var tw := anillo.create_tween().set_loops()
-	tw.tween_property(anillo, "rotation:y", TAU, 2.4).from(0.0)
+	var tw := giro.create_tween().set_loops()
+	tw.tween_property(giro, "rotation:y", TAU, 2.4).from(0.0)
 	return anillo
 
 

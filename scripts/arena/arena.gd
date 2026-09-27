@@ -759,7 +759,11 @@ func find_clear_spot(alrededor: Vector3, radius: float = 0.75) -> Vector3:
 		var probe := alrededor + Vector3(cos(ang) * radio, 0.0, sin(ang) * radio)
 		probe.x = clampf(probe.x, -limite, limite)
 		probe.z = clampf(probe.z, -limite, limite)
-		query.transform = Transform3D(Basis.IDENTITY, probe + Vector3.UP * 1.0)
+		# LA ESFERA VA ENCIMA DEL PISO, no apoyada. Estaba a un metro de altura fijo, y con
+		# radio 1 o mas tocaba el piso: todos los intentos daban "ocupado" y se devolvia el
+		# punto pedido tal cual, aunque cayera adentro de una cobertura. Asi el anillo de
+		# espinas del capitulo 46 quedo metido adentro de un bloque, imposible de tomar.
+		query.transform = Transform3D(Basis.IDENTITY, probe + Vector3.UP * (radius + 0.15))
 		if space.intersect_shape(query, 1).is_empty():
 			return probe
 	# NI LA SALIDA DE ULTIMO RECURSO PUEDE DEVOLVER ALGO FUERA DEL MAPA.

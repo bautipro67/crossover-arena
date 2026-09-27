@@ -334,7 +334,8 @@ func _armar_paso_snowgrave() -> void:
 	_paso_ok = true
 	if String(datos.get("condicion", "")) == "anillo":
 		var rel: Vector2 = datos.get("anillo", Vector2(-24.0, 20.0))
-		var donde := al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 1.0))
+		# En un lugar ABIERTO: con un hueco justo, quedaba pegado a una cobertura y tapado.
+		var donde := al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 2.5))
 		_anillo = FX.armar_anillo_espinas(arena, donde)
 		dijo.emit(&"noelle", "...¿Qué es eso que brilla allá atrás? Tiene... espinas.")
 

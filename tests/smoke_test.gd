@@ -71,6 +71,7 @@ func _run() -> void:
 	await _test_thanos(player, arena)
 	await _test_scorpion(player, arena)
 	await _test_temporada_3(player, arena)
+	_test_lugar_libre(arena)
 	await _test_modos_nuevos(player, arena)
 	_test_descripciones()
 	await _test_escena_corta_habilidades(player)
@@ -2449,6 +2450,31 @@ func _test_temporada_3(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+## UN LUGAR LIBRE ES LIBRE DE VERDAD: pedido adentro de una cobertura, devuelve un punto
+## afuera. Con radio 1 la esfera tocaba el piso y devolvia el punto pedido tal cual.
+func _test_lugar_libre(arena: Arena) -> void:
+	var cobertura := arena.get_node_or_null(^"Cover27") as Node3D
+	if cobertura == null:
+		for hijo: Node in arena.get_children():
+			if String(hijo.name).begins_with("Cover"):
+				cobertura = hijo as Node3D
+				break
+	var espacio := arena.get_world_3d().direct_space_state
+	var mal := ""
+	for radio: float in [0.75, 1.0, 1.5, 2.5]:
+		var pedido := Vector3(cobertura.global_position.x, 0.0, cobertura.global_position.z)
+		var libre := arena.find_clear_spot(pedido, radio)
+		var q := PhysicsShapeQueryParameters3D.new()
+		var esfera := SphereShape3D.new()
+		esfera.radius = 0.3
+		q.shape = esfera
+		q.collision_mask = GameConfig.LAYER_WORLD
+		q.transform = Transform3D(Basis.IDENTITY, libre + Vector3.UP * 0.9)
+		if not espacio.intersect_shape(q, 1).is_empty():
+			mal += "radio%.2f " % radio
+	_check(mal.is_empty(), "un lugar libre pedido adentro de una cobertura queda afuera, con cualquier radio %s" % mal)
+
+
 # ------------------------------------------------------------- Modos nuevos
 
 ## Lo que los tres modos nuevos cambian ADENTRO de la pelea: los bots que se pelean entre
@@ -2750,7 +2776,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 321
+const CHEQUEOS_MINIMOS: int = 322
 
 
 func _finish() -> void:

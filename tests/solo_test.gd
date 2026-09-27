@@ -984,6 +984,14 @@ func _test_historia(main: Node) -> void:
 			_check(mision._paso == 2 and is_instance_valid(mision._anillo),
 				"con el paso 1 hecho, en el capitulo 46 aparece el anillo de espinas")
 			if is_instance_valid(mision._anillo):
+				var q := PhysicsShapeQueryParameters3D.new()
+				var esfera := SphereShape3D.new()
+				esfera.radius = 0.3
+				q.shape = esfera
+				q.collision_mask = GameConfig.LAYER_WORLD
+				q.transform = Transform3D(Basis.IDENTITY, mision._anillo.global_position)
+				_check(mision._anillo.get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty(),
+					"el anillo no queda metido adentro de ninguna cobertura")
 				p.global_position = mision._anillo.global_position
 				for _f: int in range(6):
 					await get_tree().physics_frame
@@ -1956,7 +1964,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 296
+const CHEQUEOS_MINIMOS: int = 297
 
 
 func _finish() -> void:
