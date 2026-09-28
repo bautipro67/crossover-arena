@@ -221,11 +221,13 @@ El último escalón del pase pro de la 3 es GOJO: no se vende ni sale de otro la
 escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
 tarda subirlo jugando.
 
-75 skins entre el pase y la tienda, 22 nuevas en esta temporada. TODAS cambian la forma
-del personaje, no solo el color: alas, hombreras, capas, cuernos, cola, llamas,
-cristales, armaduras... Las raras traen al menos un cambio, las épicas y legendarias al
-menos dos, y encima acabados (metal, piedra, sombra), auras y ojos que brillan. En la tienda hay un probador para verla
-puesta antes de comprarla.
+75 skins entre el pase y la tienda, 22 nuevas en esta temporada. Cada una sale de algo
+del original y cambia al personaje con cosas que son suyas: el pelo del Super Saiyajin,
+las púas cortas del Sonic de 1991, la armadura de rata de Pickle Rick, los cuernos del
+Madara del Diez Colas, el kimono de Wano, la araña blanca del traje simbionte, el ojo
+encendido de Sans... Las épicas y legendarias además traen acabados (metal, piedra,
+sombra), auras y ojos que brillan. En la tienda hay un probador para verla puesta antes
+de comprarla.
 
 Todo es cosmético: ni el nivel ni las skins cambian vida, daño, velocidad, hitbox ni
 silueta. Y las monedas no se compran con plata: solo se ganan jugando.

@@ -1689,6 +1689,27 @@ func _test_controles() -> void:
 
 # ------------------------------------------------------- Skins que se notan
 
+func _distancia_color(a: Color, b: Color) -> float:
+	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
+
+
+## Cuantas mallas tiene un visual y cuanto miden, para comparar dos disfraces.
+func _firma(nodo: Node) -> String:
+	var cuenta := 0
+	var medida := 0.0
+	var pila: Array[Node] = [nodo]
+	while not pila.is_empty():
+		var n: Node = pila.pop_back()
+		if n.is_queued_for_deletion():
+			continue
+		var malla := n as MeshInstance3D
+		if malla != null and malla.mesh != null:
+			cuenta += 1
+			medida += malla.get_aabb().size.length()
+		pila.append_array(n.get_children())
+	return "%d/%.3f" % [cuenta, medida]
+
+
 ## Todos los materiales de un visual, sin repetir.
 func _materiales(nodo: Node, salida: Array) -> void:
 	var malla := nodo as MeshInstance3D
@@ -1718,18 +1739,25 @@ func _test_skins_visibles() -> void:
 	# Se pidio que las skins "cambien mas su aspecto": toda epica y toda legendaria trae un
 	# adorno (una capa, una corona, un halo...) o una forma propia (el pelo del Super
 	# Saiyajin, las puas de Super Sonic, el pelo de Mob al 100%).
-	# Y DESDE EL 2026-09-27, TODAS: se pidio que "se noten", porque la mayoria se parecian
-	# demasiado al personaje de fabrica. Una rara cambia al menos una cosa de la forma; una
-	# epica o una legendaria, dos (la forma del constructor cuenta como una, cada adorno
-	# como otra).
+	# El 2026-09-27 se pidio que "se noten", y se les puso a todas dos adornos: quedaron
+	# alas, cuernos y llamas donde el personaje no los tiene, y se pidio sacar "las cosas que
+	# no van con la skin". Asi que NO se cuentan adornos: una rara que no cambia la forma
+	# tiene que alejarse de verdad de los colores de fabrica (el Spider-Man de 1962 era el
+	# mismo rojo y azul), y lo que se suma sale del original de cada skin (skin_db, "Que se
+	# noten").
 	var sin_forma := ""
 	for sid: StringName in SkinDB.todas():
 		var sk := SkinDB.get_skin(sid)
+		var pj := CharacterDB.get_character(sk.character_id)
 		var cambios := sk.accesorios.size() + (1 if sk.forma != &"" else 0) + (1 if sk.accesorio != &"" else 0)
-		var pide := 1 if sk.rareza == &"rara" else 2
-		if cambios < pide:
-			sin_forma += "%s(%d/%d) " % [sid, cambios, pide]
-	_check(sin_forma.is_empty(), "toda skin cambia la forma, no solo el color, y cuanto mas rara mas %s" % sin_forma)
+		if sk.rareza != &"rara" and cambios == 0:
+			sin_forma += "%s(%s sin forma) " % [sid, sk.rareza]
+		var lejos := maxf(_distancia_color(sk.body_color, pj.body_color),
+			_distancia_color(sk.trouser_color, pj.trouser_color))
+		if sk.rareza == &"rara" and cambios == 0 and lejos < 0.3:
+			sin_forma += "%s(rara casi de fabrica: %.2f) " % [sid, lejos]
+	_check(sin_forma.is_empty(),
+		"las epicas y legendarias cambian la forma, y las raras la forma o los colores %s" % sin_forma)
 
 	# --- NINGUNA REPETIDA: ni el id ni el nombre ---
 	#
@@ -1785,6 +1813,25 @@ func _test_skins_visibles() -> void:
 				break
 	_check(transparentes.is_empty(),
 		"ninguna skin deja el cuerpo transparente %s" % transparentes)
+
+	# --- Y la forma que dice cambiar, la cambia de verdad ---
+	#
+	# La forma es un nombre que el constructor mira con _forma(): uno mal escrito no da
+	# error, la skin sale igual que la de fabrica. Se arma cada una y se compara con la de
+	# fabrica por cuantas mallas tiene y de que tamaño.
+	var iguales := ""
+	for sid: StringName in SkinDB.todas():
+		var sk := SkinDB.get_skin(sid)
+		if sk.forma == &"" and sk.accesorios.is_empty() and sk.accesorio == &"":
+			continue
+		visual.apply_character(CharacterDB.get_character(sk.character_id))
+		await get_tree().process_frame
+		var de_fabrica := _firma(visual._root)
+		visual.apply_character(SkinDB.aplicar(CharacterDB.get_character(sk.character_id), sid))
+		await get_tree().process_frame
+		if _firma(visual._root) == de_fabrica:
+			iguales += "%s " % sid
+	_check(iguales.is_empty(), "toda forma y todo adorno de una skin cambia el visual de verdad %s" % iguales)
 
 	# --- Volver a la de fabrica limpia TODO ---
 	#
@@ -2039,7 +2086,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 307
+const CHEQUEOS_MINIMOS: int = 308
 
 
 func _finish() -> void:

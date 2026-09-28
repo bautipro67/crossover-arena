@@ -761,7 +761,8 @@ func _detallar() -> void:
 	_det(&"sans_juez", {&"campera": Color(0.08, 0.08, 0.10), &"capa": Color(0.10, 0.10, 0.14),
 		&"remera": Color(0.95, 0.80, 0.30)},
 		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.80, 0.30, 0.75))
-	_det(&"sans_mal_rato", {&"pupilas": Color(0.35, 0.65, 1.0), &"orbes": Color(0.25, 0.50, 1.0)},
+	# La misma campera: en la pelea no se cambia de ropa, lo que cambia es el ojo.
+	_det(&"sans_mal_rato", {&"pupilas": Color(0.35, 0.65, 1.0), &"campera": Color(0.30, 0.52, 0.86)},
 		&"", &"chispas", Color(0.35, 0.60, 1.0), Color(0.35, 0.65, 1.0), &"",
 		Color(0.35, 0.60, 1.0, 0.85))
 	_det(&"naruto_genin", {&"negro": Color(0.18, 0.28, 0.62), &"bandana": Color(0.18, 0.28, 0.62)},
@@ -798,13 +799,13 @@ func _detallar() -> void:
 		&"", &"estrellas", Color(0.70, 0.85, 1.0), Color(0.55, 0.85, 1.0), &"",
 		Color(0.55, 0.80, 1.0, 0.85))
 	_extra(&"naruto_hokage", &"", [&"capa"])
-	_extra(&"spiderman_simbionte", &"", [&"patas_arana"], {&"patas_arana": Color(0.06, 0.06, 0.08)})
+	_extra(&"spiderman_simbionte", &"simbionte", [])
 	_extra(&"sans_invierno", &"", [&"bufanda", &"orejeras"], {&"bufanda": Color(0.85, 0.20, 0.25),
 		&"orejeras": Color(0.95, 0.95, 0.95)})
 	_extra(&"noelle_escarcha", &"", [&"corona_hielo"])
 	_extra(&"naruto_kurama", &"kurama", [])
 	_extra(&"sans_juez", &"", [&"capa"])
-	_extra(&"sans_mal_rato", &"", [&"orbes"])
+	_extra(&"sans_mal_rato", &"un_ojo", [])
 	_extra(&"naruto_sabio", &"", [&"capa"])
 	_extra(&"naruto_seis", &"kurama", [&"orbes"])
 	_extra(&"luffy_capitan", &"", [&"capa"])
@@ -843,87 +844,46 @@ func _detallar() -> void:
 
 	# ------------------------------------------------ Que se noten (2026-09-27)
 	#
-	# PEDIDO: "que las skins cambien al personaje y que se noten, la mayoria son demasiado
-	# parecidas a los personajes normales". Toda skin cambia ahora la forma, no solo el
-	# color: las raras con al menos un adorno, las epicas y legendarias con dos. Lo exige
-	# solo_test. Los adornos vienen del original cuando lo hay (las alas de tela del
-	# Spider-Man de 1962, la armadura de rata de Pickle Rick, la cola de Kurama, el
-	# pergamino del modo sabio, los lentes de la academia de Naruto...).
-	_sumar(&"noelle_snowgrave", [&"cristales", &"capa"], {&"capa": Color(0.72, 0.88, 1.00), &"cristales": Color(0.70, 0.90, 1.00)})
-	_sumar(&"noelle_fiesta", [&"banda"], {&"banda": Color(0.18, 0.62, 0.30)})
-	_sumar(&"noelle_sombra", [&"capa"], {&"capa": Color(0.10, 0.08, 0.14)})
-	_sumar(&"noelle_reno", [&"cola"], {&"cola": Color(0.62, 0.42, 0.26)})
-	_sumar(&"noelle_otono", [&"mochila"], {&"mochila": Color(0.55, 0.30, 0.14)})
-	_sumar(&"noelle_aurora", [&"alas"], {&"alas": Color(0.40, 1.00, 0.80)})
-	_sumar(&"noelle_menta", [&"bufanda"], {&"bufanda": Color(0.35, 0.80, 0.62)})
-	_sumar(&"noelle_cyber", [&"hombreras"], {&"hombreras": Color(0.20, 0.90, 0.95)})
-	_sumar(&"noelle_escarcha", [&"cristales"], {})
-	_sumar(&"dio_vampiro", [&"alas"], {&"alas": Color(0.30, 0.04, 0.06)})
-	_sumar(&"dio_dorado", [&"hombreras"], {&"hombreras": Color(1.00, 0.82, 0.30)})
-	_sumar(&"dio_noche", [&"capa"], {&"capa": Color(0.10, 0.10, 0.25)})
-	_sumar(&"dio_piedra", [&"hombreras"], {&"hombreras": Color(0.55, 0.52, 0.48)})
-	_sumar(&"dio_blanco", [&"hombreras"], {&"hombreras": Color(0.95, 0.85, 0.45)})
-	_sumar(&"dio_cielo", [&"alas", &"capa"], {&"alas": Color(0.97, 0.97, 0.95), &"capa": Color(0.96, 0.95, 0.92)})
-	_sumar(&"dio_phantom", [&"capa"], {&"capa": Color(0.18, 0.30, 0.38)})
-	_sumar(&"flowery_omega", [&"alas", &"corona"], {&"alas": Color(0.95, 0.55, 0.85)})
-	_sumar(&"flowery_dorado", [&"corona"], {})
-	_sumar(&"flowery_nocturno", [&"cuernos"], {&"cuernos": Color(0.30, 0.28, 0.45)})
-	_sumar(&"flowery_marchito", [&"flores"], {&"flores": Color(0.50, 0.36, 0.22)})
-	_sumar(&"flowery_primavera", [&"alas"], {&"alas": Color(1.00, 0.75, 0.85)})
-	_sumar(&"rick_pickle", [&"armadura", &"cola"], {&"armadura": Color(0.45, 0.40, 0.36), &"cola": Color(0.62, 0.52, 0.50)})
-	_sumar(&"rick_maligno", [&"hombreras"], {&"hombreras": Color(0.30, 0.30, 0.34)})
-	_sumar(&"rick_cosmico", [&"orbes"], {&"orbes": Color(0.40, 0.30, 0.90)})
-	_sumar(&"rick_bata", [&"capa"], {&"capa": Color(0.92, 0.94, 0.95)})
-	_sumar(&"rick_toxico", [&"cristales"], {&"cristales": Color(0.45, 1.00, 0.35)})
-	_sumar(&"sonic_super", [&"llamas", &"orbes"], {&"llamas": Color(1.00, 0.85, 0.25), &"orbes": Color(1.00, 0.80, 0.20)})
-	_sumar(&"sonic_oscuro", [&"llamas"], {&"llamas": Color(0.45, 0.25, 0.60)})
-	_sumar(&"sonic_clasico", [&"moneda"], {})
-	_sumar(&"sonic_metal", [&"hombreras"], {&"hombreras": Color(0.62, 0.64, 0.70)})
-	_sumar(&"sonic_hyper", [&"llamas", &"orbes"], {&"llamas": Color(0.85, 0.95, 1.00), &"orbes": Color(0.60, 0.90, 1.00)})
-	_sumar(&"goku_ssj", [&"llamas", &"orbes"], {&"llamas": Color(1.00, 0.88, 0.30), &"orbes": Color(1.00, 0.55, 0.10)})
-	_sumar(&"goku_blue", [&"llamas"], {&"llamas": Color(0.35, 0.75, 1.00)})
-	_sumar(&"goku_ui", [&"llamas", &"halo"], {&"llamas": Color(0.85, 0.90, 1.00)})
-	_sumar(&"mario_clasico", [&"moneda"], {})
-	_sumar(&"mario_fuego", [&"llamas"], {&"llamas": Color(1.00, 0.45, 0.12)})
-	_sumar(&"mario_dorado", [&"corona", &"capa"], {&"capa": Color(1.00, 0.85, 0.20)})
-	_sumar(&"mario_hielo", [&"cristales"], {})
-	_sumar(&"madara_edo", [&"capa"], {&"capa": Color(0.40, 0.14, 0.16)})
-	_sumar(&"madara_susanoo", [&"hombreras"], {&"hombreras": Color(0.35, 0.50, 1.00)})
+	# PEDIDO: que las skins cambien al personaje y que se noten. Y DESPUES: "las skins tienen
+	# cosas innecesarias y que no van con la skin". Asi que aca se suma SOLO lo que sale del
+	# original de cada skin, o de lo que la skin dice ser en su descripcion; nunca un adorno
+	# puesto para llenar (alas, cuernos o llamas donde el personaje no las tiene):
+	#   - la armadura de rata de Pickle Rick, los cuernos del Madara jinchuriki del Diez
+	#     Colas, el pergamino del sabio a la espalda, las gafas de la academia de Naruto,
+	#     los lentes oscuros de Gojo en sus dias libres, las flores secas de Flowery
+	#     Marchito.
+	#   - y nada que el original no tenga: el Simbionte ya no lleva las patas mecanicas de
+	#     Iron Spider sino la araña blanca grande adelante y atras, y Sans no lleva bolas
+	#     azules alrededor.
+	#   - y formas del propio personaje: las puas cortas del Sonic de 1991, el kimono
+	#     cerrado de Wano, el Luffy del East Blue sin la X del pecho (es de Marineford),
+	#     la manga corta del uniforme de verano de Mob, el Madara joven "sin armadura", y
+	#     el ojo encendido de Sans cuando vas a pasar un mal rato.
+	_sumar(&"rick_pickle", [&"armadura"], {&"armadura": Color(0.45, 0.40, 0.36)})
 	_sumar(&"madara_rikudo", [&"cuernos"], {&"cuernos": Color(0.92, 0.92, 0.94)})
-	_sumar(&"madara_joven", [&"capa"], {&"capa": Color(0.12, 0.14, 0.30)})
-	_sumar(&"mob_verano", [&"mochila"], {&"mochila": Color(0.22, 0.30, 0.55)})
-	_sumar(&"mob_cien", [&"llamas"], {&"llamas": Color(0.55, 0.80, 1.00)})
-	_sumar(&"mob_incognita", [&"llamas"], {&"llamas": Color(0.90, 0.95, 1.00)})
-	_sumar(&"scorpion_clasico", [&"banda"], {&"banda": Color(0.10, 0.10, 0.10)})
-	_sumar(&"scorpion_shirai", [&"hombreras"], {&"hombreras": Color(0.85, 0.70, 0.35)})
-	_sumar(&"scorpion_infernal", [&"llamas"], {&"llamas": Color(1.00, 0.45, 0.10)})
-	_sumar(&"scorpion_sombra", [&"banda"], {&"banda": Color(0.45, 0.45, 0.50)})
-	_sumar(&"thanos_endgame", [&"armadura"], {&"armadura": Color(0.55, 0.58, 0.64)})
-	_sumar(&"thanos_infinito", [&"orbes"], {&"orbes": Color(0.70, 0.40, 1.00)})
-	_sumar(&"sans_clasico", [&"capucha"], {})
-	_sumar(&"sans_juez", [&"banda"], {&"banda": Color(0.95, 0.80, 0.30)})
-	_sumar(&"sans_mal_rato", [&"llamas"], {&"llamas": Color(0.30, 0.60, 1.00)})
-	_sumar(&"naruto_genin", [], {})
-	_sumar(&"naruto_hokage", [&"banda"], {&"banda": Color(0.85, 0.20, 0.15)})
-	_sumar(&"naruto_sabio", [&"pergamino"], {})
-	_sumar(&"naruto_kurama", [&"cola"], {&"cola": Color(1.00, 0.62, 0.12)})
-	_sumar(&"luffy_wano", [&"banda"], {&"banda": Color(0.92, 0.92, 0.90)})
-	_sumar(&"luffy_east_blue", [&"banda"], {&"banda": Color(0.95, 0.85, 0.35)})
-	_sumar(&"luffy_capitan", [&"hombreras"], {&"hombreras": Color(0.95, 0.80, 0.25)})
-	_sumar(&"luffy_nika", [&"llamas"], {&"llamas": Color(1.00, 1.00, 1.00)})
-	_sumar(&"spiderman_clasico", [&"alas"], {&"alas": Color(0.14, 0.30, 0.78)})
-	_sumar(&"spiderman_iron", [&"hombreras"], {&"hombreras": Color(0.90, 0.72, 0.28)})
-	_sumar(&"spiderman_2099", [&"hombreras"], {&"hombreras": Color(0.85, 0.12, 0.14)})
-	_sumar(&"spiderman_simbionte", [&"hombreras"], {&"hombreras": Color(0.10, 0.10, 0.12)})
-	_sumar(&"gojo_blanco", [], {})
-	_sumar(&"gojo_dominio", [&"halo"], {&"halo": Color(0.60, 0.85, 1.00)})
-	# Las que ademas cambian de forma o de color porque se confundian con la de fabrica.
+	_sumar(&"naruto_sabio", [&"pergamino"])
+	_sumar(&"flowery_marchito", [&"flores"], {&"flores": Color(0.50, 0.36, 0.22)})
 	_extra_forma(&"gojo_blanco", &"sin_venda", &"lentes_oscuros")
 	_extra_forma(&"naruto_genin", &"", &"gafas")
+	_extra_forma(&"sonic_clasico", &"clasico", &"")
+	_extra_forma(&"luffy_wano", &"kimono", &"")
+	_extra_forma(&"luffy_east_blue", &"sin_cicatriz", &"")
+	_extra_forma(&"mob_verano", &"manga_corta", &"")
+	_extra_forma(&"madara_joven", &"sin_armadura", &"")
+	# Colores que se confundian con los de fabrica. Dio Dorado era casi el Dio de siempre
+	# (que ya es dorado); el Spider-Man de 1962 era el mismo rojo y azul: en las historietas
+	# de Ditko el azul es mucho mas oscuro, casi negro.
 	var dorado := get_skin(&"dio_dorado")
 	if dorado != null:
 		dorado.body_color = Color(1.0, 0.80, 0.28)
 		dorado.trouser_color = Color(0.85, 0.62, 0.18)
+	var ditko := get_skin(&"spiderman_clasico")
+	if ditko != null:
+		ditko.partes[&"rojo"] = Color(0.94, 0.16, 0.13)
+		ditko.partes[&"azul"] = Color(0.07, 0.10, 0.36)
+		ditko.partes[&"lineas"] = Color(0.02, 0.02, 0.03)
+		ditko.trouser_color = Color(0.07, 0.10, 0.36)
+		ditko.accent_color = Color(0.07, 0.10, 0.36)
 
 
 func _extra(id: StringName, forma: StringName, accesorios: Array[StringName],

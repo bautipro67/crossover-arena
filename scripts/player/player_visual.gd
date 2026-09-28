@@ -1254,20 +1254,13 @@ func _crear_accesorio(tipo: StringName) -> void:
 			for lado: float in [-1.0, 1.0]:
 				var mejilla := Art.box(Vector3(0.04, 0.16, 0.14), metal, Vector3(0.20 * lado, 0.07, -0.05))
 				_costume_add(_head_pivot, mejilla)
-		# ------------------------------------ Los que cambian la silueta (2026-09-27)
+		# ------------------------------------ Los que salen de una skin (2026-09-27)
 		#
-		# Pedido: "que las skins cambien al personaje y que se noten". Estos son de cualquier
-		# cuerpo, y el color sale de la parte con su nombre o, si la skin no la nombra, de su
-		# acento: asi combinan solos con la paleta de cada skin.
-		&"alas":
-			var pluma := Art.toon(_tono(&"alas", accent_color), OUTLINE_WIDTH)
-			for lado: float in [-1.0, 1.0]:
-				for k: int in range(3):
-					var ala := Art.box(Vector3(0.46 - float(k) * 0.08, 0.05, 0.16), pluma,
-						Vector3((0.24 + float(k) * 0.07) * lado, 0.58 - float(k) * 0.13, 0.24))
-					ala.rotation_degrees = Vector3(0.0, -18.0 * lado, (28.0 - float(k) * 14.0) * lado)
-					_costume_add(_torso, ala)
+		# Cada uno es de UNA skin y sale del original: nada de adornos genericos para llenar,
+		# que se pidio sacar ("cosas que no van con la skin"). El color sale de la parte con
+		# su nombre, si la skin la nombra.
 		&"cuernos":
+			# Los dos cuernos del Madara jinchuriki del Diez Colas.
 			var hueso := Art.toon(_tono(&"cuernos", Color(0.92, 0.86, 0.74)), OUTLINE_WIDTH)
 			for lado: float in [-1.0, 1.0]:
 				var cuerno := MeshInstance3D.new()
@@ -1280,8 +1273,10 @@ func _crear_accesorio(tipo: StringName) -> void:
 				cuerno.position = Vector3(0.11 * lado, 0.33, -0.02)
 				cuerno.rotation_degrees = Vector3(-15.0, 0.0, -32.0 * lado)
 				_costume_add(_head_pivot, cuerno)
-		&"hombreras", &"armadura":
-			var metal := Art.metal(_tono(StringName(tipo), accent_color), OUTLINE_WIDTH)
+		&"armadura":
+			# La armadura que se arma Pickle Rick con lo que encuentra: hombreras, peto,
+			# espaldar y el cinto.
+			var metal := Art.metal(_tono(&"armadura", accent_color), OUTLINE_WIDTH)
 			for lado: float in [-1.0, 1.0]:
 				var placa := Art.sphere(0.15, metal, Vector3(0.31 * lado, 0.62, 0.0))
 				placa.scale = Vector3(1.25, 0.72, 1.15)
@@ -1289,66 +1284,11 @@ func _crear_accesorio(tipo: StringName) -> void:
 				var borde := Art.box(Vector3(0.20, 0.035, 0.30), metal, Vector3(0.33 * lado, 0.55, 0.0))
 				borde.rotation_degrees = Vector3(0.0, 0.0, -24.0 * lado)
 				_costume_add(_torso, borde)
-			if tipo == &"armadura":
-				_costume_add(_torso, Art.box(Vector3(0.40, 0.30, 0.05), metal, Vector3(0.0, 0.45, -0.195)))
-				_costume_add(_torso, Art.box(Vector3(0.40, 0.30, 0.05), metal, Vector3(0.0, 0.45, 0.195)))
-				_costume_add(_torso, Art.box(Vector3(0.44, 0.08, 0.32), metal, Vector3(0.0, 0.08, 0.0)))
-		&"cola":
-			var pelo := Art.toon(_tono(&"cola", body_color), OUTLINE_WIDTH)
-			for k: int in range(6):
-				var t := float(k) / 5.0
-				var bola := Art.sphere(0.09 - t * 0.04, pelo,
-					Vector3(0.0, 0.02 + t * t * 0.45, 0.20 + t * 0.42))
-				_costume_add(_torso, bola)
-		&"llamas":
-			var fuego := Art.glow(_tono(&"llamas", accent_color), 2.2)
-			var sitios: Array = [Vector3(0.28, 0.66, 0.02), Vector3(-0.28, 0.66, 0.02),
-				Vector3(0.14, 0.72, 0.16), Vector3(-0.14, 0.72, 0.16), Vector3(0.0, 0.74, 0.20),
-				Vector3(0.22, 0.60, 0.18), Vector3(-0.22, 0.60, 0.18)]
-			for k: int in range(sitios.size()):
-				var llama := MeshInstance3D.new()
-				var cono := CylinderMesh.new()
-				cono.top_radius = 0.0
-				cono.bottom_radius = 0.06
-				cono.height = 0.20 + float(k % 3) * 0.06
-				llama.mesh = cono
-				llama.material_override = fuego
-				llama.position = sitios[k]
-				llama.rotation_degrees = Vector3(12.0, 0.0, -(sitios[k] as Vector3).x * 60.0)
-				_costume_add(_torso, llama)
-		&"cristales":
-			var cristal := Art.glow(_tono(&"cristales", Color(0.60, 0.85, 1.0)), 1.3)
-			var sitios: Array = [Vector3(0.30, 0.66, 0.0), Vector3(-0.30, 0.66, 0.0),
-				Vector3(0.10, 0.62, 0.21), Vector3(-0.10, 0.62, 0.21), Vector3(0.0, 0.46, 0.22)]
-			for k: int in range(sitios.size()):
-				var punta := Art.box(Vector3(0.07, 0.22, 0.07), cristal, sitios[k])
-				punta.rotation_degrees = Vector3(20.0, 45.0, -(sitios[k] as Vector3).x * 70.0)
-				_costume_add(_torso, punta)
-		&"banda":
-			var tela := Art.toon(_tono(&"banda", accent_color), OUTLINE_WIDTH)
-			for z: float in [-0.195, 0.195]:
-				var tira := Art.box(Vector3(0.08, 0.64, 0.03), tela, Vector3(0.0, 0.34, z))
-				tira.rotation_degrees = Vector3(0.0, 0.0, 36.0)
-				_costume_add(_torso, tira)
-		&"capucha":
-			# La capucha puesta: una media esfera sobre la cabeza, abierta adelante.
-			var tela := Art.toon(_tono(&"capucha", body_color), OUTLINE_WIDTH)
-			var capucha := MeshInstance3D.new()
-			var media := SphereMesh.new()
-			media.radius = 0.235
-			media.height = 0.235
-			media.is_hemisphere = true
-			capucha.mesh = media
-			capucha.material_override = tela
-			capucha.position = Vector3(0.0, 0.12, 0.03)
-			capucha.rotation_degrees = Vector3(45.0, 0.0, 0.0)
-			_costume_add(_head_pivot, capucha)
-		&"mochila":
-			var tela := Art.toon(_tono(&"mochila", accent_color), OUTLINE_WIDTH)
-			_costume_add(_torso, Art.box(Vector3(0.30, 0.34, 0.14), tela, Vector3(0.0, 0.40, 0.26)))
-			for lado: float in [-1.0, 1.0]:
-				_costume_add(_torso, Art.box(Vector3(0.04, 0.34, 0.03), tela, Vector3(0.09 * lado, 0.44, -0.19)))
+			_costume_add(_torso, Art.box(Vector3(0.40, 0.30, 0.05), metal, Vector3(0.0, 0.45, -0.195)))
+			_costume_add(_torso, Art.box(Vector3(0.40, 0.30, 0.05), metal, Vector3(0.0, 0.45, 0.195)))
+			_costume_add(_torso, Art.box(Vector3(0.44, 0.08, 0.32), metal, Vector3(0.0, 0.08, 0.0)))
 		&"pergamino":
+			# El pergamino grande que el sabio lleva cruzado a la espalda.
 			var papel := Art.toon(_tono(&"pergamino", Color(0.92, 0.88, 0.75)), OUTLINE_WIDTH)
 			var cinta := Art.toon(Color(0.75, 0.12, 0.10), OUTLINE_WIDTH)
 			var rollo := Art.cylinder(0.10, 0.62, papel, Vector3(0.0, 0.34, 0.27))
@@ -2199,7 +2139,8 @@ func _build_sonic() -> void:
 		pivote.rotation_degrees = p["rot"]
 		_head_pivot.add_child(pivote)
 		_costume.append(pivote)
-		var largo: float = p["len"]
+		# El Sonic de 1991 es "mas redondo": las puas, mas cortas.
+		var largo: float = p["len"] * (0.72 if _forma(&"clasico") else 1.0)
 		# Conos y no capsulas: una pua termina en punta. Con capsulas quedaban salchichas.
 		var cono := MeshInstance3D.new()
 		var malla := CylinderMesh.new()
@@ -2772,38 +2713,42 @@ func _build_madara() -> void:
 	# laminas cayendo hacia afuera, y las placas de la cintura colgando alrededor de la
 	# cadera. Carmesi con los bordes mas oscuros: es la separacion entre placas lo que dice
 	# "armadura" y no "chaleco rojo".
-	var peto := Art.box(Vector3(0.40, 0.17, 0.05), armadura, Vector3(0.0, 0.55, -0.180))
-	_costume_add(_torso, peto)
-	var peto_bajo := Art.box(Vector3(0.36, 0.15, 0.05), armadura, Vector3(0.0, 0.38, -0.170))
-	_costume_add(_torso, peto_bajo)
-	_costume_add(_torso, Art.box(Vector3(0.37, 0.018, 0.055), borde, Vector3(0.0, 0.463, -0.182)))
-	var espaldar := Art.box(Vector3(0.40, 0.34, 0.05), armadura, Vector3(0.0, 0.47, 0.178))
-	_costume_add(_torso, espaldar)
-	for lado: float in [-1.0, 1.0]:
-		for capa: int in range(2):
-			var lamina := Art.box(Vector3(0.20, 0.035, 0.26), armadura if capa == 0 else borde,
-				Vector3((0.26 + float(capa) * 0.035) * lado, 0.60 - float(capa) * 0.07, 0.0))
-			lamina.rotation_degrees = Vector3(0.0, 0.0, -28.0 * lado)
-			_costume_add(_torso, lamina)
+	# Madara Joven es "antes de la guerra: el manto del clan, sin armadura".
+	var con_armadura := not _forma(&"sin_armadura")
+	if con_armadura:
+		var peto := Art.box(Vector3(0.40, 0.17, 0.05), armadura, Vector3(0.0, 0.55, -0.180))
+		_costume_add(_torso, peto)
+		var peto_bajo := Art.box(Vector3(0.36, 0.15, 0.05), armadura, Vector3(0.0, 0.38, -0.170))
+		_costume_add(_torso, peto_bajo)
+		_costume_add(_torso, Art.box(Vector3(0.37, 0.018, 0.055), borde, Vector3(0.0, 0.463, -0.182)))
+		var espaldar := Art.box(Vector3(0.40, 0.34, 0.05), armadura, Vector3(0.0, 0.47, 0.178))
+		_costume_add(_torso, espaldar)
+		for lado: float in [-1.0, 1.0]:
+			for capa: int in range(2):
+				var lamina := Art.box(Vector3(0.20, 0.035, 0.26), armadura if capa == 0 else borde,
+					Vector3((0.26 + float(capa) * 0.035) * lado, 0.60 - float(capa) * 0.07, 0.0))
+				lamina.rotation_degrees = Vector3(0.0, 0.0, -28.0 * lado)
+				_costume_add(_torso, lamina)
 	# El obi y el cinturon lila, entre el peto y las placas de la cintura.
 	_costume_add(_torso, Art.box(Vector3(0.43, 0.08, 0.30), obi, Vector3(0.0, 0.07, 0.0)))
 	_costume_add(_torso, Art.box(Vector3(0.44, 0.03, 0.31), cinto, Vector3(0.0, 0.12, 0.0)))
-	# Las placas de la cintura: al frente, a los costados y atras, colgando.
-	var faldon: Array = [
-		[Vector3(-0.11, -0.05, -0.16), 0.0], [Vector3(0.11, -0.05, -0.16), 0.0],
-		[Vector3(-0.22, -0.05, 0.0), 90.0], [Vector3(0.22, -0.05, 0.0), 90.0],
-		[Vector3(-0.11, -0.05, 0.16), 0.0], [Vector3(0.11, -0.05, 0.16), 0.0],
-	]
-	for f: Array in faldon:
-		var placa := Art.box(Vector3(0.15, 0.17, 0.03), armadura, f[0])
-		placa.rotation_degrees = Vector3(0.0, f[1], 0.0)
-		_costume_add(_torso, placa)
-	# Las de los muslos, al frente.
-	for cadera: Node3D in [_hip_l, _hip_r]:
-		if cadera == null:
-			continue
-		var muslera := Art.box(Vector3(0.15, 0.20, 0.035), armadura, Vector3(0.0, -0.17, -0.105))
-		_costume_add(cadera, muslera)
+	if con_armadura:
+		# Las placas de la cintura: al frente, a los costados y atras, colgando.
+		var faldon: Array = [
+			[Vector3(-0.11, -0.05, -0.16), 0.0], [Vector3(0.11, -0.05, -0.16), 0.0],
+			[Vector3(-0.22, -0.05, 0.0), 90.0], [Vector3(0.22, -0.05, 0.0), 90.0],
+			[Vector3(-0.11, -0.05, 0.16), 0.0], [Vector3(0.11, -0.05, 0.16), 0.0],
+		]
+		for f: Array in faldon:
+			var placa := Art.box(Vector3(0.15, 0.17, 0.03), armadura, f[0])
+			placa.rotation_degrees = Vector3(0.0, f[1], 0.0)
+			_costume_add(_torso, placa)
+		# Las de los muslos, al frente.
+		for cadera: Node3D in [_hip_l, _hip_r]:
+			if cadera == null:
+				continue
+			var muslera := Art.box(Vector3(0.15, 0.20, 0.035), armadura, Vector3(0.0, -0.17, -0.105))
+			_costume_add(cadera, muslera)
 
 	# --- LAS PIERNAS: vendas en las canillas y las sandalias ---
 	for rodilla: Node3D in [_knee_l, _knee_r]:
@@ -2925,8 +2870,10 @@ func _build_mob() -> void:
 		_costume_add(_torso, dorado)
 
 	# --- LAS MANGAS LARGAS del gakuran, hasta la muñeca ---
+	#
+	# Menos en el uniforme de verano, que es de manga corta: asoma el antebrazo.
 	for codo: Node3D in [_elbow_l, _elbow_r]:
-		if codo == null:
+		if codo == null or _forma(&"manga_corta"):
 			continue
 		var manga := Art.capsule(0.066, 0.24, _mat_body, Vector3(0.0, -0.12, 0.0))
 		_costume_add(codo, manga)
@@ -3052,6 +2999,12 @@ func _build_sans() -> void:
 		var cuenca := Art.sphere(0.056, negro, Vector3(0.0, 0.0, -0.022))
 		cuenca.scale = Vector3(1.0, 1.05, 0.5)
 		_costume_add(ojo, cuenca)
+		# Mal Rato: como en la pelea del final, un ojo encendido y mas grande y el otro
+		# apagado. Es el que se ve a la izquierda cuando te mira, como en el sprite.
+		if _forma(&"un_ojo"):
+			if ojo == _eye_r:
+				_costume_add(ojo, Art.sphere(0.025, pupila, Vector3(0.0, 0.0, -0.046)))
+			continue
 		_costume_add(ojo, Art.sphere(0.014, pupila, Vector3(0.0, 0.0, -0.046)))
 	_costume_add(_head_pivot, Art.box(Vector3(0.035, 0.03, 0.02), negro, Vector3(0.0, 0.078, -0.198)))
 	var sonrisa := Art.box(Vector3(0.20, 0.014, 0.02), negro, Vector3(0.0, 0.028, -0.192))
@@ -3213,11 +3166,16 @@ func _build_luffy() -> void:
 		var marca := Art.box(Vector3(0.035, 0.006, 0.01), cicatriz, Vector3(-0.076, 0.085 - float(k) * 0.012, -0.176))
 		_costume_add(_head_pivot, marca)
 	# --- EL CHALECO ROJO abierto: el pecho al aire con la X, y los brazos al aire ---
-	_costume_add(_torso, Art.box(Vector3(0.13, 0.40, 0.02), piel, Vector3(0.0, 0.44, -0.186)))
-	for lado: float in [-1.0, 1.0]:
-		var raya := Art.box(Vector3(0.012, 0.18, 0.012), cicatriz, Vector3(0.0, 0.50, -0.198))
-		raya.rotation_degrees = Vector3(0.0, 0.0, 38.0 * lado)
-		_costume_add(_torso, raya)
+	#
+	# El kimono de Wano va cerrado. Y la X es de Marineford: el Luffy del East Blue, de
+	# antes del salto, todavia no la tiene.
+	if not _forma(&"kimono"):
+		_costume_add(_torso, Art.box(Vector3(0.13, 0.40, 0.02), piel, Vector3(0.0, 0.44, -0.186)))
+	if not _forma(&"kimono") and not _forma(&"sin_cicatriz"):
+		for lado: float in [-1.0, 1.0]:
+			var raya := Art.box(Vector3(0.012, 0.18, 0.012), cicatriz, Vector3(0.0, 0.50, -0.198))
+			raya.rotation_degrees = Vector3(0.0, 0.0, 38.0 * lado)
+			_costume_add(_torso, raya)
 	for hombro: Node3D in [_shoulder_l, _shoulder_r]:
 		if hombro != null:
 			_costume_add(hombro, Art.capsule(0.074, 0.3, piel, Vector3(0.0, -0.17, 0.0)))
@@ -3276,15 +3234,20 @@ func _build_spiderman() -> void:
 	# --- EL CUERPO: los costados azules y la araña en el pecho ---
 	for lado: float in [-1.0, 1.0]:
 		_costume_add(_torso, Art.box(Vector3(0.06, 0.46, 0.30), azul, Vector3(0.20 * lado, 0.36, 0.0)))
-	var cuerpo_arana := Art.sphere(0.035, emblema, Vector3(0.0, 0.52, -0.195))
-	cuerpo_arana.scale = Vector3(0.8, 1.4, 0.4)
-	_costume_add(_torso, cuerpo_arana)
-	for lado: float in [-1.0, 1.0]:
-		for k: int in range(4):
-			var pata := Art.box(Vector3(0.07, 0.008, 0.01), emblema,
-				Vector3(0.04 * lado, 0.55 - float(k) * 0.02, -0.197))
-			pata.rotation_degrees = Vector3(0.0, 0.0, (40.0 - float(k) * 25.0) * lado)
-			_costume_add(_torso, pata)
+	#
+	# El traje simbionte la tiene grande, blanca, y tambien en la espalda.
+	var grande := 1.7 if _forma(&"simbionte") else 1.0
+	var caras: Array = [-1.0, 1.0] if _forma(&"simbionte") else [-1.0]
+	for cara: float in caras:
+		var cuerpo_arana := Art.sphere(0.035 * grande, emblema, Vector3(0.0, 0.52, 0.195 * cara))
+		cuerpo_arana.scale = Vector3(0.8, 1.4, 0.4)
+		_costume_add(_torso, cuerpo_arana)
+		for lado: float in [-1.0, 1.0]:
+			for k: int in range(4):
+				var pata := Art.box(Vector3(0.07 * grande, 0.008 * grande, 0.01), emblema,
+					Vector3(0.04 * grande * lado, 0.55 - float(k) * 0.02 * grande, 0.197 * cara))
+				pata.rotation_degrees = Vector3(0.0, 0.0, (40.0 - float(k) * 25.0) * lado)
+				_costume_add(_torso, pata)
 	# Brazos: el de arriba azul por abajo; antebrazo y guante rojos.
 	for codo: Node3D in [_elbow_l, _elbow_r]:
 		if codo != null:
