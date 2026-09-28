@@ -74,6 +74,9 @@ var temporada: int = -1
 var historia: Dictionary = {}
 ## Los pasos de la ruta Snowgrave ya cumplidos: "1" -> true. Ver Historia.PASOS_SNOWGRAVE.
 var snowgrave: Dictionary = {}
+## Los pasos de las demas rutas secretas: ruta -> {"1": true}. Snowgrave sigue en su propio
+## campo (fue la primera, y asi quedo guardada en los archivos).
+var rutas: Dictionary = {}
 ## La dificultad elegida para la historia: un indice de Historia.DIFICULTADES.
 var dificultad_historia: int = Historia.DIFICULTAD_NORMAL
 ## Cuando esta en false, guardar() no escribe nada.
@@ -280,32 +283,59 @@ func capitulo_completado(i: int) -> bool:
 ## Se puede jugar? El primero siempre; los demas, con el anterior ganado.
 func capitulo_disponible(i: int) -> bool:
 	# La ruta secreta, ademas del capitulo de antes, pide los tres pasos.
-	if Historia.capitulo_secreto(i) and not ruta_snowgrave_abierta():
+	if Historia.capitulo_secreto(i) and not ruta_abierta(Historia.ruta_de(i)):
 		return false
 	var antes := Historia.requisito(i)
 	return antes < 0 or capitulo_completado(antes)
 
 
 func paso_snowgrave(n: int) -> bool:
-	return snowgrave.get(str(n), false)
+	return paso_ruta("snowgrave", n)
 
 
 func cumplir_paso_snowgrave(n: int) -> void:
-	snowgrave[str(n)] = true
+	cumplir_paso_ruta("snowgrave", n)
+
+
+func pasos_snowgrave() -> int:
+	return pasos_ruta("snowgrave")
+
+
+func ruta_snowgrave_abierta() -> bool:
+	return ruta_abierta("snowgrave")
+
+
+func _pasos_de(ruta: String) -> Dictionary:
+	return snowgrave if ruta == "snowgrave" else rutas.get(ruta, {})
+
+
+func paso_ruta(ruta: String, n: int) -> bool:
+	return _pasos_de(ruta).get(str(n), false)
+
+
+func cumplir_paso_ruta(ruta: String, n: int) -> void:
+	if ruta == "snowgrave":
+		snowgrave[str(n)] = true
+	else:
+		var pasos: Dictionary = rutas.get(ruta, {})
+		pasos[str(n)] = true
+		rutas[ruta] = pasos
 	cambio.emit()
 	guardar()
 
 
-func pasos_snowgrave() -> int:
+func pasos_ruta(ruta: String) -> int:
+	var total := int((Historia.RUTAS.get(ruta, {}) as Dictionary).get("pasos", 0))
 	var n := 0
-	for k: int in range(1, Historia.PASOS_SNOWGRAVE + 1):
-		if paso_snowgrave(k):
+	for k: int in range(1, total + 1):
+		if paso_ruta(ruta, k):
 			n += 1
 	return n
 
 
-func ruta_snowgrave_abierta() -> bool:
-	return pasos_snowgrave() >= Historia.PASOS_SNOWGRAVE
+func ruta_abierta(ruta: String) -> bool:
+	var total := int((Historia.RUTAS.get(ruta, {}) as Dictionary).get("pasos", 0))
+	return total > 0 and pasos_ruta(ruta) >= total
 
 
 func completar_capitulo(i: int) -> void:
@@ -337,6 +367,7 @@ func cargar() -> void:
 	personajes = cfg.get_value("personajes", "desbloqueados", {}) as Dictionary
 	historia = cfg.get_value("historia", "capitulos", {}) as Dictionary
 	snowgrave = cfg.get_value("historia", "snowgrave", {}) as Dictionary
+	rutas = cfg.get_value("historia", "rutas", {}) as Dictionary
 	dificultad_historia = clampi(int(cfg.get_value("historia", "dificultad", Historia.DIFICULTAD_NORMAL)),
 		0, Historia.DIFICULTADES.size() - 1)
 	# Un archivo sin temporada es de la 0: es la unica que existio antes de este campo.
@@ -361,6 +392,7 @@ func guardar() -> void:
 	cfg.set_value("personajes", "desbloqueados", personajes)
 	cfg.set_value("historia", "capitulos", historia)
 	cfg.set_value("historia", "snowgrave", snowgrave)
+	cfg.set_value("historia", "rutas", rutas)
 	cfg.set_value("historia", "dificultad", dificultad_historia)
 	cfg.set_value("pase", "temporada", temporada)
 	cfg.set_value("stats", "bajas", bajas_totales)
@@ -382,6 +414,7 @@ func borrar_todo() -> void:
 	personajes = {}
 	historia = {}
 	snowgrave = {}
+	rutas = {}
 	dificultad_historia = Historia.DIFICULTAD_NORMAL
 	temporada = Pase.TEMPORADA
 	bajas_totales = 0

@@ -53,7 +53,7 @@ func _ready() -> void:
 		var k := Historia.parte_de(i)
 		# LA RUTA SECRETA NO SE VE hasta que se abre: ni su titulo ni sus candados. Si se viera
 		# cerrada, dejaria de ser secreta.
-		if Historia.es_secreta(k) and not Progreso.ruta_snowgrave_abierta():
+		if Historia.es_secreta(k) and not Progreso.ruta_abierta(Historia.ruta_de_parte(k)):
 			continue
 		if k != parte_actual:
 			parte_actual = k
@@ -61,8 +61,10 @@ func _ready() -> void:
 				lista.add_child(UITheme.make_spacer(6))
 			var abierta := Progreso.capitulo_disponible(Historia.primero_de(k))
 			var cabecera := UITheme.make_label(Historia.titulo_parte(k) if abierta
-				else "%s  ·  se abre al terminar la parte %d" % [Historia.titulo_parte(k), k], 15,
-				(Color(0.65, 0.88, 1.0) if Historia.es_secreta(k) else UITheme.GOLD) if abierta
+				else "%s  ·  se abre al terminar la parte %d" % [Historia.titulo_parte(k),
+					Historia.numero_parte(k) - 1], 15,
+				(Color((Historia.RUTAS.get(Historia.ruta_de_parte(k), {}) as Dictionary).get("color", UITheme.GOLD))
+				if Historia.es_secreta(k) else UITheme.GOLD) if abierta
 				else UITheme.TEXT_DIM)
 			cabecera.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			lista.add_child(cabecera)
@@ -108,12 +110,14 @@ func _ready() -> void:
 		caja.add_child(fin)
 	# Lo unico que se ve de la ruta mientras esta cerrada: cuantos pasos van, y solo despues
 	# de haber dado el primero. Sin eso el que lo encontro de casualidad no sabria que hay mas.
-	var pasos := Progreso.pasos_snowgrave()
-	if pasos > 0 and not Progreso.ruta_snowgrave_abierta():
-		var frio := UITheme.make_label("❄ Algo frío se quedó adentro de Noelle.  (%d / %d)" % [
-			pasos, Historia.PASOS_SNOWGRAVE], 12, Color(0.65, 0.88, 1.0))
-		frio.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		caja.add_child(frio)
+	for ruta: String in Historia.RUTAS:
+		var pasos := Progreso.pasos_ruta(ruta)
+		if pasos > 0 and not Progreso.ruta_abierta(ruta):
+			var datos_ruta: Dictionary = Historia.RUTAS[ruta]
+			var pista := UITheme.make_label("%s  (%d / %d)" % [String(datos_ruta["pista"]), pasos,
+				int(datos_ruta["pasos"])], 12, Color(datos_ruta["color"]))
+			pista.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			caja.add_child(pista)
 
 	caja.add_child(UITheme.make_spacer(4))
 	var volver := UITheme.make_button("VOLVER")

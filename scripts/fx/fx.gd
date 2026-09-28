@@ -1552,6 +1552,61 @@ func armar_anillo_espinas(context: Node, pos: Vector3) -> Node3D:
 	return anillo
 
 
+## El hueso de DIO, de la ruta del Cielo: un hueso dorado que flota y gira, con la misma
+## columna de destellos que el anillo de espinas —en dorado— para que se vea de lejos.
+func armar_hueso_dio(context: Node, pos: Vector3) -> Node3D:
+	var world := _world_of(context)
+	if world == null:
+		return null
+	var hueso := Node3D.new()
+	hueso.name = &"HuesoDio"
+	world.add_child(hueso)
+	hueso.global_position = pos + Vector3.UP * 1.1
+	var oro := Art.glow(Color(1.0, 0.82, 0.35), 2.6)
+	var giro := Node3D.new()
+	hueso.add_child(giro)
+	var cana := Art.capsule(0.07, 0.62, oro)
+	cana.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+	giro.add_child(cana)
+	for lado: float in [-1.0, 1.0]:
+		for arriba: float in [-1.0, 1.0]:
+			giro.add_child(Art.sphere(0.085, oro, Vector3(0.32 * lado, 0.06 * arriba, 0.0)))
+	var destellos := CPUParticles3D.new()
+	destellos.emitting = true
+	destellos.amount = 40
+	destellos.lifetime = 2.2
+	destellos.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	destellos.emission_sphere_radius = 0.5
+	destellos.direction = Vector3.UP
+	destellos.spread = 8.0
+	destellos.initial_velocity_min = 1.6
+	destellos.initial_velocity_max = 2.6
+	destellos.gravity = Vector3.ZERO
+	destellos.scale_amount_min = 0.08
+	destellos.scale_amount_max = 0.16
+	destellos.color = Color(1.0, 0.85, 0.40, 0.9)
+	var punto := QuadMesh.new()
+	punto.size = Vector2(1.0, 1.0)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = Art.punto_suave()
+	punto.material = mat
+	destellos.mesh = punto
+	hueso.add_child(destellos)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.85, 0.40)
+	luz.light_energy = 3.5
+	luz.omni_range = 7.0
+	hueso.add_child(luz)
+	var tw := giro.create_tween().set_loops()
+	tw.tween_property(giro, "rotation:y", TAU, 2.4).from(0.0)
+	return hueso
+
+
 
 ## Un material de brillo que se puede desvanecer. Todos los efectos de abajo lo usan.
 func _brillo_alfa(color: Color, energia: float, alfa: float) -> StandardMaterial3D:

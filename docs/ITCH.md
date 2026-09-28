@@ -140,7 +140,7 @@ gente.
    enorme— atraviesa todo lo que tiene adelante.
    Golpe · Azul · Rojo · PÚRPURA
 
-═══ MODO HISTORIA — CINCO PARTES, CINCUENTA CAPÍTULOS (Y UNA RUTA SECRETA) ═══
+═══ MODO HISTORIA — SEIS PARTES, SESENTA CAPÍTULOS (Y DOS RUTAS SECRETAS) ═══
 
 PARTE 1: LA GRIETA. Un experimento de Rick rompe la pared entre los mundos, y todo lo que
 cae por la grieta termina en la Arena: un coliseo entre mundos que vive de las peleas.
@@ -167,7 +167,7 @@ el culpable es Rick mientras baja a tragarse el fuego de las almas. Thanos llega
 cerrar la puerta al precio que sea. Diez capítulos con Scorpion y Thanos jugables. Se
 abre al terminar la parte 3.
 
-PARTE 5: SIN LÍMITES (NUEVA). Sin nada que la alimente, la Arena llama a los más fuertes
+PARTE 5: SIN LÍMITES. Sin nada que la alimente, la Arena llama a los más fuertes
 de cada mundo: Naruto, Luffy, Spider-Man, Sans... y Gojo, que dice ser el más fuerte y se
 aburre. La Arena copia su Infinito y arma un eco que no se puede tocar. Se abre al
 terminar la parte 4.
@@ -175,6 +175,12 @@ terminar la parte 4.
 Y ESCONDIDA EN LA PARTE 5 HAY UNA RUTA SECRETA. Nadie te la va a decir de frente: hay que
 hacer ciertas cosas, con Noelle, de cierta manera. Sans sabe algo. Si lo que hiciste
 cuenta, el final del capítulo te lo avisa.
+
+PARTE 6: EL DIARIO DE DIO (NUEVA). DIO se escapa del Inframundo con un diario: el plan
+para llegar al "cielo". Scorpion lo persigue, Thanos vuelve a cerrar la grieta, y en el
+núcleo de la Arena lo esperan Noelle, Rick y Mob. Tres capítulos se juegan con DIO... y
+si seguís su diario al pie de la letra, se abre otra ruta secreta. Se abre al terminar
+la parte 5.
 
 DIFICULTAD. Fácil, Normal o Difícil, y se cambia cuando quieras desde la pantalla
 de capítulos. Fácil paga la mitad de monedas y experiencia; Difícil, un 50% más. Y en
@@ -215,9 +221,10 @@ El último escalón del pase pro de la 3 es GOJO: no se vende ni sale de otro la
 escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
 tarda subirlo jugando.
 
-75 skins entre el pase y la tienda, 22 nuevas en esta temporada. Cuanto más rara, más
-se nota: las raras recolorean el personaje entero, las épicas suman un acabado (metal,
-piedra, sombra) o un accesorio, y las legendarias un aura y ojos que brillan. En la tienda hay un probador para verla
+75 skins entre el pase y la tienda, 22 nuevas en esta temporada. TODAS cambian la forma
+del personaje, no solo el color: alas, hombreras, capas, cuernos, cola, llamas,
+cristales, armaduras... Las raras traen al menos un cambio, las épicas y legendarias al
+menos dos, y encima acabados (metal, piedra, sombra), auras y ojos que brillan. En la tienda hay un probador para verla
 puesta antes de comprarla.
 
 Todo es cosmético: ni el nivel ni las skins cambian vida, daño, velocidad, hitbox ni

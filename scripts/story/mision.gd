@@ -61,6 +61,8 @@ var ancla: Vector3 = Vector3.ZERO
 ## LA RUTA SNOWGRAVE (ver Historia.PASOS_SNOWGRAVE). El paso de este capitulo, si tiene
 ## uno y se juega con Noelle con los pasos anteriores hechos; 0 = ninguno.
 var _paso: int = 0
+## De que ruta es ese paso ("snowgrave", "cielo"...).
+var _ruta: String = ""
 ## Se sigue cumpliendo. Lo rompe un enemigo que cae sin estar congelado, o un jefe que no
 ## cae con Snowgrave.
 var _paso_ok: bool = true
@@ -190,7 +192,7 @@ func _sumar(d: Dictionary, equipo: int) -> Player:
 		_apagar(b)
 		b.visible = false
 		_fuera[StringName(d["id"])] = true
-	b.died.connect(func(_asesino: int) -> void: _al_morir(StringName(d["id"])))
+	b.died.connect(func(asesino: int) -> void: _al_morir(StringName(d["id"]), asesino))
 	return b
 
 
@@ -319,25 +321,37 @@ func _process(delta: float) -> void:
 	_revisar_objetivo()
 
 
-# ---------------------------------------------------------- La ruta Snowgrave
+# ---------------------------------------------------------- Las rutas secretas
 
-## El paso de este capitulo, si corresponde: con Noelle, y con los anteriores hechos.
+## El paso de este capitulo, si corresponde: con el personaje de su ruta, y con los pasos
+## anteriores de esa ruta hechos. Ver Historia.RUTAS.
 func _armar_paso_snowgrave() -> void:
-	var n := int(datos.get("paso_snowgrave", 0))
+	var pr := Historia.paso_de(datos)
+	var ruta: String = pr[0]
+	var n: int = pr[1]
 	var p := jugador()
-	if n <= 0 or p == null or p.character_id != &"noelle" or Progreso.paso_snowgrave(n):
+	if n <= 0 or p == null or not Historia.RUTAS.has(ruta):
+		return
+	if p.character_id != StringName(Historia.RUTAS[ruta]["personaje"]) or Progreso.paso_ruta(ruta, n):
 		return
 	for k: int in range(1, n):
-		if not Progreso.paso_snowgrave(k):
+		if not Progreso.paso_ruta(ruta, k):
 			return
+	_ruta = ruta
 	_paso = n
 	_paso_ok = true
-	if String(datos.get("condicion", "")) == "anillo":
-		var rel: Vector2 = datos.get("anillo", Vector2(-24.0, 20.0))
+	var condicion := String(datos.get("condicion", ""))
+	if condicion == "anillo" or condicion == "objeto":
+		var cual := "anillo" if condicion == "anillo" else String(datos.get("objeto", "anillo"))
+		var rel: Vector2 = datos.get("anillo", datos.get("objeto_pos", Vector2(-16.0, 16.0)))
 		# En un lugar ABIERTO: con un hueco justo, quedaba pegado a una cobertura y tapado.
 		var donde := al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 2.5))
-		_anillo = FX.armar_anillo_espinas(arena, donde)
-		dijo.emit(&"noelle", "...¿Qué es eso que brilla allá atrás? Tiene... espinas.")
+		if cual == "hueso":
+			_anillo = FX.armar_hueso_dio(arena, donde)
+			dijo.emit(&"dio", "Ese brillo dorado... Lo reconozco. Es mío. Una parte de DIO.")
+		else:
+			_anillo = FX.armar_anillo_espinas(arena, donde)
+			dijo.emit(&"noelle", "...¿Qué es eso que brilla allá atrás? Tiene... espinas.")
 
 
 func _vigilar_paso_snowgrave() -> void:
@@ -349,7 +363,7 @@ func _vigilar_paso_snowgrave() -> void:
 				var bot := b as Player
 				if bot != null and is_instance_valid(bot) and bot.equipo == 1 and bot.status.is_frozen():
 					_congelado_t[bot] = tiempo
-		"anillo":
+		"anillo", "objeto":
 			var p := jugador()
 			if _anillo_tomado or p == null or not is_instance_valid(_anillo):
 				return
@@ -357,13 +371,18 @@ func _vigilar_paso_snowgrave() -> void:
 				p.global_position.z - _anillo.global_position.z).length()
 			if d <= 1.8:
 				_anillo_tomado = true
-				FX.spawn_impact_burst(_anillo, _anillo.global_position + Vector3.UP * 0.5, Color(0.6, 0.85, 1.0, 1.0))
+				FX.spawn_impact_burst(_anillo, _anillo.global_position + Vector3.UP * 0.5,
+					Color(Historia.RUTAS[_ruta]["color"]))
 				_anillo.queue_free()
-				dijo.emit(&"noelle", "Un anillo de espinas... Duele. Pero el frío... el frío se siente bien.")
+				if _ruta == "cielo":
+					dijo.emit(&"dio", "El hueso de DIO. Con esto, el cielo ya no está tan lejos.")
+				else:
+					dijo.emit(&"noelle", "Un anillo de espinas... Duele. Pero el frío... el frío se siente bien.")
 
 
-## Un enemigo cayo: si el paso pide congelados o un Snowgrave final, se revisa ahi.
-func _paso_al_caer(b: Player) -> void:
+## Un enemigo cayo: si el paso pide algo de como cae, se revisa ahi. `asesino` es el peer
+## que dio el golpe final.
+func _paso_al_caer(b: Player, asesino: int = 0) -> void:
 	if _paso <= 0 or b == null or b.equipo != 1:
 		return
 	match String(datos.get("condicion", "")):
@@ -377,22 +396,34 @@ func _paso_al_caer(b: Player) -> void:
 				var hace := Time.get_ticks_msec() - int(b.get_meta(&"snowgrave_ms", -99999))
 				if hace > 400:
 					_paso_ok = false
+		"bajas_propias":
+			# Las treinta y seis almas: cada una se la tiene que llevar el mismo.
+			var p := jugador()
+			if p == null or asesino != p.peer_id:
+				_paso_ok = false
 
 
 ## Al ganar: si el paso se cumplio, se guarda, y el cartel del final lo dice.
 func _cerrar_paso_snowgrave() -> String:
 	var extra := ""
-	if _paso > 0 and _paso_ok and (String(datos.get("condicion", "")) != "anillo" or _anillo_tomado):
-		Progreso.cumplir_paso_snowgrave(_paso)
-		extra = "\n❄ Algo frío se quedó adentro de Noelle. (%d / %d)" % [
-			Progreso.pasos_snowgrave(), Historia.PASOS_SNOWGRAVE]
-	# El ultimo capitulo de la parte 5 es el que abre la ruta, si los tres pasos estan.
-	var primero_ruta := -1
+	var condicion := String(datos.get("condicion", ""))
+	var cumplido := _paso > 0 and _paso_ok
+	if condicion == "anillo" or condicion == "objeto":
+		cumplido = cumplido and _anillo_tomado
+	if condicion == "aliado_vivo":
+		var aliado := participantes.get(StringName(datos.get("aliado_vivo", ""))) as Player
+		cumplido = cumplido and aliado != null and not aliado.health.is_dead
+	if cumplido:
+		Progreso.cumplir_paso_ruta(_ruta, _paso)
+		extra = "\n%s (%d / %d)" % [String(Historia.RUTAS[_ruta]["pista"]),
+			Progreso.pasos_ruta(_ruta), int(Historia.RUTAS[_ruta]["pasos"])]
+	# El ultimo capitulo de una parte es el que abre la ruta que viene despues, si esta.
 	for k: int in range(Historia.PARTES.size()):
-		if Historia.es_secreta(k):
-			primero_ruta = Historia.primero_de(k)
-	if primero_ruta >= 0 and Historia.requisito(primero_ruta) == capitulo and Progreso.ruta_snowgrave_abierta():
-		extra += "\n❄ Se abrió la RUTA SNOWGRAVE."
+		var ruta := Historia.ruta_de_parte(k)
+		if ruta == "" or not Historia.es_secreta(k):
+			continue
+		if Historia.requisito(Historia.primero_de(k)) == capitulo and Progreso.ruta_abierta(ruta):
+			extra += "\n" + String(Historia.RUTAS[ruta]["abierta"])
 	return extra
 
 
@@ -420,14 +451,14 @@ func _revisar_objetivo() -> void:
 				_ganar()
 
 
-func _al_morir(id: StringName) -> void:
+func _al_morir(id: StringName, asesino: int = 0) -> void:
 	if terminada or not _en_pelea:
 		return
 	var p := jugador()
 	if participantes.get(id) == p:
 		_perder("CAÍSTE")
 		return
-	_paso_al_caer(participantes.get(id) as Player)
+	_paso_al_caer(participantes.get(id) as Player, asesino)
 	if objetivo.get("tipo", "") == "proteger" and StringName(objetivo.get("id", "")) == id:
 		_perder("NO PUDISTE PROTEGER A %s" % Historia.nombre_de(_personaje_de(id)).to_upper())
 		return

@@ -1254,6 +1254,109 @@ func _crear_accesorio(tipo: StringName) -> void:
 			for lado: float in [-1.0, 1.0]:
 				var mejilla := Art.box(Vector3(0.04, 0.16, 0.14), metal, Vector3(0.20 * lado, 0.07, -0.05))
 				_costume_add(_head_pivot, mejilla)
+		# ------------------------------------ Los que cambian la silueta (2026-09-27)
+		#
+		# Pedido: "que las skins cambien al personaje y que se noten". Estos son de cualquier
+		# cuerpo, y el color sale de la parte con su nombre o, si la skin no la nombra, de su
+		# acento: asi combinan solos con la paleta de cada skin.
+		&"alas":
+			var pluma := Art.toon(_tono(&"alas", accent_color), OUTLINE_WIDTH)
+			for lado: float in [-1.0, 1.0]:
+				for k: int in range(3):
+					var ala := Art.box(Vector3(0.46 - float(k) * 0.08, 0.05, 0.16), pluma,
+						Vector3((0.24 + float(k) * 0.07) * lado, 0.58 - float(k) * 0.13, 0.24))
+					ala.rotation_degrees = Vector3(0.0, -18.0 * lado, (28.0 - float(k) * 14.0) * lado)
+					_costume_add(_torso, ala)
+		&"cuernos":
+			var hueso := Art.toon(_tono(&"cuernos", Color(0.92, 0.86, 0.74)), OUTLINE_WIDTH)
+			for lado: float in [-1.0, 1.0]:
+				var cuerno := MeshInstance3D.new()
+				var cono := CylinderMesh.new()
+				cono.top_radius = 0.0
+				cono.bottom_radius = 0.05
+				cono.height = 0.24
+				cuerno.mesh = cono
+				cuerno.material_override = hueso
+				cuerno.position = Vector3(0.11 * lado, 0.33, -0.02)
+				cuerno.rotation_degrees = Vector3(-15.0, 0.0, -32.0 * lado)
+				_costume_add(_head_pivot, cuerno)
+		&"hombreras", &"armadura":
+			var metal := Art.metal(_tono(StringName(tipo), accent_color), OUTLINE_WIDTH)
+			for lado: float in [-1.0, 1.0]:
+				var placa := Art.sphere(0.15, metal, Vector3(0.31 * lado, 0.62, 0.0))
+				placa.scale = Vector3(1.25, 0.72, 1.15)
+				_costume_add(_torso, placa)
+				var borde := Art.box(Vector3(0.20, 0.035, 0.30), metal, Vector3(0.33 * lado, 0.55, 0.0))
+				borde.rotation_degrees = Vector3(0.0, 0.0, -24.0 * lado)
+				_costume_add(_torso, borde)
+			if tipo == &"armadura":
+				_costume_add(_torso, Art.box(Vector3(0.40, 0.30, 0.05), metal, Vector3(0.0, 0.45, -0.195)))
+				_costume_add(_torso, Art.box(Vector3(0.40, 0.30, 0.05), metal, Vector3(0.0, 0.45, 0.195)))
+				_costume_add(_torso, Art.box(Vector3(0.44, 0.08, 0.32), metal, Vector3(0.0, 0.08, 0.0)))
+		&"cola":
+			var pelo := Art.toon(_tono(&"cola", body_color), OUTLINE_WIDTH)
+			for k: int in range(6):
+				var t := float(k) / 5.0
+				var bola := Art.sphere(0.09 - t * 0.04, pelo,
+					Vector3(0.0, 0.02 + t * t * 0.45, 0.20 + t * 0.42))
+				_costume_add(_torso, bola)
+		&"llamas":
+			var fuego := Art.glow(_tono(&"llamas", accent_color), 2.2)
+			var sitios: Array = [Vector3(0.28, 0.66, 0.02), Vector3(-0.28, 0.66, 0.02),
+				Vector3(0.14, 0.72, 0.16), Vector3(-0.14, 0.72, 0.16), Vector3(0.0, 0.74, 0.20),
+				Vector3(0.22, 0.60, 0.18), Vector3(-0.22, 0.60, 0.18)]
+			for k: int in range(sitios.size()):
+				var llama := MeshInstance3D.new()
+				var cono := CylinderMesh.new()
+				cono.top_radius = 0.0
+				cono.bottom_radius = 0.06
+				cono.height = 0.20 + float(k % 3) * 0.06
+				llama.mesh = cono
+				llama.material_override = fuego
+				llama.position = sitios[k]
+				llama.rotation_degrees = Vector3(12.0, 0.0, -(sitios[k] as Vector3).x * 60.0)
+				_costume_add(_torso, llama)
+		&"cristales":
+			var cristal := Art.glow(_tono(&"cristales", Color(0.60, 0.85, 1.0)), 1.3)
+			var sitios: Array = [Vector3(0.30, 0.66, 0.0), Vector3(-0.30, 0.66, 0.0),
+				Vector3(0.10, 0.62, 0.21), Vector3(-0.10, 0.62, 0.21), Vector3(0.0, 0.46, 0.22)]
+			for k: int in range(sitios.size()):
+				var punta := Art.box(Vector3(0.07, 0.22, 0.07), cristal, sitios[k])
+				punta.rotation_degrees = Vector3(20.0, 45.0, -(sitios[k] as Vector3).x * 70.0)
+				_costume_add(_torso, punta)
+		&"banda":
+			var tela := Art.toon(_tono(&"banda", accent_color), OUTLINE_WIDTH)
+			for z: float in [-0.195, 0.195]:
+				var tira := Art.box(Vector3(0.08, 0.64, 0.03), tela, Vector3(0.0, 0.34, z))
+				tira.rotation_degrees = Vector3(0.0, 0.0, 36.0)
+				_costume_add(_torso, tira)
+		&"capucha":
+			# La capucha puesta: una media esfera sobre la cabeza, abierta adelante.
+			var tela := Art.toon(_tono(&"capucha", body_color), OUTLINE_WIDTH)
+			var capucha := MeshInstance3D.new()
+			var media := SphereMesh.new()
+			media.radius = 0.235
+			media.height = 0.235
+			media.is_hemisphere = true
+			capucha.mesh = media
+			capucha.material_override = tela
+			capucha.position = Vector3(0.0, 0.12, 0.03)
+			capucha.rotation_degrees = Vector3(45.0, 0.0, 0.0)
+			_costume_add(_head_pivot, capucha)
+		&"mochila":
+			var tela := Art.toon(_tono(&"mochila", accent_color), OUTLINE_WIDTH)
+			_costume_add(_torso, Art.box(Vector3(0.30, 0.34, 0.14), tela, Vector3(0.0, 0.40, 0.26)))
+			for lado: float in [-1.0, 1.0]:
+				_costume_add(_torso, Art.box(Vector3(0.04, 0.34, 0.03), tela, Vector3(0.09 * lado, 0.44, -0.19)))
+		&"pergamino":
+			var papel := Art.toon(_tono(&"pergamino", Color(0.92, 0.88, 0.75)), OUTLINE_WIDTH)
+			var cinta := Art.toon(Color(0.75, 0.12, 0.10), OUTLINE_WIDTH)
+			var rollo := Art.cylinder(0.10, 0.62, papel, Vector3(0.0, 0.34, 0.27))
+			rollo.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+			_costume_add(_torso, rollo)
+			var faja := Art.cylinder(0.105, 0.08, cinta, Vector3(0.0, 0.34, 0.27))
+			faja.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+			_costume_add(_torso, faja)
 		&"lentes_oscuros":
 			# Los lentes redondos negros de Gojo de joven, sobre los ojos.
 			var marco := Art.toon(Color(0.12, 0.12, 0.14), OUTLINE_WIDTH)

@@ -71,6 +71,11 @@ extends RefCounted
 ## Spider-Man, Sans y Gojo. Copia el Infinito de Gojo y arma un eco que no se puede tocar.
 ## Adentro esta escondida la RUTA SNOWGRAVE (ver PASOS_SNOWGRAVE).
 ##
+## LA PARTE 6. DIO se escapa del Inframundo con un diario: el plan para llegar al cielo.
+## Scorpion lo persigue, Thanos cierra la grieta, y en el nucleo lo frenan Noelle, Rick y
+## Mob. Si se lo juega a DIO siguiendo el diario (tres pasos), se abre la RUTA DEL CIELO,
+## donde el plan se cumple y la Arena vuelve a empezar.
+##
 ## TODO LO QUE SE DICE ES ORIGINAL. De las obras salen los personajes y las frases que son
 ## su marca, nada mas.
 ##
@@ -86,9 +91,23 @@ const PARTES: Array[Dictionary] = [
 	{"titulo": "PARTE 3: EL ESPÍRITU DE LA ARENA", "capitulos": 10},
 	{"titulo": "PARTE 4: EL FUEGO DEL INFRAMUNDO", "capitulos": 10},
 	{"titulo": "PARTE 5: SIN LÍMITES", "capitulos": 10},
-	# SECRETA: no se muestra ni se juega hasta cumplir los tres pasos (ver PASOS_SNOWGRAVE).
-	{"titulo": "❄ RUTA SNOWGRAVE", "capitulos": 3, "secreta": true},
+	# SECRETA: no se muestra ni se juega hasta cumplir los tres pasos (ver RUTAS).
+	{"titulo": "❄ RUTA SNOWGRAVE", "capitulos": 3, "secreta": true, "ruta": "snowgrave"},
+	{"titulo": "PARTE 6: EL DIARIO DE DIO", "capitulos": 10},
+	{"titulo": "✦ RUTA DEL CIELO", "capitulos": 3, "secreta": true, "ruta": "cielo"},
 ]
+
+## LAS RUTAS SECRETAS: quien las juega, cuantos pasos piden y lo que dicen los carteles.
+## Cada paso es un capitulo con "paso" (o "paso_snowgrave", el nombre de la primera) y una
+## "condicion"; ver MisionHistoria._armar_paso.
+const RUTAS: Dictionary = {
+	"snowgrave": {"personaje": &"noelle", "pasos": 3, "color": Color(0.65, 0.88, 1.0),
+		"pista": "❄ Algo frío se quedó adentro de Noelle.", "abierta": "❄ Se abrió la RUTA SNOWGRAVE."},
+	# LA RUTA DEL CIELO: el plan del diario de DIO en JoJo —un amigo de confianza, las
+	# treinta y seis almas y el hueso—, jugando con DIO en la parte 6.
+	"cielo": {"personaje": &"dio", "pasos": 3, "color": Color(1.0, 0.85, 0.45),
+		"pista": "✦ Otra página del diario de DIO se cumplió.", "abierta": "✦ Se abrió la RUTA DEL CIELO."},
+}
 
 ## LA RUTA SNOWGRAVE: tres cosas especificas que hay que hacer en la parte 5, jugando con
 ## Noelle, en orden. Como la ruta de Deltarune, nadie te las dice de frente: las insinuan
@@ -156,6 +175,25 @@ static func capitulo_secreto(i: int) -> bool:
 	return es_secreta(parte_de(i))
 
 
+## De que ruta es la parte `k` ("" si no es secreta).
+static func ruta_de_parte(k: int) -> String:
+	return String(PARTES[clampi(k, 0, PARTES.size() - 1)].get("ruta", ""))
+
+
+static func ruta_de(i: int) -> String:
+	return ruta_de_parte(parte_de(i))
+
+
+## El paso de ruta de un capitulo: [ruta, numero], o ["", 0] si no tiene.
+static func paso_de(cap: Dictionary) -> Array:
+	if cap.has("paso_snowgrave"):
+		return ["snowgrave", int(cap["paso_snowgrave"])]
+	var paso: Variant = cap.get("paso", {})
+	if paso is Dictionary and not (paso as Dictionary).is_empty():
+		return [String(paso["ruta"]), int(paso["n"])]
+	return ["", 0]
+
+
 ## El capitulo que hay que haber ganado para jugar el `i`. -1 = ninguno.
 ##
 ## El anterior, salvo el primero de una parte, que pide el ultimo de la parte anterior QUE
@@ -183,9 +221,24 @@ static func titulo_parte(k: int) -> String:
 static func titulo_capitulo(i: int) -> String:
 	var k := parte_de(i)
 	var n := i - primero_de(k) + 1
+	# Las rutas secretas se nombran por su nombre y no cuentan como parte: sin esto, la parte
+	# que viene despues de una ruta se llamaba "PARTE 7".
+	if es_secreta(k):
+		var nombre := titulo_parte(k)
+		var sin_icono := nombre.substr(nombre.find("RUTA")) if nombre.find("RUTA") >= 0 else nombre
+		return "%s · CAPÍTULO %d" % [sin_icono, n]
 	if k == 0:
 		return "CAPÍTULO %d" % n
-	return "PARTE %d · CAPÍTULO %d" % [k + 1, n]
+	return "PARTE %d · CAPÍTULO %d" % [numero_parte(k), n]
+
+
+## El numero con el que se muestra la parte `k`: las rutas secretas no cuentan.
+static func numero_parte(k: int) -> int:
+	var n := 0
+	for j: int in range(mini(k + 1, PARTES.size())):
+		if not es_secreta(j):
+			n += 1
+	return n
 
 
 # ------------------------------------------------------------------ Dificultad
@@ -3258,6 +3311,577 @@ static func _armar() -> Array[Dictionary]:
 			["decir", &"noelle", "...Perdón. Perdón. Perdón."],
 			["fundido", "negro", 1.2],
 			["titulo", "FIN DE LA RUTA SNOWGRAVE", "Algunas rutas no deberían tomarse"],
+		],
+	})
+
+	# ================================================================ PARTE 6
+	#
+	# EL DIARIO DE DIO. El vacio que dejo el Eco del Infinito agrieto el sello del
+	# Inframundo, y por ahi se escapa DIO, perseguido por las almas que se trago en la parte
+	# 4. Viene con un diario: el plan para llegar al "cielo", el lugar donde uno se vuelve
+	# algo mas que un vampiro. Scorpion lo quiere de vuelta en el fuego; Thanos quiere volver
+	# a cerrar la puerta; y los demas no le creen ni una palabra.
+	#
+	# TRES CAPITULOS SE JUEGAN CON DIO (52, 55 y 58 contando de punta a punta: el 2, el 5 y
+	# el 8 de la parte), y en cada uno hay un paso escondido de la RUTA DEL CIELO: el plan
+	# del diario. Ver RUTAS y MisionHistoria._armar_paso.
+
+	# ------------------------------------------------------------------ 51
+	c.append({
+		"titulo": "Grietas en el sello",
+		"personaje": &"scorpion",
+		"enemigos": [
+			_eco("p1", &"dio", Vector2(-5, -12), 26.0, 0.13),
+			_eco("p2", &"thanos", Vector2(5, -12), 26.0, 0.13),
+			_eco("p3", &"madara", Vector2(0, -14), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Devolvé las almas al fuego"},
+		"eventos": [
+			[["inicio"], [["decir", &"scorpion", "Las almas se escapan por la grieta. Y detrás de ellas... algo más."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"scorpion", Vector2(-6, -14), 26.0, 0.13, false),
+					_eco("p5", &"goku", Vector2(6, -14), 26.0, 0.13, false)]],
+				["decir", &"scorpion", "No se van a quedar en este mundo. Ninguna."]]],
+		],
+		"intro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Donde estuvo el vacío del Eco del Infinito, el piso de la Arena quedó rajado. Y la raja llega hasta el sello del Inframundo."],
+			["temblor", 0.8],
+			["aparecer", &"p1", &"dio", Vector2(-5, -12), "fuego"],
+			["aparecer", &"p2", &"thanos", Vector2(5, -12), "fuego"],
+			["aparecer", &"p3", &"madara", Vector2(0, -14), "fuego"],
+			["plano", "abajo", &"scorpion"],
+			["pose", &"scorpion", &"desafio", 1.2],
+			["decir", &"scorpion", "Almas del Inframundo. Vuelvan a donde pertenecen."],
+		],
+		"outro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Entre las últimas almas, alguien corre en dirección contraria: afuera, hacia la Arena. Lleva un libro bajo el brazo."],
+			["aparecer", &"dio", &"dio", Vector2(0, -9), "fuego"],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "¿Creíste que el fuego iba a detener a DIO? Salí con algo mejor que la libertad, espectro."],
+			["desaparecer", &"dio", "teletransporte"],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "El vampiro. Otra vez. Esta vez no va a haber puerta que lo salve."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 52
+	c.append({
+		"titulo": "Un amigo de confianza",
+		"personaje": &"dio",
+		# PASO 1 DE LA RUTA DEL CIELO: "un amigo en quien confiar". Flowery tiene que terminar
+		# la pelea en pie.
+		"paso": {"ruta": "cielo", "n": 1},
+		"condicion": "aliado_vivo",
+		"aliado_vivo": &"flowery",
+		"aliados": [_aliado(&"flowery", "Flowery", Vector2(2.5, 1.5), 70.0, 0.45)],
+		"enemigos": [
+			_eco("p1", &"noelle", Vector2(-5, -12), 28.0, 0.14),
+			_eco("p2", &"rick", Vector2(5, -12), 28.0, 0.14),
+			_eco("p3", &"sonic", Vector2(0, -14), 28.0, 0.14),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a las almas que persiguen a DIO"},
+		"eventos": [
+			[["inicio"], [["decir", &"flowery", "¡Groovy! ¡DIO y Flowery, otra vez juntos! Esta vez no me vas a mentir, ¿no?"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"mob", Vector2(-7, -14), 28.0, 0.14, false),
+					_eco("p5", &"luffy", Vector2(7, -14), 28.0, 0.14, false)]],
+				["decir", &"dio", "Cuidalas bien, flor. No me sirve un amigo muerto."]]],
+		],
+		"intro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"dio"],
+			["narrar", "DIO abre el diario. La primera página dice solo esto: \"un amigo en quien confiar\"."],
+			["decir", &"dio", "Un amigo... En esta Arena solo una criatura fue tan tonta como para creerme."],
+			["aparecer", &"flowery", &"flowery", Vector2(2.5, 1.5), "caida"],
+			["plano", "dos", &"dio", &"flowery"],
+			["decir", &"flowery", "¡DIO! ¡Volviste! Asgore dice que todos merecen una segunda oportunidad."],
+			["decir", &"dio", "Tu rey es un sabio. Ayudame con estas almas, y te daré la luz que buscabas."],
+			["aparecer", &"p1", &"noelle", Vector2(-5, -12), "fuego"],
+			["aparecer", &"p2", &"rick", Vector2(5, -12), "fuego"],
+			["aparecer", &"p3", &"sonic", Vector2(0, -14), "fuego"],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["colocar", &"flowery", Vector2(2.5, 1.0), 200.0],
+			["plano", "dos", &"flowery", &"dio"],
+			["decir", &"flowery", "¡Lo hicimos! ¿Viste? Cuando me dejás ayudarte, somos un gran equipo."],
+			["decir", &"dio", "Sí. Un gran equipo."],
+			["plano", "cerca", &"dio"],
+			["narrar", "DIO da vuelta la página. En la segunda hay un número: treinta y seis."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 53
+	c.append({
+		"titulo": "Nadie le cree a DIO",
+		"personaje": &"rick",
+		"enemigos": [
+			_eco("p1", &"gojo", Vector2(-5, -12), 22.0, 0.11),
+			_eco("p2", &"naruto", Vector2(5, -12), 22.0, 0.11),
+			_eco("p3", &"spiderman", Vector2(0, -14), 22.0, 0.11),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Sacate de encima a las almas"},
+		"eventos": [
+			[["inicio"], [["decir", &"rick", "Almas del Inframundo con la cara de mis vecinos. Qué asco de semana."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sans", Vector2(-6, -14), 22.0, 0.11, false),
+					_eco("p5", &"dio", Vector2(6, -14), 22.0, 0.11, false)]],
+				["decir", &"rick", "*burp* Cada vez que DIO aparece, se multiplican las cosas que me quieren matar."]]],
+		],
+		"intro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"rick"],
+			["narrar", "Rick encontró una página suelta con la letra de DIO, en el piso de su laboratorio."],
+			["decir", &"rick", "\"El cielo\". Claro. Todos los villanos quieren ir al cielo. Nadie quiere ir a terapia."],
+			["aparecer", &"p1", &"gojo", Vector2(-5, -12), "fuego"],
+			["aparecer", &"p2", &"naruto", Vector2(5, -12), "fuego"],
+			["aparecer", &"p3", &"spiderman", Vector2(0, -14), "fuego"],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Y encima las almas lo siguen como perros. Genial."],
+		],
+		"outro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "La página habla de un lugar en la Arena donde \"la gravedad se da vuelta\". El núcleo, seguro."],
+			["decir", &"rick", "Si DIO llega ahí con lo que tiene en la cabeza... no sé qué pasa. Y eso me da más miedo que saber."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 54
+	c.append({
+		"titulo": "El diario",
+		"personaje": &"sonic",
+		"aliados": [
+			{"id": &"rick", "personaje": &"rick", "nombre": "Rick", "vida": 110.0, "daño": 0.5,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"pensar"},
+		],
+		"enemigos": [
+			_eco("p1", &"madara", Vector2(-5, -12), 30.0, 0.15),
+			_eco("p2", &"luffy", Vector2(5, -12), 30.0, 0.15),
+			_eco("p3", &"scorpion", Vector2(0, -14), 30.0, 0.15),
+		],
+		"objetivo": {"tipo": "proteger", "id": &"rick", "segundos": 40.0,
+			"texto": "Protegé a Rick mientras descifra el diario"},
+		"eventos": [
+			[["inicio"], [["decir", &"sonic", "¡Cuarenta segundos de nuevo! ¡Este abuelo siempre necesita cuarenta segundos!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"goku", Vector2(-8, -14), 30.0, 0.15, false),
+					_eco("p5", &"mario", Vector2(8, -14), 30.0, 0.15, false)]],
+				["decir", &"rick", "¡Ya casi! ¡La letra de DIO es horrible!"]]],
+		],
+		"intro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(0, 3), 180.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Dame cuarenta segundos con esta página y te digo qué quiere DIO."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "¿Siempre son cuarenta? ¿Por qué nunca son cinco?"],
+			["aparecer", &"p1", &"madara", Vector2(-5, -12), "fuego"],
+			["aparecer", &"p2", &"luffy", Vector2(5, -12), "fuego"],
+			["aparecer", &"p3", &"scorpion", Vector2(0, -14), "fuego"],
+		],
+		"outro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(0, 3), 180.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Es un plan en pasos. Un amigo de confianza. Treinta y seis almas. Una parte del propio cuerpo. Y el lugar donde la gravedad se da vuelta."],
+			["decir", &"rick", "Si junta todo, llega al \"cielo\": se vuelve algo que puede acelerar el tiempo hasta que todo empiece de nuevo."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "¿Acelerar el tiempo? Eso es lo mío. Y no pienso compartirlo con un vampiro."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 55
+	c.append({
+		"titulo": "Treinta y seis almas",
+		"personaje": &"dio",
+		# PASO 2 DE LA RUTA DEL CIELO: las almas se las tiene que llevar DIO, todas. Goku pelea
+		# al lado y se puede quedar con alguna: si cae una por otra mano, no cuenta.
+		"paso": {"ruta": "cielo", "n": 2},
+		"condicion": "bajas_propias",
+		"aliados": [_aliado(&"goku", "Goku", Vector2(2.5, 1.5), 100.0, 0.30)],
+		"enemigos": [
+			_eco("p1", &"sans", Vector2(-5, -12), 28.0, 0.14),
+			_eco("p2", &"gojo", Vector2(5, -12), 28.0, 0.14),
+			_eco("p3", &"flowery", Vector2(0, -14), 28.0, 0.14),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Derrotá a las almas"},
+		"eventos": [
+			[["inicio"], [["decir", &"goku", "¡No sé por qué DIO está de nuestro lado, pero una pelea es una pelea!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"thanos", Vector2(-7, -14), 28.0, 0.14, false),
+					_eco("p5", &"naruto", Vector2(7, -14), 28.0, 0.14, false)]],
+				["decir", &"dio", "Más almas. Todas para DIO. Ninguna para vos, saiyajin."]]],
+		],
+		"intro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.5), 0.0],
+			["plano", "dos", &"goku", &"dio"],
+			["decir", &"goku", "¡Hola, DIO! Las almas vienen para acá. ¿Peleamos juntos?"],
+			["decir", &"dio", "Juntos. Claro. Pero las almas... las almas son mías."],
+			["plano", "cerca", &"dio"],
+			["narrar", "Treinta y seis almas de pecadores, dice el diario. DIO sonríe: esta Arena está llena."],
+			["aparecer", &"p1", &"sans", Vector2(-5, -12), "fuego"],
+			["aparecer", &"p2", &"gojo", Vector2(5, -12), "fuego"],
+			["aparecer", &"p3", &"flowery", Vector2(0, -14), "fuego"],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["colocar", &"goku", Vector2(2.5, 1.0), 200.0],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "Qué raro. Cada vez que caía un alma, parecía que te la comías con los ojos."],
+			["plano", "cerca", &"dio"],
+			["decir", &"dio", "Hambre de victoria, saiyajin. Vos la conocés bien."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "...Mmm. No sé. Esta vez no me gustó cómo sonó eso."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 56
+	c.append({
+		"titulo": "La cadena y el vampiro",
+		"personaje": &"scorpion",
+		"enemigos": [
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO", "vida": 150.0, "daño": 0.21,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"dio", "hasta": 0.5, "texto": "Arrastrá a DIO de vuelta"},
+		"eventos": [
+			[["inicio"], [["decir", &"scorpion", "Te dije que iba a volver por vos, vampiro."]]],
+			[["vida", &"dio", 0.75], [["decir", &"dio", "¡MUDA! ¿Una soga contra el tiempo de DIO? ¡Patético!"]]],
+		],
+		"intro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["aparecer", &"dio", &"dio", Vector2(0, -9), ""],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "El espectro. Justo a tiempo: me faltaba alguien a quien humillar esta semana."],
+			["plano", "cerca", &"scorpion"],
+			["pose", &"scorpion", &"desafio", 1.2],
+			["decir", &"scorpion", "Vas a volver al fuego. Y esta vez te encadeno yo mismo a la puerta."],
+		],
+		"outro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["colocar", &"dio", Vector2(0, -6), 180.0],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "¡ZA WARUDO!"],
+			["habilidad", &"dio", &"za_warudo"],
+			["desaparecer", &"dio", "teletransporte"],
+			["plano", "cerca", &"scorpion"],
+			["narrar", "Cuando el tiempo vuelve a correr, DIO ya no está. Solo queda una página arrancada del diario."],
+			["decir", &"scorpion", "\"Una parte del propio cuerpo\"... ¿Qué estás buscando, vampiro?"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 57
+	c.append({
+		"titulo": "Cerrar la puerta otra vez",
+		"personaje": &"thanos",
+		"enemigos": [
+			_eco("p1", &"scorpion", Vector2(-6, -18), 22.0, 0.12),
+			_eco("p2", &"dio", Vector2(6, -18), 22.0, 0.12),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -8), "radio": 6.0, "segundos": 32.0,
+			"texto": "Quedate en la grieta mientras el Guantelete la cierra"},
+		"eventos": [
+			[["inicio"], [["decir", &"thanos", "Ya cerré esta puerta una vez. Soy inevitable. Ella también."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p3", &"mob", Vector2(-8, -20), 22.0, 0.12, false),
+					_eco("p4", &"sans", Vector2(8, -20), 22.0, 0.12, false)]],
+				["decir", &"thanos", "Las almas saben que se les termina el tiempo."]]],
+		],
+		"intro": [
+			["colocar", &"thanos", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "La grieta del Inframundo late en el centro de la Arena. Del otro lado, el fuego empuja."],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Treinta segundos con el Guantelete apoyado en la grieta, y se sella."],
+			["aparecer", &"p1", &"scorpion", Vector2(-6, -18), "fuego"],
+			["aparecer", &"p2", &"dio", Vector2(6, -18), "fuego"],
+		],
+		"outro": [
+			["colocar", &"thanos", Vector2(0, 0), 0.0],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Sellada. Ninguna alma más va a salir por acá."],
+			["narrar", "Pero las que ya salieron siguen en la Arena. Y DIO sigue buscando algo."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 58
+	c.append({
+		"titulo": "Una parte de DIO",
+		"personaje": &"dio",
+		# PASO 3 DE LA RUTA DEL CIELO: el hueso de DIO, escondido en el mapa. Solo aparece con
+		# los pasos 1 y 2 hechos.
+		"paso": {"ruta": "cielo", "n": 3},
+		"condicion": "objeto",
+		"objeto": "hueso",
+		"objeto_pos": Vector2(18, 14),
+		"enemigos": [
+			_eco("p1", &"naruto", Vector2(-5, -12), 26.0, 0.13),
+			_eco("p2", &"spiderman", Vector2(5, -12), 26.0, 0.13),
+			_eco("p3", &"goku", Vector2(0, -14), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "sobrevivir", "segundos": 40.0, "texto": "Aguantá a las almas"},
+		"eventos": [
+			[["inicio"], [["decir", &"dio", "Vengan, almas. DIO no tiene apuro."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"luffy", Vector2(-8, -14), 26.0, 0.13, false),
+					_eco("p5", &"gojo", Vector2(8, -14), 26.0, 0.13, false)]],
+				["decir", &"dio", "¡WRYYY! ¡Siguen viniendo como insectos a la luz!"]]],
+		],
+		"intro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"dio"],
+			["narrar", "La tercera página del diario está casi borrada. Solo se lee: \"una parte de mí que quedó en esta Arena\"."],
+			["decir", &"dio", "Cuando el núcleo se partió, DIO perdió algo más que el núcleo..."],
+			["aparecer", &"p1", &"naruto", Vector2(-5, -12), "fuego"],
+			["aparecer", &"p2", &"spiderman", Vector2(5, -12), "fuego"],
+			["aparecer", &"p3", &"goku", Vector2(0, -14), "fuego"],
+			["plano", "abajo", &"dio"],
+			["pose", &"dio", &"desafio", 1.2],
+			["decir", &"dio", "Primero, los insectos."],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"dio"],
+			["decir", &"dio", "Se fueron. Por ahora."],
+			["narrar", "DIO cierra el diario. Si las páginas se cumplieron o no, solo lo sabe él."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 59
+	c.append({
+		"titulo": "Contra el cielo",
+		"personaje": &"goku",
+		"aliados": [
+			_aliado(&"naruto", "Naruto", Vector2(2.5, 1.5), 100.0, 0.42),
+			_aliado(&"luffy", "Luffy", Vector2(-2.5, 1.5), 100.0, 0.42),
+		],
+		"enemigos": [
+			_eco("p1", &"dio", Vector2(-5, -12), 36.0, 0.17),
+			_eco("p2", &"dio", Vector2(5, -12), 36.0, 0.17),
+			_eco("p3", &"thanos", Vector2(0, -14), 36.0, 0.17),
+		],
+		"objetivo": {"tipo": "sobrevivir", "segundos": 45.0, "texto": "Aguantá mientras la Arena se da vuelta"},
+		"eventos": [
+			[["inicio"], [["decir", &"goku", "¡Siento el ki de DIO subiendo como loco! ¡Hay que llegar al núcleo!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"madara", Vector2(-8, -14), 36.0, 0.17, false),
+					_eco("p5", &"scorpion", Vector2(8, -14), 36.0, 0.17, false)]],
+				["decir", &"naruto", "¡Las almas copian a DIO! ¡Son todos igual de molestos! ¡De veras!"]]],
+		],
+		"intro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["colocar", &"naruto", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"luffy", Vector2(-2.5, 1.5), 0.0],
+			["temblor", 1.2],
+			["plano", "general"],
+			["narrar", "La Arena se inclina. Por un momento, las cosas caen hacia arriba."],
+			["plano", "cerca", &"luffy"],
+			["decir", &"luffy", "¡Shishishi! ¡Todo flota! ¡Esto es genial!"],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡No es genial! ¡Es DIO en el núcleo! ¡Rick dijo que la gravedad se da vuelta ahí!"],
+			["aparecer", &"p1", &"dio", Vector2(-5, -12), "fuego"],
+			["aparecer", &"p2", &"dio", Vector2(5, -12), "fuego"],
+			["aparecer", &"p3", &"thanos", Vector2(0, -14), "fuego"],
+		],
+		"outro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["colocar", &"naruto", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"luffy", Vector2(-2.5, 1.0), -20.0],
+			["plano", "cerca", &"naruto"],
+			["decir", &"naruto", "El núcleo está ahí adelante. ¡Vamos a detenerlo, cueste lo que cueste!"],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "Y si DIO no quiere parar... ¡le voy a dar una pelea que no se va a olvidar!"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 60
+	c.append({
+		"titulo": "El final del diario",
+		"personaje": &"noelle",
+		"aliados": [
+			_aliado(&"rick", "Rick", Vector2(2.5, 1.5), 100.0, 0.40),
+			_aliado(&"mob", "Mob", Vector2(-2.5, 1.5), 95.0, 0.40),
+			{"id": &"scorpion", "personaje": &"scorpion", "nombre": "Scorpion", "vida": 110.0, "daño": 0.45,
+				"pos": Vector2(0, 3.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"dio", "personaje": &"dio", "nombre": "DIO del Núcleo", "vida": 255.0, "daño": 0.22,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"dio", "texto": "Detené a DIO antes de que llegue al cielo"},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "La primera vez que te vi me temblaban las piernas. Todavía me tiemblan. ¡Pero acá estoy!"]]],
+			[["vida", &"dio", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"dio"],
+					["decir", &"dio", "¡El cielo está ahí arriba! ¡Nadie va a detener a DIO a un paso del final!"],
+					["aparecer", &"scorpion", &"scorpion", Vector2(0, 3.5), "fuego"],
+					["plano", "cerca", &"scorpion"],
+					["grito", &"scorpion", "¡GET OVER HERE!", &"voz_get_over_here"],
+				]],
+				["entrar", &"scorpion"],
+				["potenciar", &"dio", 12.0],
+				["objetivo", {"tipo": "derrotar", "id": &"dio", "texto": "Terminá con DIO junto a Scorpion"}]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"mob", Vector2(-2.5, 1.5), 0.0],
+			["aparecer", &"dio", &"dio", Vector2(0, -9), ""],
+			["plano", "general"],
+			["narrar", "En el núcleo de la Arena, DIO flota con el diario abierto. Pero a su plan le falta algo."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Insectos. Otra vez ustedes. La chica del hielo, el borracho y el chico sin cara."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Tu espíritu está lleno de almas que no son tuyas. Pesan mucho. Se te nota en la cara."],
+			["plano", "cerca", &"noelle"],
+			["pose", &"noelle", &"desafio", 1.2],
+			["decir", &"noelle", "¡Esta vez no vas a lastimar a nadie más, DIO!"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"mob", Vector2(-2.5, 1.0), -20.0],
+			["colocar", &"scorpion", Vector2(0, 3.5), 0.0],
+			["colocar", &"dio", Vector2(0, -8), 180.0],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "El diario... estaba incompleto. Faltaba... una página..."],
+			["plano", "cerca", &"scorpion"],
+			["habilidad", &"scorpion", &"lanza"],
+			["decir", &"scorpion", "Tu cielo es el fuego, vampiro. Siempre lo fue."],
+			["desaparecer", &"dio", "fuego"],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Las almas se fueron con él. La Arena respira mejor."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Y el diario se quemó. Una lástima. Tenía unas recetas de postres rarísimas en el margen."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "...Me siguen temblando las piernas. Pero lo hicimos."],
+			["fundido", "negro", 1.0],
+			["titulo", "FIN DE LA PARTE 6", "La historia continuará"],
+		],
+	})
+
+	# =========================================================== RUTA DEL CIELO
+	#
+	# LA SEGUNDA RUTA SECRETA. Se abre con los tres pasos de la parte 6 (el amigo, las almas y
+	# el hueso) y cuenta lo que pasa si el diario de DIO se cumple: DIO llega al cielo, con
+	# la skin del Dio del Cielo, y acelera el tiempo de la Arena hasta que todo vuelve a
+	# empezar. Como en la Parte 6 de JoJo, la idea; el texto es original.
+
+	# ------------------------------------------------------------------ C1
+	c.append({
+		"titulo": "Catorce palabras",
+		"personaje": &"dio",
+		"skin": &"dio_cielo",
+		"enemigos": [
+			_eco("p1", &"noelle", Vector2(-5, -12), 26.0, 0.13),
+			_eco("p2", &"goku", Vector2(5, -12), 26.0, 0.13),
+			_eco("p3", &"naruto", Vector2(0, -14), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Decí las catorce palabras"},
+		"eventos": [
+			[["inicio"], [["decir", &"dio", "Escalera. Espiral. Luna nueva... Cada palabra, un paso más cerca."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"rick", Vector2(-7, -14), 26.0, 0.13, false),
+					_eco("p5", &"sonic", Vector2(7, -14), 26.0, 0.13, false)]],
+				["decir", &"dio", "Las almas me responden. Las treinta y seis ya son parte de DIO."]]],
+		],
+		"intro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "El diario se cumplió: el amigo, las almas, el hueso. DIO llega al núcleo antes que nadie."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Nadie vino a detenerme. Solo sus ecos. Qué apropiado."],
+			["aparecer", &"p1", &"noelle", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"goku", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"naruto", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["plano", "abajo", &"dio"],
+			["narrar", "Con la última palabra, la gravedad del núcleo se da vuelta. DIO flota hacia arriba, y la ropa se le vuelve blanca."],
+			["decir", &"dio", "Esto es el cielo. Y todavía no terminé."],
+		],
+	})
+
+	# ------------------------------------------------------------------ C2
+	c.append({
+		"titulo": "Luna nueva",
+		"personaje": &"dio",
+		"skin": &"dio_cielo",
+		"enemigos": [
+			{"id": &"gojo", "personaje": &"gojo", "nombre": "Gojo", "vida": 190.0, "daño": 0.27,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"gojo", "hasta": 0.4, "texto": "Pasá sobre el más fuerte"},
+		"eventos": [
+			[["inicio"], [["decir", &"gojo", "Sos el primero que me hace sentir que tengo que tomármelo en serio. No me gusta."]]],
+			[["vida", &"gojo", 0.7], [["decir", &"dio", "¡El infinito también se detiene, hechicero! ¡Todo se detiene ante DIO!"]]],
+		],
+		"intro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["aparecer", &"gojo", &"gojo", Vector2(0, -9), "teletransporte"],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Vampiro. Lo que estás haciendo va a romper la Arena entera. Y a todos los de adentro."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "No la voy a romper. La voy a hacer empezar de nuevo. Y esta vez, DIO va a saber todo lo que pasa."],
+			["plano", "abajo", &"gojo"],
+			["pose", &"gojo", &"brazos_cruzados", 1.4],
+			["decir", &"gojo", "Qué aburrido. Un dios que ya sabe el final."],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["colocar", &"gojo", Vector2(0, -6), 180.0],
+			["plano", "abajo", &"gojo"],
+			["decir", &"gojo", "Ok. Esta la ganaste. Pero te falta uno. El que no se cansa nunca de buscarte."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "El espectro. Que venga. Lo estoy esperando."],
+		],
+	})
+
+	# ------------------------------------------------------------------ C3
+	c.append({
+		"titulo": "El cielo",
+		"personaje": &"dio",
+		"skin": &"dio_cielo",
+		"enemigos": [
+			{"id": &"scorpion", "personaje": &"scorpion", "nombre": "Scorpion", "vida": 162.0, "daño": 0.24,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"scorpion", "hasta": 0.3, "texto": "Terminá lo que empezó el diario"},
+		"eventos": [
+			[["inicio"], [["decir", &"scorpion", "Aunque subas al cielo, vampiro, mi cadena llega."]]],
+			[["vida", &"scorpion", 0.6], [["decir", &"scorpion", "¡Get over here!"]]],
+		],
+		"intro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["aparecer", &"scorpion", &"scorpion", Vector2(0, -9), "fuego"],
+			["plano", "general"],
+			["narrar", "El tiempo de la Arena empieza a correr más rápido. El día y la noche pasan en segundos."],
+			["plano", "abajo", &"scorpion"],
+			["decir", &"scorpion", "Me mentiste. Te arrastré al fuego. Y volviste. Esta es la última vez."],
+			["plano", "abajo", &"dio"],
+			["decir", &"dio", "Sí, espectro. La última. Para vos, para todos. Después, todo empieza de nuevo."],
+		],
+		"outro": [
+			["colocar", &"dio", Vector2(0, 0), 0.0],
+			["colocar", &"scorpion", Vector2(0, -6), 180.0],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "No... El tiempo... se me escapa de las manos..."],
+			["plano", "abajo", &"dio"],
+			["narrar", "Las horas se vuelven segundos. Los años, minutos. La Arena gira tan rápido que se vuelve una luz."],
+			["decir", &"dio", "Ahora, mundo. Empezá otra vez."],
+			["fundido", "claro", 1.4],
+			["narrar", "Un laboratorio. Un científico arreglando una pistola de portales. Una grieta que está por abrirse."],
+			["narrar", "Todo es igual que la primera vez. Casi todo. En algún lugar, alguien ya sabe cómo termina."],
+			["fundido", "negro", 1.2],
+			["titulo", "FIN DE LA RUTA DEL CIELO", "Todo vuelve a empezar"],
 		],
 	})
 

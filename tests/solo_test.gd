@@ -772,13 +772,16 @@ func _test_historia(main: Node) -> void:
 	Progreso.guardado_activo = false
 	Progreso.historia = {}
 	Progreso.snowgrave = {}
+	Progreso.rutas = {}
 
 	# --- Los datos: que todo lo que nombra la historia exista ---
-	_check(Historia.cantidad() == 53 and Historia.PARTES.size() == 6 and Historia.parte_de(10) == 1
+	_check(Historia.cantidad() == 66 and Historia.PARTES.size() == 8 and Historia.parte_de(10) == 1
 		and Historia.parte_de(20) == 2 and Historia.parte_de(30) == 3 and Historia.parte_de(40) == 4
 		and Historia.titulo_capitulo(40) == "PARTE 5 · CAPÍTULO 1"
+		and Historia.titulo_capitulo(53) == "PARTE 6 · CAPÍTULO 1"
+		and Historia.requisito(53) == 49
 		and Historia.titulo_capitulo(10) == "PARTE 2 · CAPÍTULO 1",
-		"la historia tiene cinco partes de diez capitulos y la ruta secreta, y cada parte cuenta desde uno (%d)" % Historia.cantidad())
+		"la historia tiene seis partes y dos rutas secretas, y la parte 6 pide la 5 y no la ruta (%d)" % Historia.cantidad())
 
 	# --- NUNCA MAS DE TRES ENEMIGOS A LA VEZ ---
 	#
@@ -890,9 +893,12 @@ func _test_historia(main: Node) -> void:
 
 	# --- LA RUTA SNOWGRAVE: secreta hasta cumplir los tres pasos ---
 	var ruta := -1
+	var cielo := -1
 	for k: int in range(Historia.PARTES.size()):
-		if Historia.es_secreta(k):
+		if Historia.ruta_de_parte(k) == "snowgrave":
 			ruta = Historia.primero_de(k)
+		elif Historia.ruta_de_parte(k) == "cielo":
+			cielo = Historia.primero_de(k)
 	_check(ruta == 50 and Historia.requisito(ruta) == 49 and Historia.requisito(ruta + 1) == ruta,
 		"la ruta Snowgrave va despues de la parte 5 y pide haberla terminado")
 	var pasos_en := ""
@@ -913,8 +919,29 @@ func _test_historia(main: Node) -> void:
 	Progreso.snowgrave = {"1": true, "2": true, "3": true}
 	_check(Progreso.capitulo_disponible(ruta) and not Progreso.capitulo_disponible(ruta + 1),
 		"con los tres, se abre: primero su capitulo 1")
+
+	# --- LA RUTA DEL CIELO: la de DIO, al final de la parte 6 ---
+	var pasos_cielo := ""
+	for i: int in range(Historia.cantidad()):
+		var pr := Historia.paso_de(Historia.capitulo(i))
+		if pr[0] == "cielo":
+			pasos_cielo += "%d:%d " % [i + 1, pr[1]]
+			if StringName(Historia.capitulo(i)["personaje"]) != &"dio":
+				pasos_cielo += "(no-es-dio) "
+	_check(cielo == 63 and Historia.requisito(cielo) == 62 and pasos_cielo == "55:1 58:2 61:3 ",
+		"la ruta del Cielo va despues de la parte 6, y sus tres pasos estan en capitulos de DIO (%s)" % pasos_cielo)
+	for i: int in range(cielo):
+		Progreso.historia[str(i)] = true
+	Progreso.rutas = {"cielo": {"1": true, "2": true}}
+	_check(not Progreso.capitulo_disponible(cielo) and Progreso.capitulo_disponible(53),
+		"con la parte 6 terminada y dos pasos, el Cielo sigue cerrado")
+	Progreso.rutas = {"cielo": {"1": true, "2": true, "3": true}}
+	_check(Progreso.capitulo_disponible(cielo) and Progreso.ruta_abierta("cielo")
+		and Progreso.ruta_abierta("snowgrave"),
+		"con los tres se abre, sin tocar la de Snowgrave")
 	Progreso.historia = {}
 	Progreso.snowgrave = {}
+	Progreso.rutas = {}
 
 	# --- TODOS LOS CAPITULOS DE PUNTA A PUNTA, con sus escenas ---
 	#
@@ -1006,6 +1033,40 @@ func _test_historia(main: Node) -> void:
 				titan.set_meta(&"snowgrave_ms", Time.get_ticks_msec())
 				mision._paso_al_caer(titan)
 				_check(mision._paso_ok, "y si cae con Snowgrave, si")
+		# LOS PASOS DE LA RUTA DEL CIELO, con DIO.
+		if i == 54:
+			_check(mision._paso == 1 and mision._ruta == "cielo",
+				"en el capitulo 55, con DIO, el paso 1 del Cielo esta activo")
+		if i == 57:
+			_check(mision._paso == 2, "en el 58, con el paso 1 hecho, el paso 2 esta activo")
+			var goku := mision.participantes.get(&"goku") as Player
+			var un_alma: Player = null
+			for id: StringName in mision.participantes:
+				var b := mision.participantes[id] as Player
+				if b != p and b.equipo == 1:
+					un_alma = b
+			if un_alma != null and goku != null:
+				mision._paso_al_caer(un_alma, p.peer_id)
+				_check(mision._paso_ok, "un alma que se lleva DIO cuenta")
+				mision._paso_al_caer(un_alma, goku.peer_id)
+				_check(not mision._paso_ok, "pero una que se lleva Goku rompe el paso")
+			mision._paso_ok = true
+		if i == 60:
+			_check(mision._paso == 3 and is_instance_valid(mision._anillo) and mision._anillo.name == &"HuesoDio",
+				"con los pasos 1 y 2, en el 61 aparece el hueso de DIO")
+			if is_instance_valid(mision._anillo):
+				var qh := PhysicsShapeQueryParameters3D.new()
+				var eh := SphereShape3D.new()
+				eh.radius = 0.3
+				qh.shape = eh
+				qh.collision_mask = GameConfig.LAYER_WORLD
+				qh.transform = Transform3D(Basis.IDENTITY, mision._anillo.global_position)
+				_check(mision._anillo.get_world_3d().direct_space_state.intersect_shape(qh, 1).is_empty(),
+					"el hueso no queda adentro de ninguna cobertura")
+				p.global_position = mision._anillo.global_position
+				for _f: int in range(6):
+					await get_tree().physics_frame
+			_check(mision._anillo_tomado, "y DIO lo toma al pasar por encima")
 		if i == 2:
 			var rick := mision.participantes.get(&"rick") as Player
 			var antes := rick.health.current if rick != null else 0.0
@@ -1053,6 +1114,14 @@ func _test_historia(main: Node) -> void:
 			fallas += "cap48:sin-paso-3 "
 		if i == 49 and not Progreso.capitulo_disponible(50):
 			fallas += "cap50:no-abrio-la-ruta "
+		if i == 54 and not Progreso.paso_ruta("cielo", 1):
+			fallas += "cap55:sin-paso-1-cielo "
+		if i == 57 and not Progreso.paso_ruta("cielo", 2):
+			fallas += "cap58:sin-paso-2-cielo "
+		if i == 60 and not Progreso.paso_ruta("cielo", 3):
+			fallas += "cap61:sin-paso-3-cielo "
+		if i == 62 and not Progreso.capitulo_disponible(63):
+			fallas += "cap63:no-abrio-el-cielo "
 		for hijo: Node in main.get_children():
 			if hijo is HistoriaMenu:
 				hijo.queue_free()
@@ -1649,12 +1718,18 @@ func _test_skins_visibles() -> void:
 	# Se pidio que las skins "cambien mas su aspecto": toda epica y toda legendaria trae un
 	# adorno (una capa, una corona, un halo...) o una forma propia (el pelo del Super
 	# Saiyajin, las puas de Super Sonic, el pelo de Mob al 100%).
+	# Y DESDE EL 2026-09-27, TODAS: se pidio que "se noten", porque la mayoria se parecian
+	# demasiado al personaje de fabrica. Una rara cambia al menos una cosa de la forma; una
+	# epica o una legendaria, dos (la forma del constructor cuenta como una, cada adorno
+	# como otra).
 	var sin_forma := ""
 	for sid: StringName in SkinDB.todas():
 		var sk := SkinDB.get_skin(sid)
-		if sk.rareza in [&"epica", &"legendaria"] and sk.forma == &"" and sk.accesorio == &"" 				and sk.accesorios.is_empty():
-			sin_forma += "%s " % sid
-	_check(sin_forma.is_empty(), "toda skin epica o legendaria cambia la forma, no solo el color %s" % sin_forma)
+		var cambios := sk.accesorios.size() + (1 if sk.forma != &"" else 0) + (1 if sk.accesorio != &"" else 0)
+		var pide := 1 if sk.rareza == &"rara" else 2
+		if cambios < pide:
+			sin_forma += "%s(%d/%d) " % [sid, cambios, pide]
+	_check(sin_forma.is_empty(), "toda skin cambia la forma, no solo el color, y cuanto mas rara mas %s" % sin_forma)
 
 	# --- NINGUNA REPETIDA: ni el id ni el nombre ---
 	#
@@ -1964,7 +2039,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 297
+const CHEQUEOS_MINIMOS: int = 307
 
 
 func _finish() -> void:
