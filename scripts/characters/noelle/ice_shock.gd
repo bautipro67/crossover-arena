@@ -12,7 +12,10 @@ const PROJECTILE_SPEED: float = 26.0
 const PROJECTILE_LIFETIME: float = 3.0
 ## Bajo de 22 a 19: con el escudo y el congelamiento, Noelle seguia arriba de todos en
 ## los duelos simulados.
-const DAMAGE: float = 19.0
+## 17 y no 19 (BALANCE 2026-10-02): en duelos simulados Noelle ganaba 24 de 30, la mas fuerte
+## del juego por lejos. Su fuerza es la escarcha que termina en el Snowgrave congelado; se
+## baja lo que la lleva hasta ahi, no el Snowgrave.
+const DAMAGE: float = 17.0
 const CHILL_STACKS: int = 2
 const SLOW_PERCENT: float = 0.25
 const SLOW_DURATION: float = 2.0

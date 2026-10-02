@@ -6,7 +6,8 @@ extends Ability
 ## Es la forma barata de apilar escarcha cuando te quedaste sin stamina para Ice Shock:
 ## te obliga a acercarte, que es el riesgo que paga el ser gratis.
 
-const DAMAGE: float = 11.0
+## 10 y no 11 (BALANCE 2026-10-02, ver IceShock).
+const DAMAGE: float = 10.0
 const CONE_RANGE: float = 3.2
 const CONE_ANGLE: float = 70.0
 const CHILL_STACKS: int = 1

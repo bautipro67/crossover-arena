@@ -95,9 +95,11 @@ const METEORO_CAIDA: float = 1.7
 ## Nadie pierde vida a golpes: solo la bomba saca a alguien. Gana el ultimo.
 const BOTS_BOMBA: int = 4
 ## La mecha de la primera ronda, cuanto se acorta en cada una y hasta donde.
-const MECHA_BOMBA: float = 14.0
+## Un segundo mas en las dos puntas (BALANCE 2026-10-02): con la mecha justa, la ronda la
+## decidia a quien le tocaba la bomba mas que lo que hacia con ella.
+const MECHA_BOMBA: float = 15.0
 const MECHA_MENOS: float = 1.5
-const MECHA_MINIMA: float = 8.0
+const MECHA_MINIMA: float = 9.0
 ## Recien recibida no se puede pasar: un golpe de varios impactos que ya venia en camino
 ## la devolvia en el mismo instante, y nadie veia quien la tenia.
 const GRACIA_BOMBA: float = 0.5
@@ -196,12 +198,14 @@ func _vida_base() -> float:
 		DUELO: return 128.0
 		SUPERVIVENCIA: return 36.0 + float(oleada) * 5.0
 		CONTRARRELOJ: return 57.0
-		ULTIMO_EN_PIE: return 56.0
+		ULTIMO_EN_PIE: return 52.0
 		# Sube de a poco para no cruzar de golpe el umbral de los 180.
 		JEFES: return 94.0 + float(bajas) * 17.0
 		COLINA: return 57.0
-		CAMPAL: return 72.0
-		CAOS: return 74.0
+		# BALANCE 2026-10-02: la campal (63%) y el caos (70%) eran de los mas faciles de la
+		# lista, y el ultimo en pie (20%) de los mas dificiles sin ser la torre.
+		CAMPAL: return 76.0
+		CAOS: return 80.0
 		METEORITOS: return 40.0
 		# En la bomba y en un toque la vida no cuenta: la primera no saca, el segundo mata.
 		BOMBA: return 100.0
@@ -222,7 +226,7 @@ func daño_bot(id: int = 0) -> float:
 		DUELO: return 0.72
 		SUPERVIVENCIA: return minf(0.17 + float(oleada) * 0.018, 0.36)
 		CONTRARRELOJ: return 0.37
-		ULTIMO_EN_PIE: return 0.32
+		ULTIMO_EN_PIE: return 0.30
 		# Los jefes se endurecen tambien pegando, no solo aguantando: un jefe que solo tiene
 		# mas vida es la misma pelea mas larga.
 		JEFES: return 0.40 + float(bajas) * 0.03

@@ -17,7 +17,8 @@ extends Ability
 ## Cuanto daño se come el escudo antes de romperse.
 ## Bajo de 55 a 40. Medido en duelos simulados: el escudo entero se lo comia el rival en
 ## cada pelea, y sumado al congelamiento Noelle le ganaba a todos (89%).
-const SHIELD_AMOUNT: float = 40.0
+## 35 y no 40 (BALANCE 2026-10-02, ver IceShock).
+const SHIELD_AMOUNT: float = 35.0
 ## Cuanto dura si no se lo rompen antes.
 const DURATION: float = 5.0
 ## Radio de la rafaga de frio al levantarlo.

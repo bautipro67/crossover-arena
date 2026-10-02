@@ -30,7 +30,8 @@ const PASSES: int = 16
 ##
 ## No lleva decaimiento como JARONA a proposito: el ultimate SI es un boton de matar, y
 ## para eso pide canalizar 1.2 segundos a la vista de todos.
-const DAMAGE: float = 23.0
+## 21 y no 23 (BALANCE 2026-10-02, ver Jarona).
+const DAMAGE: float = 21.0
 ## CUANTAS VECES PODES ESQUIVARLA Y QUE IGUAL SIGA. Esto es lo unico que la hace durar
 ## mas que JARONA, que se corta con el primer fallo.
 const FALLOS_TOLERADOS: int = 3

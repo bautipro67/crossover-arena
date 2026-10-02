@@ -145,7 +145,9 @@ func _register_all() -> void:
 	# Dio tiene que verse que le llega al pecho.
 	sonic.build_scale = Vector3(1.04, 0.80, 1.04)
 	# La vida mas baja del juego y la velocidad mas alta, por bastante.
-	sonic.max_health = 74.0
+	# 78 y no 74 (BALANCE 2026-10-02): con 74 ganaba cuatro de cada diez duelos. Sigue
+	# siendo el que menos vida tiene, que es parte de quien es.
+	sonic.max_health = 78.0
 	sonic.max_stamina = 112.0
 	# 7.2 y no 7.4 desde el nerf del 2026-09-25: sigue siendo el mas rapido, pero ya no se
 	# escapa de todo caminando.
@@ -264,7 +266,9 @@ func _register_all() -> void:
 	mob.skin_color = Color(0.98, 0.88, 0.80)
 	mob.trouser_color = Color(0.08, 0.08, 0.10)
 	mob.build_scale = Vector3(0.92, 0.90, 0.92)
-	mob.max_health = 86.0
+	# 92 y no 86 (BALANCE 2026-10-02): ganaba un tercio de los duelos simulados, ya antes
+	# de cambiar el 100%.
+	mob.max_health = 92.0
 	mob.max_stamina = 110.0
 	mob.move_speed = 6.0
 	mob.silhouette = &"tazon"

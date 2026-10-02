@@ -27,7 +27,8 @@ extends Ability
 ## encima SI vuelve a pegar. El registro por pasada existe para que un solo viaje no te
 ## cobre cuatro ticks mientras te atraviesa.
 
-const DAMAGE: float = 16.0
+## 15 y no 16 (BALANCE 2026-10-02): Flowery ganaba dos de cada tres duelos simulados.
+const DAMAGE: float = 15.0
 ## CADA PASADA PEGA MENOS QUE LA ANTERIOR, y esto es lo que la hace jugable.
 ##
 ## El problema medido: con daño plano, un rival que no puede salirse del camino —contra
