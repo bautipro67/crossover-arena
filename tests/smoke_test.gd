@@ -2913,7 +2913,8 @@ func _test_practica(player: Player, arena: Arena) -> void:
 				uno.global_position.distance_to(player.global_position),
 				BotBrain.globally_enabled, Practica.bots_activos,
 				str(cerebro._pick_target().name) if cerebro._pick_target() != null else "NINGUNO",
-				cerebro._think_left, player.caster.is_channeling]])
+				cerebro._think_left, player.caster.is_channeling]] + (" peligros: %s, corre: %s, personaje: %s" % [
+					str(BotBrain.peligros), uno.bot_wants_run, player.character_id]))
 	player.caster.cancel_channel()
 
 	uno.queue_free()

@@ -44,6 +44,7 @@ func execute(caster: Node, origin: Vector3, _dir: Vector3) -> void:
 		CombatUtils.deal_damage(target, DAÑO_ESTALLIDO, source_id, false)
 		CombatUtils.apply_knockback(target, target.global_position - origin, 11.0 * EMPUJE, 4.0)
 	FX.spawn_gear_fifth(caster3d, DURACION)
+	Sfx.play_3d(caster3d, &"gear_fifth", origin, 2.0)
 
 
 ## Prende los puños gigantes: la marca que leen sus golpes y el dibujo de las manos. Lo

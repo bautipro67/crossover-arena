@@ -328,6 +328,13 @@ func _on_match_started() -> void:
 
 ## Un modo offline llego a su final: se muestra el resultado y se vuelve al menu.
 func _on_modo_termino(gano: bool, titulo: String, detalle: String) -> void:
+	# Suena solo si esta grabado (Sfx.ALIAS): no hay un sintetizado que haga de fanfarria.
+	Sfx.play_2d(&"victoria" if gano else &"derrota", -2.0)
+	# EL QUE GANA FESTEJA: el puño arriba mientras se lee el resultado.
+	if gano and is_instance_valid(_arena):
+		var yo := _arena.get_local_player()
+		if yo != null and not yo.health.is_dead:
+			yo.visual.actuar(&"victoria", 4.5)
 	if is_instance_valid(_hud):
 		_hud.show_match_result("%s
 %s" % [titulo, detalle])

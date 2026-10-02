@@ -33,11 +33,15 @@ const GOLD := Color(1.0, 0.80, 0.30)
 
 # ------------------------------------------------------------------- StyleBoxes
 
-static func panel_style(bg: Color = PANEL, radius: int = 10, shadow: int = 10) -> StyleBoxFlat:
+static func panel_style(bg: Color = PANEL, radius: int = 14, shadow: int = 14) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
 	sb.border_color = BORDER
 	sb.set_border_width_all(1)
+	# LA LUZ DE ARRIBA: el borde superior mas grueso y mas claro. Es lo que hace que un
+	# panel se lea como una placa con volumen y no como un rectangulo pintado.
+	sb.border_width_top = 2
+	sb.border_blend = true
 	sb.set_corner_radius_all(radius)
 	sb.content_margin_left = 16
 	sb.content_margin_right = 16
@@ -109,8 +113,17 @@ static func make_button(text: String, accent: bool = false) -> Button:
 
 	var base := ACCENT.darkened(0.62) if accent else PANEL_SOFT
 	b.add_theme_stylebox_override("normal", _button_style(base, accent))
-	b.add_theme_stylebox_override("hover", _button_style(base.lightened(0.14), accent))
-	b.add_theme_stylebox_override("pressed", _button_style(base.lightened(0.26), accent))
+	var hover := _button_style(base.lightened(0.14), accent)
+	# EL BRILLO AL PASAR EL MOUSE: una sombra del color del acento, sin desplazar. Se lee
+	# como que el boton se enciende, que es mas claro que un cambio de tono.
+	hover.shadow_color = Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.28)
+	hover.shadow_size = 9
+	hover.shadow_offset = Vector2.ZERO
+	b.add_theme_stylebox_override("hover", hover)
+	var apretado := _button_style(base.lightened(0.26), accent)
+	# Apretado, el relieve de abajo se achica: el boton "baja".
+	apretado.border_width_bottom = 1
+	b.add_theme_stylebox_override("pressed", apretado)
 	b.add_theme_stylebox_override("disabled", _button_style(base.darkened(0.35), false))
 	b.add_theme_stylebox_override("focus", _foco())
 	b.add_theme_color_override("font_color", TEXT if accent else TEXT_DIM.lightened(0.25))
@@ -129,7 +142,10 @@ static func make_button(text: String, accent: bool = false) -> Button:
 	# superior izquierda: sin centrarlo, el boton crece hacia abajo y a la derecha y se
 	# ve como si se desalineara.
 	b.resized.connect(func() -> void: b.pivot_offset = b.size * 0.5)
-	b.mouse_entered.connect(func() -> void: _escalar(b, 1.025, 0.10))
+	b.mouse_entered.connect(func() -> void:
+		_escalar(b, 1.025, 0.10)
+		# Solo si alguien grabo assets/audio/ui_hover: sin archivo no suena nada.
+		Sfx.play_2d(&"ui_hover", -14.0))
 	b.mouse_exited.connect(func() -> void: _escalar(b, 1.0, 0.10))
 	b.button_down.connect(func() -> void: _escalar(b, 0.975, 0.06))
 	b.button_up.connect(func() -> void: _escalar(b, 1.0, 0.09))
@@ -147,16 +163,101 @@ static func _escalar(control: Control, destino: float, tiempo: float) -> void:
 static func _button_style(bg: Color, accent: bool) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
-	sb.set_corner_radius_all(8)
+	sb.set_corner_radius_all(10)
 	sb.set_border_width_all(0)
 	# Franja de acento a la izquierda: marca el boton principal sin gritar.
 	sb.border_width_left = 3
+	# Y EL RELIEVE DE ABAJO: un borde inferior mas oscuro, como el canto de una tecla.
+	sb.border_width_bottom = 3
 	sb.border_color = ACCENT if accent else BORDER
 	sb.content_margin_left = 14
 	sb.content_margin_right = 14
 	sb.content_margin_top = 10
 	sb.content_margin_bottom = 10
 	return sb
+
+
+## UN BOTON GRANDE DEL MENU PRINCIPAL: el nombre en grande y abajo una linea que dice que
+## hay adentro, con la franja y el brillo del color que se le pase. El texto va en dos
+## Labels hijos (un Button no tiene dos renglones de distinto tamaño); se cambia con
+## big_button_text().
+static func make_big_button(titulo: String, color: Color, subtitulo: String = "") -> Button:
+	var b := make_card_button(color)
+	b.custom_minimum_size = Vector2(0, 62 if not subtitulo.is_empty() else 52)
+	var textos := VBoxContainer.new()
+	textos.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	textos.offset_left = 20
+	textos.offset_right = -12
+	textos.alignment = BoxContainer.ALIGNMENT_CENTER
+	textos.add_theme_constant_override("separation", 0)
+	textos.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(textos)
+	var t := make_label(titulo, 22, TEXT)
+	t.add_theme_constant_override("outline_size", 4)
+	t.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.35))
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	textos.add_child(t)
+	b.set_meta(&"titulo", t)
+	if not subtitulo.is_empty():
+		var s := make_label(subtitulo, 12, color.lightened(0.15))
+		s.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		textos.add_child(s)
+	return b
+
+
+static func big_button_text(b: Button, texto: String) -> void:
+	var t := b.get_meta(&"titulo", null) as Label
+	if t != null:
+		t.text = texto
+
+
+## UNA TARJETA: un boton sin texto propio, con la franja de su color a la izquierda, que se
+## enciende de ese color al pasar el mouse o con el foco. El contenido se lo pone cada uno.
+static func make_card_button(color: Color) -> Button:
+	var b := Button.new()
+	b.text = ""
+	b.focus_mode = Control.FOCUS_ALL
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(color.r * 0.16 + 0.06, color.g * 0.16 + 0.07, color.b * 0.16 + 0.12, 0.96)
+	normal.set_corner_radius_all(12)
+	normal.border_width_left = 4
+	normal.border_width_bottom = 3
+	normal.border_width_top = 1
+	normal.border_width_right = 1
+	normal.border_color = Color(color.r, color.g, color.b, 0.85)
+	normal.border_blend = true
+	normal.shadow_color = Color(0.0, 0.0, 0.0, 0.35)
+	normal.shadow_size = 6
+	normal.shadow_offset = Vector2(0, 3)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = normal.bg_color.lightened(0.10)
+	hover.border_color = color
+	hover.shadow_color = Color(color.r, color.g, color.b, 0.35)
+	hover.shadow_size = 12
+	hover.shadow_offset = Vector2.ZERO
+	var apretado := hover.duplicate() as StyleBoxFlat
+	apretado.bg_color = normal.bg_color.lightened(0.18)
+	apretado.border_width_bottom = 1
+	var foco := StyleBoxFlat.new()
+	foco.draw_center = false
+	foco.set_corner_radius_all(12)
+	foco.set_border_width_all(2)
+	foco.border_color = color.lightened(0.3)
+	foco.set_expand_margin_all(3.0)
+	b.add_theme_stylebox_override("normal", normal)
+	b.add_theme_stylebox_override("hover", hover)
+	b.add_theme_stylebox_override("pressed", apretado)
+	b.add_theme_stylebox_override("focus", foco)
+	b.add_theme_stylebox_override("disabled", normal)
+	b.pressed.connect(func() -> void: Sfx.play_2d(&"ui_click", -8.0))
+	b.resized.connect(func() -> void: b.pivot_offset = b.size * 0.5)
+	b.mouse_entered.connect(func() -> void:
+		_escalar(b, 1.02, 0.10)
+		Sfx.play_2d(&"ui_hover", -14.0))
+	b.mouse_exited.connect(func() -> void: _escalar(b, 1.0, 0.10))
+	b.button_down.connect(func() -> void: _escalar(b, 0.98, 0.06))
+	b.button_up.connect(func() -> void: _escalar(b, 1.0, 0.09))
+	return b
 
 
 ## El marco del boton elegido con el mando.
@@ -212,11 +313,28 @@ static func make_bar(fill_color: Color, track_color: Color, height: int) -> Arra
 	track.add_theme_stylebox_override("panel", bar_style(track_color, int(height * 0.35)))
 	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	# La pista con un borde apenas mas claro: marca hasta donde llega la barra llena.
+	var pista := bar_style(track_color, int(height * 0.35))
+	pista.set_border_width_all(1)
+	pista.border_color = Color(1.0, 1.0, 1.0, 0.10)
+	track.add_theme_stylebox_override("panel", pista)
+
 	var fill := Panel.new()
 	fill.add_theme_stylebox_override("panel", bar_style(fill_color, int(height * 0.35)))
 	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	track.add_child(fill)
+	# EL BRILLO: una franja clara en la mitad de arriba del relleno, que se mueve con el.
+	# Es lo que hace que una barra plana se vea como un tubo lleno de algo.
+	var brillo := Panel.new()
+	brillo.add_theme_stylebox_override("panel", bar_style(Color(1.0, 1.0, 1.0, 0.16), int(height * 0.3)))
+	brillo.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	brillo.offset_left = 3
+	brillo.offset_right = -3
+	brillo.offset_top = 2
+	brillo.anchor_bottom = 0.42
+	brillo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fill.add_child(brillo)
 
 	return [track, fill]
 
@@ -272,6 +390,40 @@ static func build_background(parent: Control) -> void:
 	halo_tex.width = 256
 	halo_tex.height = 256
 	parent.add_child(_stretched(halo_tex))
+
+	# --- 2b. Las luces de la temporada: dos bandas diagonales, una celeste y una dorada,
+	# que se mueven de a poco. Le dan al fondo la energia de un menu de pelea, y como van
+	# muy por detras y muy transparentes no compiten con el texto.
+	for k: int in range(2):
+		var luz := Gradient.new()
+		var tono := Color(0.35, 0.65, 1.0) if k == 0 else Color(1.0, 0.75, 0.30)
+		# LOS TRES PUNTOS DE UNA, en orden. Con set_color despues de add_point, el indice 1
+		# ya era el punto del medio y el ultimo quedaba blanco opaco: la "luz" tapaba media
+		# pantalla.
+		luz.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+		luz.colors = PackedColorArray([Color(tono.r, tono.g, tono.b, 0.0),
+			Color(tono.r, tono.g, tono.b, 0.09 if k == 0 else 0.06), Color(tono.r, tono.g, tono.b, 0.0)])
+		var luz_tex := GradientTexture2D.new()
+		luz_tex.gradient = luz
+		luz_tex.fill_from = Vector2(0.0, 0.5)
+		luz_tex.fill_to = Vector2(1.0, 0.5)
+		luz_tex.width = 128
+		luz_tex.height = 8
+		var banda := TextureRect.new()
+		banda.texture = luz_tex
+		banda.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		banda.stretch_mode = TextureRect.STRETCH_SCALE
+		banda.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		banda.size = Vector2(520.0, DESIGN_SIZE.y * 2.2)
+		banda.pivot_offset = banda.size * 0.5
+		banda.rotation = deg_to_rad(28.0 if k == 0 else -24.0)
+		banda.position = Vector2(DESIGN_SIZE.x * (0.30 if k == 0 else 0.72) - 260.0, -DESIGN_SIZE.y * 0.6)
+		parent.add_child(banda)
+		var va := banda.create_tween().set_loops()
+		va.tween_property(banda, "position:x", banda.position.x + 160.0, 9.0 + float(k) * 3.0) \
+			.set_trans(Tween.TRANS_SINE)
+		va.tween_property(banda, "position:x", banda.position.x, 9.0 + float(k) * 3.0) \
+			.set_trans(Tween.TRANS_SINE)
 
 	# --- 3. Nieve ---
 	var nieve := CPUParticles2D.new()

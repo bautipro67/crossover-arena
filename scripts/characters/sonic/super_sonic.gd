@@ -77,7 +77,7 @@ func execute(caster: Node, origin: Vector3, _dir: Vector3) -> void:
 
 	FX.spawn_super_sonic(caster3d, DURACION)
 	FX.camera_shake(1.6)
-	Sfx.play_3d(caster, &"channel", origin, 2.0)
+	Sfx.play_3d(caster, &"super_sonic", origin, 2.0)
 	await _velocidad_de_la_luz(caster3d)
 
 
@@ -118,5 +118,5 @@ func _velocidad_de_la_luz(caster3d: Node3D) -> void:
 		CombatUtils.deal_damage(blanco, LUZ_DAÑO, source_id, false)
 		CombatUtils.apply_knockback(blanco, empuje, 7.0, 3.0)
 		FX.spawn_impact_burst(caster3d, blanco.global_position + Vector3.UP, Color(1.0, 0.90, 0.35))
-		Sfx.play_3d(caster3d, &"hit_punch", blanco.global_position, 0.0)
+		Sfx.play_3d(caster3d, &"luz_sonic", blanco.global_position, 0.0)
 		golpeados += 1

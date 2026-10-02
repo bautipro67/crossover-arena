@@ -1452,7 +1452,20 @@ func _test_menu_entra(main: Node) -> void:
 		if hijo is MainMenu and not hijo.is_queued_for_deletion():
 			menu = hijo
 	_check(menu != null and menu.todo_a_la_vista(),
-		"el menu principal muestra los %d modos y SALIR adentro de la pantalla" % Modos.LISTA.size())
+		"el menu principal muestra todos sus botones y SALIR adentro de la pantalla")
+	# Y JUGAR abre las tarjetas de los modos, que tambien tienen que entrar todas.
+	var tarjetas := 0
+	if menu != null:
+		menu.mostrar_modos(true)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		for b: Node in menu._modos_caja.find_children("*", "Button", true, false):
+			if (b as Button).tooltip_text != "":
+				tarjetas += 1
+	_check(menu != null and menu.todo_a_la_vista() and tarjetas == Modos.LISTA.size(),
+		"JUGAR muestra las %d tarjetas de modo, todas adentro de la pantalla (%d)" % [Modos.LISTA.size(), tarjetas])
+	if menu != null:
+		menu.mostrar_modos(false)
 
 
 func _test_mando_en_menus(main: Node) -> void:
@@ -2171,7 +2184,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 338
+const CHEQUEOS_MINIMOS: int = 339
 
 
 func _finish() -> void:

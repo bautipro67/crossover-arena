@@ -46,6 +46,12 @@ func _process(_delta: float) -> void:
 func _run() -> void:
 	await _wait(1.0)
 	await _shot("01_menu_principal")
+	# Las tarjetas de los modos, que se abren con JUGAR.
+	for hijo: Node in _main.get_children():
+		if hijo is MainMenu:
+			(hijo as MainMenu).mostrar_modos(true)
+	await _wait(0.4)
+	await _shot("01c_menu_modos")
 
 	# --- Servidor gratuito despertando ---
 	# Es literalmente lo primero que ve quien entra al servidor publico cuando estaba

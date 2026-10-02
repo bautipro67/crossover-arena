@@ -67,6 +67,15 @@ func _ready() -> void:
 	_player_list = VBoxContainer.new()
 	_player_list.add_theme_constant_override("separation", 4)
 	players_box.add_child(_player_list)
+	# EL PERSONAJE ELEGIDO, EN 3D Y GIRANDO, en el lugar que antes quedaba vacio debajo de
+	# la lista de jugadores. Se rehace al elegir otro (ver _poner_vitrina).
+	var resto := Control.new()
+	resto.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	players_box.add_child(resto)
+	_vitrina_lugar = VBoxContainer.new()
+	_vitrina_lugar.alignment = BoxContainer.ALIGNMENT_END
+	players_box.add_child(_vitrina_lugar)
+	_poner_vitrina()
 
 	# --- Columna 2: seleccion de personaje ---
 	var chars_panel := UITheme.make_panel()
@@ -131,6 +140,20 @@ func _ready() -> void:
 	_refresh()
 
 
+## La vitrina del personaje elegido, con su skin puesta.
+var _vitrina_lugar: VBoxContainer = null
+
+
+func _poner_vitrina() -> void:
+	if not is_instance_valid(_vitrina_lugar):
+		return
+	for hijo: Node in _vitrina_lugar.get_children():
+		hijo.queue_free()
+	var vitrina := Retrato.vitrina(_selected_id, Vector2(300, 330))
+	vitrina.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_vitrina_lugar.add_child(vitrina)
+
+
 func _exit_tree() -> void:
 	if Net.player_list_changed.is_connected(_refresh):
 		Net.player_list_changed.disconnect(_refresh)
@@ -166,10 +189,34 @@ func _build_character_list() -> void:
 			cerrado.disabled = true
 			_boton_de_lista(cerrado)
 			continue
-		var button := UITheme.make_button(data.display_name, id == _selected_id)
+		# UNA TARJETA DE SU COLOR, con el nombre: la lista se lee como un plantel y no como
+		# una columna de botones iguales. El elegido, con la flecha y mas encendido.
+		var elegido := id == _selected_id
+		var tono := _color_de(data)
+		var button := UITheme.make_card_button(tono.lightened(0.1) if elegido else tono.darkened(0.25))
 		button.tooltip_text = data.origin_game
 		button.pressed.connect(_on_character_picked.bind(id))
+		var nombre := UITheme.make_label(("▶ " if elegido else "") + data.display_name, 15,
+			UITheme.TEXT if elegido else UITheme.TEXT_DIM.lightened(0.2))
+		nombre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		nombre.offset_left = 14
+		nombre.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		nombre.clip_text = true
+		nombre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(nombre)
 		_boton_de_lista(button)
+
+
+## El color que mejor dice quien es: el mas vivo entre el del acento y el del cuerpo. Con el
+## acento solo, los de acento oscuro (Flowery, Scorpion, Naruto) quedaban con la tarjeta negra.
+static func _color_de(data: CharacterData) -> Color:
+	var mejor := data.accent_color
+	for c: Color in [data.accent_color, data.body_color]:
+		if c.s * c.v > mejor.s * mejor.v:
+			mejor = c
+	if mejor.v < 0.55:
+		mejor = Color.from_hsv(mejor.h, mejor.s, 0.75)
+	return mejor
 
 
 ## Un boton de la lista de personajes: mas bajo que los demas y estirado a su columna.
@@ -197,6 +244,7 @@ func _on_character_picked(id: StringName) -> void:
 	Net.set_local_character(String(id))
 	_build_character_list()
 	_build_kit()
+	_poner_vitrina()
 
 
 func _build_kit() -> void:

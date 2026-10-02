@@ -169,15 +169,39 @@ func _fade(track: StringName, to_db: float) -> void:
 ## Corre en el hilo (o en el principal, en web). Al terminar avisa de forma diferida,
 ## que es seguro desde cualquier hilo.
 func _build_all() -> void:
-	_tracks[&"menu"] = _make_stream(_compose_menu())
-	_tracks[&"combate"] = _make_stream(_compose_combat())
+	# UN ARCHIVO GANA, como en los efectos: assets/audio/musica_menu.ogg y
+	# musica_combate.ogg reemplazan al tema compuesto por codigo. Si esta, no se compone.
+	if not ResourceLoader.exists(_ruta_grabada(&"menu")):
+		_tracks[&"menu"] = _make_stream(_compose_menu())
+	if not ResourceLoader.exists(_ruta_grabada(&"combate")):
+		_tracks[&"combate"] = _make_stream(_compose_combat())
 	_on_tracks_ready.call_deferred()
+
+
+static func _ruta_grabada(tema: StringName) -> String:
+	return "res://assets/audio/musica_%s.ogg" % tema
+
+
+## El tema grabado, en bucle. Se carga en el hilo principal (cargar recursos desde un hilo
+## aparte no es seguro en todas las plataformas).
+func _grabada(tema: StringName) -> AudioStream:
+	var ruta := _ruta_grabada(tema)
+	if not ResourceLoader.exists(ruta):
+		return null
+	var musica := load(ruta) as AudioStream
+	if musica is AudioStreamOggVorbis:
+		(musica as AudioStreamOggVorbis).loop = true
+	return musica
 
 
 func _on_tracks_ready() -> void:
 	if _thread != null and _thread.is_started():
 		_thread.wait_to_finish()
 		_thread = null
+	for tema: StringName in [&"menu", &"combate"]:
+		var grabada := _grabada(tema)
+		if grabada != null:
+			_tracks[tema] = grabada
 	for name: StringName in _tracks.keys():
 		var player: AudioStreamPlayer = _players.get(name)
 		if player != null:

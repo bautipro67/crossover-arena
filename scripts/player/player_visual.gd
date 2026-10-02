@@ -199,6 +199,10 @@ func _process(delta: float) -> void:
 	var en_aire := not _body.is_on_floor()
 	if en_aire and not _estaba_en_aire and _body.velocity.y > 0.5:
 		Sfx.play_3d(self, &"salto", global_position, -8.0)
+		# LA VOLTERETA de los acrobatas: Spider-Man da la vuelta en el aire, Sonic se hace
+		# bola. Solo en un salto de verdad, no al caer de un borde.
+		if _acrobata and _body.velocity.y > 4.0:
+			_voltereta_t = VOLTERETA
 	if _estaba_en_aire and not en_aire:
 		Sfx.play_3d(self, &"aterrizaje", global_position, -6.0)
 		# ATERRIZAJE: el golpe contra el piso. Sin esto el salto termina de golpe, y lo
@@ -241,8 +245,13 @@ func _process(delta: float) -> void:
 
 	# TIRADO EN EL PISO: el cuerpo entero se acuesta, no solo los brazos. Es la unica pose
 	# que mueve la raiz, y por eso va aparte de la tabla de poses.
-	var quiere_tirado := 1.0 if _pose_guion == &"tirado" else 0.0
-	_tirado = move_toward(_tirado, quiere_tirado, delta * 3.0)
+	var quiere_tirado := 1.0 if _pose_guion == &"tirado" or _cayendo else 0.0
+	_tirado = move_toward(_tirado, quiere_tirado, delta * (4.5 if _cayendo else 3.0))
+	if _cayendo and visible:
+		_cayendo_t += delta
+		if _cayendo_t >= CAIDA_MUERTE:
+			visible = false
+			FX.spawn_impact_burst(self, global_position + Vector3.UP * 0.4, Color(0.85, 0.85, 0.92, 0.8))
 
 	# La pose entra y sale suave: sin esto los brazos se teletransportan.
 	var wants_pose := _pose != &""
@@ -396,6 +405,11 @@ func _process(delta: float) -> void:
 	_root.rotation.z = lerpf(_root.rotation.z, banqueo * clampf(amount, 0.0, 1.0), delta * 9.0)
 	# Hacia adelante al correr. Poco: pasado de rosca el personaje parece que se cae.
 	_root.rotation.x = lerpf(_root.rotation.x, -0.085 * clampf(speed / 8.0, 0.0, 1.0), delta * 6.0)
+	if _voltereta_t > 0.0:
+		_voltereta_t = maxf(0.0, _voltereta_t - delta)
+		var avance := 1.0 - _voltereta_t / VOLTERETA
+		# Una vuelta entera para adelante, rapida al medio y suave en los extremos.
+		_root.rotation.x = -TAU * (0.5 - 0.5 * cos(PI * avance))
 	# TIRADO, AL FINAL DE TODO: el balanceo de la caminata y la inclinacion de arriba
 	# escriben la altura y el giro del cuerpo cada frame, y aplicado antes lo pisaban. El
 	# personaje nunca llegaba a acostarse.
@@ -797,6 +811,17 @@ func _peer_id_del_cuerpo() -> int:
 
 # --------------------------------------------------------------- Construccion
 
+## Los que dan la vuelta en el aire al saltar, y cuanto dura la vuelta.
+const ACROBATAS: Array[StringName] = [&"spiderman", &"sonic"]
+const VOLTERETA: float = 0.5
+var _acrobata: bool = false
+var _voltereta_t: float = 0.0
+
+## La caida al morir: cuanto tarda en llegar al piso antes de esfumarse.
+const CAIDA_MUERTE: float = 0.75
+var _cayendo: bool = false
+var _cayendo_t: float = 0.0
+
 ## Las manos del rig (palma y pulgar) y su escala de fabrica: el Gear Fifth las agranda.
 var _manos: Array[MeshInstance3D] = []
 var _manos_escala: Array[Vector3] = []
@@ -1062,6 +1087,7 @@ func apply_character(data: CharacterData) -> void:
 	_mat_dark.albedo_color = trouser_color
 
 	_skin = SkinDB.get_skin(data.skin_id) if data.skin_id != &"" else null
+	_acrobata = data.id in ACROBATAS
 	var zapato := data.shoe_color
 	if zapato.a <= 0.0:
 		zapato = accent_color if data.zapatos_acento else trouser_color.darkened(0.35)
@@ -1153,6 +1179,11 @@ func _aplicar_acabado(tipo: StringName) -> void:
 				m.metallic_specular = 0.85
 				m.roughness = 0.28
 				m.rim = 0.35
+				# Y un barniz: el brillo duro encima del metal es lo que lo separa de un
+				# gris pintado.
+				m.clearcoat_enabled = true
+				m.clearcoat = 0.6
+				m.clearcoat_roughness = 0.2
 			&"brillo":
 				# Luz propia, pero poca: tiene que leerse como algo cargado de energia, no
 				# como una lampara que encandila al que tiene enfrente.
@@ -1160,6 +1191,9 @@ func _aplicar_acabado(tipo: StringName) -> void:
 				m.emission = m.albedo_color
 				m.emission_energy_multiplier = 0.42
 				m.rim = 0.65
+				m.clearcoat_enabled = true
+				m.clearcoat = 0.45
+				m.clearcoat_roughness = 0.3
 			&"hielo":
 				m.metallic = 0.25
 				m.roughness = 0.16
@@ -1168,6 +1202,10 @@ func _aplicar_acabado(tipo: StringName) -> void:
 				m.emission_enabled = true
 				m.emission = m.albedo_color.lerp(Color(0.85, 0.95, 1.0), 0.6)
 				m.emission_energy_multiplier = 0.12
+				# El hielo moja: un barniz liso por encima, como una capa de agua congelada.
+				m.clearcoat_enabled = true
+				m.clearcoat = 1.0
+				m.clearcoat_roughness = 0.05
 			&"piedra":
 				m.roughness = 1.0
 				m.metallic = 0.0
@@ -1188,6 +1226,9 @@ func _aplicar_acabado(tipo: StringName) -> void:
 				m.rim = 1.0
 				m.rim_tint = 0.0
 				m.roughness = 0.6
+				# La sombra brilla en el borde con un tono frio, no blanco puro: se sigue leyendo
+				# contra cualquier fondo, y se ve como algo que no es de este mundo.
+				m.rim_tint = 0.15
 
 
 ## Particulas alrededor del cuerpo. POCAS Y CHICAS: son decoracion, y no pueden tapar a
@@ -3720,7 +3761,16 @@ func _on_unstunned() -> void:
 
 
 func set_dead(dead: bool) -> void:
-	visible = not dead
+	# AL MORIR SE CAE, no desaparece en el acto: el cuerpo se va de espaldas al piso y
+	# recien ahi se esfuma en una nube. Antes se apagaba de un frame al otro, y la baja no
+	# se veia: el rival sencillamente dejaba de estar.
+	if dead:
+		_cayendo = true
+		_cayendo_t = 0.0
+	else:
+		_cayendo = false
+		_tirado = 0.0
+		visible = true
 	if dead:
 		_pose = &""
 		_pose_weight = 0.0

@@ -416,16 +416,29 @@ func _build_crosshair(root: Control) -> void:
 
 
 func _build_bars(root: Control) -> void:
+	# LAS BARRAS VAN SOBRE UNA PLACA oscura y translucida. Sueltas sobre la arena, con el
+	# piso claro detras, los numeros se perdian justo cuando mas hay que leerlos.
+	var placa := PanelContainer.new()
+	var estilo := UITheme.panel_style(Color(0.03, 0.04, 0.09, 0.58), 14, 10)
+	estilo.content_margin_left = 14
+	estilo.content_margin_right = 14
+	estilo.content_margin_top = 10
+	estilo.content_margin_bottom = 10
+	placa.add_theme_stylebox_override("panel", estilo)
+	placa.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	placa.offset_left = 28
+	placa.offset_top = -172
+	placa.offset_right = 388
+	placa.offset_bottom = -28
+	# Crece para arriba: el contenido es mas alto que el lugar, y para abajo se saldria.
+	placa.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	placa.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(placa)
 	var holder := VBoxContainer.new()
-	holder.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	holder.offset_left = 28
-	holder.offset_top = -172
-	holder.offset_right = 388
-	holder.offset_bottom = -28
 	holder.add_theme_constant_override("separation", 6)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(holder)
-	_barras = holder
+	placa.add_child(holder)
+	_barras = placa
 
 	# --- Vida ---
 	_health_label = UITheme.make_label("VIDA  100 / 100", 13, UITheme.TEXT_DIM)
@@ -693,11 +706,29 @@ func _build_ability_widgets() -> void:
 		# sobre fondo oscuro: se lee mucho mejor que texto oscuro sobre color saturado,
 		# y deja que el color identifique la habilidad sin pelear con la legibilidad.
 		var card := Panel.new()
-		card.custom_minimum_size = Vector2(96, 100)
+		card.custom_minimum_size = Vector2(100, 108)
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var style := UITheme.bar_style(_card_color(ability.icon_color, true), 9)
+		var style := UITheme.bar_style(_card_color(ability.icon_color, true), 11)
+		# EL BORDE DE SU COLOR cuando esta lista, y apagado cuando no: de un vistazo se
+		# sabe que se puede tirar sin leer ningun numero.
+		style.set_border_width_all(2)
+		style.border_width_bottom = 3
+		style.border_color = ability.icon_color
 		card.add_theme_stylebox_override("panel", style)
+		card.resized.connect(func() -> void: card.pivot_offset = card.size * 0.5)
 		_ability_row.add_child(card)
+
+		# LA CARGA DE LA DEFINITIVA: un relleno dorado que sube desde abajo con el medidor.
+		var carga := ColorRect.new()
+		carga.color = Color(UITheme.GOLD.r, UITheme.GOLD.g, UITheme.GOLD.b, 0.22)
+		carga.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		carga.offset_left = 2
+		carga.offset_right = -2
+		carga.offset_bottom = -3
+		carga.anchor_top = 1.0
+		carga.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		carga.visible = ability.requires_charge
+		card.add_child(carga)
 
 		var strip := Panel.new()
 		strip.add_theme_stylebox_override("panel", UITheme.bar_style(ability.icon_color, 3))
@@ -733,12 +764,24 @@ func _build_ability_widgets() -> void:
 
 		var key_label := UITheme.make_label(
 			Controles.nombre_tecla(ACCIONES_HABILIDAD[i]) if i < ACCIONES_HABILIDAD.size() else "-",
-			11, UITheme.TEXT_DIM)
+			11, UITheme.TEXT)
 		_etiquetas_tecla.append(key_label)
-		key_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-		key_label.offset_top = -21
+		# La tecla en una placa, como una tecla de verdad: suelta, se perdia contra el fondo.
+		var placa := PanelContainer.new()
+		var placa_estilo := UITheme.bar_style(Color(0.0, 0.0, 0.0, 0.45), 6)
+		placa_estilo.content_margin_left = 7
+		placa_estilo.content_margin_right = 7
+		placa_estilo.content_margin_top = 1
+		placa_estilo.content_margin_bottom = 1
+		placa.add_theme_stylebox_override("panel", placa_estilo)
+		placa.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		placa.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+		placa.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		placa.offset_top = -24
+		placa.offset_bottom = -6
 		key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		card.add_child(key_label)
+		placa.add_child(key_label)
+		card.add_child(placa)
 
 		# Sombra de cooldown: baja desde arriba a medida que se recarga.
 		var cd := ColorRect.new()
@@ -758,6 +801,9 @@ func _build_ability_widgets() -> void:
 		card.add_child(cd_text)
 
 		_ability_widgets.append({
+			"card": card,
+			"carga": carga,
+			"lista": true,
 			"style": style,
 			"strip": strip,
 			"cooldown": cd,
@@ -932,6 +978,7 @@ func _update_abilities() -> void:
 
 		var cd_text: Label = w["cooldown_text"]
 		cd_text.text = "%.1f" % remaining if remaining > 0.05 else ""
+		var recargando := remaining > 0.05
 
 		# Carta apagada si no te alcanza la stamina: de un vistazo sabes que podes tirar.
 		var cost: float = w["cost"]
@@ -941,9 +988,11 @@ func _update_abilities() -> void:
 		# Los ultimates piden ADEMAS la carga al 100%. Si falta, la carta muestra el
 		# porcentaje: sin eso el jugador ve el icono apagado y no sabe por que.
 		var charged := true
+		var carga: ColorRect = w["carga"]
 		if bool(w["needs_charge"]) and is_instance_valid(_player):
 			charged = _player.ultimate.is_ready()
-			if not charged:
+			carga.anchor_top = 1.0 - clampf(_player.ultimate.get_ratio(), 0.0, 1.0)
+			if not charged and not recargando:
 				cd_text.text = "%d%%" % int(floor(_player.ultimate.get_ratio() * 100.0))
 
 		var usable := affordable and charged
@@ -951,8 +1000,21 @@ func _update_abilities() -> void:
 		var strip: Panel = w["strip"]
 		var cost_label: Label = w["cost_label"]
 		style.bg_color = _card_color(color, usable)
+		style.border_color = color if usable and not recargando else color.darkened(0.6)
 		strip.modulate.a = 1.0 if usable else 0.35
 		cost_label.modulate.a = 1.0 if usable else 0.45
+		# EL COSTO SE ESCONDE mientras hay otro numero en el medio (la recarga o el % de la
+		# definitiva): estaban los dos uno encima del otro, "0%" pisando el "100".
+		cost_label.visible = cd_text.text.is_empty()
+		# Y LATE AL QUEDAR LISTA: el cambio de "no se puede" a "se puede" es lo unico que el
+		# jugador necesita notar sin mirar la carta.
+		var lista := usable and not recargando
+		if lista and not bool(w["lista"]):
+			var card: Panel = w["card"]
+			var tw := card.create_tween()
+			tw.tween_property(card, "scale", Vector2(1.10, 1.10), 0.08)
+			tw.tween_property(card, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK)
+		w["lista"] = lista
 
 
 func _update_dash() -> void:

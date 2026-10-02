@@ -713,7 +713,8 @@ func _on_died(killer_id: int) -> void:
 	velocity = Vector3.ZERO
 	_dash_left = 0.0
 	visual.set_dead(true)
-	Sfx.play_3d(self, &"death", global_position, -1.0)
+	# La de cada uno si esta grabada (la de Sonic), si no la de todos.
+	Sfx.play_3d(self, Sfx.muerte_de(character_id), global_position, -1.0)
 	# DIFERIDO, no directo.
 	#
 	# Morir se dispara DENTRO de una consulta fisica: las habilidades buscan a quien

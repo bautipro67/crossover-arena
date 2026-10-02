@@ -120,6 +120,14 @@ static func decir_al_cargar(caster: Node, ability_id: StringName) -> void:
 	_decir_lineas(caster, LINEAS_CARGA.get(ability_id, []))
 
 
+## LAS VOCES QUE SE CALLAN si otra esta grabada, porque la grabacion ya las trae adentro: el
+## Kamehameha grabado es el grito entero, con el "¡HA!" del final, y el "¡HA!" sintetizado
+## que sale con el rayo le caia encima. El cartel sale igual; solo se calla la voz.
+const SE_CALLA_SI: Dictionary = {
+	&"voz_ha": &"voz_kamehameha",
+}
+
+
 static func _decir_lineas(caster: Node, lineas: Array) -> void:
 	if not is_instance_valid(caster) or not caster.has_method("avisar_grito"):
 		return
@@ -128,6 +136,8 @@ static func _decir_lineas(caster: Node, lineas: Array) -> void:
 		var texto := linea[0] as String
 		var retardo := linea[1] as float
 		var voz := linea[2] as StringName
+		if SE_CALLA_SI.has(voz) and not Sfx.es_grabado(voz) and Sfx.es_grabado(SE_CALLA_SI[voz]):
+			voz = &""
 		if retardo <= 0.0:
 			caster.call("avisar_grito", texto, voz)
 			continue

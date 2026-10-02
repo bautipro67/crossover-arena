@@ -1126,7 +1126,7 @@ func _bomba(delta: float) -> void:
 		# PASO: el que la recibe se entera con un estallido y un golpe seco.
 		if _bomba_antes != 0:
 			FX.spawn_impact_burst(quien, quien.global_position + Vector3.UP * 2.0, Color(1.0, 0.55, 0.15))
-			Sfx.play_3d(quien, &"hit_punch", quien.global_position, 2.0)
+			Sfx.play_3d(quien, &"bomba_pasa", quien.global_position, 2.0)
 		_bomba_antes = Modos.bomba_de
 	_llevar_bomba(quien)
 	if Modos.avanzar_bomba(delta):
@@ -1137,7 +1137,7 @@ func _bomba(delta: float) -> void:
 	if seg != _bomba_segundo:
 		_bomba_segundo = seg
 		if seg <= 3:
-			Sfx.play_3d(quien, &"ui_click", quien.global_position, 4.0)
+			Sfx.play_3d(quien, &"bomba_tic", quien.global_position, 4.0)
 
 
 ## Los que siguen en juego: vivos y adentro del mapa. El simulador saca al jugador de verdad
@@ -1196,7 +1196,7 @@ func _explotar_bomba(quien: Player) -> void:
 	_guardar_bomba()
 	_bomba_pausa = Modos.PAUSA_BOMBA
 	FX.spawn_explosion_bomba(self, donde + Vector3.UP * 1.2)
-	Sfx.play_3d(self, &"plasma_blast", donde, 4.0)
+	Sfx.play_3d(self, &"bomba_explota", donde, 4.0)
 	for p: Player in _en_juego():
 		if p == quien:
 			continue
@@ -1239,7 +1239,7 @@ func _esferas(delta: float) -> void:
 	if plano.length() > Modos.ESFERA_RADIO or absf(quien.global_position.y - _esfera_piso.y) > 2.0:
 		return
 	FX.spawn_impact_burst(self, _esfera.global_position, Color(1.0, 0.80, 0.25))
-	Sfx.play_3d(self, &"gema", _esfera_piso, 2.0)
+	Sfx.play_3d(self, &"esfera", _esfera_piso, 2.0)
 	_sacar_esfera()
 	_esfera_espera = 0.6
 	Modos.esfera_tomada()

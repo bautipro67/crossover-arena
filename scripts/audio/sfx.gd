@@ -31,6 +31,28 @@ const MIX_RATE: int = 32000
 ## Cuantos reproductores 3D simultaneos como maximo. Evita que una pelea llene el arbol.
 const MAX_VOICES: int = 24
 
+## SONIDOS CON NOMBRE PROPIO QUE TODAVIA USAN OTRO. Cada uno es un momento que merece su
+## propio efecto —el tic de la bomba, la esfera que se toma— pero que hoy suena con uno
+## del banco. Si en assets/audio/ aparece un archivo con el nombre de la izquierda, suena
+## ese; si no, el de la derecha. Asi se puede ir grabando de a uno sin tocar codigo.
+const ALIAS: Dictionary = {
+	&"bomba_tic": &"ui_click",
+	&"bomba_pasa": &"hit_punch",
+	&"bomba_explota": &"plasma_blast",
+	&"esfera": &"gema",
+	&"sentido_aracnido": &"dash",
+	&"super_sonic": &"channel",
+	&"luz_sonic": &"hit_punch",
+	&"gear_fifth": &"goma",
+	&"cien_por_ciento": &"explosion_psiquica",
+	# Estos no tienen reemplazo: si no estan grabados, no suenan.
+	# `golpe`: cada golpe que conecta, de cualquiera (FX.spawn_hit_impact).
+	&"golpe": &"",
+	&"ui_hover": &"",
+	&"victoria": &"",
+	&"derrota": &"",
+}
+
 ## Sonidos que NO se desafinan al repetirse. Ver _play_variacion().
 const SIN_VARIACION: Array[StringName] = [
 	&"za_warudo", &"snowgrave", &"last_jarona", &"channel", &"ui_click", &"respawn",
@@ -42,6 +64,8 @@ var master_volume: float = 0.8:
 		_apply_volume()
 
 var _bank: Dictionary = {}
+## Los que vienen de un archivo y no de la sintesis. Ver es_grabado().
+var _grabados: Dictionary = {}
 var _ui_player: AudioStreamPlayer = null
 var _voices: int = 0
 ## Reproductores 3D vivos, para poder cortarlos todos al cerrar.
@@ -106,6 +130,26 @@ func _audio_de_archivo(id: StringName) -> AudioStream:
 
 # ------------------------------------------------------------------ Reproduccion
 
+## El sonido que suena de verdad: el propio si esta grabado, si no el de su ALIAS.
+## Este sonido es una grabacion? Lo pregunta Frases: una voz grabada puede traer adentro lo
+## que otra sintetizada iba a decir despues (el Kamehameha grabado ya trae el "¡HA!").
+func es_grabado(sound: StringName) -> bool:
+	return _grabados.has(sound)
+
+
+## El sonido de muerte de un personaje: el suyo si esta grabado (muerte_sonic.ogg), si no
+## el de todos.
+func muerte_de(personaje: StringName) -> StringName:
+	var propio := StringName("muerte_%s" % personaje)
+	return propio if _bank.has(propio) else &"death"
+
+
+func _resolver(sound: StringName) -> StringName:
+	if not _bank.has(sound) and ALIAS.has(sound):
+		return ALIAS[sound]
+	return sound
+
+
 ## Cuanto dura un sonido del banco, en segundos. 0 si no existe.
 ##
 ## Hace falta porque desde que los sonidos pueden venir de un archivo, su duracion dejo de
@@ -118,6 +162,7 @@ func duracion(sound: StringName) -> float:
 
 ## Sonido no posicional (UI, avisos).
 func play_2d(sound: StringName, volume_db: float = 0.0) -> void:
+	sound = _resolver(sound)
 	if not _bank.has(sound) or _ui_player == null:
 		return
 	_ui_player.stream = _bank[sound]
@@ -127,6 +172,7 @@ func play_2d(sound: StringName, volume_db: float = 0.0) -> void:
 
 ## Sonido posicional en el mundo 3D.
 func play_3d(context: Node, sound: StringName, position: Vector3, volume_db: float = 0.0) -> void:
+	sound = _resolver(sound)
 	if not _bank.has(sound) or _voices >= MAX_VOICES:
 		return
 	if not is_instance_valid(context) or not context.is_inside_tree():
@@ -323,6 +369,8 @@ func _build_bank() -> void:
 			[&"respawn", _synth_respawn]]:
 		var grabado := _audio_de_archivo(par[0])
 		_bank[par[0]] = grabado if grabado != null else _make((par[1] as Callable).call())
+		if grabado != null:
+			_grabados[par[0]] = true
 	_build_combate.call_deferred()
 
 
@@ -404,8 +452,23 @@ func _build_combate() -> void:
 		# cuando los archivos los va poniendo alguien de a uno.
 		var grabada := _audio_de_archivo(item[0])
 		_bank[item[0]] = grabada if grabada != null else _make(generador.call())
+		if grabada != null:
+			_grabados[item[0]] = true
 		if is_inside_tree():
 			await get_tree().process_frame
+	# Los que tienen nombre propio y un archivo grabado: entran al banco con su nombre.
+	for propio: StringName in ALIAS:
+		var archivo := _audio_de_archivo(propio)
+		if archivo != null:
+			_bank[propio] = archivo
+			_grabados[propio] = true
+	# Y la muerte de cada personaje, si alguien la grabo (muerte_sonic.ogg...).
+	for personaje: StringName in CharacterDB.get_all_ids():
+		var id := StringName("muerte_%s" % personaje)
+		var muerte := _audio_de_archivo(id)
+		if muerte != null:
+			_bank[id] = muerte
+			_grabados[id] = true
 	print("[sfx] banco completo en %d ms (%d sonidos a %d Hz)" % [
 		Time.get_ticks_msec() - arranque, _bank.size(), MIX_RATE])
 

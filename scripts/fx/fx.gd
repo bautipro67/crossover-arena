@@ -86,9 +86,12 @@ func spawn_impact_burst(context: Node, position: Vector3, color: Color) -> void:
 	burst.initial_velocity_min = 3.0
 	burst.initial_velocity_max = 7.0
 	burst.gravity = Vector3(0.0, -9.0, 0.0)
-	burst.scale_amount_min = 0.06
-	burst.scale_amount_max = 0.2
+	burst.scale_amount_min = 0.10
+	burst.scale_amount_max = 0.30
 	burst.color = color
+	# Chispas de luz que se apagan, no cubitos (ver Art.particula_suave).
+	burst.mesh = Art.particula_suave()
+	burst.color_ramp = Art.rampa_que_se_apaga(color)
 	world.add_child(burst)
 	burst.global_position = position
 	_auto_free(burst, 1.4)
@@ -110,14 +113,20 @@ func spawn_melee_arc(caster: Node, origin: Vector3, dir: Vector3) -> void:
 	slash.initial_velocity_min = 5.0
 	slash.initial_velocity_max = 9.0
 	slash.gravity = Vector3.ZERO
-	slash.scale_amount_min = 0.08
-	slash.scale_amount_max = 0.22
+	slash.scale_amount_min = 0.10
+	slash.scale_amount_max = 0.26
 	slash.color = Color(0.85, 0.96, 1.0, 0.9)
+	slash.mesh = Art.particula_suave()
+	slash.color_ramp = Art.rampa_que_se_apaga(Color(0.85, 0.96, 1.0, 0.9))
 	world.add_child(slash)
 	slash.global_position = origin + dir.normalized() * 1.2
 	_auto_free(slash, 0.9)
 	spawn_slash_arc(caster, origin, dir, Color(0.80, 0.94, 1.0))
 	Sfx.play_3d(caster, &"hit_ice", origin, -4.0)
+
+
+## Cuando sono el ultimo golpe que conecto. Ver spawn_hit_impact.
+var _ultimo_golpe_ms: int = 0
 
 
 ## Impacto de un golpe que CONECTO. Es lo que hace que pegar se sienta.
@@ -159,6 +168,14 @@ func spawn_hit_impact(context: Node, position: Vector3, amount: float, color: Co
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.26).from(0.95)
 	tw.chain().tween_callback(ring.queue_free)
 
+	# EL SONIDO DEL GOLPE QUE CONECTA (assets/audio/golpe.ogg). Uno cada 40 ms como mucho:
+	# un daño que pega muchas veces seguidas —una quemadura, una rafaga— sonaba como un
+	# redoble.
+	var ahora := Time.get_ticks_msec()
+	if ahora - _ultimo_golpe_ms >= 40:
+		_ultimo_golpe_ms = ahora
+		Sfx.play_3d(context, &"golpe", position, -5.0 + clampf(amount / 12.0, 0.0, 4.0))
+
 	# CHISPAS: salen para todos lados desde el punto del golpe. El anillo dice DONDE y el
 	# destello CUANDO; las chispas dicen CUANTO, porque un golpe fuerte tira mas.
 	var chispas := CPUParticles3D.new()
@@ -172,9 +189,11 @@ func spawn_hit_impact(context: Node, position: Vector3, amount: float, color: Co
 	chispas.initial_velocity_min = 3.5
 	chispas.initial_velocity_max = 8.0
 	chispas.gravity = Vector3(0.0, -9.0, 0.0)
-	chispas.scale_amount_min = 0.03
-	chispas.scale_amount_max = 0.07
+	chispas.scale_amount_min = 0.06
+	chispas.scale_amount_max = 0.14
 	chispas.color = color.lightened(0.35)
+	chispas.mesh = Art.particula_suave()
+	chispas.color_ramp = Art.rampa_que_se_apaga(color.lightened(0.35))
 	world.add_child(chispas)
 	chispas.global_position = position
 	_auto_free(chispas, 0.8)
@@ -2393,7 +2412,7 @@ func spawn_sentido_aracnido(cuerpo: Node3D) -> void:
 	tw.tween_interval(0.25)
 	tw.tween_property(rayas, "scale", Vector3.ZERO, 0.12)
 	tw.tween_callback(rayas.queue_free)
-	Sfx.play_3d(cuerpo, &"dash", cuerpo.global_position, -4.0)
+	Sfx.play_3d(cuerpo, &"sentido_aracnido", cuerpo.global_position, -4.0)
 
 
 ## LAS SEIS GEMAS SE ENCIENDEN DE A UNA mientras Thanos carga el chasquido, alrededor del
@@ -2565,7 +2584,7 @@ func spawn_cien_por_ciento(caster: Node3D, radio: float, duracion: float) -> voi
 		luz.global_position = caster.global_position + Vector3.UP * 1.5
 		_fade_light(luz, 0.8)
 	camera_shake(2.0)
-	Sfx.play_3d(caster, &"explosion_psiquica", caster.global_position + Vector3.UP, 4.0)
+	Sfx.play_3d(caster, &"cien_por_ciento", caster.global_position + Vector3.UP, 4.0)
 
 	var viejo := caster.get_node_or_null(^"AuraSuper")
 	if viejo != null:

@@ -48,13 +48,19 @@ static func outline(width: float, color: Color = OUTLINE) -> StandardMaterial3D:
 static func toon(color: Color, outline_width: float = 0.012, rim_amount: float = 0.5) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
-	m.roughness = 0.9
+	# 0.62 Y NO 0.9 (2026-10-02, "mejora los modelos"): con 0.9 el brillo especular del toon
+	# se desparramaba tanto que no se veia, y los cuerpos quedaban de plastilina mate. Mas
+	# bajo, aparece un brillo chico y recortado arriba de cada forma, que es lo que hace que
+	# un modelo de pocas piezas se lea como una figura con volumen.
+	m.roughness = 0.62
 	m.metallic = 0.0
 	m.diffuse_mode = BaseMaterial3D.DIFFUSE_TOON
 	m.specular_mode = BaseMaterial3D.SPECULAR_TOON
 	m.rim_enabled = true
 	m.rim = rim_amount
-	m.rim_tint = 0.25
+	# Y el borde iluminado toma un poco mas el color del material: recorta la silueta sin
+	# que todos los personajes tengan el mismo halo blanco.
+	m.rim_tint = 0.35
 	if outline_width > 0.0:
 		m.next_pass = outline(outline_width)
 	return m
@@ -94,6 +100,35 @@ static func pelaje(color: Color, outline_width: float = 0.012) -> StandardMateri
 	m.uv1_scale = Vector3(5.0, 1.6, 1.0)
 	m.roughness = 1.0
 	return m
+
+
+## LA PARTICULA SUAVE: un cuadrado que mira a la camara, con el punto_suave y luz
+## sumada. Con ella una estela o un estallido se ve como chispas de luz; sin malla, una
+## particula de CPUParticles3D se dibuja como un cubito de color.
+static var _particula: QuadMesh = null
+
+static func particula_suave() -> QuadMesh:
+	if _particula != null:
+		return _particula
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = punto_suave()
+	_particula = QuadMesh.new()
+	_particula.size = Vector2(1.0, 1.0)
+	_particula.material = mat
+	return _particula
+
+
+## Rampa para que una particula se apague al final de su vida en vez de desaparecer.
+static func rampa_que_se_apaga(color: Color) -> Gradient:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
+	g.colors = PackedColorArray([color.lightened(0.25), color, Color(color.r, color.g, color.b, 0.0)])
+	return g
 
 
 ## Un punto redondo que se desvanece hacia el borde. Textura para particulas.

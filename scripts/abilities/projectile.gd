@@ -196,6 +196,10 @@ func _build_visual() -> void:
 	mesh_instance.mesh = sphere
 	mesh_instance.material_override = make_glow_material(tint)
 	add_child(mesh_instance)
+	# EL NUCLEO CALIENTE: una esfera chica casi blanca adentro. Un proyectil de un solo
+	# color se ve como una pelota; con el centro mas claro que el borde se ve como energia.
+	var nucleo := Art.sphere(hit_radius * 0.55, Art.glow(tint.lerp(Color.WHITE, 0.7), 4.0))
+	add_child(nucleo)
 
 
 ## Que pasa al pegarle a un jugador vivo. Por defecto solo daña.
@@ -225,10 +229,17 @@ func add_trail(color: Color, amount: int = 24) -> void:
 	trail.spread = 25.0
 	trail.initial_velocity_min = 0.2
 	trail.initial_velocity_max = 1.0
-	trail.scale_amount_min = 0.05
-	trail.scale_amount_max = 0.16
+	trail.scale_amount_min = 0.10
+	trail.scale_amount_max = 0.26
 	trail.gravity = Vector3.ZERO
 	trail.color = color
+	# Puntos de luz que se achican y se apagan: una estela, no una fila de cubitos.
+	trail.mesh = Art.particula_suave()
+	trail.color_ramp = Art.rampa_que_se_apaga(color)
+	var achica := Curve.new()
+	achica.add_point(Vector2(0.0, 1.0))
+	achica.add_point(Vector2(1.0, 0.15))
+	trail.scale_amount_curve = achica
 	trail.emitting = true
 	add_child(trail)
 
