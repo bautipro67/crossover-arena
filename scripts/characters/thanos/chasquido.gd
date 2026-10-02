@@ -5,7 +5,13 @@ extends Ability
 ## Con las seis gemas en el Guantelete, Thanos chasquea los dedos y la mitad de todo lo que
 ## vive desaparece. Aca es eso, como se pidio: TODOS LOS ENEMIGOS PIERDEN LA MITAD DE LA
 ## VIDA QUE TIENEN, esten donde esten del mapa. La mitad de lo que les queda, no de la vida
-## entera: por eso no mata nunca, y por eso rinde mas cuanto antes se usa.
+## entera.
+##
+## Y SE PIDIO QUE FUERA MEJOR (2026-10-01): antes no mataba nunca, y un chasquido que deja
+## a todos vivos no se parece al de la pelicula. Ahora EL QUE QUEDA CON MUY POCO SE HACE
+## POLVO: si despues de perder la mitad le queda menos de POLVO de su vida entera, se
+## desintegra. Contra alguien sano sigue siendo la mitad; contra alguien tocado, es el
+## final. Las seis gemas se encienden de a una mientras carga, para que se vea venir.
 ##
 ## INEVITABLE: no lo frena un escudo (ver Health.apply_damage, ignora_escudo) ni una pared.
 ## Lo unico que se salva es lo invencible —Mario con la Superestrella—, que es invencible.
@@ -16,12 +22,14 @@ extends Ability
 ## No paga recursos: no recarga el medidor ni devuelve stamina.
 
 const FRACCION: float = 0.5
+## El que queda por debajo de esto, de su vida entera, se hace polvo.
+const POLVO: float = 0.15
 
 
 func _init() -> void:
 	id = &"chasquido"
 	display_name = "El Chasquido"
-	description = "Chasquea los dedos con las seis gemas: TODOS los enemigos pierden la mitad de la vida que les queda. No lo frenan ni los escudos ni las paredes."
+	description = "Chasquea los dedos con las seis gemas: TODOS los enemigos pierden la mitad de la vida que les queda, y el que queda con menos del %d%% se hace polvo. No lo frenan ni los escudos ni las paredes." % int(POLVO * 100.0)
 	stamina_cost = 100.0
 	cooldown = 10.0
 	channel_time = 1.5
@@ -48,4 +56,8 @@ func execute(caster: Node, _origin: Vector3, _dir: Vector3) -> void:
 			continue
 		var cuanto := health.max_health * 2.0 if Modos.un_toque() else health.current * FRACCION
 		health.apply_damage(cuanto, source_id, true)
+		# EL POLVO: el que quedo con casi nada se desintegra.
+		if not health.is_dead and health.current <= health.max_health * POLVO:
+			FX.spawn_desintegrar(target)
+			health.apply_damage(health.current + 1.0, source_id, true)
 	FX.spawn_chasquido(caster3d)

@@ -40,10 +40,13 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 		return
 	var source_id: int = caster3d.peer_id
 	var llegada := caster3d.global_position
-	for target: Node3D in CombatUtils.get_players_in_sphere(caster3d, llegada + Vector3.UP, RADIO_LLEGADA):
+	# En Gear Fifth cae como un dibujo animado: el golpe de la llegada es mucho mas ancho.
+	var radio := RADIO_LLEGADA * GearFifth.por(caster3d, 1.7)
+	for target: Node3D in CombatUtils.get_players_in_sphere(caster3d, llegada + Vector3.UP, radio):
 		if not tocados.has(target):
 			tocados.append(target)
 	for target: Node3D in tocados:
-		CombatUtils.deal_damage(target, DAMAGE, source_id)
-		CombatUtils.apply_knockback(target, target.global_position - llegada, KNOCKBACK, KNOCKBACK_LIFT)
-	FX.spawn_pisoton(caster3d, llegada, RADIO_LLEGADA)
+		CombatUtils.deal_damage(target, DAMAGE * GearFifth.por(caster3d, GearFifth.DAÑO), source_id)
+		CombatUtils.apply_knockback(target, target.global_position - llegada,
+			KNOCKBACK * GearFifth.por(caster3d, GearFifth.EMPUJE), KNOCKBACK_LIFT)
+	FX.spawn_pisoton(caster3d, llegada, radio)

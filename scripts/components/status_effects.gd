@@ -71,6 +71,10 @@ var _vuln_left: float = 0.0
 ## SOLO LA SABE EL SERVIDOR, y alcanza: el daño, los estados y los empujones los reparte
 ## el servidor. Por eso no viaja en _push_state.
 var _estrella_left: float = 0.0
+## IMPARABLE (Super Sonic): no lo congelan, no lo aturden ni lo frenan, pero SI se le puede
+## pegar. Es la mitad de la estrella de Mario, y es la diferencia entre las dos: a Mario no
+## se lo puede tocar; a Sonic no se lo puede parar. Tambien solo lo sabe el servidor.
+var _imparable_left: float = 0.0
 
 
 func _process(delta: float) -> void:
@@ -93,6 +97,8 @@ func _process(delta: float) -> void:
 		_vuln_left = maxf(0.0, _vuln_left - delta)
 	if _estrella_left > 0.0:
 		_estrella_left = maxf(0.0, _estrella_left - delta)
+	if _imparable_left > 0.0:
+		_imparable_left = maxf(0.0, _imparable_left - delta)
 	if _imp_left > 0.0:
 		_imp_left = maxf(0.0, _imp_left - delta)
 		if is_zero_approx(_imp_left):
@@ -131,7 +137,7 @@ func add_chill(stacks: int) -> void:
 
 ## SOLO SERVIDOR.
 func freeze_for(duration: float) -> void:
-	if not _is_server() or duration <= 0.0 or es_invencible():
+	if not _is_server() or duration <= 0.0 or es_invencible() or es_imparable():
 		return
 	var was_frozen := is_frozen()
 	_freeze_left = maxf(_freeze_left, duration)
@@ -142,7 +148,7 @@ func freeze_for(duration: float) -> void:
 
 ## SOLO SERVIDOR. Aturde sin congelar (ZA WARUDO, golpes que trabanan, etc).
 func stun_for(duration: float) -> void:
-	if not _is_server() or duration <= 0.0 or es_invencible():
+	if not _is_server() or duration <= 0.0 or es_invencible() or es_imparable():
 		return
 	var was_stunned := is_stunned()
 	_stun_left = maxf(_stun_left, duration)
@@ -153,7 +159,7 @@ func stun_for(duration: float) -> void:
 
 ## SOLO SERVIDOR. Se queda con el slow mas fuerte que este activo.
 func apply_slow(percent: float, duration: float) -> void:
-	if not _is_server() or percent <= 0.0 or duration <= 0.0 or es_invencible():
+	if not _is_server() or percent <= 0.0 or duration <= 0.0 or es_invencible() or es_imparable():
 		return
 	if percent >= _slow_percent:
 		_slow_percent = clampf(percent, 0.0, 0.9)
@@ -194,6 +200,24 @@ func estrella(duracion: float) -> void:
 
 func es_invencible() -> bool:
 	return _estrella_left > 0.0
+
+
+## SOLO SERVIDOR. Nada lo para por `duracion` segundos. Ver _imparable_left.
+func imparable(duracion: float) -> void:
+	if not _is_server() or duracion <= 0.0:
+		return
+	_imparable_left = maxf(_imparable_left, duracion)
+	# Lo que ya lo tenia frenado se va: transformarse es sacarse todo de encima.
+	_freeze_left = 0.0
+	_stun_left = 0.0
+	_slow_percent = 0.0
+	_slow_left = 0.0
+	chill_stacks = 0
+	_broadcast()
+
+
+func es_imparable() -> bool:
+	return _imparable_left > 0.0
 
 
 ## Cuanto MULTIPLICA el daño que este jugador reparte. Lo lee CombatUtils al pegar.
@@ -270,6 +294,7 @@ func clear_all(conservar_impulso: bool = false) -> void:
 	if conservar_impulso:
 		return
 	_estrella_left = 0.0
+	_imparable_left = 0.0
 	_imp_vel = 1.0
 	_imp_resist = 1.0
 	_imp_daño = 1.0

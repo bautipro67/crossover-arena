@@ -234,6 +234,11 @@ func _build_kit() -> void:
 		_kit_box.add_child(desc)
 		_kit_box.add_child(UITheme.make_spacer(6))
 
+	if not data.pasiva.is_empty():
+		var pasiva := UITheme.make_label(data.pasiva, 12, UITheme.GOLD)
+		pasiva.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_kit_box.add_child(pasiva)
+		_kit_box.add_child(UITheme.make_spacer(6))
 	_kit_box.add_child(UITheme.make_label(
 		"Correr, golpear y dashear no gastan stamina. Solo las habilidades.",
 		12, UITheme.HEALTH))

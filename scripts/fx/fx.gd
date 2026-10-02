@@ -159,6 +159,26 @@ func spawn_hit_impact(context: Node, position: Vector3, amount: float, color: Co
 	tw.tween_property(mat, "albedo_color:a", 0.0, 0.26).from(0.95)
 	tw.chain().tween_callback(ring.queue_free)
 
+	# CHISPAS: salen para todos lados desde el punto del golpe. El anillo dice DONDE y el
+	# destello CUANDO; las chispas dicen CUANTO, porque un golpe fuerte tira mas.
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.one_shot = true
+	chispas.amount = clampi(8 + int(amount * 0.5), 8, 30)
+	chispas.lifetime = 0.32
+	chispas.explosiveness = 1.0
+	chispas.direction = Vector3.UP
+	chispas.spread = 180.0
+	chispas.initial_velocity_min = 3.5
+	chispas.initial_velocity_max = 8.0
+	chispas.gravity = Vector3(0.0, -9.0, 0.0)
+	chispas.scale_amount_min = 0.03
+	chispas.scale_amount_max = 0.07
+	chispas.color = color.lightened(0.35)
+	world.add_child(chispas)
+	chispas.global_position = position
+	_auto_free(chispas, 0.8)
+
 	# Destello.
 	var luz := OmniLight3D.new()
 	luz.light_color = color
@@ -1950,7 +1970,8 @@ func spawn_esfera_mano(caster: Node3D, color: Color, duracion: float) -> void:
 # ------------------------------------------------------------------ Luffy
 
 ## El brazo de goma: se estira hasta la punta y vuelve.
-func spawn_brazo_goma(caster: Node3D, origin: Vector3, rumbo: Vector3, largo: float) -> void:
+func spawn_brazo_goma(caster: Node3D, origin: Vector3, rumbo: Vector3, largo: float,
+		grosor: float = 1.0) -> void:
 	if not is_instance_valid(caster):
 		return
 	var world := _world_of(caster)
@@ -1958,8 +1979,9 @@ func spawn_brazo_goma(caster: Node3D, origin: Vector3, rumbo: Vector3, largo: fl
 		return
 	var piel := Art.toon(Color(0.96, 0.78, 0.62), 0.01)
 	var punta := origin + rumbo.normalized() * largo
-	var brazo := _barra(world, origin, punta, 0.07, piel)
-	var puño := Art.sphere(0.14, piel)
+	# `grosor`: en Gear Fifth el brazo engorda y el puño se vuelve gigante.
+	var brazo := _barra(world, origin, punta, 0.07 * minf(grosor, 1.8), piel)
+	var puño := Art.sphere(0.14 * grosor * 1.2 if grosor > 1.0 else 0.14, piel)
 	world.add_child(puño)
 	puño.global_position = punta
 	var tw := brazo.create_tween()
@@ -2324,6 +2346,24 @@ func spawn_chasquido(caster: Node3D) -> void:
 	world.add_child(luz)
 	luz.global_position = centro
 	_fade_light(luz, 0.9)
+	# LA ONDA QUE BARRE EL MAPA: el chasquido le llega a todos, este donde este, y eso tiene
+	# que verse. Un anillo blanco a ras del piso que sale de Thanos y cruza la arena entera.
+	var onda := MeshInstance3D.new()
+	var toro_onda := TorusMesh.new()
+	toro_onda.inner_radius = 0.96
+	toro_onda.outer_radius = 1.0
+	onda.mesh = toro_onda
+	var mat_onda := Art.glow(Color(1.0, 0.95, 0.85), 2.6)
+	mat_onda.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	onda.material_override = mat_onda
+	onda.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(onda)
+	onda.global_position = caster.global_position + Vector3.UP * 0.4
+	var tw_onda := onda.create_tween().set_parallel()
+	tw_onda.tween_property(onda, "scale", Vector3(70.0, 3.0, 70.0), 1.1).from(Vector3(1.0, 1.0, 1.0)) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw_onda.tween_property(mat_onda, "albedo_color:a", 0.0, 1.1).from(0.9)
+	tw_onda.chain().tween_callback(onda.queue_free)
 	camera_shake(1.6)
 	Sfx.play_3d(caster, &"chasquido", centro, 6.0)
 	for target: Node3D in CombatUtils._living_targets(caster):
@@ -2331,6 +2371,99 @@ func spawn_chasquido(caster: Node3D) -> void:
 		if estado != null and estado.es_invencible():
 			continue
 		spawn_polvo_chasquido(target)
+
+
+## EL SENTIDO ARACNIDO: las rayitas que le salen de la cabeza cuando siente venir el golpe,
+## como en las historietas. Blancas y cortas, en abanico, y se van enseguida.
+func spawn_sentido_aracnido(cuerpo: Node3D) -> void:
+	if not is_instance_valid(cuerpo):
+		return
+	var rayas := Node3D.new()
+	cuerpo.add_child(rayas)
+	rayas.position = Vector3(0.0, 2.05, 0.0)
+	var mat := Art.glow(Color(1.0, 1.0, 0.95), 2.5)
+	for k: int in range(7):
+		var ang := deg_to_rad(-75.0 + float(k) * 25.0)
+		var raya := Art.box(Vector3(0.035, 0.22, 0.035), mat,
+			Vector3(sin(ang) * 0.30, cos(ang) * 0.22, 0.0))
+		raya.rotation = Vector3(0.0, 0.0, -ang)
+		rayas.add_child(raya)
+	var tw := rayas.create_tween()
+	tw.tween_property(rayas, "scale", Vector3.ONE * 1.3, 0.12).from(Vector3.ONE * 0.4)
+	tw.tween_interval(0.25)
+	tw.tween_property(rayas, "scale", Vector3.ZERO, 0.12)
+	tw.tween_callback(rayas.queue_free)
+	Sfx.play_3d(cuerpo, &"dash", cuerpo.global_position, -4.0)
+
+
+## LAS SEIS GEMAS SE ENCIENDEN DE A UNA mientras Thanos carga el chasquido, alrededor del
+## Guantelete en alto (la mano izquierda). Al final se juntan en el puño: es el aviso de
+## que viene, y lo que dice cuanto falta. Lo guarda el visual para sacarlo si se corta.
+func spawn_gemas_carga(caster: Node3D, duracion: float) -> Node3D:
+	if not is_instance_valid(caster):
+		return null
+	var gemas: Array[Color] = [Color(0.25, 0.45, 1.0), Color(1.0, 0.85, 0.2), Color(0.95, 0.12, 0.16),
+		Color(0.62, 0.22, 0.95), Color(0.2, 0.9, 0.35), Color(1.0, 0.52, 0.12)]
+	var aro := Node3D.new()
+	aro.name = &"GemasCarga"
+	caster.add_child(aro)
+	aro.position = Vector3(-0.32, 2.25, 0.0)
+	var paso := maxf(0.05, duracion * 0.8 / float(gemas.size()))
+	for k: int in range(gemas.size()):
+		var ang := TAU * float(k) / float(gemas.size())
+		var gema := Art.sphere(0.07, Art.glow(gemas[k], 3.5), Vector3(cos(ang) * 0.48, sin(ang) * 0.48, 0.0))
+		gema.scale = Vector3.ZERO
+		aro.add_child(gema)
+		var tw := gema.create_tween()
+		tw.tween_interval(paso * float(k))
+		tw.tween_property(gema, "scale", Vector3.ONE * 1.4, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(gema, "scale", Vector3.ONE, 0.10)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.85, 0.55)
+	luz.light_energy = 0.5
+	luz.omni_range = 4.0
+	luz.shadow_enabled = false
+	aro.add_child(luz)
+	var tl := luz.create_tween()
+	tl.tween_property(luz, "light_energy", 4.5, duracion)
+	# Gira, y al final se cierra sobre el puño.
+	var giro := aro.create_tween()
+	giro.tween_property(aro, "rotation:z", TAU * 1.5, duracion).from(0.0)
+	var cierre := aro.create_tween()
+	cierre.tween_interval(duracion * 0.8)
+	cierre.tween_property(aro, "scale", Vector3.ONE * 0.15, duracion * 0.2)
+	cierre.tween_callback(aro.queue_free)
+	return aro
+
+
+## El que se hace polvo con el chasquido: una nube de ceniza del tamaño del cuerpo, que se
+## lleva el viento de a poco. Mas grande y mas larga que la de los que sobreviven.
+func spawn_desintegrar(target: Node3D) -> void:
+	var world := _world_of(target)
+	if world == null:
+		return
+	var polvo := CPUParticles3D.new()
+	polvo.emitting = true
+	polvo.one_shot = true
+	polvo.amount = 220
+	polvo.lifetime = 2.6
+	polvo.explosiveness = 0.15
+	polvo.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	polvo.emission_box_extents = Vector3(0.32, 0.95, 0.22)
+	polvo.direction = Vector3(1.0, 0.8, 0.2)
+	polvo.spread = 30.0
+	polvo.initial_velocity_min = 0.5
+	polvo.initial_velocity_max = 2.0
+	polvo.gravity = Vector3(1.1, 0.5, 0.0)
+	polvo.scale_amount_min = 0.05
+	polvo.scale_amount_max = 0.13
+	var ceniza := Gradient.new()
+	ceniza.set_color(0, Color(0.50, 0.38, 0.30, 1.0))
+	ceniza.set_color(1, Color(0.30, 0.26, 0.24, 0.0))
+	polvo.color_ramp = ceniza
+	world.add_child(polvo)
+	polvo.global_position = target.global_position + Vector3.UP * 1.0
+	_auto_free(polvo, 3.2)
 
 
 ## El polvo del chasquido: el cuerpo se deshace en ceniza que se lleva el viento.
@@ -3205,15 +3338,18 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 			Rasenshuriken.spawn_cosmetic(caster, origin, dir)
 		&"gomu_pistol":
 			if caster is Node3D:
-				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(), GomuPistol.LARGO)
+				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(),
+					GomuPistol.LARGO * GearFifth.por(caster, GearFifth.ALCANCE), GearFifth.por(caster, GearFifth.ANCHO))
 		&"gomu_gatling":
 			if caster is Node3D:
-				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(), GomuGatling.CONE_RANGE)
+				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(),
+					GomuGatling.CONE_RANGE * GearFifth.por(caster, GearFifth.ALCANCE), GearFifth.por(caster, GearFifth.ANCHO))
 		&"gomu_rocket":
 			if caster is Node3D:
-				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(), 9.0)
+				spawn_brazo_goma(caster as Node3D, origin, dir.normalized(), 9.0, GearFifth.por(caster, GearFifth.ANCHO))
 		&"gear_fifth":
 			if caster is Node3D:
+				GearFifth.activar(caster as Node3D)
 				spawn_gear_fifth(caster as Node3D, GearFifth.DURACION)
 		&"telarana":
 			Telarana.spawn_cosmetic(caster, origin, dir)

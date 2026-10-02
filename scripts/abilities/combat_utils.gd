@@ -158,6 +158,11 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 		if status.es_invencible():
 			return 0.0
 		mult = status.get_damage_taken_multiplier()
+	# EL SENTIDO ARACNIDO: Spider-Man siente venir el golpe y lo esquiva solo, una vez cada
+	# tanto (Player.sentido_aracnido). Va antes que cualquier modo: tambien esquiva el golpe
+	# que mata en un toque, y el que pasa la bomba.
+	if target.has_method("sentido_aracnido") and target.sentido_aracnido(source_id):
+		return 0.0
 	# Los bots de practica pegan mas flojo. Se los reconoce por el peer negativo.
 	if source_id < 0:
 		# Y encima de eso, lo que diga el panel de practica. En 0 los bots siguen

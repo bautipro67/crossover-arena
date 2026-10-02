@@ -167,6 +167,38 @@ func setup_character(data: CharacterData) -> void:
 		aura.queue_free()
 
 
+## EL SENTIDO ARACNIDO de Spider-Man, su pasiva: el primer golpe que le llega lo esquiva
+## solo, con un salto al costado, y vuelve a estar listo SENTIDO_CADA segundos despues.
+## Lo pregunta CombatUtils.deal_damage antes de sacar vida. SOLO SERVIDOR, como el daño.
+const SENTIDO_CADA: float = 8.0
+var _sentido_listo: float = 0.0
+
+
+func sentido_aracnido(source_id: int) -> bool:
+	if character_id != &"spiderman" or source_id == peer_id or health.is_dead:
+		return false
+	var ahora := Time.get_ticks_msec() / 1000.0
+	if ahora < _sentido_listo:
+		return false
+	_sentido_listo = ahora + SENTIDO_CADA
+	# El salto al costado: para el lado que no viene el golpe, si se sabe de donde viene.
+	var costado := global_transform.basis.x * (1.0 if randf() < 0.5 else -1.0)
+	var atacante := CombatUtils.find_player_by_peer(self, source_id) as Node3D
+	if atacante != null:
+		var desde := global_position - atacante.global_position
+		desde.y = 0.0
+		if not desde.is_zero_approx():
+			costado = desde.normalized().cross(Vector3.UP) * (1.0 if randf() < 0.5 else -1.0)
+	apply_knockback(costado * 7.5 + Vector3.UP * 2.5)
+	FX.spawn_sentido_aracnido(self)
+	return true
+
+
+## Para que una pelea o una prueba empiece con el sentido listo.
+func reiniciar_sentido() -> void:
+	_sentido_listo = 0.0
+
+
 func is_local_player() -> bool:
 	return peer_id == Net.local_id()
 

@@ -80,7 +80,9 @@ gente.
    Pistola de Plasma · Pistola de Portales · Granada de Plasma · Caja de Meeseeks
 
 💨 SONIC — Sonic the Hedgehog
-   El más rápido y el más frágil. Entra, pega y se va antes de que le respondan.
+   El más rápido y el más frágil. Entra, pega y se va antes de que le respondan. Al
+   transformarse en Super Sonic sale a la velocidad de la luz contra cada enemigo a tiro,
+   uno tras otro, y mientras dura nada lo congela, lo aturde ni lo frena.
    Spin Attack · Spin Dash · Homing Attack · SUPER SONIC
 
 🔥 GOKU — Dragon Ball  (gratis: terminó la Temporada 1 y ahora es de todos)
@@ -99,13 +101,15 @@ gente.
 
 🌀 MOB — Mob Psycho 100  (gratis desde que terminó la Temporada 2)
    Telequinesis. Empuja de lejos, te tira el piso encima en cuatro piedras, se cubre
-   con una barrera que echa a todos, y cuando llega al 100%, revienta.
+   con una barrera que echa a todos, y cuando llega al 100% revienta: levanta a todos
+   en el aire, los deja colgando y los estrella contra el piso.
    Onda Psíquica · Escombros · Barrera · 100%
 
 💎 THANOS — Marvel  (gratis)
    El titán: el más grande y el que más aguanta. Descarga la Gema del Poder, cruza el
-   espacio con la del Espacio, y con las seis gemas chasquea los dedos: TODOS los
-   enemigos pierden la mitad de la vida que les queda.
+   espacio con la del Espacio, y con las seis gemas —que se encienden de a una en el
+   Guantelete— chasquea los dedos: TODOS los enemigos pierden la mitad de la vida que les
+   queda, y el que queda con casi nada se hace polvo.
    Puño del Titán · Gema del Poder · Gema del Espacio · EL CHASQUIDO
 
 🦂 SCORPION — Mortal Kombat  (gratis)
@@ -127,12 +131,15 @@ gente.
 
 👒 LUFFY — One Piece  (NUEVO, gratis)
    Goma: el golpe de más alcance, la lluvia de piñas del Gatling, el Rocket que lo tira
-   encima del rival, y el Gear Fifth que lo vuelve más rápido y más fuerte.
+   encima del rival, y el Gear Fifth: los puños se vuelven gigantes, y todo llega más
+   lejos, pega más ancho y manda a volar como en un dibujo animado.
    Gomu Gomu no Pistol · Gatling · Rocket · GEAR FIFTH
 
 🕷 SPIDER-MAN — Marvel  (NUEVO, gratis)
    El más ágil: telarañas que te dejan pegoteado, el balanceo para entrar o salir, y la
-   Red Total, que le pega a todos los que ve.
+   Red Total, que le pega a todos los que ve. Y el SENTIDO ARÁCNIDO: el primer golpe que
+   le llega lo esquiva solo, con un salto al costado (vuelve cada 8 segundos). El traje
+   ahora tiene la telaraña completa.
    Golpe Arácnido · Telaraña · Balanceo · RED TOTAL
 
 ♾ GOJO — Jujutsu Kaisen  (NUEVO, se gana completando el pase pro de la Temporada 3)

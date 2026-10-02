@@ -410,6 +410,7 @@ func _register_all() -> void:
 	spiderman.max_stamina = 110.0
 	spiderman.move_speed = 6.9
 	spiderman.silhouette = &"arana"
+	spiderman.pasiva = "SENTIDO ARÁCNIDO — el primer golpe que te llega se esquiva solo, con un salto al costado. Vuelve cada %d segundos." % int(Player.SENTIDO_CADA)
 	_add(spiderman)
 
 	# ----------------------------------------------------------------- Gojo

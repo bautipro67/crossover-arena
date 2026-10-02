@@ -1457,6 +1457,29 @@ func _test_sonic(player: Player, arena: Arena) -> void:
 	_check(not estado.esta_impulsado() and is_equal_approx(estado.get_move_speed_multiplier(), 1.0),
 		"y se apaga solo al vencer el tiempo")
 
+	# --- Y NADA LO PARA: congelar, aturdir y frenar no le hacen nada mientras dura ---
+	estado.clear_all()
+	estado.imparable(0.5)
+	estado.stun_for(2.0)
+	estado.freeze_for(2.0)
+	estado.apply_slow(0.6, 2.0)
+	_check(estado.can_act() and is_equal_approx(estado.get_move_speed_multiplier(), 1.0),
+		"Super Sonic es imparable: no lo aturden, no lo congelan ni lo frenan")
+	for _i: int in range(40):
+		await get_tree().physics_frame
+	estado.stun_for(0.3)
+	_check(estado.is_stunned(), "y al terminar se lo puede volver a aturdir")
+	estado.clear_all()
+
+	# --- LA VELOCIDAD DE LA LUZ: sale contra el que esta lejos, fuera del estallido ---
+	var luz_r: Array = await _probar_habilidad(player, arena, puesto, Vector3(-1.0, 0.0, 0.0), 3,
+		SuperSonic.RADIO_ESTALLIDO + 7.0, SuperSonic.new().channel_time + 1.0)
+	_check(luz_r[0] >= SuperSonic.LUZ_DAÑO * 0.9,
+		"al transformarse sale a la velocidad de la luz contra el que esta a %.0f m (%.0f)" % [
+			SuperSonic.RADIO_ESTALLIDO + 7.0, luz_r[0]])
+	luz_r[1].queue_free()
+	player.status.clear_all()
+
 	# --- EL HOMING ENCADENA ---
 	#
 	# Es LA sensacion del personaje: en sus juegos rebota de un enemigo al siguiente sin
@@ -2029,9 +2052,18 @@ func _test_mob(player: Player, arena: Arena) -> void:
 	player.caster.reset_state()
 	player.ultimate.current = UltimateCharge.MAX_CHARGE
 	player.caster.request_use(3)
-	await get_tree().create_timer(CienPorCiento.new().channel_time + 0.3).timeout
-	_check(lejos.health.current <= vida - CienPorCiento.DAMAGE * 0.9 and player.status.esta_impulsado(),
-		"el 100%% le pega al que esta a ocho metros y lo deja potenciado (%.0f de daño)" % (vida - lejos.health.current))
+	await get_tree().create_timer(CienPorCiento.new().channel_time + 0.15).timeout
+	_check(lejos.health.current <= vida - CienPorCiento.DAMAGE * 0.9 and lejos.status.is_stunned()
+		and not player.status.esta_impulsado(),
+		"el 100%% le pega al que esta a ocho metros y lo levanta colgando, sin potenciar a Mob (%.0f de daño)" % (
+			vida - lejos.health.current))
+	var subio := lejos.global_position.y
+	await get_tree().create_timer(0.25).timeout
+	_check(lejos.global_position.y > subio + 0.3, "lo levanta en el aire (de %.1f a %.1f)" % [
+		subio, lejos.global_position.y])
+	await get_tree().create_timer(CienPorCiento.AL_PISO).timeout
+	_check(lejos.health.current <= vida - (CienPorCiento.DAMAGE + CienPorCiento.DAÑO_PISO) * 0.9,
+		"y lo estrella contra el piso (%.0f de daño en total)" % (vida - lejos.health.current))
 	_check(player.ultimate.current < 1.0,
 		"y su propio daño no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
 	lejos.queue_free()
@@ -2120,11 +2152,13 @@ func _test_thanos(player: Player, arena: Arena) -> void:
 	var uno := _spawn_dummy(arena, puesto + rumbo * 6.0)
 	var otro := _spawn_dummy(arena, puesto - rumbo * 30.0)
 	var estrella := _spawn_dummy(arena, puesto + rumbo * 12.0)
-	for d: Player in [uno, otro, estrella]:
+	var tocado := _spawn_dummy(arena, puesto - rumbo * 12.0)
+	for d: Player in [uno, otro, estrella, tocado]:
 		d.health.set_max(3000.0)
 	for _i: int in range(12):
 		await get_tree().physics_frame
 	uno.health.apply_damage(1000.0, 1)
+	tocado.health.apply_damage(3000.0 * 0.82, 1)
 	otro.health.add_shield(200.0, 10.0)
 	estrella.status.estrella(8.0)
 	var vida_uno := uno.health.current
@@ -2142,10 +2176,12 @@ func _test_thanos(player: Player, arena: Arena) -> void:
 		"y no lo frena un escudo: va derecho a la vida (el escudo quedo en %.0f)" % otro.health.get_shield())
 	_check(is_equal_approx(estrella.health.current, vida_estrella),
 		"lo unico que se salva es lo invencible (la Superestrella)")
-	_check(not uno.health.is_dead and not otro.health.is_dead, "y no mata a nadie: es la mitad de lo que queda")
+	_check(not uno.health.is_dead and not otro.health.is_dead, "al que esta sano no lo mata: es la mitad de lo que queda")
+	_check(tocado.health.is_dead,
+		"pero el que queda con menos del %d%% se hace polvo" % int(Chasquido.POLVO * 100.0))
 	_check(player.ultimate.current < 1.0,
 		"y no le recarga el medidor (quedo en %.0f)" % player.ultimate.current)
-	for d: Player in [uno, otro, estrella]:
+	for d: Player in [uno, otro, estrella, tocado]:
 		d.queue_free()
 
 	# Sus skins: las tres, en la tienda.
@@ -2402,12 +2438,37 @@ func _test_temporada_3(player: Player, arena: Arena) -> void:
 	_check(r[0] >= GomuRocket.DAMAGE * 0.9, "el Rocket lo lleva encima del que esta a once metros (%.0f)" % r[0])
 	r[1].queue_free()
 	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, 3.0, GearFifth.new().channel_time + 0.3)
-	_check(r[0] >= GearFifth.DAÑO_ESTALLIDO * 0.9 and player.status.esta_impulsado(),
-		"el Gear Fifth revienta alrededor y lo deja transformado (%.0f)" % r[0])
+	_check(r[0] >= GearFifth.DAÑO_ESTALLIDO * 0.9 and GearFifth.gigante(player)
+		and not player.status.esta_impulsado(),
+		"el Gear Fifth revienta alrededor y le agranda los puños, sin potenciarlo (%.0f)" % r[0])
+	r[1].queue_free()
+	# Con los puños gigantes, el Pistol llega mucho mas lejos que de normal.
+	var lejos_g := GomuPistol.LARGO * GearFifth.ALCANCE - 1.0
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 0, lejos_g, 0.3)
+	_check(r[0] >= GomuPistol.DAMAGE * 0.9, "en Gear Fifth el Pistol llega a %.0f m (%.0f)" % [lejos_g, r[0]])
+	r[1].queue_free()
+	player.remove_meta(&"gear_fifth_hasta")
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 0, lejos_g, 0.3)
+	_check(r[0] < 1.0, "y sin el Gear Fifth no llega")
 	r[1].queue_free()
 	player.status.clear_all()
 
 	# --- SPIDER-MAN ---
+	player.setup_character(CharacterDB.get_character(&"spiderman"))
+	# EL SENTIDO ARACNIDO: el primer golpe lo esquiva solo; el siguiente, no.
+	player.reiniciar_sentido()
+	player.health.revive_full()
+	var vida_spider := player.health.current
+	var primero := CombatUtils.deal_damage(player, 20.0, -77)
+	var segundo := CombatUtils.deal_damage(player, 20.0, -77)
+	_check(is_zero_approx(primero) and segundo > 0.0 and player.health.current < vida_spider,
+		"el sentido aracnido esquiva el primer golpe solo, y el siguiente entra (%.0f, %.0f)" % [primero, segundo])
+	player.health.revive_full()
+	player.reiniciar_sentido()
+	player.setup_character(CharacterDB.get_character(&"goku"))
+	player.reiniciar_sentido()
+	_check(CombatUtils.deal_damage(player, 20.0, -77) > 0.0, "y los demas no lo tienen")
+	player.health.revive_full()
 	player.setup_character(CharacterDB.get_character(&"spiderman"))
 	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 12.0, 0.6)
 	lento = r[1].status.get_move_speed_multiplier() < 0.9
@@ -2417,6 +2478,25 @@ func _test_temporada_3(player: Player, arena: Arena) -> void:
 	lento = r[1].status.get_move_speed_multiplier() < 0.5
 	_check(r[0] >= RedTotal.DAMAGE * 0.9 and lento, "la Red Total le llega al que ve y lo pega al piso (%.0f)" % r[0])
 	r[1].queue_free()
+
+	# --- LAS ANIMACIONES: las piñas se alternan, y el basico de los que pelean a mano
+	# limpia cierra el combo con una patada ---
+	var vis := player.visual
+	await get_tree().create_timer(0.6).timeout
+	vis._pose = &""
+	vis._release_t = 0.0
+	vis._combo_n = 0
+	vis._combo_hasta = 0.0
+	var brazos: Array[bool] = []
+	var patadas := 0
+	for _i: int in range(3):
+		vis._kick_t = 0.0
+		vis._on_ability_used(0)
+		brazos.append(vis._punch_izq)
+		if vis._kick_t > 0.0:
+			patadas += 1
+	_check(brazos[0] != brazos[1] and patadas == 1 and vis._kick_t > 0.0,
+		"el golpe aracnido alterna los brazos y el tercero es una patada")
 
 	# --- GOJO ---
 	player.setup_character(CharacterDB.get_character(&"gojo"))
@@ -2894,7 +2974,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 333
+const CHEQUEOS_MINIMOS: int = 344
 
 
 func _finish() -> void:

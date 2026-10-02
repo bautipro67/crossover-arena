@@ -41,9 +41,15 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 			return
 		var aqui := caster3d.global_position + Vector3.UP * 1.1
 		var frente := -caster3d.global_transform.basis.z
-		FX.spawn_brazo_goma(caster3d, aqui, frente.rotated(Vector3.UP, randf_range(-0.35, 0.35)), CONE_RANGE)
+		# En Gear Fifth la lluvia de piñas es de puños gigantes: mas lejos y mas abierta.
+		var alcance := CONE_RANGE * GearFifth.por(caster3d, GearFifth.ALCANCE)
+		var angulo := minf(CONE_ANGLE * GearFifth.por(caster3d, 1.5), 110.0)
+		FX.spawn_brazo_goma(caster3d, aqui, frente.rotated(Vector3.UP, randf_range(-0.35, 0.35)), alcance,
+			GearFifth.por(caster3d, GearFifth.ANCHO))
 		var ultimo := i == TICKS - 1
-		for target: Node3D in CombatUtils.get_players_in_cone(caster3d, aqui, frente, CONE_RANGE, CONE_ANGLE):
-			CombatUtils.deal_damage(target, DAMAGE_PER_TICK, source_id)
+		for target: Node3D in CombatUtils.get_players_in_cone(caster3d, aqui, frente, alcance, angulo):
+			CombatUtils.deal_damage(target, DAMAGE_PER_TICK * GearFifth.por(caster3d, GearFifth.DAÑO), source_id)
 			var afuera := target.global_position - aqui
-			CombatUtils.apply_knockback(target, afuera, FINAL_KNOCKBACK if ultimo else 0.3, 2.2 if ultimo else 0.4)
+			CombatUtils.apply_knockback(target, afuera,
+				(FINAL_KNOCKBACK * GearFifth.por(caster3d, GearFifth.EMPUJE)) if ultimo else 0.3,
+				2.2 if ultimo else 0.4)

@@ -31,6 +31,21 @@ const TICK: float = 0.05
 static func pasada(caster: Node3D, dir: Vector3, speed: float, duration: float,
 		radius: float, ya_golpeados: Dictionary, frenar_al_tocar: bool = false,
 		estela: Color = Color(0, 0, 0, 0)) -> Array[Node3D]:
+	var tocados: Array[Node3D] = await _pasada(caster, dir, speed, duration, radius, ya_golpeados,
+		frenar_al_tocar, estela)
+	# LO QUE SE BORRO DURANTE LA EMBESTIDA NO SE DEVUELVE: un bot que se libero mientras
+	# Sonic o Luffy iban en camino quedaba en la lista, y el que la recibia le pegaba a un
+	# objeto liberado (SCRIPT ERROR en deal_damage). Paso en el arnes, de a ratos.
+	var vivos: Array[Node3D] = []
+	for t in tocados:
+		if is_instance_valid(t):
+			vivos.append(t)
+	return vivos
+
+
+static func _pasada(caster: Node3D, dir: Vector3, speed: float, duration: float,
+		radius: float, ya_golpeados: Dictionary, frenar_al_tocar: bool = false,
+		estela: Color = Color(0, 0, 0, 0)) -> Array[Node3D]:
 	var tocados: Array[Node3D] = []
 	if not is_instance_valid(caster):
 		return tocados

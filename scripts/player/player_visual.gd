@@ -28,6 +28,12 @@ const BOB_HEIGHT: float = 0.055
 ## Golpe.
 const PUNCH_REACH: float = 1.85
 const PUNCH_DECAY: float = 3.4
+## LA PATADA: cuanto sube la pierna (al frente, casi horizontal) y lo que dura.
+const PATADA_ALTURA: float = 1.45
+const KICK_DECAY: float = 2.7
+## Los golpes basicos que se pelean a mano limpia y cierran el combo con una patada.
+const PATEAN: Array[StringName] = [&"goku_combo", &"mario_combo", &"taijutsu_naruto",
+	&"golpe_aracnido", &"golpe_gojo"]
 
 var body_color: Color = Color(0.85, 0.92, 0.88)
 var accent_color: Color = Color(0.45, 0.78, 1.0)
@@ -108,6 +114,12 @@ var _sm_spread_r: float = 0.0
 var _cycle: float = 0.0
 var _idle: float = 0.0
 var _attack_t: float = 0.0
+## Con que brazo sale la proxima piña: se alternan.
+var _punch_izq: bool = false
+var _kick_t: float = 0.0
+## Cuantos golpes basicos seguidos van, y hasta cuando cuenta como el mismo combo.
+var _combo_n: int = 0
+var _combo_hasta: float = 0.0
 var _hit_t: float = 0.0
 var _last_health: float = -1.0
 
@@ -170,6 +182,7 @@ func _process(delta: float) -> void:
 
 	_idle += delta
 	_attack_t = maxf(0.0, _attack_t - delta * PUNCH_DECAY)
+	_kick_t = maxf(0.0, _kick_t - delta * KICK_DECAY)
 	_hit_t = maxf(0.0, _hit_t - delta * 6.0)
 	_release_t = maxf(0.0, _release_t - delta * 2.2)
 
@@ -271,11 +284,23 @@ func _process(delta: float) -> void:
 	# --- Brazos y torso: caminata, y encima el golpe o la pose ---
 	var arm_l := -swing * ARM_SWING * amount
 	var arm_r := swing * ARM_SWING * amount
-	var elbow_l := -absf(arm_l) * 0.5 - 0.15
-	var elbow_r := -absf(arm_r) * 0.5 - 0.15
+	# CORRIENDO, LOS CODOS SE DOBLAN: caminando el brazo va casi recto, pero corriendo se
+	# lleva doblado y bombea. Con el mismo brazo recto a las dos velocidades, correr se veia
+	# como caminar mas rapido.
+	var bombeo := clampf(amount - 0.7, 0.0, 0.65) * 1.25
+	var elbow_l := -absf(arm_l) * 0.5 - 0.15 - bombeo
+	var elbow_r := -absf(arm_r) * 0.5 - 0.15 - bombeo
 	var spread_l := 0.0
 	var spread_r := 0.0
 	var torso_x := -0.10 * amount
+	# QUIETO, RESPIRA Y SE ACOMODA: el pecho sube y baja y los brazos se mecen apenas. Un
+	# cuerpo parado del todo se lee como una estatua esperando input.
+	var quieto := 1.0 - clampf(amount * 2.0, 0.0, 1.0)
+	torso_x += sin(_idle * 1.7) * 0.03 * quieto
+	arm_l += sin(_idle * 1.1) * 0.05 * quieto
+	arm_r += sin(_idle * 1.1 + 0.8) * 0.05 * quieto
+	spread_l += (0.06 + sin(_idle * 0.9) * 0.025) * quieto
+	spread_r -= (0.06 + sin(_idle * 0.9) * 0.025) * quieto
 
 	var pose := _pose_targets()
 	if _pose_weight > 0.001:
@@ -302,21 +327,35 @@ func _process(delta: float) -> void:
 	_sm_elbow_r = lerp_angle(_sm_elbow_r, elbow_r, delta * 14.0)
 
 	var punch_curve := _punch_curve()
-	_shoulder_l.rotation.x = _sm_arm_l
-	_shoulder_r.rotation.x = _sm_arm_r + punch_curve * PUNCH_REACH
-	_shoulder_l.rotation.z = _sm_spread_l
-	_shoulder_r.rotation.z = _sm_spread_r
-	_elbow_l.rotation.x = _sm_elbow_l
+	# UNA Y UNA: las piñas se alternan entre los dos brazos. Con el derecho solo, una racha
+	# de golpes se veia como el mismo cuadro repetido.
+	var golpe_r := 0.0 if _punch_izq else punch_curve
+	var golpe_l := punch_curve if _punch_izq else 0.0
+	# LA PATADA: la pierna derecha arriba y al frente, el cuerpo atras para compensar y los
+	# brazos abiertos para el equilibrio.
+	var patada := _curva_golpe(_kick_t)
+	_shoulder_l.rotation.x = _sm_arm_l + golpe_l * PUNCH_REACH
+	_shoulder_r.rotation.x = _sm_arm_r + golpe_r * PUNCH_REACH
+	_shoulder_l.rotation.z = _sm_spread_l + maxf(0.0, patada) * 0.55
+	_shoulder_r.rotation.z = _sm_spread_r - maxf(0.0, patada) * 0.55
 	# El codo se ESTIRA al golpear (hacia 0), no se dobla.
-	_elbow_r.rotation.x = _sm_elbow_r + punch_curve * 0.55
+	_elbow_l.rotation.x = _sm_elbow_l + golpe_l * 0.55
+	_elbow_r.rotation.x = _sm_elbow_r + golpe_r * 0.55
+	if not is_zero_approx(patada):
+		_hip_r.rotation.x = lerpf(_hip_r.rotation.x, PATADA_ALTURA, clampf(patada, 0.0, 1.0))
+		# La anticipacion RECOGE la rodilla, y el golpe la estira.
+		_knee_r.rotation.x = -maxf(0.0, -patada) * 3.0 + lerpf(_knee_r.rotation.x, -0.08, clampf(patada, 0.0, 1.0))
+		_hip_l.rotation.x = lerpf(_hip_l.rotation.x, -0.12, clampf(patada, 0.0, 1.0))
 
 	# --- Rebote, respiracion y sacudida al recibir un golpe ---
 	var bob := absf(sin(_cycle)) * BOB_HEIGHT * amount if moving else sin(_idle * 1.8) * 0.012
 	_root.position.y = bob
-	_torso.rotation.x = lerpf(_torso.rotation.x, torso_x - punch_curve * 0.20, delta * 14.0)
-	# El torso gira llevando el hombro derecho al frente: es lo que convierte un brazo
-	# que se levanta en un golpe con cuerpo atras.
-	_torso.rotation.y = lerpf(_torso.rotation.y, -punch_curve * 0.38, delta * 18.0)
+	_torso.rotation.x = lerpf(_torso.rotation.x, torso_x - punch_curve * 0.20 + maxf(0.0, patada) * 0.30,
+		delta * 14.0)
+	# El torso gira llevando AL FRENTE EL HOMBRO QUE PEGA: es lo que convierte un brazo que se
+	# levanta en un golpe con cuerpo atras. Con el izquierdo, para el otro lado.
+	var giro_golpe := punch_curve * (0.38 if _punch_izq else -0.38)
+	_torso.rotation.y = lerpf(_torso.rotation.y, giro_golpe, delta * 18.0)
 	# El golpe recibido comprime el cuerpo un instante: se lee incluso de lejos.
 	var punch_scale := 1.0 + _hit_t * 0.12
 	# LA PROPORCION SE MULTIPLICA, no se asigna.
@@ -385,6 +424,15 @@ func _pose_targets() -> Dictionary:
 				"elbow_l": -0.25, "elbow_r": -0.25,
 				"spread_l": 0.35, "spread_r": -0.35,
 				"torso": 0.16,
+			}
+		&"chasquido":
+			# EL CHASQUIDO: el puño izquierdo —el del Guantelete— derecho al cielo, y el otro
+			# brazo abierto y bajo. La pose de la pelicula antes de chasquear.
+			return {
+				"arm_l": 3.00, "arm_r": 0.35,
+				"elbow_l": -0.30, "elbow_r": -0.25,
+				"spread_l": 0.10, "spread_r": -0.35,
+				"torso": 0.12,
 			}
 		&"channel_point":
 			# ZA WARUDO: brazo derecho arriba, izquierdo cruzado sobre el pecho.
@@ -558,9 +606,14 @@ func golpe_de_embestida() -> void:
 ## Curva del golpe: 0 -> 1 -> 0, con la salida mucho mas rapida que la vuelta.
 ## El pow(p, 0.55) adelanta el pico al primer tercio del movimiento.
 func _punch_curve() -> float:
-	if _attack_t <= 0.0:
+	return _curva_golpe(_attack_t)
+
+
+## La misma curva para las piñas y para las patadas: `t` va de 1 a 0 mientras dura.
+func _curva_golpe(t: float) -> float:
+	if t <= 0.0:
 		return 0.0
-	var p := clampf(1.0 - _attack_t, 0.0, 1.0)
+	var p := clampf(1.0 - t, 0.0, 1.0)
 	# ANTICIPACION: el primer 18% del movimiento va hacia ATRAS, no hacia adelante.
 	#
 	# Es el truco mas viejo de la animacion y el que mas cambia acá: un brazo que sale
@@ -573,14 +626,30 @@ func _punch_curve() -> float:
 
 
 func play_attack() -> void:
+	_punch_izq = not _punch_izq
 	_attack_t = 1.0
 
 
-func _on_ability_used(_index: int) -> void:
+func play_kick() -> void:
+	_kick_t = 1.0
+
+
+func _on_ability_used(index: int) -> void:
 	# Las habilidades con canalizado ya tienen su pose; no queremos que ademas
 	# tiren un puñetazo encima.
-	if _pose == &"" and _release_t <= 0.0:
-		play_attack()
+	if _pose != &"" or _release_t > 0.0:
+		return
+	# EL COMBO DE LOS QUE PELEAN A MANO LIMPIA: piña, piña, PATADA. Es el de Mario 64, el
+	# de cualquier pelea de Dragon Ball y el de Spider-Man; sin la patada, el golpe basico
+	# era un puño subiendo y bajando para siempre.
+	var habilidad := _caster.get_ability(index) if _caster != null else null
+	if index == 0 and habilidad != null and PATEAN.has(habilidad.id):
+		_combo_n = _combo_n + 1 if _idle < _combo_hasta else 1
+		_combo_hasta = _idle + 1.1
+		if _combo_n % 3 == 0:
+			play_kick()
+			return
+	play_attack()
 
 
 ## OJO con la firma: channel_started emite (index, duration). Si declaras un solo
@@ -596,6 +665,9 @@ func _on_channel_started(index: int, _duration: float) -> void:
 			_pose = &"channel_point"
 		&"kamehameha":
 			_pose = &"kame"
+		&"chasquido":
+			# El Guantelete en alto: es la mano IZQUIERDA, la del guante.
+			_pose = &"chasquido"
 		_:
 			_pose = &"channel_up"
 	_channel_fx = FX.spawn_channel_ritual(self, ability.icon_color)
@@ -603,6 +675,8 @@ func _on_channel_started(index: int, _duration: float) -> void:
 	# definitiva" igual para todos, la esfera dice CUAL y cuanto le falta.
 	if ability.id == &"kamehameha":
 		_channel_fx_extra = FX.spawn_kame_carga(self, ability.channel_time)
+	elif ability.id == &"chasquido" and get_parent() is Node3D:
+		_channel_fx_extra = FX.spawn_gemas_carga(get_parent() as Node3D, ability.channel_time)
 
 	# OMEGA FLOWERY: la transformacion va DURANTE el canalizado, no despues.
 	#
@@ -722,6 +796,11 @@ func _peer_id_del_cuerpo() -> int:
 
 
 # --------------------------------------------------------------- Construccion
+
+## Las manos del rig (palma y pulgar) y su escala de fabrica: el Gear Fifth las agranda.
+var _manos: Array[MeshInstance3D] = []
+var _manos_escala: Array[Vector3] = []
+
 
 func _build_rig() -> void:
 	_mat_body = Art.toon(body_color, OUTLINE_WIDTH)
@@ -899,12 +978,30 @@ func _make_arm(side: float) -> Node3D:
 	var palma := Art.sphere(0.066, _mat_skin, Vector3(0.0, -0.305, 0.0))
 	palma.scale = Vector3(1.0, 1.25, 0.72)
 	elbow.add_child(palma)
+	_manos.append(palma)
+	_manos_escala.append(palma.scale)
 	# Chico y pegado a la palma: los guantes de Mario y de Sonic son una esfera de 0.086
 	# encima, y un pulgar mas largo asomaba color piel por afuera.
 	var pulgar := Art.capsule(0.020, 0.06, _mat_skin, Vector3(-0.038 * side, -0.29, -0.028))
 	pulgar.rotation_degrees = Vector3(-20.0, 0.0, 28.0 * side)
 	elbow.add_child(pulgar)
+	_manos.append(pulgar)
+	_manos_escala.append(pulgar.scale)
 	return shoulder
+
+
+## LOS PUÑOS GIGANTES del Gear Fifth: las manos crecen de golpe, como en un dibujo animado,
+## y vuelven a su tamaño al terminar. Los golpes de Luffy se agrandan aparte (GearFifth.por).
+func punos_gigantes(segundos: float) -> void:
+	for i: int in range(_manos.size()):
+		var mano := _manos[i]
+		if not is_instance_valid(mano):
+			continue
+		var base := _manos_escala[i]
+		var tw := mano.create_tween()
+		tw.tween_property(mano, "scale", base * 2.7, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_interval(maxf(0.0, segundos - 0.45))
+		tw.tween_property(mano, "scale", base, 0.22)
 
 
 func _make_leg(side: float) -> Node3D:
@@ -3259,6 +3356,72 @@ func _build_spiderman() -> void:
 	for rodilla: Node3D in [_knee_l, _knee_r]:
 		if rodilla != null:
 			_costume_add(rodilla, Art.capsule(0.084, 0.24, rojo, Vector3(0.0, -0.27, 0.0)))
+	# --- LA TELARAÑA DEL TRAJE: las lineas negras sobre todo lo rojo ---
+	#
+	# Era lo que faltaba para que se leyera "Spider-Man" y no "un muñeco rojo y azul": la
+	# cabeza tenia sus lineas y el resto del traje estaba liso. Aros alrededor del torso,
+	# los antebrazos y las botas, y tres meridianos que bajan por el pecho y la espalda.
+	# No en los trajes que no las tienen: el simbionte, el de metal y el del futuro.
+	if not _traje_sin_telarana():
+		_telarana_del_traje(negro)
+
+
+## El simbionte es negro liso, el Iron Spider es de metal y el 2099 tiene su propio dibujo.
+func _traje_sin_telarana() -> bool:
+	return _forma(&"simbionte") or (_skin != null and _skin.id in [&"spiderman_iron", &"spiderman_2099"])
+
+
+func _telarana_del_traje(negro: Material) -> void:
+	# Aros del torso, a la altura de cada uno: el ancho y la profundidad del cuerpo ahi.
+	for alto: Vector3 in [Vector3(0.18, 0.226, 0.188), Vector3(0.32, 0.229, 0.192),
+			Vector3(0.46, 0.228, 0.190), Vector3(0.60, 0.205, 0.168)]:
+		var aro := MeshInstance3D.new()
+		var toro := TorusMesh.new()
+		toro.inner_radius = 1.0
+		toro.outer_radius = 1.045
+		aro.mesh = toro
+		aro.material_override = negro
+		aro.position = Vector3(0.0, alto.x, 0.0)
+		aro.scale = Vector3(alto.y, 0.35, alto.z)
+		_costume_add(_torso, aro)
+	# LOS RAYOS: salen de la araña del pecho (y del centro de la espalda) para afuera. Con
+	# los aros de arriba arman la telaraña; meridianos derechos armaban una cuadricula.
+	for cara: float in [-1.0, 1.0]:
+		for grados: float in [45.0, 90.0, 135.0, 225.0, 270.0, 315.0]:
+			var a := deg_to_rad(grados)
+			var largo := 0.17
+			var medio := Vector2(cos(a), sin(a)) * (0.035 + largo * 0.5)
+			# Pegado a la curva del cuerpo: mas adentro cuanto mas al costado.
+			var hondo := 0.185 * sqrt(maxf(0.0, 1.0 - pow(medio.x / 0.225, 2.0))) + 0.006
+			var rayo := Art.box(Vector3(0.010, largo, 0.010), negro,
+				Vector3(medio.x, 0.50 + medio.y, hondo * cara))
+			rayo.rotation = Vector3(0.0, 0.0, a - PI * 0.5)
+			_costume_add(_torso, rayo)
+	# Antebrazos y botas: dos aros cada uno.
+	for codo: Node3D in [_elbow_l, _elbow_r]:
+		if codo == null:
+			continue
+		for y: float in [-0.08, -0.19]:
+			var aro := MeshInstance3D.new()
+			var toro := TorusMesh.new()
+			toro.inner_radius = 0.067
+			toro.outer_radius = 0.075
+			aro.mesh = toro
+			aro.material_override = negro
+			aro.position = Vector3(0.0, y, 0.0)
+			_costume_add(codo, aro)
+	for rodilla: Node3D in [_knee_l, _knee_r]:
+		if rodilla == null:
+			continue
+		for y: float in [-0.21, -0.31]:
+			var aro := MeshInstance3D.new()
+			var toro := TorusMesh.new()
+			toro.inner_radius = 0.083
+			toro.outer_radius = 0.092
+			aro.mesh = toro
+			aro.material_override = negro
+			aro.position = Vector3(0.0, y, 0.0)
+			_costume_add(rodilla, aro)
 
 
 ## Satoru Gojo, de Jujutsu Kaisen.

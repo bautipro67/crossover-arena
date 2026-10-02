@@ -26,6 +26,11 @@ func _ready() -> void:
 	# las capturas tienen un bot cruzado delante de la camara. Se prenden a proposito
 	# para la captura de combate del final.
 	Arena.set_bots_active(false)
+	# LAS CAPTURAS NO DEPENDEN DE LAS OPCIONES DE QUIEN LAS SACA. Con "Ver cajas de
+	# colision" prendido en la configuracion guardada, todas salian con capsulas verdes y
+	# conos naranjas encima de los personajes. Se apaga solo en memoria: no se guarda, y la
+	# opcion del jugador queda como estaba.
+	Settings.mostrar_hitboxes = false
 	_main = MAIN_SCENE.instantiate()
 	add_child(_main)
 	_run.call_deferred()

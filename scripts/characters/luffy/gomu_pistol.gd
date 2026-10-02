@@ -29,8 +29,12 @@ func execute(caster: Node, origin: Vector3, dir: Vector3) -> void:
 		return
 	var rumbo := dir.normalized()
 	var source_id: int = caster3d.peer_id
-	for target: Node3D in CombatUtils.get_players_in_line(caster3d, origin, rumbo, LARGO, RADIO):
-		CombatUtils.deal_damage(target, DAMAGE, source_id)
-		CombatUtils.apply_knockback(target, rumbo, KNOCKBACK, 1.0)
+	# EN GEAR FIFTH, EL PUÑO ES GIGANTE: llega mas lejos, pega en mas ancho y empuja mas.
+	var largo := LARGO * GearFifth.por(caster3d, GearFifth.ALCANCE)
+	var radio := RADIO * GearFifth.por(caster3d, GearFifth.ANCHO)
+	var empuje := KNOCKBACK * GearFifth.por(caster3d, GearFifth.EMPUJE)
+	for target: Node3D in CombatUtils.get_players_in_line(caster3d, origin, rumbo, largo, radio):
+		CombatUtils.deal_damage(target, DAMAGE * GearFifth.por(caster3d, GearFifth.DAÑO), source_id)
+		CombatUtils.apply_knockback(target, rumbo, empuje, 1.0)
 		FX.spawn_impact_burst(caster, target.global_position + Vector3.UP, Color(1.0, 0.85, 0.70, 0.95))
-	FX.spawn_brazo_goma(caster3d, origin, rumbo, LARGO)
+	FX.spawn_brazo_goma(caster3d, origin, rumbo, largo, GearFifth.por(caster3d, GearFifth.ANCHO))
