@@ -293,10 +293,12 @@ en pantalla y reintenta solo. A partir de ahí entra al instante.
 
 ═══ HECHO POR CÓDIGO ═══
 
-No hay ni un solo modelo 3D ni una textura en el proyecto: los personajes, la arena, los
-efectos y la música se generan por código al arrancar. Por eso el juego pesa lo que pesa
-y carga rápido. Algunas frases y sonidos de los personajes son clips de sus obras
-originales.
+Los 16 personajes están modelados uno por uno en Blender, también por código: cada uno
+es un script que esculpe el cuerpo, la ropa, el pelo y los detalles —la telaraña de
+Spider-Man, las placas de la armadura de Madara, la trama del sombrero de Luffy— y lo
+exporta con su esqueleto. La arena, los efectos, las caras y la música se generan al
+arrancar, sin una sola textura. Algunas frases y sonidos de los personajes son clips de
+sus obras originales.
 
 Hecho con Godot 4.
 

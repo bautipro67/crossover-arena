@@ -20,3 +20,6 @@ assets/audio/*.ogg
 assets/audio/*.wav
 assets/audio/*.mp3
 assets/audio/*.import
+
+# Cache de Python de los scripts de Blender (tools/modelos)
+__pycache__/

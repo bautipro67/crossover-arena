@@ -150,6 +150,7 @@ var _tirado: float = 0.0
 
 func _ready() -> void:
 	_build_rig()
+	_anotar_rig()
 	_body = get_parent() as CharacterBody3D
 	_status = get_parent().get_node_or_null("StatusEffects") as StatusEffects
 	_caster = get_parent().get_node_or_null("AbilityCaster") as AbilityCaster
@@ -424,6 +425,7 @@ func _process(delta: float) -> void:
 	_animate_face(delta)
 	# Y la cabeza mira levemente hacia donde va.
 	_head_pivot.rotation.x = lerpf(_head_pivot.rotation.x, 0.08 * amount, delta * 6.0)
+	_sincronizar_modelo()
 
 
 ## Angulos objetivo de cada pose. Los valores salen de la regla del encabezado:
@@ -822,6 +824,304 @@ const CAIDA_MUERTE: float = 0.75
 var _cayendo: bool = false
 var _cayendo_t: float = 0.0
 
+# ----------------------------------------------------------- Los modelos de Blender
+
+## El modelo puesto (si el personaje tiene uno en assets/modelos/), su esqueleto, y lo que
+## hace falta para moverlo con los pivotes. Ver ModeloPersonaje.
+var _modelo: Node3D = null
+var _esq: Skeleton3D = null
+## Por hueso: [indice, pivote, base del padre invertida, base propia en reposo].
+var _sync: Array = []
+var _mats_modelo: Dictionary = {}
+## Las piezas del rig, las posiciones de fabrica de los pivotes y la cara de fabrica: con un
+## modelo se esconden o se mueven, y vuelven al pasar a un personaje sin modelo.
+var _rig_mallas: Array[Node3D] = []
+var _pivotes_fabrica: Dictionary = {}
+var _cara_fabrica: Array = []
+var _cara_modelo: Array[Node3D] = []
+
+
+func _anotar_rig() -> void:
+	_rig_mallas.clear()
+	var pendientes: Array[Node] = [_root]
+	while not pendientes.is_empty():
+		var nodo: Node = pendientes.pop_back()
+		pendientes.append_array(nodo.get_children())
+		if nodo is MeshInstance3D:
+			_rig_mallas.append(nodo as Node3D)
+	for p: Node3D in _pivotes():
+		_pivotes_fabrica[p] = p.position
+	_cara_fabrica = [_eye_l, _eye_r, _brow_l, _brow_r, _mouth, _mouth_mesh]
+
+
+func _pivotes() -> Array[Node3D]:
+	return [_hips, _torso, _head_pivot, _shoulder_l, _elbow_l, _shoulder_r, _elbow_r,
+		_hip_l, _knee_l, _hip_r, _knee_r]
+
+
+## Todos los materiales del cuerpo, sin repetir: los del rig y el disfraz (material_override)
+## y los de cada superficie de un modelo.
+func _materiales_del_cuerpo() -> Array[StandardMaterial3D]:
+	var lista: Array[StandardMaterial3D] = []
+	var pendientes: Array[Node] = [_root]
+	while not pendientes.is_empty():
+		var nodo: Node = pendientes.pop_back()
+		pendientes.append_array(nodo.get_children())
+		var malla := nodo as MeshInstance3D
+		if malla == null:
+			continue
+		var candidatos: Array = [malla.material_override]
+		if malla.mesh != null:
+			for s: int in range(malla.mesh.get_surface_count()):
+				candidatos.append(malla.get_surface_override_material(s))
+		for c: Variant in candidatos:
+			var m := c as StandardMaterial3D
+			if m != null and not lista.has(m):
+				lista.append(m)
+	return lista
+
+
+func _quitar_modelo() -> void:
+	if is_instance_valid(_modelo):
+		_modelo.queue_free()
+	_modelo = null
+	_esq = null
+	_sync.clear()
+	_mats_modelo.clear()
+	for n: Node3D in _cara_modelo:
+		if is_instance_valid(n):
+			n.queue_free()
+	_cara_modelo.clear()
+	for m: Node3D in _rig_mallas:
+		if is_instance_valid(m):
+			m.visible = true
+	for p: Node3D in _pivotes_fabrica:
+		if is_instance_valid(p):
+			p.position = _pivotes_fabrica[p]
+	if _cara_fabrica.size() == 6:
+		_eye_l = _cara_fabrica[0]
+		_eye_r = _cara_fabrica[1]
+		_brow_l = _cara_fabrica[2]
+		_brow_r = _cara_fabrica[3]
+		_mouth = _cara_fabrica[4]
+		_mouth_mesh = _cara_fabrica[5]
+
+
+func _poner_modelo(data: CharacterData) -> void:
+	var escena := load(ModeloPersonaje.ruta(data.id)) as PackedScene
+	if escena == null:
+		return
+	_modelo = escena.instantiate() as Node3D
+	_root.add_child(_modelo)
+	_esq = ModeloPersonaje.esqueleto_de(_modelo)
+	for m: Node3D in _rig_mallas:
+		if is_instance_valid(m):
+			m.visible = false
+	for nodo: Node in _modelo.find_children("*", "MeshInstance3D", true, false):
+		var malla := nodo as MeshInstance3D
+		for s: int in range(malla.mesh.get_surface_count()):
+			var orig := malla.mesh.surface_get_material(s) as BaseMaterial3D
+			var nombre := StringName(orig.resource_name) if orig != null else &""
+			var base := orig.albedo_color if orig != null else Color.WHITE
+			malla.set_surface_override_material(s, _material_modelo(nombre, base))
+	# LAS FORMAS DE LAS SKINS: un objeto del modelo que se llama "pelo__f_ssj" se ve solo
+	# con esa forma, y uno que se llama "pelo__sin_ssj" se esconde con ella. Asi el modelo
+	# trae el pelo del Super Saiyajin, el Pickle Rick o el Gojo sin venda adentro.
+	for nodo: Node in _modelo.find_children("*", "Node3D", true, false):
+		var nombre := String(nodo.name)
+		# Y "puas__sin_super+clasico": se esconde con cualquiera de las dos.
+		var i := nombre.find("__f_")
+		if i >= 0:
+			(nodo as Node3D).visible = _alguna_forma(nombre.substr(i + 4))
+			continue
+		i = nombre.find("__sin_")
+		if i >= 0:
+			(nodo as Node3D).visible = not _alguna_forma(nombre.substr(i + 6))
+		# La telaraña del traje, menos en los trajes que no la tienen.
+		if nombre.begins_with("telarana") and _traje_sin_telarana():
+			(nodo as Node3D).visible = false
+	# La mascara de Scorpion es la que se saca para mostrar la calavera (la definitiva y la
+	# skin del Inframundo): las piezas del modelo que se llaman "mascara...".
+	_mascara_scorpion.clear()
+	for nodo: Node in _modelo.find_children("mascara*", "MeshInstance3D", true, false):
+		_mascara_scorpion.append(nodo as Node3D)
+	if _esq != null:
+		_colocar_pivotes()
+	_armar_cara_modelo(ModeloPersonaje.cara(data.id))
+
+
+## El material toon de una parte del modelo. Las partes con nombre del rig toman su color
+## de fabrica del personaje; las demas, el de Blender. Y la skin manda sobre las dos.
+func _material_modelo(nombre: StringName, base: Color) -> StandardMaterial3D:
+	if _mats_modelo.has(nombre):
+		return _mats_modelo[nombre]
+	# "gorra~acento": la parte "gorra", que de fabrica toma el color de acento del personaje
+	# (y lo cambia una skin que cambie el acento, como en el disfraz de antes).
+	# "pelo~cuerpo!pelaje": despues del "!", la terminacion (el pelaje de Sonic).
+	var acabado := String(nombre).get_slice("!", 1) if String(nombre).contains("!") else ""
+	var trozos := String(nombre).get_slice("!", 0).split("~")
+	var parte := StringName(trozos[0])
+	var clave := StringName(trozos[1]) if trozos.size() > 1 else parte
+	match clave:
+		&"cuerpo":
+			base = body_color
+		&"piel":
+			base = skin_color
+		&"pantalon":
+			base = trouser_color
+		&"acento":
+			base = accent_color
+		&"zapatos":
+			base = _mat_shoe.albedo_color
+	var color := _tono(parte, base)
+	var m: StandardMaterial3D
+	if String(parte).begins_with("gema"):
+		# Las gemas del Guantelete brillan con luz propia, como en el disfraz de antes.
+		m = Art.glow(color, 2.6)
+	elif parte == &"lentes":
+		# Los ojos de la mascara de Spider-Man, con su brillo de siempre.
+		m = Art.glow(color, 1.4)
+	elif acabado == "pelaje":
+		m = Art.pelaje(color, OUTLINE_WIDTH)
+	elif parte in METALICAS:
+		m = Art.metal(color, OUTLINE_WIDTH)
+	else:
+		# Los detalles chicos (pecas, botones) sin contorno: el contorno los triplicaba de tamaño.
+		m = Art.toon(color, 0.0 if parte in SIN_CONTORNO else OUTLINE_WIDTH)
+	_mats_modelo[nombre] = m
+	return m
+
+
+const SIN_CONTORNO: Array[StringName] = [&"pecas", &"botones", &"detalle_chico", &"lineas"]
+## Las partes de metal, con el brillo duro de Art.metal (el oro de Thanos, la placa de la
+## bandana, el kunai).
+const METALICAS: Array[StringName] = [&"oro", &"guantelete", &"metal", &"placa", &"hebilla"]
+
+
+## Los pivotes van donde el modelo tiene sus juntas, y cada hueso queda atado a su pivote.
+func _colocar_pivotes() -> void:
+	# Del esqueleto al espacio de _root (por si el importador le puso una transformacion).
+	var t := Transform3D()
+	var n: Node = _esq
+	while n != null and n != _root:
+		if n is Node3D:
+			t = (n as Node3D).transform * t
+		n = n.get_parent()
+	var pivote_de := {
+		&"caderas": _hips, &"torso": _torso, &"cabeza": _head_pivot,
+		&"hombro_l": _shoulder_l, &"codo_l": _elbow_l, &"hombro_r": _shoulder_r, &"codo_r": _elbow_r,
+		&"pierna_l": _hip_l, &"rodilla_l": _knee_l, &"pierna_r": _hip_r, &"rodilla_r": _knee_r,
+	}
+	var reposo := {}
+	for nombre: StringName in ModeloPersonaje.HUESOS:
+		var i := _esq.find_bone(String(nombre))
+		if i >= 0:
+			reposo[nombre] = t * _esq.get_bone_global_rest(i)
+		else:
+			push_warning("[modelos] al esqueleto le falta el hueso %s" % nombre)
+	var padre_de := {&"torso": &"caderas", &"cabeza": &"torso", &"hombro_l": &"torso",
+		&"codo_l": &"hombro_l", &"hombro_r": &"torso", &"codo_r": &"hombro_r",
+		&"pierna_l": &"caderas", &"rodilla_l": &"pierna_l", &"pierna_r": &"caderas", &"rodilla_r": &"pierna_r"}
+	# Las posiciones: cada pivote, donde esta su junta, relativa a la del padre.
+	for nombre: StringName in reposo:
+		var pivote: Node3D = pivote_de[nombre]
+		var donde: Vector3 = (reposo[nombre] as Transform3D).origin
+		if padre_de.has(nombre) and reposo.has(padre_de[nombre]):
+			donde -= (reposo[padre_de[nombre]] as Transform3D).origin
+		pivote.position = donde
+	# Y la atadura: pose = base del padre^-1 * giro del pivote * base propia.
+	_sync.clear()
+	for nombre: StringName in reposo:
+		var i := _esq.find_bone(String(nombre))
+		var propia: Basis = (reposo[nombre] as Transform3D).basis.orthonormalized()
+		var j := _esq.get_bone_parent(i)
+		var del_padre: Basis = t.basis.orthonormalized()
+		if j >= 0:
+			del_padre = (t * _esq.get_bone_global_rest(j)).basis.orthonormalized()
+		_sync.append([i, pivote_de[nombre], del_padre.inverse(), propia])
+
+
+func _sincronizar_modelo() -> void:
+	if _esq == null or _sync.is_empty():
+		return
+	for e: Array in _sync:
+		var pivote: Node3D = e[1]
+		var giro: Basis = pivote.transform.basis.orthonormalized()
+		var pose: Basis = (e[2] as Basis) * giro * (e[3] as Basis)
+		_esq.set_bone_pose_rotation(int(e[0]), pose.get_rotation_quaternion())
+
+
+## LA CARA DEL MODELO: ojos y boca dibujados (ModeloPersonaje.textura_ojo/boca) y cejas,
+## en donde el modelo dice. Toman el lugar de la cara de fabrica, asi el parpadeo, el
+## entrecerrar al recibir un golpe y la boca que se abre siguen funcionando igual.
+func _armar_cara_modelo(conf: Dictionary) -> void:
+	if conf.is_empty():
+		return
+	var ojos: Dictionary = conf.get("ojos", {})
+	# LO QUE CAMBIA CON LA FORMA DE LA SKIN: "formas": {"sin_venda": {...}} pisa lo de
+	# siempre (el iris, el estilo, "oculto" para los que van tapados, como Gojo con la venda).
+	var por_forma: Dictionary = ojos.get("formas", {})
+	if _skin != null and por_forma.has(String(_skin.forma)):
+		ojos = ojos.merged(por_forma[String(_skin.forma)], true)
+	# "oculto" (la mascara de Spider-Man, la venda de Gojo): los ojos no se dibujan, pero su
+	# lugar queda, para lo que se pega a los ojos (el brillo de una skin).
+	var oculto := bool(ojos.get("oculto", false))
+	if not ojos.is_empty():
+		var tam := Vector2(float(ojos.get("ancho", 0.06)), float(ojos.get("alto", 0.08)))
+		var giro := float(ojos.get("giro", 8.0))
+		for lado: float in [-1.0, 1.0]:
+			# Y lo de cada ojo ("lado_l"/"lado_r"): Sans con el ojo izquierdo encendido.
+			var este: Dictionary = ojos.merged(ojos.get("lado_l" if lado < 0.0 else "lado_r", {}), true)
+			# El color de los ojos lo cambia la skin, como en el disfraz de antes (el Rinnegan).
+			var iris := _tono(StringName(este.get("parte", "ojos")), ModeloPersonaje._c(este.get("iris"), Color(0.3, 0.5, 0.9)))
+			var pivote := Node3D.new()
+			pivote.position = ModeloPersonaje._v(ojos.get("l" if lado < 0.0 else "r"))
+			# El ojo apagado no se enciende con el brillo de la skin (_ojos_que_brillan).
+			if String(este.get("estilo", "")) == "cuenca_vacia":
+				pivote.set_meta(&"apagado", true)
+			_head_pivot.add_child(pivote)
+			_cara_modelo.append(pivote)
+			if lado < 0.0:
+				_eye_l = pivote
+			else:
+				_eye_r = pivote
+			if oculto:
+				continue
+			var q := ModeloPersonaje.quad(tam, ModeloPersonaje.textura_ojo(iris, bool(este.get("pestanas", false)),
+				lado > 0.0, String(este.get("estilo", "anime"))))
+			q.rotation_degrees = Vector3(0.0, 180.0 - lado * giro, 0.0)
+			q.position = Vector3(0.0, 0.0, -0.004)
+			pivote.add_child(q)
+			var cejas: Dictionary = conf.get("cejas", {})
+			if not cejas.is_empty():
+				var ceja_piv := Node3D.new()
+				ceja_piv.position = pivote.position + Vector3(0.0, float(cejas.get("alto", tam.y * 0.7)), -0.006)
+				_head_pivot.add_child(ceja_piv)
+				_cara_modelo.append(ceja_piv)
+				var ceja := Art.box(Vector3(float(cejas.get("largo", 0.05)), 0.011, 0.008),
+					Art.flat(ModeloPersonaje._c(cejas.get("color"), Color(0.2, 0.15, 0.1))))
+				ceja.rotation_degrees = Vector3(0.0, -lado * giro, 0.0)
+				ceja_piv.add_child(ceja)
+				if lado < 0.0:
+					_brow_l = ceja_piv
+				else:
+					_brow_r = ceja_piv
+	var boca: Dictionary = conf.get("boca", {})
+	if not boca.is_empty():
+		var ancho := float(boca.get("ancho", 0.06))
+		var piv := Node3D.new()
+		piv.position = ModeloPersonaje._v(boca.get("pos"))
+		_head_pivot.add_child(piv)
+		_cara_modelo.append(piv)
+		var q := ModeloPersonaje.quad(Vector2(ancho, ancho * 0.5), ModeloPersonaje.textura_boca(bool(boca.get("dientes", false))))
+		q.rotation_degrees = Vector3(0.0, 180.0, 0.0)
+		q.position = Vector3(0.0, 0.0, -0.004)
+		piv.add_child(q)
+		_mouth = piv
+		_mouth_mesh = q
+	_brow_tilt = 0.0
+
+
 ## Las manos del rig (palma y pulgar) y su escala de fabrica: el Gear Fifth las agranda.
 var _manos: Array[MeshInstance3D] = []
 var _manos_escala: Array[Vector3] = []
@@ -1092,7 +1392,12 @@ func apply_character(data: CharacterData) -> void:
 	if zapato.a <= 0.0:
 		zapato = accent_color if data.zapatos_acento else trouser_color.darkened(0.35)
 	_mat_shoe.albedo_color = _tono(&"zapatos", zapato)
-	_build_costume(data.silhouette)
+	_quitar_modelo()
+	if ModeloPersonaje.existe(data.id):
+		_build_costume(&"")
+		_poner_modelo(data)
+	else:
+		_build_costume(data.silhouette)
 	_aplicar_extras()
 
 
@@ -1153,24 +1458,20 @@ func _forma(cual: StringName) -> bool:
 	return _skin != null and _skin.forma == cual
 
 
+func _alguna_forma(lista: String) -> bool:
+	for f: String in lista.split("+"):
+		if _forma(StringName(f)):
+			return true
+	return false
+
+
 ## Cambia la terminacion de todo el cuerpo y el disfraz.
 ##
 ## SOLO LOS MATERIALES TOON QUE NO BRILLAN. Lo que ya emite luz —el joyero de Dio, los
 ## ojos— es un detalle luminoso a proposito, y el acabado le cambiaria la luz: el "brillo"
 ## en particular le BAJARIA la emision a algo que ya brillaba mas.
 func _aplicar_acabado(tipo: StringName) -> void:
-	var vistos: Dictionary = {}
-	var pendientes: Array[Node] = [_root]
-	while not pendientes.is_empty():
-		var nodo: Node = pendientes.pop_back()
-		pendientes.append_array(nodo.get_children())
-		var malla := nodo as MeshInstance3D
-		if malla == null:
-			continue
-		var m := malla.material_override as StandardMaterial3D
-		if m == null or vistos.has(m):
-			continue
-		vistos[m] = true
+	for m: StandardMaterial3D in _materiales_del_cuerpo():
 		if m.diffuse_mode != BaseMaterial3D.DIFFUSE_TOON or m.emission_enabled:
 			continue
 		match tipo:
@@ -1323,7 +1624,7 @@ func _crear_aura(tipo: StringName, color: Color) -> void:
 ## Los ojos emitiendo luz: una pupila luminosa encima de la de fabrica.
 func _ojos_que_brillan(color: Color) -> void:
 	for ojo: Node3D in [_eye_l, _eye_r]:
-		if ojo == null:
+		if ojo == null or ojo.has_meta(&"apagado"):
 			continue
 		var luz := Art.sphere(0.024, Art.glow(color, 3.4), Vector3(0.0, 0.004, -0.034))
 		luz.scale = Vector3(1.0, 1.2, 0.5)
@@ -3687,18 +3988,7 @@ func _kanji(circulo: StandardMaterial3D, tinta: StandardMaterial3D, pos: Vector3
 ## un enemigo que se funde con el piso no es dificil, es injusto. La silueta tiene que
 ## seguir leyendose a veinte metros, que es lo que dice que personaje es y que va a hacer.
 func volverse_eco() -> void:
-	var vistos: Dictionary = {}
-	var pendientes: Array[Node] = [_root]
-	while not pendientes.is_empty():
-		var nodo: Node = pendientes.pop_back()
-		pendientes.append_array(nodo.get_children())
-		var malla := nodo as MeshInstance3D
-		if malla == null:
-			continue
-		var m := malla.material_override as StandardMaterial3D
-		if m == null or vistos.has(m):
-			continue
-		vistos[m] = true
+	for m: StandardMaterial3D in _materiales_del_cuerpo():
 		# Oscuro Y corrido al violeta: solo oscurecido, un guardapolvo blanco quedaba gris
 		# claro y el eco se leia como el personaje en una sombra, no como una sombra.
 		m.albedo_color = m.albedo_color.darkened(0.82).lerp(Color(0.10, 0.07, 0.17), 0.35)

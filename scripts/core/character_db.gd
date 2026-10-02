@@ -29,7 +29,9 @@ func _register_all() -> void:
 	# encima en _build_noelle, porque un cuadrille no se puede pintar con un color solo.
 	noelle.body_color = Color(0.96, 0.96, 0.94)
 	noelle.accent_color = Color(0.15, 0.15, 0.19)
-	noelle.skin_color = Color(0.95, 0.87, 0.76)
+	# EL PELAJE ES MARRON CLARO, como en su sprite del Light World (2026-10-02, con el
+	# modelo de Blender): la version vieja la tenia casi blanca.
+	noelle.skin_color = Color(0.84, 0.56, 0.37)
 	noelle.trouser_color = Color(0.13, 0.13, 0.17)
 	# Menuda y angosta: es una adolescente, y al lado de Dio tiene que notarse.
 	noelle.build_scale = Vector3(0.94, 0.97, 0.94)

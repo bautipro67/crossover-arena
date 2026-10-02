@@ -1,0 +1,34 @@
+{
+ "ojos": {
+  "l": [
+   -0.0892,
+   0.2683,
+   -0.2004
+  ],
+  "r": [
+   0.0892,
+   0.2683,
+   -0.2004
+  ],
+  "giro": 22.9,
+  "alto": 0.084,
+  "ancho": 0.074,
+  "iris": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "estilo": "cuenca",
+  "parte": "pupilas",
+  "formas": {
+   "un_ojo": {
+    "lado_l": {
+     "estilo": "cuenca_vacia"
+    },
+    "lado_r": {
+     "estilo": "cuenca_grande"
+    }
+   }
+  }
+ }
+}
