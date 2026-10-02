@@ -1607,6 +1607,133 @@ func armar_hueso_dio(context: Node, pos: Vector3) -> Node3D:
 	return hueso
 
 
+# ------------------------------------------------------------- Modos de juego
+
+## La bomba de la bomba caliente: negra y redonda, con la mecha y la chispa encendida. La
+## arena la cuelga arriba de la cabeza de quien la tiene y hace latir la luz ("Luz").
+func armar_bomba(context: Node) -> Node3D:
+	var world := _world_of(context)
+	if world == null:
+		return null
+	var bomba := Node3D.new()
+	bomba.name = &"Bomba"
+	world.add_child(bomba)
+	var negro := Art.toon(Color(0.10, 0.10, 0.12))
+	var cuerpo := Art.sphere(0.30, negro)
+	bomba.add_child(cuerpo)
+	# El brillo del costado: sin el, de lejos era un agujero negro flotando.
+	bomba.add_child(Art.sphere(0.07, Art.glow(Color(0.85, 0.85, 0.95), 1.2), Vector3(-0.13, 0.14, -0.18)))
+	var boca := Art.cylinder(0.10, 0.10, Art.toon(Color(0.35, 0.35, 0.40)), Vector3(0.0, 0.31, 0.0))
+	bomba.add_child(boca)
+	var mecha := Art.cylinder(0.025, 0.20, Art.toon(Color(0.80, 0.70, 0.50)), Vector3(0.04, 0.44, 0.0))
+	mecha.rotation_degrees = Vector3(0.0, 0.0, -18.0)
+	bomba.add_child(mecha)
+	var chispa := Art.sphere(0.06, Art.glow(Color(1.0, 0.65, 0.20), 4.0), Vector3(0.08, 0.55, 0.0))
+	bomba.add_child(chispa)
+	var chispas := CPUParticles3D.new()
+	chispas.emitting = true
+	chispas.amount = 18
+	chispas.lifetime = 0.5
+	chispas.direction = Vector3.UP
+	chispas.spread = 60.0
+	chispas.initial_velocity_min = 0.8
+	chispas.initial_velocity_max = 1.8
+	chispas.gravity = Vector3(0.0, -2.0, 0.0)
+	chispas.scale_amount_min = 0.03
+	chispas.scale_amount_max = 0.06
+	chispas.color = Color(1.0, 0.75, 0.30)
+	chispas.position = Vector3(0.08, 0.55, 0.0)
+	bomba.add_child(chispas)
+	var luz := OmniLight3D.new()
+	luz.name = &"Luz"
+	luz.light_color = Color(1.0, 0.45, 0.15)
+	luz.light_energy = 2.0
+	luz.omni_range = 5.0
+	luz.shadow_enabled = false
+	luz.position = Vector3(0.0, 0.5, 0.0)
+	bomba.add_child(luz)
+	return bomba
+
+
+## La explosion de la bomba: un fogonazo, el humo y una luz que se apaga.
+func spawn_explosion_bomba(context: Node, pos: Vector3) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	spawn_impact_burst(context, pos, Color(1.0, 0.55, 0.12))
+	spawn_impact_burst(context, pos + Vector3.UP * 0.4, Color(1.0, 0.85, 0.35))
+	var bola := Art.sphere(1.0, _brillo_alfa(Color(1.0, 0.55, 0.15), 3.0, 0.85))
+	world.add_child(bola)
+	bola.global_position = pos
+	bola.scale = Vector3.ONE * 0.3
+	var tw := bola.create_tween()
+	tw.tween_property(bola, "scale", Vector3.ONE * 3.2, 0.35)
+	tw.parallel().tween_property(bola.material_override, "albedo_color:a", 0.0, 0.45)
+	tw.tween_callback(bola.queue_free)
+	var humo := CPUParticles3D.new()
+	humo.emitting = true
+	humo.one_shot = true
+	humo.amount = 36
+	humo.lifetime = 1.1
+	humo.explosiveness = 0.9
+	humo.direction = Vector3.UP
+	humo.spread = 80.0
+	humo.initial_velocity_min = 2.0
+	humo.initial_velocity_max = 4.5
+	humo.damping_min = 2.0
+	humo.damping_max = 3.5
+	humo.gravity = Vector3(0.0, 1.0, 0.0)
+	humo.scale_amount_min = 0.35
+	humo.scale_amount_max = 0.8
+	humo.color = Color(0.30, 0.28, 0.28, 0.85)
+	world.add_child(humo)
+	humo.global_position = pos
+	_auto_free(humo, 1.8)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.55, 0.20)
+	luz.light_energy = 8.0
+	luz.omni_range = 12.0
+	world.add_child(luz)
+	luz.global_position = pos
+	_fade_light(luz, 0.6)
+
+
+## Una esfera de la caza: dorada, flotando y girando, con una columna de luz alta que se
+## ve desde cualquier punto del mapa, por encima de las coberturas.
+func armar_esfera(context: Node, pos: Vector3) -> Node3D:
+	var world := _world_of(context)
+	if world == null:
+		return null
+	var esfera := Node3D.new()
+	esfera.name = &"Esfera"
+	world.add_child(esfera)
+	esfera.global_position = pos
+	var flota := Node3D.new()
+	flota.position = Vector3.UP * 1.1
+	esfera.add_child(flota)
+	flota.add_child(Art.sphere(0.45, Art.glow(Color(1.0, 0.70, 0.18), 2.2)))
+	# Las estrellas de adentro, para que no sea una pelota lisa.
+	for k: int in range(4):
+		var ang := TAU * float(k) / 4.0
+		flota.add_child(Art.sphere(0.06, Art.glow(Color(0.95, 0.20, 0.15), 2.0),
+			Vector3(cos(ang) * 0.18, sin(ang) * 0.18, -0.40)))
+	var columna := Art.cylinder(0.22, 40.0, _brillo_alfa(Color(1.0, 0.80, 0.30), 2.0, 0.35),
+		Vector3(0.0, 20.0, 0.0))
+	columna.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	esfera.add_child(columna)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.75, 0.30)
+	luz.light_energy = 3.0
+	luz.omni_range = 7.0
+	luz.position = Vector3.UP * 1.2
+	esfera.add_child(luz)
+	var tw := flota.create_tween().set_loops()
+	tw.tween_property(flota, "position:y", 1.35, 0.9).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(flota, "position:y", 1.1, 0.9).set_trans(Tween.TRANS_SINE)
+	var giro := flota.create_tween().set_loops()
+	giro.tween_property(flota, "rotation:y", TAU, 3.0).from(0.0)
+	return esfera
+
 
 ## Un material de brillo que se puede desvanecer. Todos los efectos de abajo lo usan.
 func _brillo_alfa(color: Color, energia: float, alfa: float) -> StandardMaterial3D:

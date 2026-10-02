@@ -206,6 +206,14 @@ que la anterior, y los jefes un escalón por encima de todo lo demás.
     todos. 10 bajas ganan; 5 caídas pierden.
   · Lluvia de meteoritos — aguantá 50 segundos mientras caen del cielo, cada vez
     más seguido. La sombra avisa dónde van a caer, y aplastan a los bots también.
+  · Bomba caliente (NUEVO) — alguien tiene una bomba con la mecha encendida, y se la
+    pasa pegándole a otro con lo que sea. Los golpes no sacan vida: lo único que saca a
+    alguien es la bomba, que explota en las manos del que la tiene. Cada ronda la mecha
+    es más corta. Quedá último de cinco.
+  · Un toque (NUEVO) — cualquier golpe mata, a vos y a ellos, escudo incluido. Dos bots,
+    todos reaparecen: 5 bajas ganan; 8 caídas pierden. Esquivar es todo.
+  · Caza de esferas (NUEVO) — juntá 7 esferas, una por vez, siguiendo la columna de luz,
+    con 2 bots cazándote. 5 caídas pierden.
   · Sala de práctica — ver abajo.
 
 ═══ TEMPORADA 3: SIN LÍMITES (NUEVA) ═══

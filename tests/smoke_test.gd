@@ -73,6 +73,7 @@ func _run() -> void:
 	await _test_temporada_3(player, arena)
 	_test_lugar_libre(arena)
 	await _test_modos_nuevos(player, arena)
+	await _test_modos_juego(player, arena)
 	_test_descripciones()
 	await _test_escena_corta_habilidades(player)
 	await _test_practica(player, arena)
@@ -2572,6 +2573,123 @@ func _test_modos_nuevos(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+## Lo que la bomba caliente, un toque y la caza de esferas cambian adentro de la pelea.
+func _test_modos_juego(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+	var antes := Modos.actual
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, 30.0), 1.5)
+	player.respawn_at(puesto + Vector3(0.0, 0.0, 25.0), 0.0)
+
+	# --- BOMBA CALIENTE: pasa al que le pegas, sin sacarle vida, y explota en uno solo ---
+	var uno := _spawn_dummy(arena, puesto)
+	var otro := _spawn_dummy(arena, puesto + Vector3(3.0, 0.0, 0.0))
+	uno.peer_id = -81
+	otro.peer_id = -82
+	arena._players[-81] = uno
+	arena._players[-82] = otro
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	Modos.actual = Modos.BOMBA
+	Modos.activo = true
+	Modos._terminado = false
+	Modos.ronda_bomba = 0
+	Modos.dar_bomba(-81, "uno")
+	for _i: int in range(4):
+		await get_tree().physics_frame
+	_check(is_instance_valid(arena._bomba_nodo) and arena._bomba_nodo.get_parent() == uno
+		and BotBrain.peligros.has(arena._bomba_zona),
+		"la bomba va arriba del que la tiene, y es un peligro del que los demas se escapan")
+	await get_tree().create_timer(Modos.GRACIA_BOMBA + 0.1).timeout
+	var vida_otro := otro.health.current
+	CombatUtils.deal_damage(otro, 30.0, -81)
+	_check(Modos.bomba_de == -82 and is_equal_approx(otro.health.current, vida_otro),
+		"pegarle a otro le pasa la bomba, y no le saca vida")
+	CombatUtils.deal_damage(uno, 30.0, -82)
+	_check(Modos.bomba_de == -82, "recien recibida no se puede pasar")
+	await get_tree().create_timer(Modos.GRACIA_BOMBA + 0.1).timeout
+	CombatUtils.deal_damage(uno, 30.0, -82)
+	_check(Modos.bomba_de == -82, "ni devolver enseguida al que te la paso")
+	for _i: int in range(4):
+		await get_tree().physics_frame
+	_check(arena._bomba_nodo.get_parent() == otro, "y la bomba se muda arriba del nuevo")
+	Modos.mecha = 0.05
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	_check(otro.health.is_dead and not uno.health.is_dead and Modos.bomba_de == 0
+		and not is_instance_valid(arena._bomba_nodo) and not BotBrain.peligros.has(arena._bomba_zona),
+		"cuando se acaba la mecha explota en el que la tiene, y solo en el")
+	Modos.activo = false
+	Modos.actual = antes
+	arena._players.erase(-81)
+	arena._players.erase(-82)
+	uno.queue_free()
+	otro.queue_free()
+
+	# --- UN TOQUE: cualquier golpe mata, escudo incluido ---
+	Modos.actual = Modos.TOQUE
+	var blanco := _spawn_dummy(arena, puesto)
+	var con_escudo := _spawn_dummy(arena, puesto + Vector3(3.0, 0.0, 0.0))
+	for d: Player in [blanco, con_escudo]:
+		d.health.set_max(500.0)
+		d.health.revive_full()
+	con_escudo.health.add_shield(200.0, 5.0)
+	for _i: int in range(4):
+		await get_tree().physics_frame
+	CombatUtils.deal_damage(blanco, 1.0, Net.local_id())
+	CombatUtils.deal_damage(con_escudo, 1.0, Net.local_id())
+	_check(blanco.health.is_dead and con_escudo.health.is_dead,
+		"en un toque, un golpe de 1 mata a uno de 500, aunque tenga escudo")
+	Modos.actual = Modos.DUELO
+	var control := _spawn_dummy(arena, puesto + Vector3(-3.0, 0.0, 0.0))
+	for _i: int in range(4):
+		await get_tree().physics_frame
+	CombatUtils.deal_damage(control, 1.0, Net.local_id())
+	_check(not control.health.is_dead, "y fuera de ese modo un golpe de 1 es un golpe de 1")
+	for d: Player in [blanco, con_escudo, control]:
+		d.queue_free()
+
+	# --- CAZA DE ESFERAS: aparece lejos y en un lugar libre, se toma pasando, y viene otra ---
+	Modos.actual = Modos.ESFERAS
+	Modos.activo = true
+	Modos._terminado = false
+	Modos.esferas = 0
+	player.respawn_at(puesto, 0.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	arena.poner_esfera(player.global_position)
+	var donde: Variant = arena.esfera_puesta()
+	var libre := false
+	if donde != null:
+		var q := PhysicsShapeQueryParameters3D.new()
+		var bola := SphereShape3D.new()
+		bola.radius = 0.6
+		q.shape = bola
+		q.collision_mask = GameConfig.LAYER_WORLD
+		q.transform = Transform3D(Basis.IDENTITY, (donde as Vector3) + Vector3.UP * 1.1)
+		libre = arena.get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+	var lejos_de := Vector2((donde as Vector3).x - player.global_position.x,
+		(donde as Vector3).z - player.global_position.z).length() if donde != null else 0.0
+	_check(donde != null and libre and lejos_de >= Modos.ESFERA_CERCA * 0.6,
+		"la esfera aparece lejos (%.0f m) y en un lugar libre" % lejos_de)
+	if donde != null:
+		player.respawn_at(donde, 0.0)
+	for _i: int in range(10):
+		await get_tree().physics_frame
+	_check(Modos.esferas == 1 and arena.esfera_puesta() == null, "pasar por encima la toma")
+	await get_tree().create_timer(0.9).timeout
+	var otra: Variant = arena.esfera_puesta()
+	_check(otra != null and (otra as Vector3).distance_to(donde) > 5.0, "y aparece la siguiente, en otro lado")
+	Modos.activo = false
+	arena._sacar_esfera()
+	Modos.actual = antes
+	player.respawn_at(puesto, 0.0)
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
 func _test_practica(player: Player, arena: Arena) -> void:
 	Practica.restablecer()
 	_check(Practica.bots == 3 and not Practica.invulnerable,
@@ -2776,7 +2894,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 322
+const CHEQUEOS_MINIMOS: int = 333
 
 
 func _finish() -> void:

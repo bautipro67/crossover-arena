@@ -88,6 +88,22 @@ var _lluvia_cuenta: int = 0
 ## que pelea con un heroe que no es el jugador.
 var blanco_lluvia: Player = null
 
+## LA BOMBA CALIENTE: el dibujo (va arriba de la cabeza del que la tiene), el peligro que
+## hace escapar a los bots, cuanto falta para la ronda siguiente y a quien la vio el frame
+## anterior (para saber cuando paso).
+var _bomba_nodo: Node3D = null
+var _bomba_zona: Dictionary = {}
+var _bomba_pausa: float = 3.0
+var _bomba_antes: int = 0
+var _bomba_segundo: int = -1
+
+## LA CAZA DE ESFERAS: la que esta puesta, donde se apoya y cuanto falta para la proxima.
+var _esfera: Node3D = null
+var _esfera_piso: Vector3 = Vector3.ZERO
+var _esfera_espera: float = 1.5
+## Quien junta. Sin nadie, el jugador local; el simulador pone a su heroe.
+var blanco_esferas: Player = null
+
 var _floor_material: StandardMaterial3D = null
 var _floor_alt_material: StandardMaterial3D = null
 var _wall_material: StandardMaterial3D = null
@@ -1031,6 +1047,12 @@ func _physics_process(delta: float) -> void:
 	if not Net.is_server():
 		return
 	_descontar_peligros(delta)
+	if Modos.actual == Modos.BOMBA:
+		_bomba(delta)
+		return
+	if Modos.actual == Modos.ESFERAS:
+		_esferas(delta)
+		return
 	if Modos.actual == Modos.METEORITOS:
 		_lluvia(delta)
 		return
@@ -1078,6 +1100,179 @@ func _lluvia(delta: float) -> void:
 	punto.x = clampf(punto.x, -borde, borde)
 	punto.z = clampf(punto.z, -borde, borde)
 	tirar_meteorito(_piso_en(punto))
+
+
+# ---------------------------------------------------------------- La bomba
+
+## Cada frame de la bomba caliente: repartirla al empezar la ronda, llevarla arriba del que
+## la tiene, avisar cuando pasa y hacerla explotar cuando se acaba la mecha.
+func _bomba(delta: float) -> void:
+	if not Modos.activo:
+		_guardar_bomba()
+		return
+	if Modos.bomba_de == 0:
+		_bomba_pausa -= delta
+		if _bomba_pausa <= 0.0:
+			_nueva_ronda_bomba()
+		return
+	var quien := get_player(Modos.bomba_de)
+	if quien == null or quien.health.is_dead:
+		# Se fue de otra forma (se desconecto, se cayo del mapa): la ronda vuelve a empezar.
+		Modos.soltar_bomba()
+		_guardar_bomba()
+		_bomba_pausa = 0.5
+		return
+	if Modos.bomba_de != _bomba_antes:
+		# PASO: el que la recibe se entera con un estallido y un golpe seco.
+		if _bomba_antes != 0:
+			FX.spawn_impact_burst(quien, quien.global_position + Vector3.UP * 2.0, Color(1.0, 0.55, 0.15))
+			Sfx.play_3d(quien, &"hit_punch", quien.global_position, 2.0)
+		_bomba_antes = Modos.bomba_de
+	_llevar_bomba(quien)
+	if Modos.avanzar_bomba(delta):
+		_explotar_bomba(quien)
+		return
+	# Los ultimos segundos, un tic por segundo: se oye sin mirar el marcador.
+	var seg := ceili(Modos.mecha)
+	if seg != _bomba_segundo:
+		_bomba_segundo = seg
+		if seg <= 3:
+			Sfx.play_3d(quien, &"ui_click", quien.global_position, 4.0)
+
+
+## Los que siguen en juego: vivos y adentro del mapa. El simulador saca al jugador de verdad
+## con la marca "fuera_de_juego", porque lo deja colgado debajo del piso.
+func _en_juego() -> Array[Player]:
+	var vivos: Array[Player] = []
+	for id: int in _players:
+		var p := _players[id] as Player
+		if is_instance_valid(p) and not p.health.is_dead and not p.get_meta(&"fuera_de_juego", false):
+			vivos.append(p)
+	return vivos
+
+
+func _nueva_ronda_bomba() -> void:
+	var vivos := _en_juego()
+	if vivos.size() < 2:
+		return
+	# LA PRIMERA NO LA TENES VOS: arrancar con la bomba en la mano y la cuenta corriendo,
+	# antes de entender el mapa, es perder por llegar. Despues, cualquiera.
+	var elegibles: Array = vivos
+	if Modos.ronda_bomba == 0:
+		elegibles = vivos.filter(func(p: Player) -> bool: return p.peer_id != Net.local_id())
+		if elegibles.is_empty():
+			elegibles = vivos
+	var quien: Player = elegibles[randi() % elegibles.size()]
+	Modos.dar_bomba(quien.peer_id, quien.player_name)
+	_bomba_antes = 0
+	_bomba_segundo = -1
+
+
+## La bomba arriba de la cabeza del que la tiene, y el peligro alrededor suyo: los bots que
+## no la tienen se escapan, y el que la tiene los persigue.
+func _llevar_bomba(quien: Player) -> void:
+	if not is_instance_valid(_bomba_nodo):
+		_bomba_nodo = FX.armar_bomba(self)
+	if _bomba_nodo.get_parent() != quien:
+		_bomba_nodo.reparent(quien, false)
+		_bomba_nodo.position = Vector3(0.0, 2.75, 0.0)
+	# Late cada vez mas rapido a medida que se acaba la mecha.
+	var luz := _bomba_nodo.get_node_or_null(^"Luz") as OmniLight3D
+	if luz != null:
+		var ritmo := 1.5 + 9.0 / maxf(0.8, Modos.mecha)
+		luz.light_energy = 1.2 + 2.4 * (0.5 + 0.5 * sin(Modos.tiempo * ritmo * TAU))
+	if _bomba_zona.is_empty() or not BotBrain.peligros.has(_bomba_zona):
+		_bomba_zona = {"punto": quien.global_position, "radio": Modos.RADIO_HUIDA,
+			"reaccion": 0.0, "dueño": quien}
+		BotBrain.peligros.append(_bomba_zona)
+	_bomba_zona["punto"] = quien.global_position
+	_bomba_zona["dueño"] = quien
+
+
+## Explota en las manos de quien la tiene: lo saca del juego y empuja a los de al lado.
+func _explotar_bomba(quien: Player) -> void:
+	var donde := quien.global_position
+	Modos.soltar_bomba()
+	_guardar_bomba()
+	_bomba_pausa = Modos.PAUSA_BOMBA
+	FX.spawn_explosion_bomba(self, donde + Vector3.UP * 1.2)
+	Sfx.play_3d(self, &"plasma_blast", donde, 4.0)
+	for p: Player in _en_juego():
+		if p == quien:
+			continue
+		var plano := Vector3(p.global_position.x - donde.x, 0.0, p.global_position.z - donde.z)
+		if plano.length() < 5.0:
+			CombatUtils.apply_knockback(p, plano, 10.0, 4.0)
+	# Directo a la vida y por encima de cualquier escudo: la bomba no se ataja.
+	quien.health.apply_damage(quien.health.max_health * 10.0, 0, true)
+
+
+## Saca el dibujo y el peligro: entre rondas, y al terminar la partida.
+func _guardar_bomba() -> void:
+	if is_instance_valid(_bomba_nodo):
+		_bomba_nodo.queue_free()
+	_bomba_nodo = null
+	if not _bomba_zona.is_empty():
+		BotBrain.peligros.erase(_bomba_zona)
+	_bomba_zona = {}
+	_bomba_antes = 0
+
+
+# ------------------------------------------------------------- Las esferas
+
+## Cada frame de la caza: poner la esfera si no hay, y tomarla si el que junta pasa encima.
+func _esferas(delta: float) -> void:
+	if not Modos.activo:
+		_sacar_esfera()
+		return
+	var quien := blanco_esferas if is_instance_valid(blanco_esferas) else get_local_player()
+	if quien == null:
+		return
+	if not is_instance_valid(_esfera):
+		_esfera_espera -= delta
+		if _esfera_espera <= 0.0:
+			poner_esfera(quien.global_position)
+		return
+	if quien.health.is_dead:
+		return
+	var plano := Vector2(quien.global_position.x - _esfera_piso.x, quien.global_position.z - _esfera_piso.z)
+	if plano.length() > Modos.ESFERA_RADIO or absf(quien.global_position.y - _esfera_piso.y) > 2.0:
+		return
+	FX.spawn_impact_burst(self, _esfera.global_position, Color(1.0, 0.80, 0.25))
+	Sfx.play_3d(self, &"gema", _esfera_piso, 2.0)
+	_sacar_esfera()
+	_esfera_espera = 0.6
+	Modos.esfera_tomada()
+
+
+## Pone una esfera lejos de `desde`, en un lugar libre del piso: nunca adentro de una
+## cobertura ni arriba de un bloque al que no se sube.
+func poner_esfera(desde: Vector3) -> void:
+	_sacar_esfera()
+	var ang := randf() * TAU
+	var lejos := randf_range(Modos.ESFERA_CERCA, Modos.ESFERA_LEJOS)
+	var borde := ARENA_SIZE * 0.5 - 4.0
+	var punto := Vector3(desde.x + cos(ang) * lejos, 0.0, desde.z + sin(ang) * lejos)
+	# Si se sale del mapa, para el otro lado: recortarla la dejaba siempre contra la pared.
+	if absf(punto.x) > borde:
+		punto.x = desde.x - cos(ang) * lejos
+	if absf(punto.z) > borde:
+		punto.z = desde.z - sin(ang) * lejos
+	punto.x = clampf(punto.x, -borde, borde)
+	punto.z = clampf(punto.z, -borde, borde)
+	_esfera_piso = find_clear_spot(punto, 1.0)
+	_esfera = FX.armar_esfera(self, _esfera_piso)
+
+
+func _sacar_esfera() -> void:
+	if is_instance_valid(_esfera):
+		_esfera.queue_free()
+	_esfera = null
+
+
+## Donde esta la esfera, o null si no hay ninguna puesta. La usa el simulador de balance.
+func esfera_puesta() -> Variant:
+	return _esfera_piso if is_instance_valid(_esfera) else null
 
 
 ## Lo que les falta a los bots para darse cuenta de cada peligro anunciado.

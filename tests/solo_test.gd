@@ -29,6 +29,7 @@ func _run() -> void:
 	await _test_controles()
 	await _test_mando_en_menus(main)
 	await _test_sala_entra(main)
+	await _test_menu_entra(main)
 	await _test_historia(main)
 	await _test_escenas_y_peleas(main)
 	await _test_skins_visibles()
@@ -714,6 +715,78 @@ func _test_progresion() -> void:
 	Modos.jugador_murio()
 	_check(perdio_lluvia[0], "lluvia: caer una vez pierde")
 
+	# --- Bomba caliente: la mecha, quien la tiene y quien queda ---
+	Modos.iniciar(Modos.BOMBA)
+	_check(Modos.bots_iniciales() == Modos.BOTS_BOMBA and Modos.todos_contra_todos() and Modos.sin_daño()
+		and not Modos.un_toque() and not Modos.reaparecen_bots() and not Modos.reaparece_jugador(),
+		"bomba: cuatro bots que se la pasan entre todos, los golpes no sacan vida y nadie reaparece")
+	_check(Modos.mecha_de_ronda(1) > Modos.mecha_de_ronda(3)
+		and is_equal_approx(Modos.mecha_de_ronda(30), Modos.MECHA_MINIMA),
+		"bomba: cada ronda la mecha es mas corta, hasta un minimo (%.1f, %.1f, %.1f)" % [
+			Modos.mecha_de_ronda(1), Modos.mecha_de_ronda(3), Modos.mecha_de_ronda(30)])
+	Modos.dar_bomba(-1, "Bot Goku")
+	_check(Modos.bomba_de == -1 and Modos.marcador().contains("Bot Goku"),
+		"el marcador dice quien la tiene (%s)" % Modos.marcador())
+	var explota := Modos.avanzar_bomba(Modos.mecha - 0.1)
+	_check(not explota and Modos.avanzar_bomba(0.2), "y explota cuando se acaba la mecha, no antes")
+	Modos.dar_bomba(Net.local_id(), "Yo")
+	_check(Modos.marcador().contains("TENÉS"), "y si la tenes vos, te lo grita (%s)" % Modos.marcador())
+	var fin_bomba := [0, false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void:
+		fin_bomba[0] += 1
+		fin_bomba[1] = g)
+	Modos.bot_murio(2)
+	_check(fin_bomba[0] == 0, "bomba: mientras quede otro en pie no se gana")
+	Modos.bot_murio(0)
+	_check(fin_bomba[0] == 1 and fin_bomba[1], "y quedar ultimo gana")
+	Modos.iniciar(Modos.BOMBA)
+	fin_bomba[0] = 0
+	Modos.jugador_murio()
+	_check(fin_bomba[0] == 1 and not fin_bomba[1], "y que te explote en las manos pierde")
+
+	# --- Un toque: todo golpe mata, y se cuenta como en el caos ---
+	Modos.iniciar(Modos.TOQUE)
+	_check(Modos.un_toque() and not Modos.sin_daño() and Modos.reaparecen_bots() and Modos.reaparece_jugador()
+		and Modos.bots_iniciales() == Modos.BOTS_TOQUE,
+		"un toque: cualquier golpe mata y todos reaparecen")
+	var fin_toque := [0, false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void:
+		fin_toque[0] += 1
+		fin_toque[1] = g)
+	for _i: int in range(Modos.META_TOQUE - 1):
+		Modos.bot_murio(3)
+	_check(fin_toque[0] == 0, "un toque: una baja antes de la meta todavia no gana")
+	Modos.bot_murio(3)
+	_check(fin_toque[0] == 1 and fin_toque[1], "y la baja %d gana" % Modos.META_TOQUE)
+	Modos.iniciar(Modos.TOQUE)
+	fin_toque[0] = 0
+	for _i: int in range(Modos.MUERTES_TOQUE):
+		Modos.jugador_murio()
+	_check(fin_toque[0] == 1 and not fin_toque[1], "un toque: caer %d veces pierde" % Modos.MUERTES_TOQUE)
+
+	# --- Caza de esferas: juntar, y no caer demasiadas veces ---
+	Modos.iniciar(Modos.ESFERAS)
+	_check(Modos.reaparecen_bots() and Modos.reaparece_jugador() and Modos.bots_iniciales() == Modos.BOTS_ESFERAS
+		and not Modos.sin_daño() and not Modos.un_toque(),
+		"esferas: tres bots que te cazan, y todos reaparecen")
+	var fin_esferas := [0, false]
+	Modos.termino.connect(func(g: bool, _t: String, _d: String) -> void:
+		fin_esferas[0] += 1
+		fin_esferas[1] = g)
+	for _i: int in range(Modos.META_ESFERAS - 1):
+		Modos.esfera_tomada()
+	_check(fin_esferas[0] == 0 and Modos.marcador().contains("%d / %d" % [Modos.META_ESFERAS - 1, Modos.META_ESFERAS]),
+		"esferas: el marcador cuenta, y una antes de la ultima no gana (%s)" % Modos.marcador())
+	Modos.esfera_tomada()
+	_check(fin_esferas[0] == 1 and fin_esferas[1], "y la esfera %d gana" % Modos.META_ESFERAS)
+	Modos.iniciar(Modos.ESFERAS)
+	fin_esferas[0] = 0
+	for _i: int in range(Modos.MUERTES_ESFERAS):
+		Modos.jugador_murio()
+	_check(fin_esferas[0] == 1 and not fin_esferas[1], "esferas: caer %d veces pierde" % Modos.MUERTES_ESFERAS)
+	Modos.iniciar(Modos.ONLINE)
+	_check(not Modos.sin_daño() and not Modos.un_toque(), "en linea los golpes son los de siempre")
+
 	# --- Modo desarrollador: la compra sale y el saldo no baja ---
 	Progreso.borrar_todo()
 	Progreso.modo_dev = true
@@ -1368,6 +1441,18 @@ func _test_sala_entra(main: Node) -> void:
 			CharacterDB.get_all_ids().size()))
 	main.show_main_menu()
 	await get_tree().process_frame
+
+
+func _test_menu_entra(main: Node) -> void:
+	main.show_main_menu()
+	for _i: int in range(4):
+		await get_tree().process_frame
+	var menu: MainMenu = null
+	for hijo: Node in main.get_children():
+		if hijo is MainMenu and not hijo.is_queued_for_deletion():
+			menu = hijo
+	_check(menu != null and menu.todo_a_la_vista(),
+		"el menu principal muestra los %d modos y SALIR adentro de la pantalla" % Modos.LISTA.size())
 
 
 func _test_mando_en_menus(main: Node) -> void:
@@ -2086,7 +2171,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 308
+const CHEQUEOS_MINIMOS: int = 338
 
 
 func _finish() -> void:

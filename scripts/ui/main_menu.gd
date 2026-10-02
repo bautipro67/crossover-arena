@@ -50,7 +50,8 @@ func _ready() -> void:
 	margin.add_child(outer)
 
 	var panel := UITheme.make_panel()
-	panel.custom_minimum_size = Vector2(560, 0)
+	# Ancho para CUATRO columnas de modos (ver la grilla).
+	panel.custom_minimum_size = Vector2(700, 0)
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	outer.add_child(panel)
 
@@ -81,8 +82,10 @@ func _ready() -> void:
 	# TRES COLUMNAS desde que son diez modos (2026-09-25): en dos, la grilla sumaba dos filas
 	# y SALIR volvia a quedar fuera de los 720 de alto. Con letra un poco mas chica entran
 	# los nombres largos sin ensanchar el panel.
+	# Y CUATRO desde que son trece (2026-10-01): en tres sumaban una fila mas, y con el panel
+	# mas ancho entran igual en 720.
 	var grilla := GridContainer.new()
-	grilla.columns = 3
+	grilla.columns = 4
 	grilla.add_theme_constant_override("h_separation", 6)
 	grilla.add_theme_constant_override("v_separation", 6)
 	box.add_child(grilla)
@@ -249,6 +252,17 @@ func _on_join_pressed() -> void:
 
 ## Un boton de la grilla de modos: mas bajo y con letra mas chica que los demas, para que
 ## entren tres por fila.
+## Todos los botones adentro de la pantalla. Lo vigila solo_test: cada modo nuevo suma un
+## boton, y dos veces ya empujaron SALIR fuera de los 720 de alto.
+func todo_a_la_vista() -> bool:
+	var vista := get_viewport_rect()
+	for nodo: Node in find_children("*", "Button", true, false):
+		var boton := nodo as Button
+		if boton.is_visible_in_tree() and not vista.encloses(boton.get_global_rect()):
+			return false
+	return true
+
+
 func _achicar(boton: Button) -> void:
 	boton.custom_minimum_size = Vector2(0, 40)
 	boton.add_theme_font_size_override("font_size", 13)

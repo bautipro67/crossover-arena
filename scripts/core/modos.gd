@@ -30,12 +30,18 @@ const CAMPAL: StringName = &"campal"
 const CAOS: StringName = &"caos"
 ## Aguantar mientras llueven meteoritos.
 const METEORITOS: StringName = &"meteoritos"
+## La papa caliente: la bomba pasa al que le pegas, y explota en las manos de alguien.
+const BOMBA: StringName = &"bomba"
+## Cualquier golpe mata, a todos.
+const TOQUE: StringName = &"toque"
+## Juntar esferas, una por vez, mientras te cazan.
+const ESFERAS: StringName = &"esferas"
 ## El modo historia. No va en LISTA: tiene su propio boton y su propia pantalla.
 const HISTORIA: StringName = &"historia"
 
 ## Todos los offline, en el orden en que se muestran: del mas parejo al mas dificil.
-const LISTA: Array[StringName] = [DUELO, CAOS, CONTRARRELOJ, COLINA, CAMPAL,
-	METEORITOS, SUPERVIVENCIA, ULTIMO_EN_PIE, JEFES, PRACTICA]
+const LISTA: Array[StringName] = [DUELO, CAOS, BOMBA, TOQUE, CONTRARRELOJ, ESFERAS, COLINA,
+	CAMPAL, METEORITOS, SUPERVIVENCIA, ULTIMO_EN_PIE, JEFES, PRACTICA]
 
 ## Cuantas bajas pide contrarreloj.
 ##
@@ -83,6 +89,42 @@ const METEORO_RADIO: float = 4.0
 const METEORO_DAÑO: float = 22.0
 ## Desde que aparece la sombra hasta que pega. Lo que hay para salir.
 const METEORO_CAIDA: float = 1.7
+
+## BOMBA CALIENTE: alguien tiene la bomba y se la pasa PEGANDOLE a otro, con lo que sea.
+## Cuando se acaba la mecha explota en las manos del que la tiene, y ese queda afuera.
+## Nadie pierde vida a golpes: solo la bomba saca a alguien. Gana el ultimo.
+const BOTS_BOMBA: int = 4
+## La mecha de la primera ronda, cuanto se acorta en cada una y hasta donde.
+const MECHA_BOMBA: float = 14.0
+const MECHA_MENOS: float = 1.5
+const MECHA_MINIMA: float = 8.0
+## Recien recibida no se puede pasar: un golpe de varios impactos que ya venia en camino
+## la devolvia en el mismo instante, y nadie veia quien la tenia.
+const GRACIA_BOMBA: float = 0.5
+## Y no se le puede devolver enseguida al que te la paso: sin esto, dos pegados se la
+## pasaban de ida y vuelta hasta que explotaba al azar en uno.
+const SIN_DEVOLVER: float = 1.5
+## A cuanto del que la tiene se escapan los bots.
+const RADIO_HUIDA: float = 9.0
+## De la explosion a la ronda siguiente.
+const PAUSA_BOMBA: float = 2.5
+
+## UN TOQUE: cualquier golpe mata, escudo incluido, a vos y a ellos. Todos reaparecen; se
+## gana llegando a las bajas y se pierde cayendo demasiadas veces. Esquivar es todo.
+const BOTS_TOQUE: int = 2
+const META_TOQUE: int = 5
+const MUERTES_TOQUE: int = 8
+
+## CAZA DE ESFERAS: aparece una esfera lejos, con una columna de luz que se ve de todo el
+## mapa; la tocas, aparece la siguiente. Tres bots te cazan mientras tanto, y reaparecen.
+const META_ESFERAS: int = 7
+const MUERTES_ESFERAS: int = 5
+const BOTS_ESFERAS: int = 2
+## A cuanto del jugador aparece cada una.
+const ESFERA_CERCA: float = 18.0
+const ESFERA_LEJOS: float = 34.0
+## A cuanto hay que pasar para tomarla.
+const ESFERA_RADIO: float = 1.8
 
 
 # ------------------------------------------------ Cuanto aguantan los enemigos
@@ -161,6 +203,10 @@ func _vida_base() -> float:
 		CAMPAL: return 72.0
 		CAOS: return 74.0
 		METEORITOS: return 40.0
+		# En la bomba y en un toque la vida no cuenta: la primera no saca, el segundo mata.
+		BOMBA: return 100.0
+		TOQUE: return 100.0
+		ESFERAS: return 57.0
 	return 170.0
 
 
@@ -184,6 +230,9 @@ func daño_bot(id: int = 0) -> float:
 		CAMPAL: return 0.36
 		CAOS: return 0.36
 		METEORITOS: return 0.08
+		BOMBA: return 0.4
+		TOQUE: return 0.4
+		ESFERAS: return 0.30
 	return GameConfig.BOT_DAMAGE_SCALE
 
 var actual: StringName = ONLINE
@@ -194,8 +243,20 @@ var tiempo: float = 0.0
 ## Cuantos segundos lleva el jugador adentro del circulo, acumulados.
 var colina_avance: float = 0.0
 var colina_dentro: bool = false
-## Cuantas veces cayo el jugador. Solo lo cuenta el modo caos.
+## Cuantas veces cayo el jugador. Lo cuentan los modos en los que se reaparece pero se
+## puede perder: caos, un toque y la caza de esferas.
 var muertes: int = 0
+## Cuantas esferas lleva juntadas.
+var esferas: int = 0
+## Quien tiene la bomba (su peer) y como se llama. 0 = nadie: entre una ronda y otra.
+var bomba_de: int = 0
+var bomba_nombre: String = ""
+## Cuanto le queda a la mecha, y que ronda va.
+var mecha: float = 0.0
+var ronda_bomba: int = 0
+var _bomba_gracia: float = 0.0
+var _bomba_anterior: int = 0
+var _bomba_anterior_t: float = 0.0
 var _terminado: bool = false
 ## El capitulo que se esta jugando en el modo historia. -1 = ninguno.
 var capitulo: int = -1
@@ -242,10 +303,99 @@ func premio() -> float:
 	return 1.0
 
 
-## Los bots se eligen entre ellos? Solo en la batalla campal (y en la practica, si el panel
-## lo pide: eso lo mira BotBrain aparte).
+## Los bots se eligen entre ellos? En la batalla campal y en la bomba, donde el que la tiene
+## se la quiere pasar a cualquiera (y en la practica, si el panel lo pide: eso lo mira
+## BotBrain aparte).
 func todos_contra_todos() -> bool:
-	return actual == CAMPAL
+	return actual == CAMPAL or actual == BOMBA
+
+
+## Los golpes no sacan vida? Solo en la bomba: ahi lo unico que saca a alguien es la bomba.
+func sin_daño() -> bool:
+	return actual == BOMBA
+
+
+## Cualquier golpe mata? Solo en un toque.
+func un_toque() -> bool:
+	return actual == TOQUE
+
+
+# ------------------------------------------------------------------- La bomba
+
+## La mecha de la ronda `r`: cada ronda mas corta, hasta un minimo.
+func mecha_de_ronda(r: int) -> float:
+	return maxf(MECHA_MINIMA, MECHA_BOMBA - MECHA_MENOS * float(r - 1))
+
+
+## Le da la bomba a alguien al empezar una ronda. La llama la arena, que es la que sabe
+## quienes quedan.
+func dar_bomba(peer: int, quien: String) -> void:
+	ronda_bomba += 1
+	mecha = mecha_de_ronda(ronda_bomba)
+	bomba_de = peer
+	bomba_nombre = quien
+	_bomba_gracia = GRACIA_BOMBA
+	_bomba_anterior = 0
+	_bomba_anterior_t = 0.0
+	estado_cambio.emit()
+
+
+## Un golpe de `de` a `a`: si el que pega tiene la bomba, pasa. Devuelve si paso.
+##
+## LA LLAMA CombatUtils.deal_damage, el unico lugar por el que pasan todos los golpes: asi
+## la bomba pasa con cualquier habilidad, la de un personaje que todavia no existe incluida.
+func golpe_bomba(de: int, a: Node) -> bool:
+	if actual != BOMBA or not activo or _terminado or bomba_de == 0 or de != bomba_de:
+		return false
+	if _bomba_gracia > 0.0 or not is_instance_valid(a):
+		return false
+	var peer := int(a.get("peer_id"))
+	if peer == de or (peer == _bomba_anterior and _bomba_anterior_t > 0.0):
+		return false
+	var salud := a.get_node_or_null("Health") as Health
+	if salud == null or salud.is_dead:
+		return false
+	_bomba_anterior = de
+	_bomba_anterior_t = SIN_DEVOLVER
+	bomba_de = peer
+	bomba_nombre = String(a.get("player_name"))
+	_bomba_gracia = GRACIA_BOMBA
+	estado_cambio.emit()
+	return true
+
+
+## Corre la mecha. Devuelve true el frame en que explota: sacar al que la tiene, el ruido y
+## la ronda siguiente son de la arena.
+func avanzar_bomba(delta: float) -> bool:
+	if actual != BOMBA or not activo or _terminado or bomba_de == 0:
+		return false
+	_bomba_gracia = maxf(0.0, _bomba_gracia - delta)
+	_bomba_anterior_t = maxf(0.0, _bomba_anterior_t - delta)
+	mecha -= delta
+	if mecha > 0.0:
+		return false
+	mecha = 0.0
+	return true
+
+
+## Despues de la explosion, nadie la tiene hasta la ronda siguiente.
+func soltar_bomba() -> void:
+	bomba_de = 0
+	bomba_nombre = ""
+	estado_cambio.emit()
+
+
+# ------------------------------------------------------------- Las esferas
+
+## La llama la arena cuando el jugador toca la esfera.
+func esfera_tomada() -> void:
+	if not activo or _terminado or actual != ESFERAS:
+		return
+	esferas += 1
+	estado_cambio.emit()
+	if esferas >= META_ESFERAS:
+		_finalizar(true, "¡JUNTASTE LAS %d ESFERAS!" % META_ESFERAS, "%d caídas, en %s" % [
+			muertes, reloj()])
 
 
 ## Por cuanto se multiplica cada recarga. Solo el modo caos la acorta.
@@ -283,6 +433,9 @@ func nombre() -> String:
 		CAMPAL: return "Batalla campal"
 		CAOS: return "Modo caos"
 		METEORITOS: return "Lluvia de meteoritos"
+		BOMBA: return "Bomba caliente"
+		TOQUE: return "Un toque"
+		ESFERAS: return "Caza de esferas"
 		HISTORIA: return "Historia"
 	return "En línea"
 
@@ -311,6 +464,13 @@ func descripcion() -> String:
 		METEORITOS:
 			return "Aguantá %d segundos mientras caen meteoritos, cada vez más seguido. No reapareces." % int(
 				META_METEORITOS)
+		BOMBA:
+			return "Alguien tiene la bomba: pegale a otro para pasársela antes de que explote. Los golpes no sacan vida. Quedá último de cinco."
+		TOQUE:
+			return "Cualquier golpe mata, a todos. %d bajas ganan; %d caídas pierden." % [META_TOQUE, MUERTES_TOQUE]
+		ESFERAS:
+			return "Juntá %d esferas, una por vez, con %d bots cazándote. Seguí la columna de luz. %d caídas pierden." % [
+				META_ESFERAS, BOTS_ESFERAS, MUERTES_ESFERAS]
 		HISTORIA:
 			return String(Historia.capitulo(capitulo).get("titulo", ""))
 	return "Contra otros jugadores."
@@ -329,6 +489,9 @@ func bots_iniciales() -> int:
 		CAMPAL: return BOTS_CAMPAL
 		CAOS: return BOTS_CAOS
 		METEORITOS: return BOTS_METEORITOS
+		BOMBA: return BOTS_BOMBA
+		TOQUE: return BOTS_TOQUE
+		ESFERAS: return BOTS_ESFERAS
 		# La arena no pone a nadie: los pone la mision, cada uno con su lado y su papel.
 		HISTORIA: return 0
 	return 0
@@ -336,7 +499,7 @@ func bots_iniciales() -> int:
 
 ## Vuelve el bot despues de morir?
 func reaparecen_bots() -> bool:
-	return actual in [PRACTICA, CONTRARRELOJ, COLINA, CAOS, METEORITOS]
+	return actual in [PRACTICA, CONTRARRELOJ, COLINA, CAOS, METEORITOS, TOQUE, ESFERAS]
 
 
 ## Vuelve el jugador despues de morir?
@@ -344,7 +507,7 @@ func reaparecen_bots() -> bool:
 ## En supervivencia y en ultimo en pie, no: son modos que se pueden PERDER, y un modo que
 ## no se puede perder no se puede ganar tampoco.
 func reaparece_jugador() -> bool:
-	return actual in [PRACTICA, CONTRARRELOJ, ONLINE, COLINA, CAOS]
+	return actual in [PRACTICA, CONTRARRELOJ, ONLINE, COLINA, CAOS, TOQUE, ESFERAS]
 
 
 # --------------------------------------------------------------------- Partida
@@ -361,6 +524,14 @@ func iniciar(modo: StringName) -> void:
 	colina_avance = 0.0
 	colina_dentro = false
 	muertes = 0
+	esferas = 0
+	bomba_de = 0
+	bomba_nombre = ""
+	mecha = 0.0
+	ronda_bomba = 0
+	_bomba_gracia = 0.0
+	_bomba_anterior = 0
+	_bomba_anterior_t = 0.0
 	tiempo = 0.0
 	_terminado = false
 	estado_cambio.emit()
@@ -417,6 +588,17 @@ func bot_murio(vivos_restantes: int) -> int:
 			if bajas >= META_CAOS:
 				_finalizar(true, "¡DOMINASTE EL CAOS!", "%d bajas y %d caídas en %s" % [
 					bajas, muertes, reloj()])
+			return 0
+		TOQUE:
+			if bajas >= META_TOQUE:
+				_finalizar(true, "¡NI UN RASGUÑO!", "%d bajas y %d caídas en %s" % [
+					bajas, muertes, reloj()])
+			return 0
+		BOMBA:
+			# Las bajas son explosiones: quedar solo es ganar.
+			if vivos_restantes <= 0:
+				_finalizar(true, "¡SOBREVIVISTE A LA BOMBA!", "El último de %d, en %s" % [
+					BOTS_BOMBA + 1, reloj()])
 			return 0
 		DUELO:
 			_finalizar(true, "¡GANASTE EL DUELO!", "En %s" % reloj())
@@ -477,6 +659,18 @@ func jugador_murio() -> void:
 		METEORITOS:
 			_finalizar(false, "TE APLASTARON", "Aguantaste %s de %d segundos" % [
 				reloj(), int(META_METEORITOS)])
+		BOMBA:
+			_finalizar(false, "¡BOOM!", "Te explotó en la ronda %d" % maxi(1, ronda_bomba))
+		TOQUE:
+			muertes += 1
+			estado_cambio.emit()
+			if muertes >= MUERTES_TOQUE:
+				_finalizar(false, "UN TOQUE ALCANZÓ", "%d bajas de %d" % [bajas, META_TOQUE])
+		ESFERAS:
+			muertes += 1
+			estado_cambio.emit()
+			if muertes >= MUERTES_ESFERAS:
+				_finalizar(false, "TE CAZARON", "%d esferas de %d" % [esferas, META_ESFERAS])
 		HISTORIA:
 			# Tambien la mision: escucha la muerte del jugador por su cuenta.
 			pass
@@ -523,6 +717,17 @@ func marcador() -> String:
 			return "%d / %d BAJAS    %d / %d CAÍDAS" % [bajas, META_CAOS, muertes, MUERTES_CAOS]
 		METEORITOS:
 			return "AGUANTÁ %d s" % maxi(0, ceili(META_METEORITOS - tiempo))
+		BOMBA:
+			var quedan := maxi(0, BOTS_BOMBA - bajas)
+			if bomba_de == 0:
+				return "QUEDAN %d    PRÓXIMA RONDA..." % quedan
+			if bomba_de == Net.local_id():
+				return "¡TENÉS LA BOMBA!  %.1f s    QUEDAN %d" % [mecha, quedan]
+			return "LA BOMBA: %s  %.1f s    QUEDAN %d" % [bomba_nombre, mecha, quedan]
+		TOQUE:
+			return "%d / %d BAJAS    %d / %d CAÍDAS" % [bajas, META_TOQUE, muertes, MUERTES_TOQUE]
+		ESFERAS:
+			return "ESFERAS %d / %d    %d / %d CAÍDAS" % [esferas, META_ESFERAS, muertes, MUERTES_ESFERAS]
 		JEFES:
 			return "JEFE %d / %d    %s" % [mini(bajas + 1, JEFES_TOTAL), JEFES_TOTAL, reloj()]
 		HISTORIA:

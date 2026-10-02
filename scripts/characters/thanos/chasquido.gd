@@ -41,5 +41,11 @@ func execute(caster: Node, _origin: Vector3, _dir: Vector3) -> void:
 		var health := target.get_node_or_null("Health") as Health
 		if health == null or health.is_dead:
 			continue
-		health.apply_damage(health.current * FRACCION, source_id, true)
+		# No pasa por deal_damage (ignora el escudo), asi que los modos que cambian el golpe
+		# se miran aca: en la bomba no saca vida y la pasa, en un toque mata.
+		if Modos.sin_daño():
+			Modos.golpe_bomba(source_id, target)
+			continue
+		var cuanto := health.max_health * 2.0 if Modos.un_toque() else health.current * FRACCION
+		health.apply_damage(cuanto, source_id, true)
 	FX.spawn_chasquido(caster3d)

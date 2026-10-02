@@ -184,7 +184,19 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 		var est := atacante.get_node_or_null("StatusEffects") as StatusEffects
 		if est != null:
 			mult *= est.get_damage_dealt_multiplier()
-	var final_amount := amount * mult
+	var golpe := amount * mult
+	var final_amount := golpe
+	# LOS MODOS QUE CAMBIAN LO QUE HACE UN GOLPE. Aca y no en cada habilidad: cualquier
+	# golpe, de cualquier personaje, pasa por esta puerta.
+	#
+	# BOMBA CALIENTE: el golpe no saca vida, y si el que pega tiene la bomba, se la pasa.
+	# Los recursos se cobran igual (mas abajo): cargar el ultimate pegando sigue valiendo.
+	# UN TOQUE: cualquier golpe mata, escudo incluido.
+	if Modos.sin_daño():
+		Modos.golpe_bomba(source_id, target)
+		final_amount = 0.0
+	elif Modos.un_toque():
+		final_amount = health.max_health + health.get_shield() + 1.0
 	var was_alive := not health.is_dead
 	health.apply_damage(final_amount, source_id)
 
@@ -199,7 +211,9 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 	# daño del modo practica. Cobrando los recursos sobre el golpe sin rebajar, el bot
 	# junta su ultimate al mismo ritmo que lo juntaria un rival de verdad —que es contra
 	# lo que uno quiere practicar— y sigue pegando flojo.
-	var para_recursos := amount * (mult / maxf(0.01, Modos.daño_bot(source_id) * Practica.daño_bots)) if source_id < 0 else final_amount
+	# Y sobre el golpe de verdad, no sobre lo que dejo pasar el modo: en la bomba no saca
+	# vida y en un toque saca toda, y ninguna de las dos es lo que vale para el medidor.
+	var para_recursos := amount * (mult / maxf(0.01, Modos.daño_bot(source_id) * Practica.daño_bots)) if source_id < 0 else golpe
 
 	if feeds_resources:
 		var attacker := find_player_by_peer(target, source_id)

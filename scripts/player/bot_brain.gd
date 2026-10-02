@@ -204,7 +204,19 @@ func _process(delta: float) -> void:
 			_go_home()
 		else:
 			_fight(target)
+	# EL HEROE DE LA SIMULACION QUE JUNTA ESFERAS va a buscar la que este, y pelea solo con
+	# el que tiene encima. Lo pone solo el simulador de balance, como la marca "heroe".
+	if _body.has_meta(&"ir_a"):
+		_ir_a(_body.get_meta(&"ir_a"))
 	_esquivar_peligros()
+
+
+func _ir_a(punto: Vector3) -> void:
+	var cerca := _pick_target()
+	if cerca != null and cerca.global_position.distance_to(_body.global_position) < 6.0:
+		return
+	_body.bot_wants_run = true
+	_body.bot_move_dir = _rumbo_navegado(punto)
 
 
 ## Si esta parado donde va a caer algo, sale para afuera, por el lado mas corto. Pisa lo
@@ -216,6 +228,10 @@ func _esquivar_peligros() -> void:
 	var salida := Vector3.ZERO
 	for zona: Dictionary in peligros:
 		if float(zona["reaccion"]) > 0.0:
+			continue
+		# Un peligro que lleva alguien encima (la bomba) no lo espanta a el mismo.
+		var duenio: Variant = zona.get("dueño")
+		if duenio != null and is_instance_valid(duenio) and duenio == _body:
 			continue
 		var centro: Vector3 = zona["punto"]
 		var afuera := Vector3(pos.x - centro.x, 0.0, pos.z - centro.z)

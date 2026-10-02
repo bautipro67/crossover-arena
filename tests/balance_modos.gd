@@ -47,6 +47,8 @@ func _correr() -> void:
 	local.health.set_max(99999.0); local.health.revive_full()
 	local._apply_respawn(Vector3(0, -200, 0), 0.0)
 	local.set_physics_process(false)
+	# Y fuera de la bomba: si no, la arena se la daba a el, colgado debajo del piso.
+	local.set_meta(&"fuera_de_juego", true)
 
 	var args := OS.get_cmdline_user_args()
 	var modos: Array = [Modos.DUELO, Modos.ULTIMO_EN_PIE, Modos.JEFES, Modos.SUPERVIVENCIA,
@@ -347,11 +349,58 @@ func _pelea(personaje: StringName, enemigos: int, vida_heroe: float, radio: floa
 	return [false, t, heroe.health.current]
 
 
+## LA BOMBA CALIENTE: el heroe y los cuatro bots, todos contra todos, y la bomba que reparte
+## la arena de verdad. Gana si es el ultimo; devuelve [gano, rondas que duro].
+func _pelea_bomba(personaje: StringName) -> Array:
+	for id in _arena._players.keys().duplicate():
+		if id == Net.local_id():
+			continue
+		var b = _arena._players[id]
+		if is_instance_valid(b): b.queue_free()
+		_arena._players.erase(id)
+	_arena._guardar_bomba()
+	_arena._bomba_pausa = 2.0
+	await get_tree().process_frame
+
+	var base: Vector3 = _arena.get_free_spawn_point().origin
+	var heroe_id := _siguiente_id; _siguiente_id += 1
+	_arena._crear_bot(heroe_id, base, personaje)
+	var heroe: Player = _arena._players[heroe_id]
+	heroe.set_meta(&"heroe", true)
+	for c in heroe.died.get_connections():
+		heroe.died.disconnect(c["callable"])
+	var ids := CharacterDB.get_all_ids()
+	var malos: Array = []
+	for i in range(Modos.BOTS_BOMBA):
+		var ang := TAU * float(i) / float(Modos.BOTS_BOMBA) + 0.4
+		var id := _siguiente_malo; _siguiente_malo -= 1
+		var pos := _arena.find_clear_spot(base + Vector3(cos(ang), 0, sin(ang)) * 14.0, 1.0)
+		_arena._crear_bot(id, pos, ids[(i + 1 + ids.find(personaje)) % ids.size()])
+		var b: Player = _arena._players[id]
+		for c in b.died.get_connections():
+			b.died.disconnect(c["callable"])
+		malos.append(b)
+	Arena.set_bots_active(true)
+	var t := 0.0
+	while t < 240.0:
+		await get_tree().physics_frame
+		t += 1.0 / 60.0
+		if heroe.health.is_dead:
+			return [false, Modos.ronda_bomba]
+		var vivos := 0
+		for b in malos:
+			if is_instance_valid(b) and not b.health.is_dead:
+				vivos += 1
+		if vivos == 0:
+			return [true, Modos.ronda_bomba]
+	return [false, Modos.ronda_bomba]
+
+
 ## Una partida CON REAPARICION, como en caos y en la lluvia: el que cae vuelve a los pocos
 ## segundos. Devuelve [gano, segundos, bajas, muertes]. Con `meta_bajas` en 0 no se gana
 ## matando sino llegando vivo a `tope`; `max_muertes` 1 es una muerte y se termina.
 func _pelea_continua(personaje: StringName, enemigos: int, tope: float, meta_bajas: int,
-		max_muertes: int, lluvia: bool) -> Array:
+		max_muertes: int, lluvia: bool, esferas: bool = false) -> Array:
 	for id in _arena._players.keys().duplicate():
 		if id == Net.local_id():
 			continue
@@ -389,6 +438,12 @@ func _pelea_continua(personaje: StringName, enemigos: int, tope: float, meta_baj
 		_arena.blanco_lluvia = heroe
 		_arena._lluvia_espera = 2.5
 		_arena._lluvia_cuenta = 0
+	# LA CAZA DE ESFERAS: el heroe va a buscar la que este puesta (BotBrain mira "ir_a") y la
+	# arena se la cuenta a el. Se gana juntando todas, no llegando vivo al final.
+	if esferas:
+		_arena._sacar_esfera()
+		_arena._esfera_espera = 1.5
+		_arena.blanco_esferas = heroe
 
 	# DIAG=1: de donde vino el daño que recibio el heroe (0 = la lluvia, negativo = bots).
 	var daño_por := {"lluvia": 0.0, "bots": 0.0}
@@ -399,10 +454,19 @@ func _pelea_continua(personaje: StringName, enemigos: int, tope: float, meta_baj
 	var muertes := 0
 	var vuelven := {}
 	var t := 0.0
-	var fin: Array = [meta_bajas == 0, tope, 0, 0]
+	var fin: Array = [meta_bajas == 0 and not esferas, tope, 0, 0]
 	while t < tope:
 		await get_tree().physics_frame
 		t += 1.0 / 60.0
+		if esferas:
+			var donde: Variant = _arena.esfera_puesta()
+			if donde != null:
+				heroe.set_meta(&"ir_a", donde)
+			elif heroe.has_meta(&"ir_a"):
+				heroe.remove_meta(&"ir_a")
+			if Modos.esferas >= Modos.META_ESFERAS:
+				fin = [true, t, bajas, muertes]
+				break
 		if heroe.health.is_dead and not vuelven.has(heroe):
 			muertes += 1
 			if muertes >= max_muertes:
@@ -429,6 +493,7 @@ func _pelea_continua(personaje: StringName, enemigos: int, tope: float, meta_baj
 	fin[2] = bajas
 	fin[3] = muertes
 	_arena.blanco_lluvia = null
+	_arena.blanco_esferas = null
 	if OS.get_environment("DIAG") == "1":
 		print("  %s: %.0fs, daño de la lluvia %.0f, de los bots %.0f" % [personaje, fin[1],
 			daño_por["lluvia"], daño_por["bots"]])
@@ -490,6 +555,20 @@ func _medir(modo: StringName) -> void:
 				var r: Array = await _pelea_continua(pj, Modos.BOTS_METEORITOS, Modos.META_METEORITOS, 0, 1, true)
 				gano = r[0]
 				nota = "%.0fs" % r[1]
+			Modos.TOQUE:
+				var r: Array = await _pelea_continua(pj, Modos.BOTS_TOQUE, 150.0, Modos.META_TOQUE,
+					Modos.MUERTES_TOQUE, false)
+				gano = r[0]
+				nota = "%d-%d" % [r[2], r[3]]
+			Modos.ESFERAS:
+				var r: Array = await _pelea_continua(pj, Modos.BOTS_ESFERAS, 240.0, 0,
+					Modos.MUERTES_ESFERAS, false, true)
+				gano = r[0]
+				nota = "%de-%dm %.0fs" % [Modos.esferas, r[3], r[1]]
+			Modos.BOMBA:
+				var r: Array = await _pelea_bomba(pj)
+				gano = r[0]
+				nota = "r%d" % r[1]
 		if gano:
 			ganadas += 1
 		detalle += "%s:%s%s " % [String(pj).substr(0, 3), "G" if gano else "p", "(" + nota + ")"]

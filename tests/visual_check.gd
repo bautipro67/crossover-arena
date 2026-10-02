@@ -208,6 +208,7 @@ func _run() -> void:
 	await _scorpion()
 	await _temporada_3()
 	await _lluvia()
+	await _modos_juego()
 
 	# --- Los bots peleando, que es lo que cambia el modo practica ---
 	await _bots_en_combate()
@@ -472,6 +473,29 @@ func _mob() -> void:
 	await _shot("38_mob_al_100")
 	await _wait(CienPorCiento.DURACION)
 	player.health.set_max(100.0)
+
+
+## Los modos de la bomba y de las esferas: la bomba arriba de la cabeza, una esfera con su
+## columna de luz delante, y la explosion. Para ver si se leen de lejos y cuanto tapan.
+func _modos_juego() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+	_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+	await _wait(0.6)
+	var bomba := FX.armar_bomba(arena)
+	bomba.reparent(player, false)
+	bomba.position = Vector3(0.0, 2.75, 0.0)
+	var esfera := FX.armar_esfera(arena, arena._piso_en(player.global_position + Vector3(3.0, 0.0, -12.0)))
+	await _wait(0.8)
+	await _shot("45_bomba_y_esfera")
+	bomba.queue_free()
+	esfera.queue_free()
+	FX.spawn_explosion_bomba(arena, arena._piso_en(player.global_position + Vector3(0.0, 0.0, -7.0)) + Vector3.UP * 1.2)
+	await _wait(0.15)
+	await _shot("46_explosion_bomba")
+	await _wait(1.0)
 
 
 ## La lluvia de meteoritos: varios bajando delante del jugador, con sus sombras en el piso.
