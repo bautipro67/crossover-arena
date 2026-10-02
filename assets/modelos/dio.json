@@ -18,7 +18,12 @@
    0.2,
    0.16
   ],
-  "pestanas": false
+  "pestanas": false,
+  "formas": {
+   "dio_piedra": {
+    "oculto": true
+   }
+  }
  },
  "cejas": {
   "alto": 0.04,

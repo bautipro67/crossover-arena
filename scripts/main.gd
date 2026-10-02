@@ -83,7 +83,7 @@ func _on_dedicated_players_changed() -> void:
 		return
 	var count := Net.players.size()
 	if count > 0 and not Net.in_match:
-		print("[servidor] arrancando partida (%d jugador/es)" % count)
+		print("[servidor] arrancando partida (%d jugador/es) en %s" % [count, Mapas.nombre(Mapas.elegido)])
 		Net.start_match()
 	elif count == 0 and Net.in_match:
 		print("[servidor] no queda nadie, cerrando la partida")
@@ -384,7 +384,9 @@ func _restart_dedicated_match() -> void:
 		return
 	_clear_match()
 	if Net.players.size() > 0:
-		print("[servidor] arrancando partida nueva")
+		# LOS MAPAS VAN ROTANDO: cada partida del servidor publico en el siguiente lugar.
+		Net.elegir_mapa(Mapas.siguiente(Mapas.elegido))
+		print("[servidor] arrancando partida nueva en %s" % Mapas.nombre(Mapas.elegido))
 		Net.start_match()
 
 

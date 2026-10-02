@@ -223,6 +223,24 @@ que la anterior, y los jefes un escalón por encima de todo lo demás.
     con 2 bots cazándote. 5 caídas pierden.
   · Sala de práctica — ver abajo.
 
+═══ MAPAS (NUEVO) ═══
+
+Cada lugar de la historia es un mapa, y todos se eligen en la sala de espera (en línea,
+el servidor los va rotando):
+
+  · El Coliseo — la Arena entre los mundos, con las gradas llenas y el cielo roto.
+  · Hometown — el pueblo de Noelle una noche de diciembre: la nieve que sube, las casas
+    con las ventanas prendidas y el árbol de Navidad.
+  · La Torre del Torneo — al pie de la torre del núcleo, entre estandartes y tribunas.
+  · El Sótano — debajo de la Arena, en la cripta donde despertó el espíritu.
+  · El Inframundo — obsidiana, grietas de lava, volcanes y cadenas.
+  · El Vacío Infinito — lo que se abre en el centro de la Arena: negro y lleno de estrellas.
+  · El Núcleo — el cristal del corazón de la Arena, con las islas colgando dadas vuelta.
+  · Y dos más que se abren con las rutas secretas.
+
+El trazado es el mismo en todos —es el que está medido para que ningún personaje gane
+por el mapa—; lo que cambia es todo lo que se ve.
+
 ═══ TEMPORADA 3: SIN LÍMITES (NUEVA) ═══
 
 Jugar da experiencia y monedas: subís de nivel (del 1 al 60) y avanzás los 30 escalones
@@ -236,16 +254,16 @@ El último escalón del pase pro de la 3 es GOJO: no se vende ni sale de otro la
 escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
 tarda subirlo jugando.
 
-75 skins entre el pase y la tienda, 22 nuevas en esta temporada. Cada una sale de algo
-del original y cambia al personaje con cosas que son suyas: el pelo del Super Saiyajin,
-las púas cortas del Sonic de 1991, la armadura de rata de Pickle Rick, los cuernos del
-Madara del Diez Colas, el kimono de Wano, la araña blanca del traje simbionte, el ojo
-encendido de Sans... Las épicas y legendarias además traen acabados (metal, piedra,
-sombra), auras y ojos que brillan. En la tienda hay un probador para verla puesta antes
-de comprarla.
+75 skins entre el pase y la tienda, 22 nuevas en esta temporada. Cada una cambia el
+modelo con cosas que son del original: el Ultra Instinto sin el gi, Pickle Rick con la
+armadura de ratas, el Madara del Diez Colas con sus esferas y el Rinne Sharingan, los
+Gaster Blasters de Sans, el manto Hokage, el abrigo de capitán de Luffy, el Iron Spider con
+sus patas, la Máscara de Piedra de Dio, Noelle en la ruta Snowgrave con el Anillo de
+Espinas... Las épicas y legendarias además traen acabados (metal, piedra, sombra), auras
+y ojos que brillan. En la tienda hay un probador para verla puesta antes de comprarla.
 
-Todo es cosmético: ni el nivel ni las skins cambian vida, daño, velocidad, hitbox ni
-silueta. Y las monedas no se compran con plata: solo se ganan jugando.
+Todo es cosmético: ni el nivel ni las skins cambian vida, daño, velocidad ni hitbox. Y
+las monedas no se compran con plata: solo se ganan jugando.
 
 ═══ CONTROLES ═══
 

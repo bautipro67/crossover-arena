@@ -39,22 +39,29 @@ partes.append((cabeza, "cabeza"))
 
 
 def pelo_parado():
-    """Con la venda: todo el pelo empujado para arriba, en puntas altas y desordenadas."""
-    piezas = [kit.elipsoide((0, -0.020, 1.880), (0.150, 0.160, 0.130)),
-              kit.elipsoide((0, -0.080, 1.800), (0.140, 0.110, 0.100))]
-    for anillo, (r0, alto, n) in enumerate(((0.12, 0.22, 11), (0.06, 0.28, 6))):
-        for k in range(n):
-            a = 2 * math.pi * (k + 0.5 * anillo) / n
-            dx, dy = math.sin(a), math.cos(a)
-            base = (dx * r0, dy * r0 - 0.02, 1.95)
-            punta = (dx * (r0 + 0.10), dy * (r0 + 0.08) - 0.03, 1.95 + alto - 0.04 * (k % 2))
-            medio = ((base[0] + punta[0]) / 2, (base[1] + punta[1]) / 2, (base[2] + punta[2]) / 2 + 0.01)
-            piezas += kit.tubo([base, medio, punta], [0.060, 0.042, 0.006])
-    # Los mechones de atras y de los costados, cortos, para que no se vea el craneo.
-    for k in range(8):
-        a = math.radians(70 + k * 30)
-        piezas += kit.tubo([(math.sin(a) * 0.13, math.cos(a) * 0.13 - 0.03, 1.84),
-                            (math.sin(a) * 0.20, math.cos(a) * 0.19 - 0.04, 1.80)], [0.045, 0.006])
+    """Con la venda: todo el pelo empujado para arriba en un penacho alto, esponjoso y
+    desordenado; no una corona de puntas iguales. Puntas de largos y grosores distintos que
+    salen de un volumen grande sobre la venda, y los mechones de los costados."""
+    import random
+    random.seed(17)
+    piezas = [kit.elipsoide((0, -0.020, 1.900), (0.160, 0.168, 0.140)),
+              kit.elipsoide((0, -0.030, 1.985), (0.135, 0.140, 0.090)),
+              kit.elipsoide((0, -0.080, 1.800), (0.145, 0.115, 0.100))]
+    for k in range(24):
+        a = random.uniform(0, 2 * math.pi)
+        r0 = random.uniform(0.02, 0.12)
+        dx, dy = math.sin(a), math.cos(a)
+        alto = random.uniform(0.16, 0.30) * (1.0 - r0 * 1.6)
+        abre = random.uniform(0.05, 0.13)
+        base = (dx * r0, dy * r0 - 0.03, 1.97 + random.uniform(-0.02, 0.03))
+        punta = (dx * (r0 + abre), dy * (r0 + abre * 0.8) - 0.05, base[2] + alto)
+        medio = ((base[0] + punta[0]) / 2 + dx * 0.012, (base[1] + punta[1]) / 2, (base[2] + punta[2]) / 2)
+        piezas += kit.tubo([base, medio, punta], [random.uniform(0.050, 0.068), 0.040, 0.005])
+    # Los costados y la nuca: mechones cortos y en punta que tapan el craneo arriba de la venda.
+    for k in range(10):
+        a = math.radians(55 + k * 25)
+        piezas += kit.tubo([(math.sin(a) * 0.13, math.cos(a) * 0.13 - 0.03, 1.86),
+                            (math.sin(a) * 0.205, math.cos(a) * 0.195 - 0.04, 1.84 + 0.02 * (k % 2))], [0.046, 0.006])
     return piezas
 
 
@@ -116,12 +123,62 @@ partes.append((kit.fundir("manos", manos, PIEL, voxel=0.005, suavizado=5, caras=
 # -------------------------------------------------------------------- Piernas
 pantalon = [kit.elipsoide((0, 0.0, 0.92), (0.150, 0.108, 0.080))]
 for lado in (-1, 1):
-    pantalon += kit.pierna(lado, r_muslo=0.084, r_rodilla=0.074, r_tobillo=0.068, hasta=0.13)
+    # El pantalon del uniforme es ANCHO y cae recto.
+    pantalon += kit.pierna(lado, r_muslo=0.090, r_rodilla=0.084, r_tobillo=0.082, hasta=0.13)
 partes.append((kit.fundir("pantalon", pantalon, PANTALON, voxel=0.007, suavizado=8, caras=6000), "cadera"))
 zapatos = []
 for lado in (-1, 1):
     zapatos += kit.zapato(lado, largo=0.125, ancho=0.060, alto=0.050, punta=0.95)
 partes.append((kit.fundir("zapatos", zapatos, ZAPATOS, voxel=0.006, suavizado=6, caras=3500), "pies"))
+
+# -------------------------------------------------------------------- Skins
+#
+#   dominio  el Vacio Infinito: sin la venda, con los Seis Ojos, y el Azul y el Rojo
+#            encendidos en las manos (lo que junta para el Purpura).
+#   joven    el del colegio: los lentes redondos oscuros en vez de la venda.
+#   blanco   los dias libres: la camisa blanca con el cuello abierto y los lentes oscuros.
+AZUL = kit.material("neon_azul", (0.30, 0.55, 1.00))
+ROJO = kit.material("neon_rojo", (1.00, 0.20, 0.25))
+LENTE = kit.material("lentes_oscuros", (0.04, 0.04, 0.06), rugosidad=0.2)
+MARCO = kit.material("lentes_marco", (0.70, 0.70, 0.74), metal=0.6)
+CAMISA = kit.material("uniforme", (0.92, 0.92, 0.95))
+for lado, mat, nombre in ((-1, AZUL, "orbe_azul"), (1, ROJO, "orbe_rojo")):
+    xm, ym, zm = J["mano_l" if lado < 0 else "mano_r"]
+    partes.append((kit.fundir(kit.de_skin(nombre, "dominio"), [kit.elipsoide((xm, ym + 0.11, zm + 0.02), (0.055, 0.055, 0.055))],
+                              mat, voxel=0.004, suavizado=3, caras=1200), "codo_l" if lado < 0 else "codo_r"))
+lentes, marco = [], []
+for lado in (-1, 1):
+    p, n = kit.superficie(cabeza, lado * 0.055, 1.818)
+    c = tuple(p + n * 0.012)
+    l = [kit.elipsoide(c, (0.030, 0.006, 0.030), seg=20)]
+    kit.orientar(l, c, n)
+    lentes += l
+    aro = []
+    for k in range(18):
+        a, b = 2 * math.pi * k / 18, 2 * math.pi * (k + 1) / 18
+        aro.append(kit.capsula((c[0] + math.cos(a) * 0.031, c[1] + 0.002, c[2] + math.sin(a) * 0.031),
+                               (c[0] + math.cos(b) * 0.031, c[1] + 0.002, c[2] + math.sin(b) * 0.031), 0.003, seg=6))
+    kit.orientar(aro, c, n)
+    marco += aro
+    marco += kit.tubo([(lado * 0.086, c[1] - 0.02, 1.822), (lado * 0.140, -0.02, 1.830), (lado * 0.150, -0.10, 1.810)],
+                      [0.003, 0.003, 0.003], seg=6)
+marco += kit.tubo([(-0.024, 0.165, 1.822), (0.0, 0.170, 1.826), (0.024, 0.165, 1.822)], [0.003] * 3, seg=6)
+partes.append((kit.pieza_fija(kit.de_skin("lentes_oscuros", "joven", "blanco"), lentes, LENTE), "cabeza"))
+partes.append((kit.fundir(kit.de_skin("lentes_marco", "joven", "blanco"), marco, MARCO, voxel=0.0018, suavizado=1, caras=3000),
+               "cabeza"))
+# BLANCO: la camisa, con el cuello abierto en V y las solapas del cuello.
+camisa = kit.perfil([(0.86, 0.176, 0.130), (0.95, 0.169, 0.124), (1.05, 0.164, 0.120), (1.20, 0.176, 0.126),
+                     (1.36, 0.196, 0.132), (1.46, 0.194, 0.126), (1.53, 0.150, 0.108)])
+camisa.append(kit.capsula((-0.168, 0.0, 1.47), (0.168, 0.0, 1.47), 0.075))
+cm = kit.fundir(kit.de_skin("camisa", "blanco"), camisa, CAMISA, voxel=0.006, suavizado=8, caras=9000)
+kit.pintar(cm, kit.bpy.data.materials["piel"], lambda x, y, z: y > 0.05 and z > 1.42 + abs(x) * 2.2)
+partes.append((cm, "torso"))
+cuello = [kit.elipsoide((lado * 0.060, 0.070, 1.540), (0.060, 0.030, 0.032), rot=(18, 0, lado * -24)) for lado in (-1, 1)]
+partes.append((kit.fundir(kit.de_skin("camisa_cuello", "blanco"), cuello, CAMISA, voxel=0.004, suavizado=4, caras=1500),
+               "torso"))
+for obj, _r in partes:
+    if obj.name in ("uniforme", "boton"):
+        kit.ocultar_en(obj, "blanco")
 
 arm = kit.esqueleto(J)
 kit.pesar_estandar(partes, arm, J)

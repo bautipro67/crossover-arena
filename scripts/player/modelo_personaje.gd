@@ -101,6 +101,19 @@ static func textura_ojo(iris: Color, pestanas: bool, espejado: bool, estilo: Str
 			var ix := px - cx
 			var iy := float(y) - (cy + 8.0)
 			var di := sqrt(ix * ix + iy * iy)
+			# "rinnegan": el iris lila grande con los anillos concentricos y sin brillo de
+			# pupila; "rinnegan_edo", ademas con el blanco negro del Edo Tensei.
+			if estilo.begins_with("rinnegan"):
+				var dr := sqrt(ix * ix + (float(y) - cy) * (float(y) - cy))
+				var rc := iris.lerp(Color.WHITE, 0.12)
+				if dr < 44.0:
+					rc = iris.darkened(0.55) if (fmod(dr, 11.0) < 1.8 or dr < 4.5) else iris.lerp(Color.WHITE, 0.10 + dr / 300.0)
+				elif estilo == "rinnegan_edo":
+					rc = Color(0.10, 0.08, 0.10)
+				else:
+					rc = Color(0.98, 0.98, 1.0)
+				img.set_pixel(x, y, rc)
+				continue
 			# "brillo": el ojo entero encendido y sin pupila (Scorpion).
 			if estilo == "brillo":
 				img.set_pixel(x, y, iris.lerp(Color.WHITE, clampf(1.0 - e, 0.0, 1.0) * 0.6))
@@ -128,6 +141,11 @@ static func textura_ojo(iris: Color, pestanas: bool, espejado: bool, estilo: Str
 					col = iris.darkened(0.6)
 				if di < 17.0:
 					col = Color(0.04, 0.03, 0.05)
+				# "sapo": la pupila es una barra horizontal (el Modo Sabio, el Modo Kurama).
+				if estilo == "sapo":
+					col = iris.darkened(0.25).lerp(iris.lightened(0.20), t)
+					if absf(iy) < 6.0 and absf(ix) < 26.0:
+						col = Color(0.05, 0.03, 0.02)
 				if estilo == "sharingan" and di >= 17.0 and di < 36.0:
 					# El anillo fino y las tres comas (tomoe) sobre el anillo.
 					if absf(di - 26.0) < 1.6:
@@ -143,7 +161,7 @@ static func textura_ojo(iris: Color, pestanas: bool, espejado: bool, estilo: Str
 				col = col.darkened(0.12)
 			img.set_pixel(x, y, col)
 	# Los brillos, encima de todo (no en los ojos que son luz o un agujero).
-	var brillos: Array = [] if estilo == "brillo" or estilo.begins_with("cuenca") else [[Vector2(48, 70), 12.0], [Vector2(80, 108), 6.0]]
+	var brillos: Array = [] if estilo == "brillo" or estilo.begins_with("cuenca") or estilo.begins_with("rinnegan") else [[Vector2(48, 70), 12.0], [Vector2(80, 108), 6.0]]
 	for b: Array in brillos:
 		var c: Vector2 = b[0]
 		if espejado:

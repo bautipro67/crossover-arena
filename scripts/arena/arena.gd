@@ -104,6 +104,16 @@ var _esfera_espera: float = 1.5
 ## Quien junta. Sin nadie, el jugador local; el simulador pone a su heroe.
 var blanco_esferas: Player = null
 
+## EL MAPA de esta partida (ver Mapas): el tema con el que se arma y se viste todo.
+var _tema: Dictionary = {}
+## Solo el escenario: lo arma y lo viste, sin jugadores, sin bots, sin red y sin tocar la
+## luz de la partida que este corriendo. Para los arneses, que arman cada mapa.
+var solo_escenario: bool = false
+## Lo que se viste despues de armar lo solido: [centro, tamaño] de cada cobertura y
+## [base, radio, alto] de cada columna (ver Escenario).
+var _bloques: Array = []
+var _pilares: Array = []
+
 var _floor_material: StandardMaterial3D = null
 var _floor_alt_material: StandardMaterial3D = null
 var _wall_material: StandardMaterial3D = null
@@ -120,6 +130,7 @@ func _ready() -> void:
 	# Los peligros anunciados son de UNA partida: si la anterior termino con meteoritos en
 	# el aire, sus sombras no pueden seguir espantando a los bots de esta.
 	BotBrain.peligros.clear()
+	_tema = Mapas.actual()
 	_make_materials()
 	_build_environment()
 	_build_floor()
@@ -127,6 +138,11 @@ func _ready() -> void:
 	_build_cover()
 	_build_spawn_points()
 	_build_navigation()
+	# El servidor dedicado no dibuja: le alcanza con lo solido.
+	if not Net.dedicated:
+		Escenario.vestir(self, _tema, _bloques, _pilares)
+	if solo_escenario:
+		return
 
 	if Net.is_server():
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
@@ -152,12 +168,17 @@ func _ready() -> void:
 # ------------------------------------------------------------ Construccion del mapa
 
 func _make_materials() -> void:
-	_floor_material = Art.toon(Art.FLOOR_DARK, 0.0)
-	_floor_alt_material = Art.toon(Art.FLOOR_LIGHT, 0.0)
-	_wall_material = Art.toon(Art.WALL, 0.03)
-	_cover_material = Art.toon(Art.COVER, 0.03)
-	_cover_top_material = Art.toon(Art.COVER_TOP, 0.03)
-	_trim_material = Art.glow(Art.TRIM, 1.8)
+	# LOS COLORES SON DEL MAPA: el piso, las paredes, las coberturas y las luces de cada
+	# lugar (ver Mapas). Las formas de encima las pone Escenario.
+	var piso: Dictionary = _tema.get("piso", {})
+	var pared: Dictionary = _tema.get("pared", {})
+	var cob: Dictionary = _tema.get("cobertura", {})
+	_floor_material = Art.toon(piso.get("a", Art.FLOOR_DARK), 0.0)
+	_floor_alt_material = Art.toon(piso.get("b", Art.FLOOR_LIGHT), 0.0)
+	_wall_material = Art.toon(pared.get("color", Art.WALL), 0.03)
+	_cover_material = Art.toon(cob.get("fria", Art.COVER), 0.03)
+	_cover_top_material = Art.toon(cob.get("tope", Art.COVER_TOP), 0.03)
+	_trim_material = Art.glow(pared.get("trim", Art.TRIM), 1.8)
 	# Los pilares NO pueden usar el material de pared: con el cielo nuevo, mas claro,
 	# ese azul casi negro los convertia en siluetas planas recortadas contra el fondo.
 	_pillar_material = Art.toon(Color(0.20, 0.25, 0.39), 0.03)
@@ -167,43 +188,56 @@ func _make_materials() -> void:
 	# superficies casi blancas y el toon shading cuantiza, asi que el dorado de una
 	# omni de energia 8 se perdia en el blanco. Teñir el material se ve siempre, a
 	# cualquier distancia y en cualquier renderer, y no cuesta un solo frame.
-	_cover_warm_material = Art.toon(Color(0.46, 0.38, 0.30), 0.03)
-	_cover_cool_material = Art.toon(Color(0.26, 0.36, 0.58), 0.03)
+	_cover_warm_material = Art.toon(cob.get("calida", Color(0.46, 0.38, 0.30)), 0.03)
+	_cover_cool_material = Art.toon(cob.get("fria", Color(0.26, 0.36, 0.58)), 0.03)
 	# Las marcas del piso van mucho mas apagadas que los trims verticales. Con la
 	# emision de 1.8 se quemaban en una mancha blanca que tapaba media pantalla.
-	_marking_material = Art.glow(Art.TRIM, 0.55)
+	_marking_material = Art.glow(piso.get("marca", Art.TRIM), 0.55)
 
 
 func _build_environment() -> void:
 	var env := Environment.new()
-	# Cielo de atardecer frio. El horizonte tira a violeta y el cenit a azul profundo:
-	# el degrade da una direccion de luz clara y hace que el mapa no se lea plano.
-	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color(0.04, 0.06, 0.18)
-	sky_material.sky_horizon_color = Color(0.55, 0.47, 0.72)
-	sky_material.sky_curve = 0.09
-	sky_material.sky_energy_multiplier = 1.15
-	sky_material.ground_bottom_color = Color(0.03, 0.04, 0.09)
-	sky_material.ground_horizon_color = Color(0.30, 0.30, 0.46)
-	# Sol visible, alineado con la luz direccional de abajo. Tener de donde viene la luz
-	# es la diferencia entre un escenario y una caja iluminada.
-	sky_material.sun_angle_max = 8.0
-	sky_material.sun_curve = 0.08
-	var sky := Sky.new()
-	sky.sky_material = sky_material
-	env.background_mode = Environment.BG_SKY
-	env.sky = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	# EL CIELO DEL LUGAR: el degrade de cada mapa (el atardecer violeta del coliseo, la
+	# noche de Hometown, el rojo del Inframundo...) da una direccion de luz clara y hace
+	# que el mapa no se lea plano. El sotano no tiene cielo: tiene techo de roca, y el
+	# fondo es oscuro.
+	if _tema.has("techo"):
+		env.background_mode = Environment.BG_COLOR
+		env.background_color = _tema["techo"]
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = _tema.get("ambiente_color", Color(0.3, 0.35, 0.4))
+	else:
+		var cielo: Dictionary = _tema.get("cielo", {})
+		var sky_material := ProceduralSkyMaterial.new()
+		sky_material.sky_top_color = cielo.get("arriba", Color(0.04, 0.06, 0.18))
+		sky_material.sky_horizon_color = cielo.get("horizonte", Color(0.55, 0.47, 0.72))
+		sky_material.sky_curve = 0.09
+		sky_material.sky_energy_multiplier = float(cielo.get("energia", 1.15))
+		sky_material.ground_bottom_color = cielo.get("suelo", Color(0.03, 0.04, 0.09))
+		sky_material.ground_horizon_color = (cielo.get("horizonte", Color(0.30, 0.30, 0.46)) as Color).darkened(0.4)
+		# Sol visible, alineado con la luz direccional de abajo. Tener de donde viene la luz
+		# es la diferencia entre un escenario y una caja iluminada.
+		sky_material.sun_angle_max = 8.0
+		sky_material.sun_curve = 0.08
+		var sky := Sky.new()
+		sky.sky_material = sky_material
+		env.background_mode = Environment.BG_SKY
+		env.sky = sky
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+		if _tema.has("ambiente_color"):
+			env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+			env.ambient_light_color = _tema["ambiente_color"]
 	# Bajo a proposito. Con 0.55 la luz del cielo tapaba las luces de color del mapa y
 	# los 92 metros se veian de un solo azul plano de punta a punta.
-	env.ambient_light_energy = 0.34
+	env.ambient_light_energy = float(_tema.get("ambiente", 0.34))
 
-	# Niebla fria: da profundidad y separa las capas del mapa.
+	# La niebla del lugar: da profundidad y separa las capas del mapa.
+	var niebla: Array = _tema.get("niebla", [Color(0.46, 0.50, 0.78), 0.0038])
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.46, 0.50, 0.78)
-	# Mas fina que antes (0.010): el mapa ahora mide 92 metros y con la densidad vieja
-	# el borde opuesto quedaba lavado y no se veia venir a nadie.
-	env.fog_density = 0.0038
+	env.fog_light_color = niebla[0]
+	# Fina: el mapa mide 120 metros y con mucha el borde opuesto queda lavado y no se ve
+	# venir a nadie. Las que la suben (el sotano, la ventisca) es a proposito.
+	env.fog_density = float(niebla[1])
 	env.fog_sky_affect = 0.25
 	env.fog_aerial_perspective = 0.35
 
@@ -225,28 +259,32 @@ func _build_environment() -> void:
 	env.adjustment_saturation = 1.18
 	env.adjustment_contrast = 1.08
 
-	var world_env := WorldEnvironment.new()
-	world_env.environment = env
-	add_child(world_env)
-	# FX lo necesita para gradear la imagen (por ejemplo, desaturar en ZA WARUDO).
-	FX.register_environment(env)
+	# Un escenario de prueba no le cambia la luz a la partida que este corriendo.
+	if not solo_escenario:
+		var world_env := WorldEnvironment.new()
+		world_env.environment = env
+		add_child(world_env)
+		# FX lo necesita para gradear la imagen (por ejemplo, desaturar en ZA WARUDO).
+		FX.register_environment(env)
 
 	# Sol principal, con sombras que acompañan el cel-shading.
+	var sol: Array = _tema.get("sol", [Color(1.0, 0.96, 0.88), 1.05, Vector3(-48.0, 35.0, 0.0)])
 	var sun := DirectionalLight3D.new()
-	sun.light_color = Color(1.0, 0.96, 0.88)
+	sun.light_color = sol[0]
 	# Energia moderada: con cel-shading y colores saturados, mas luz no ilumina,
 	# quema. El dorado de Dio se convertia en una mancha blanca.
-	sun.light_energy = 1.05
+	sun.light_energy = float(sol[1])
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 90.0
-	sun.rotation_degrees = Vector3(-48.0, 35.0, 0.0)
+	sun.rotation_degrees = sol[2]
 	add_child(sun)
 
-	# Relleno azulado desde el lado opuesto. Sin esto las caras en sombra quedan negras
-	# y los personajes se pierden contra el piso.
+	# Relleno desde el lado opuesto. Sin esto las caras en sombra quedan negras y los
+	# personajes se pierden contra el piso.
+	var relleno: Array = _tema.get("relleno", [Color(0.45, 0.62, 1.0), 0.45])
 	var fill := DirectionalLight3D.new()
-	fill.light_color = Color(0.45, 0.62, 1.0)
-	fill.light_energy = 0.45
+	fill.light_color = relleno[0]
+	fill.light_energy = float(relleno[1])
 	fill.shadow_enabled = false
 	fill.rotation_degrees = Vector3(-28.0, -145.0, 0.0)
 	add_child(fill)
@@ -269,15 +307,20 @@ func _build_accent_lights() -> void:
 	#
 	# Las energias son altas (8-9) porque el rango es grande: una omni reparte su
 	# energia en todo el radio, y con 2.4 a 24 metros no llegaba nada al piso.
+	# Los colores son del mapa: el centro y las dos diagonales.
+	var luces: Dictionary = _tema.get("luces", {})
+	var energia := float(luces.get("energia", 8.0))
+	var calida: Color = luces.get("calida", Art.GOLD)
+	var fria: Color = luces.get("fria", Color(0.35, 0.62, 1.0))
 	var puntos: Array = [
-		# El centro, en hielo: es el punto al que todos miran.
-		{"pos": Vector3(0.0, 9.0, 0.0), "color": Art.ICE, "energia": 9.0, "radio": 30.0},
+		# El centro: es el punto al que todos miran.
+		{"pos": Vector3(0.0, 9.0, 0.0), "color": luces.get("centro", Art.ICE), "energia": energia * 1.1, "radio": 30.0},
 		# Diagonal calida.
-		{"pos": Vector3(-32.0, 7.0, -32.0), "color": Art.GOLD, "energia": 8.0, "radio": 34.0},
-		{"pos": Vector3(32.0, 7.0, 32.0), "color": Art.GOLD, "energia": 8.0, "radio": 34.0},
+		{"pos": Vector3(-32.0, 7.0, -32.0), "color": calida, "energia": energia, "radio": 34.0},
+		{"pos": Vector3(32.0, 7.0, 32.0), "color": calida, "energia": energia, "radio": 34.0},
 		# Diagonal fria.
-		{"pos": Vector3(32.0, 7.0, -32.0), "color": Color(0.35, 0.62, 1.0), "energia": 7.0, "radio": 34.0},
-		{"pos": Vector3(-32.0, 7.0, 32.0), "color": Color(0.35, 0.62, 1.0), "energia": 7.0, "radio": 34.0},
+		{"pos": Vector3(32.0, 7.0, -32.0), "color": fria, "energia": energia * 0.9, "radio": 34.0},
+		{"pos": Vector3(-32.0, 7.0, 32.0), "color": fria, "energia": energia * 0.9, "radio": 34.0},
 	]
 	for punto: Dictionary in puntos:
 		var luz := OmniLight3D.new()
@@ -295,17 +338,8 @@ func _build_accent_lights() -> void:
 ## Piso a cuadros. Es puramente visual pero cambia todo: sobre un plano liso no tenes
 ## referencia de velocidad ni de distancia y el mapa se siente vacio.
 func _build_floor() -> void:
-	var half := ARENA_SIZE * 0.5
 	_add_box(Vector3(0.0, -0.5, 0.0), Vector3(ARENA_SIZE, 1.0, ARENA_SIZE), _floor_material, "Floor")
-
-	var tile := 6.0
-	var count := int(ARENA_SIZE / tile)
-	for x: int in range(count):
-		for z: int in range(count):
-			if (x + z) % 2 == 1:
-				continue
-			var pos := Vector3(-half + tile * (float(x) + 0.5), 0.006, -half + tile * (float(z) + 0.5))
-			_add_plane(pos, Vector2(tile, tile), _floor_alt_material)
+	# El dibujo del piso (losas, nieve, lava, estrellas...) lo pone Escenario, del mapa.
 
 	# --- Marcas luminosas en el piso ---
 	#
@@ -315,8 +349,9 @@ func _build_floor() -> void:
 	#
 	# Y en el build web rinden mas que cualquier otra cosa: Compatibility no tiene SSAO
 	# ni niebla volumetrica, pero la emision con glow se ve igual que en escritorio.
-	_add_ring(15.0, 15.7, Art.TRIM, 0.9)
-	_add_ring(30.0, 30.4, Color(0.30, 0.42, 0.68), 0.6)
+	var marca: Color = (_tema.get("piso", {}) as Dictionary).get("marca", Art.TRIM)
+	_add_ring(15.0, 15.7, marca, 0.9)
+	_add_ring(30.0, 30.4, marca.darkened(0.35), 0.6)
 
 	# Cuatro lineas del centro a cada rampa: marcan los accesos a la plataforma.
 	for i: int in range(4):
@@ -359,19 +394,9 @@ func _build_walls() -> void:
 	_add_prop(Vector3(-half, h, 0.0), Vector3(1.35, 0.24, ARENA_SIZE), _trim_material)
 	_add_prop(Vector3(half, h, 0.0), Vector3(1.35, 0.24, ARENA_SIZE), _trim_material)
 
-	# Franjas verticales cada 11.5 metros. Con paredes de 12 metros de alto y lisas, el
-	# borde del mapa era un muro sin escala; las franjas dan altura y ritmo, y de paso
-	# sirven de referencia para medir distancias de un vistazo.
-	var paso := 11.5
-	var cuantas := int(ARENA_SIZE / paso)
-	for i: int in range(cuantas + 1):
-		var t := -half + paso * float(i)
-		if absf(t) > half - 1.0:
-			continue
-		_add_prop(Vector3(t, h * 0.5, -half + 0.6), Vector3(0.28, h * 0.72, 0.16), _trim_material)
-		_add_prop(Vector3(t, h * 0.5, half - 0.6), Vector3(0.28, h * 0.72, 0.16), _trim_material)
-		_add_prop(Vector3(-half + 0.6, h * 0.5, t), Vector3(0.16, h * 0.72, 0.28), _trim_material)
-		_add_prop(Vector3(half - 0.6, h * 0.5, t), Vector3(0.16, h * 0.72, 0.28), _trim_material)
+	# La cara de adentro de las paredes (los arcos del coliseo, la cerca del pueblo, los
+	# riscos del Inframundo...) la viste Escenario: da altura y ritmo, y de paso sirve de
+	# referencia para medir distancias de un vistazo.
 
 	# Torres en las esquinas, para que el perimetro no sea una caja pelada.
 	for sx: float in [-1.0, 1.0]:
@@ -563,6 +588,7 @@ func _anillo_medio() -> void:
 func _bloque(pos: Vector3, size: Vector3, material: StandardMaterial3D) -> void:
 	_add_box(pos, size, material, "Cover%d" % _cover_index)
 	_cover_index += 1
+	_bloques.append([pos, size])
 
 
 # ---------------------------------------------------------- Piezas del escenario
@@ -645,11 +671,10 @@ func _add_pillar(base: Vector3, radius: float, height: float) -> void:
 	cyl.height = height
 	shape.shape = cyl
 	body.add_child(shape)
-
-	body.add_child(Art.cylinder(radius, height, _pillar_material))
-	body.add_child(Art.cylinder(radius * 1.07, 0.3, _trim_material, Vector3(0.0, -height * 0.5 + 1.3, 0.0)))
-	body.add_child(Art.cylinder(radius * 1.07, 0.3, _trim_material, Vector3(0.0, height * 0.5 - 0.9, 0.0)))
 	add_child(body)
+	# La forma (columna, pino, estalagmita, estandarte...) la pone Escenario. En el
+	# servidor dedicado no se dibuja nada.
+	_pilares.append([base, radius, height])
 
 
 # ------------------------------------------------------------------- Navegacion

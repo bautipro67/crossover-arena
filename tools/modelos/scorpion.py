@@ -183,7 +183,58 @@ for k in range(6):
                       (b[0] + 0.022 * e[2], b[1] - 0.012, b[2] - 0.022 * e[0])])
 partes.append((kit.lineas("envoltura", envoltura, 0.0045, ROPA), "torso"))
 
+# -------------------------------------------------------------------- Skins
+#
+#   infernal  el espectro que volvio por venganza: la calavera en llamas (FX), y el fuego
+#             del Inframundo saliendole de las hombreras y de los antebrazos.
+#   shirai    el lider del clan: la capa larga y el peto de gala con el escorpion del clan.
+#   clasico   el de 1992: el ninja simple, sin las hombreras ni la espada a la espalda.
+import random
+FUEGO = kit.material("neon_llamas", (1.00, 0.45, 0.10))
+CAPA = kit.material("capa", (0.10, 0.08, 0.07))
+PETO = kit.material("metal_peto", (0.85, 0.70, 0.35), metal=0.7, rugosidad=0.3)
+EMBLEMA = kit.material("emblema", (0.10, 0.08, 0.07))
+random.seed(13)
+llamas = []
+for lado in (-1, 1):
+    for k in range(6):
+        x = lado * random.uniform(0.22, 0.36)
+        y = random.uniform(-0.08, 0.08)
+        base = (x, y, 1.50 + random.uniform(0.0, 0.04))
+        alto = random.uniform(0.10, 0.20)
+        llamas += kit.tubo([base, (x + lado * 0.02, y, base[2] + alto * 0.5), (x + lado * 0.01, y - 0.01, base[2] + alto)],
+                           [0.030, 0.020, 0.003], seg=8)
+    xc = J["codo_" + ("l" if lado < 0 else "r")][0]
+    for k in range(5):
+        a = random.uniform(0, 2 * math.pi)
+        z = random.uniform(0.92, 1.06)
+        base = (xc + math.cos(a) * 0.07, math.sin(a) * 0.07, z)
+        llamas += kit.tubo([base, (base[0] + math.cos(a) * 0.04, base[1] + math.sin(a) * 0.04, z + 0.06),
+                            (base[0] + math.cos(a) * 0.05, base[1] + math.sin(a) * 0.05, z + 0.12)], [0.020, 0.014, 0.002], seg=8)
+partes.append((kit.fundir(kit.de_skin("llamas", "infernal"), llamas, FUEGO, voxel=0.004, suavizado=2, caras=5000),
+               "por_distancia"))
+partes.append((kit.capa("capa", ["shirai"], CAPA, z_abajo=0.35, abre=0.14, cuello=0.06), "torso"))
+peto = kit.cascara(kit.de_skin("metal_peto", "shirai"), torso(0.026), PETO,
+                   lambda x, y, z: y > 0.06 and 1.20 < z < 1.42 and abs(x) < 0.16, grosor=0.012, caras=3000)
+partes.append((peto, "torso"))
+p, n = kit.superficie(peto, 0.0, 1.31)
+c = tuple(p + n * 0.004)
+pts = [(c[0] + 0.0, c[1], c[2] + 0.05), (c[0], c[1], c[2] - 0.05)]
+emblema = [pts]
+for lado in (-1, 1):
+    emblema.append([(c[0], c[1], c[2] + 0.02), (c[0] + lado * 0.04, c[1], c[2] + 0.05), (c[0] + lado * 0.05, c[1], c[2] + 0.07)])
+    emblema.append([(c[0], c[1], c[2] - 0.01), (c[0] + lado * 0.045, c[1], c[2] - 0.03)])
+emblema.append([(c[0], c[1], c[2] - 0.05), (c[0] + 0.02, c[1], c[2] - 0.07), (c[0] + 0.035, c[1], c[2] - 0.055)])
+partes.append((kit.lineas(kit.de_skin("emblema", "shirai"), emblema, 0.006, EMBLEMA), "torso"))
+for obj, _r in partes:
+    if obj.name.startswith(("hombrera_", "correa_")) or obj.name in ("vaina", "guarda", "mango", "envoltura"):
+        kit.ocultar_en(obj, "clasico")
+
 arm = kit.esqueleto(J)
+for obj, regla in partes:
+    if regla == "por_distancia":
+        kit.pesar(obj, arm, J)
+partes = [p for p in partes if p[1] != "por_distancia"]
 for obj, regla in partes:
     if regla.startswith(("hombro_", "codo_", "rodilla_")):
         kit.pesar(obj, arm, J, solo=regla)

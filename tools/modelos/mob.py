@@ -45,13 +45,14 @@ def borde_tazon(x, y):
     """La altura del borde del pelo alrededor de la cabeza: recto arriba de las cejas
     adelante, a la altura de las orejas a los costados y mas bajo en la nuca."""
     a = abs(math.degrees(math.atan2(x, y)))
-    return 1.872 - 0.095 * suave(32, 70, a) - 0.105 * suave(105, 165, a)
+    return 1.872 - 0.095 * suave(32, 70, a) - 0.150 * suave(105, 165, a)
 
 
 # EL TAZON: una cascara gruesa de pelo, con el borde parejo, y unos mechones apenas marcados
 # en la superficie para que no sea una bocha lisa.
 casco = [kit.elipsoide((0, -0.012, 1.858), (0.168, 0.176, 0.162)),
-         kit.elipsoide((0, -0.050, 1.780), (0.160, 0.150, 0.110))]
+         kit.elipsoide((0, -0.050, 1.780), (0.160, 0.150, 0.110)),
+         kit.elipsoide((0, -0.085, 1.730), (0.140, 0.110, 0.090))]
 for k in range(14):
     a = math.radians(-150 + k * (300 / 13))
     casco += kit.tubo([(math.sin(a) * 0.05, math.cos(a) * 0.05 - 0.02, 2.00),
@@ -72,7 +73,12 @@ for k in range(5):
     a = 2 * math.pi * k / 5 + 0.3
     cien += kit.tubo([(math.sin(a) * 0.04, math.cos(a) * 0.04, 2.00), (math.sin(a) * 0.06, math.cos(a) * 0.06, 2.24)],
                      [0.050, 0.006])
-partes.append((kit.fundir("pelo__f_cien", cien, PELO, voxel=0.0058, suavizado=4, caras=9000), "cabeza"))
+cien_obj = kit.fundir("pelo__f_cien", cien, PELO, voxel=0.0058, suavizado=4, caras=9000)
+partes.append((cien_obj, "cabeza"))
+# UN CHICO DE CATORCE: la cabeza mas grande para el cuerpo que la de un adulto. Se arma con
+# las medidas de siempre y despues se agranda entera, pelo incluido.
+CABEZA = dict(escala=1.13, centro=(0.0, 0.0, 1.64))
+kit.mover([cabeza, tazon, cien_obj], **CABEZA)
 
 # -------------------------------------------------------------------- Torso
 # El gakuran: cerrado hasta el cuello alto, largo hasta la cadera.
@@ -133,11 +139,34 @@ for lado in (-1, 1):
     zapatos += kit.zapato(lado, largo=0.118, ancho=0.058, alto=0.050, punta=0.95)
 partes.append((kit.fundir("zapatos", zapatos, ZAPATOS, voxel=0.006, suavizado=6, caras=3500), "pies"))
 
+# -------------------------------------------------------------------- Skins
+#
+#   incognita  Mob ???%: lo que queda cuando ya no hay nadie adentro. La silueta negra con
+#              los ojos blancos, el pelo parado del 100%, y la sombra que se le levanta del
+#              cuerpo en lenguas, de los hombros, la espalda y la cabeza.
+import random
+SOMBRA = kit.material("humo", (0.03, 0.03, 0.05))
+random.seed(31)
+humo = []
+for k in range(26):
+    a = random.uniform(0, 2 * math.pi)
+    z = random.uniform(1.10, 1.55) if k < 18 else random.uniform(1.85, 2.0)
+    r = 0.20 if k < 18 else 0.15
+    base = (math.sin(a) * r, math.cos(a) * r * 0.75 - 0.02, z)
+    alto = random.uniform(0.18, 0.36)
+    ladeo = random.uniform(-0.06, 0.06)
+    pts = [base]
+    for t in (0.35, 0.7, 1.0):
+        pts.append((base[0] * (1.0 + t * 0.25) + ladeo * t + math.sin(t * 7 + k) * 0.025,
+                    base[1] * (1.0 + t * 0.25) - 0.03 * t, base[2] + alto * t))
+    humo += kit.tubo(pts, [0.040, 0.032, 0.020, 0.003], seg=10)
+partes.append((kit.fundir(kit.de_skin("humo", "incognita"), humo, SOMBRA, voxel=0.006, suavizado=4, caras=8000), "torso"))
+
 arm = kit.esqueleto(J)
 kit.pesar_estandar(partes, arm, J)
-cara = kit.cara_estandar(cabeza, J, 0.058, 1.812,
-                         ojos_extra={"alto": 0.060, "ancho": 0.052, "iris": [0.06, 0.06, 0.08], "pestanas": False,
+cara = kit.cara_estandar(cabeza, J, 0.058, 1.812, escala=kit.escala_desde(CABEZA["centro"], CABEZA["escala"]),
+                         ojos_extra={"alto": 0.068, "ancho": 0.059, "iris": [0.06, 0.06, 0.08], "pestanas": False,
                                      "formas": {"cien": {"estilo": "brillo", "iris": [0.85, 0.93, 1.00]}}},
-                         cejas={"alto": 0.040, "color": [0.05, 0.05, 0.07], "largo": 0.050},
+                         cejas={"alto": 0.045, "color": [0.05, 0.05, 0.07], "largo": 0.056},
                          boca_z=1.700, boca_extra={"ancho": 0.040, "dientes": False})
 kit.exportar("mob", arm, cara)

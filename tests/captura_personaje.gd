@@ -5,7 +5,7 @@ extends Node3D
 ## Para mirar un personaje nuevo antes de darlo por bueno. Los arneses dicen si algo
 ## funciona; esto dice si SE PARECE, que ningun chequeo puede decir.
 ##
-##   godot --path . --resolution 900x900 res://tests/captura_personaje.tscn -- <carpeta> <id>
+##   godot --path . --resolution 900x900 res://tests/captura_personaje.tscn -- <carpeta> <id> [fabrica|<skin>]
 
 var _salida: String = ""
 var _personaje: StringName = &"goku"
@@ -49,7 +49,13 @@ func _ready() -> void:
 func _correr() -> void:
 	var base := CharacterDB.get_character(_personaje)
 	var variantes: Array[StringName] = [&""]
-	variantes.append_array(SkinDB.de_personaje(_personaje))
+	# "-- <carpeta> <id> fabrica": solo la ropa de fabrica; "-- <carpeta> <id> <skin>": esa.
+	var args := OS.get_cmdline_user_args()
+	if args.size() > 2:
+		if args[2] != "fabrica":
+			variantes = [StringName(args[2])]
+	else:
+		variantes.append_array(SkinDB.de_personaje(_personaje))
 	for sid: StringName in variantes:
 		for hijo: Node in _pivote.get_children():
 			hijo.queue_free()

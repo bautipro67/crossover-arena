@@ -62,16 +62,37 @@ def pelo_base():
     return piezas
 
 
-def pelo_ssj():
-    """El Super Saiyajin: las puntas paradas para arriba, mas largas; un solo mechon en la frente."""
+def pelo_ultra():
+    """El Ultra Instinto: el pelo de siempre pero plateado y mas parado, como si flotara;
+    las puntas suben en vez de abrirse a los costados."""
+    piezas = [kit.elipsoide((0, -0.025, 1.875), (0.168, 0.168, 0.152))]
+    for k in range(7):
+        a = -1.25 + k * (2.5 / 6)
+        dx, dz = math.sin(a), math.cos(a)
+        base = (dx * 0.11, -0.03, 1.92 + dz * 0.04)
+        punta = (dx * 0.34, -0.08 - abs(dx) * 0.04, 2.02 + dz * 0.34)
+        medio = ((base[0] * 0.4 + punta[0] * 0.6), -0.05, (base[2] * 0.4 + punta[2] * 0.6) + 0.04)
+        piezas += kit.tubo([base, medio, punta], [0.090, 0.058, 0.006])
+    for k in range(4):
+        dx = -0.12 + k * 0.08
+        piezas += kit.tubo([(dx * 0.5, -0.10, 1.89), (dx * 1.05, -0.25, 1.92)], [0.070, 0.010])
+    for dx, largo in ((-0.07, 0.045), (0.0, 0.060), (0.07, 0.040)):
+        piezas += kit.tubo([(dx, 0.10, 1.97), (dx * 1.3, 0.165, 1.95), (dx * 1.5, 0.170, 1.95 - largo)],
+                           [0.042, 0.030, 0.006])
+    return piezas
+
+
+def pelo_ssj(puntas=9, alto=0.32, grueso=1.0):
+    """El Super Saiyajin: las puntas paradas para arriba, mas largas; un solo mechon en la
+    frente. El Blue, con menos altura y puntas mas gruesas y marcadas."""
     piezas = [kit.elipsoide((0, -0.020, 1.880), (0.168, 0.168, 0.155))]
-    for k in range(9):
-        a = -1.10 + k * (2.2 / 8)
+    for k in range(puntas):
+        a = -1.10 + k * (2.2 / (puntas - 1))
         dx, dz = math.sin(a), math.cos(a)
         base = (dx * 0.11, -0.02, 1.93)
-        punta = (dx * 0.26, -0.05, 2.02 + dz * 0.32)
+        punta = (dx * 0.26 * (1.0 + (0.32 - alto)), -0.05, 2.02 + dz * alto)
         piezas += kit.tubo([base, ((base[0] + punta[0]) / 2, -0.04, (base[2] + punta[2]) / 2), punta],
-                           [0.072, 0.048, 0.010])
+                           [0.072 * grueso, 0.048 * grueso, 0.010])
     for k in range(4):
         dx = -0.12 + k * 0.08
         piezas += kit.tubo([(dx * 0.5, -0.10, 1.90), (dx * 1.1, -0.22, 2.05)], [0.068, 0.010])
@@ -79,24 +100,45 @@ def pelo_ssj():
     return piezas
 
 
-partes.append((kit.fundir("pelo__sin_ssj", pelo_base(), PELO, voxel=0.0058, suavizado=5, caras=10000), "cabeza"))
-partes.append((kit.fundir("pelo__f_ssj", pelo_ssj(), PELO, voxel=0.0058, suavizado=5, caras=10000), "cabeza"))
+partes.append((kit.fundir("pelo__sin_ssj+ui", pelo_base(), PELO, voxel=0.0058, suavizado=5, caras=10000), "cabeza"))
+partes.append((kit.fundir("pelo_ssj__f_goku_ssj", pelo_ssj(), PELO, voxel=0.0058, suavizado=5, caras=10000), "cabeza"))
+partes.append((kit.fundir(kit.de_skin("pelo_blue", "blue"), pelo_ssj(8, 0.25, 1.18), PELO, voxel=0.0058, suavizado=5,
+                          caras=10000), "cabeza"))
+partes.append((kit.fundir("pelo_ui__f_ui", pelo_ultra(), PELO, voxel=0.0058, suavizado=5, caras=10000), "cabeza"))
 
 # -------------------------------------------------------------------- Torso
-torso = kit.torso_humano(pecho=0.225, cintura=0.175, fondo=0.135, hombros=0.185)
+# Un perfil parejo: el gi cae suelto desde el pecho ancho, sin la cintura de avispa.
+torso = kit.perfil([(0.93, 0.186, 0.134), (1.05, 0.184, 0.132), (1.20, 0.196, 0.138), (1.36, 0.222, 0.146),
+                    (1.46, 0.220, 0.140), (1.53, 0.168, 0.118)])
+torso.append(kit.capsula((-0.185, 0.0, 1.47), (0.185, 0.0, 1.47), 0.080))
 for lado in (-1, 1):
-    torso.append(kit.elipsoide((lado * 0.092, 0.075, 1.400), (0.118, 0.050, 0.068)))
+    torso.append(kit.elipsoide((lado * 0.092, 0.088, 1.395), (0.112, 0.052, 0.068)))
 gi = kit.fundir("gi", torso, GI, voxel=0.006, suavizado=8, caras=11000)
 # El cuello en V: la camiseta azul asoma.
 kit.pintar(gi, CAMISETA, lambda x, y, z: y > 0.05 and z > 1.36 + abs(x) * 2.0)
 partes.append((gi, "torso"))
 # El kanji: un circulo blanco a la izquierda del pecho y otro grande en la espalda.
-simbolos = [kit.elipsoide((-0.095, 0.150, 1.43), (0.045, 0.012, 0.045)),
-            kit.elipsoide((0, -0.140, 1.36), (0.085, 0.012, 0.085))]
+# Apoyados en la tela de verdad (un rayo de adelante y uno de atras).
+pf = kit.superficie(gi, -0.095, 1.43)[0]
+pb = kit.superficie(gi, 0.0, 1.36, desde=(0.0, -1.5), hacia=(0.0, 1.0))[0]
+simbolos = [kit.elipsoide((-0.095, pf.y + 0.002, 1.43), (0.045, 0.012, 0.045)),
+            kit.elipsoide((0, pb.y - 0.002, 1.36), (0.085, 0.012, 0.085))]
 partes.append((kit.fundir("simbolo", simbolos, SIMBOLO, voxel=0.004, suavizado=2, caras=2000), "torso"))
-kanji = [kit.caja((-0.095, 0.163, 1.43), (0.040, 0.006, 0.008)), kit.caja((-0.095, 0.163, 1.43), (0.008, 0.006, 0.050)),
-         kit.caja((0, -0.153, 1.36), (0.075, 0.006, 0.012)), kit.caja((0, -0.153, 1.36), (0.012, 0.006, 0.095))]
-partes.append((kit.pieza_fija("kanji", kanji, KANJI), "torso"))
+# EL KANJI 悟 ("Go"), trazo por trazo: el radical del corazon a la izquierda (la raya
+# parada y los dos puntos) y a la derecha 五 arriba y 口 abajo. En unidades de -1 a 1, con
+# +u hacia la DERECHA DEL QUE MIRA; adelante eso es -X y en la espalda +X.
+TRAZOS = [[(-0.72, 0.95), (-0.72, -0.95)], [(-0.95, 0.35), (-0.86, 0.05)], [(-0.56, 0.45), (-0.45, 0.25)],
+          [(-0.25, 0.85), (0.95, 0.85)], [(0.32, 0.85), (0.22, 0.20)], [(-0.15, 0.50), (0.74, 0.50), (0.72, 0.18)],
+          [(-0.30, 0.18), (1.00, 0.18)],
+          [(-0.10, -0.92), (-0.10, -0.05), (0.80, -0.05), (0.80, -0.92)], [(-0.10, -0.85), (0.80, -0.85)]]
+
+
+def kanji_go(centro, tam, y, hacia):
+    return [[(centro[0] + hacia * u * tam, y, centro[2] + v * tam) for u, v in trazo] for trazo in TRAZOS]
+
+
+trazos = kanji_go((-0.095, 0, 1.43), 0.030, pf.y + 0.0165, -1) + kanji_go((0.0, 0, 1.36), 0.058, pb.y - 0.0165, 1)
+partes.append((kit.lineas("kanji", trazos, 0.0042, KANJI), "torso"))
 # La faja azul, con el nudo al costado.
 faja = [kit.elipsoide((0, 0.0, 1.03), (0.190, 0.145, 0.045)),
         kit.elipsoide((-0.13, 0.11, 1.00), (0.040, 0.030, 0.050)),
@@ -144,6 +186,32 @@ for lado in (-1, 1):
     for k in range(4):
         cordones.append(kit.caja((x, 0.066, 0.30 - k * 0.05), (0.060, 0.008, 0.010), rot=(0, 0, 18 if k % 2 else -18)))
 partes.append((kit.pieza_fija("cordones", cordones, CORDONES), "pies"))
+
+# EL ULTRA INSTINTO del Torneo del Poder: sin el gi de arriba, el torso al aire y marcado,
+# y la camiseta azul hecha jirones colgando de la cintura y de un hombro.
+pecho = kit.torso_humano(pecho=0.218, cintura=0.168, fondo=0.130, hombros=0.185)
+for lado in (-1, 1):
+    pecho.append(kit.elipsoide((lado * 0.090, 0.080, 1.395), (0.112, 0.056, 0.070)))
+    for z in (1.250, 1.180, 1.110):
+        pecho.append(kit.elipsoide((lado * 0.040, 0.105, z), (0.038, 0.030, 0.032)))
+partes.append((kit.fundir("pecho_ui__f_ui", pecho, PIEL, voxel=0.0055, suavizado=8, caras=11000), "torso"))
+hombros = []
+for lado in (-1, 1):
+    s = "_l" if lado < 0 else "_r"
+    h = J["hombro" + s]
+    hombros += kit.tubo([h, (h[0], h[1], h[2] - 0.16)], [0.078, 0.074])
+    hombros.append(kit.elipsoide((h[0] + lado * 0.010, h[1], h[2] - 0.035), (0.084, 0.082, 0.098)))
+partes.append((kit.fundir("hombros_ui__f_ui", hombros, PIEL, voxel=0.0055, suavizado=6, caras=4000), "brazos"))
+jirones = [kit.elipsoide((0, 0.0, 1.08), (0.182, 0.140, 0.055))]
+random_jiron = [(-0.14, 0.10, 1.03, 0.10), (-0.05, 0.13, 1.02, 0.07), (0.06, 0.13, 1.03, 0.11), (0.15, 0.08, 1.04, 0.06),
+                (0.0, -0.13, 1.03, 0.09), (-0.12, -0.10, 1.04, 0.08), (0.12, -0.10, 1.03, 0.07)]
+for x, y, z, largo in random_jiron:
+    jirones.append(kit.cono((x, y, z + 0.02), (x * 1.05, y * 1.05, z - largo), 0.040, 0.004, seg=8))
+jirones += kit.tubo([(-0.17, 0.02, 1.47), (-0.20, 0.06, 1.36), (-0.22, 0.03, 1.27)], [0.040, 0.034, 0.006])
+partes.append((kit.fundir("jirones_ui__f_ui", jirones, CAMISETA, voxel=0.005, suavizado=3, caras=4000), "torso"))
+for obj, _r in partes:
+    if obj.name in ("gi", "simbolo", "kanji", "mangas"):
+        kit.ocultar_en(obj, "ui")
 
 arm = kit.esqueleto(J)
 kit.pesar_estandar(partes, arm, J)

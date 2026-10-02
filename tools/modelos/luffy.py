@@ -208,6 +208,53 @@ for lado in (-1, 1):
     sandalias.append(kit.capsula((x, 0.075, 0.040), (x, 0.060, 0.064), 0.010))
 partes.append((kit.fundir("sandalias", sandalias, SANDALIAS, voxel=0.0045, suavizado=3, caras=2500), "pies"))
 
+# -------------------------------------------------------------------- Skins
+#
+#   nika     el Gear 5: el pelo blanco en llamas de nube (la forma nika) y la nube que le
+#            da vuelta a los hombros como una boa.
+#   capitan  el abrigo rojo de capitan sobre los hombros, sin poner los brazos, con el cuello
+#            alto y las mangas vacias colgando.
+NUBE = kit.material("nubes", (0.98, 0.98, 1.00))
+ABRIGO = kit.material("capa", (0.70, 0.08, 0.08))
+random.seed(19)
+nubes = []
+for k in range(26):
+    a = 2 * math.pi * k / 26
+    r = 0.25 + 0.03 * math.sin(a * 3)
+    c = (math.sin(a) * r, math.cos(a) * r * 0.80 - 0.02, 1.47 + 0.05 * math.cos(a) + random.uniform(-0.02, 0.02))
+    nubes.append(kit.elipsoide(c, (random.uniform(0.050, 0.075),) * 3, seg=14))
+for k in range(6):
+    a = math.radians(-60 + k * 24)
+    nubes.append(kit.elipsoide((math.sin(a) * 0.33, -0.12 + math.cos(a) * 0.04, 1.38 - k * 0.02), (0.06, 0.06, 0.06), seg=14))
+partes.append((kit.fundir(kit.de_skin("nubes", "nika"), nubes, NUBE, voxel=0.006, suavizado=6, caras=5000), "torso"))
+abrigo = kit.capa("capa", ["capitan"], ABRIGO, z_abajo=0.62, abre=0.10, cuello=0.10, ancho=0.205, fondo=0.145)
+partes.append((abrigo, "torso"))
+mangas_v = []
+for lado in (-1, 1):
+    mangas_v += kit.tubo([(lado * 0.30, -0.06, 1.46), (lado * 0.33, -0.10, 1.20), (lado * 0.32, -0.12, 0.98)],
+                         [0.068, 0.062, 0.060])
+partes.append((kit.fundir(kit.de_skin("capa_mangas", "capitan"), mangas_v, ABRIGO, voxel=0.006, suavizado=6, caras=3000),
+               "torso"))
+
+# EAST BLUE: el de antes del salto. El chaleco rojo cerrado con sus botones y sin la faja
+# amarilla (la faja es de despues de los dos años).
+cerrado = kit.cascara(kit.de_skin("chaleco_cerrado", "east_blue"), inflado(0.014), CHALECO,
+                      lambda x, y, z: 1.000 < z < 1.56 and not (y > 0.0 and abs(x) < 0.030 - (1.56 - z) * 0.0
+                                                                and z > 1.45) and not (abs(x) > 0.170 and z < 1.50),
+                      grosor=0.012, caras=7000)
+partes.append((cerrado, "torso"))
+botones = []
+for z in (1.38, 1.26, 1.14):
+    q, nq = kit.superficie(cerrado, 0.0, z)
+    if q is not None:
+        botones.append(kit.elipsoide(tuple(q + nq * 0.006), (0.014, 0.008, 0.014), seg=12))
+partes.append((kit.pieza_fija(kit.de_skin("botones", "east_blue"), botones, BOTONES), "torso"))
+for obj, _r in partes:
+    if obj.name == "faja":
+        kit.ocultar_en(obj, "east_blue")
+    elif obj.name.startswith("chaleco__sin_kimono"):
+        kit.ocultar_en(obj, "east_blue")
+
 arm = kit.esqueleto(J)
 kit.pesar_estandar(partes, arm, J)
 cara = kit.cara_estandar(cabeza, J, 0.057, 1.812,

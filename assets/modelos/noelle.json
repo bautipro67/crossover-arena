@@ -18,7 +18,12 @@
    0.13
   ],
   "pestanas": true,
-  "giro": 26.2
+  "giro": 26.2,
+  "formas": {
+   "noelle_snowgrave": {
+    "oculto": true
+   }
+  }
  },
  "cejas": {
   "alto": 0.066,

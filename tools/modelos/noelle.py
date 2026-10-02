@@ -171,15 +171,13 @@ partes.append((kit.fundir("punos", punos, CAMISA, voxel=0.005, suavizado=6, cara
 # --------------------------------------------------------------------- Manos
 manos = []
 for lado in (-1, 1):
-    manos.append(kit.elipsoide((lado * 0.29, 0.005, 0.838), (0.048, 0.040, 0.060)))
-    manos.append(kit.capsula((lado * 0.29, 0.028, 0.862), (lado * 0.266, 0.058, 0.828), 0.016, 0.014))
-partes.append((kit.fundir("manos", manos, PIEL, voxel=0.005, suavizado=6, caras=2500), None))
+    manos += kit.mano(lado, r=0.044)
+partes.append((kit.fundir("manos", manos, PIEL, voxel=0.0045, suavizado=5, caras=5000), None))
 
 # ------------------------------------------------------------------- Piernas
 piernas = []
 for lado in (-1, 1):
-    piernas += kit.tubo([(lado * 0.12, 0.0, 0.92), (lado * 0.12, 0.0, 0.53), (lado * 0.12, 0.0, 0.30)],
-                        [0.080, 0.063, 0.050])
+    piernas += kit.pierna(lado, r_muslo=0.074, r_rodilla=0.058, r_tobillo=0.048, hasta=0.30)
 partes.append((kit.fundir("piernas", piernas, PIEL, voxel=0.007, suavizado=8, caras=4500), None))
 
 botas = []
@@ -188,17 +186,161 @@ for lado in (-1, 1):
     botas.append(kit.elipsoide((lado * 0.12, 0.058, 0.074), (0.072, 0.118, 0.060)))
 partes.append((kit.fundir("botas", botas, ZAPATOS, voxel=0.006, suavizado=6, caras=4000), None))
 
+# -------------------------------------------------------------------- Skins
+#
+# Cada skin cambia el modelo con lo que la skin dice ser, nada de relleno:
+#   snowgrave  la ruta Snowgrave: el pelo le tapa los ojos, el Anillo de Espinas en la mano
+#              y carambanos colgando de las astas.
+#   aurora     el cielo del norte EN UN SUETER: el pullover de cuello alto y mangas largas
+#              con las franjas de la aurora, y las orejeras.
+#   escarcha   el frio que se le queda adentro: la corona de escarcha y los carambanos.
+#   sombra / otono   la bufanda tejida.          cyber  el visor y los bordes de neon.
+#   fiesta     el gorro de Navidad (Holiday).    reno   las astas grandes y la nariz que brilla.
+#   menta      la mañana de invierno: el gorro de lana.
+HIELO = kit.material("hielo", (0.80, 0.93, 1.00), rugosidad=0.25)
+ESPINAS = kit.material("espinas", (0.32, 0.40, 0.48), metal=0.3)
+LANA = kit.material("bufanda", (0.46, 0.47, 0.56))
+OREJERAS = kit.material("orejeras", (0.88, 0.97, 1.00))
+VISOR = kit.material("visor", (0.25, 0.95, 1.00))
+NEON = kit.material("neon_bordes", (0.20, 0.90, 0.95))
+GORRO = kit.material("gorro", (0.86, 0.14, 0.16))
+BORDE_GORRO = kit.material("gorro_borde", (0.98, 0.98, 0.97))
+GORRO_LANA = kit.material("gorro_lana", (0.85, 0.97, 0.92))
+NARIZ_RENO = kit.material("neon_nariz", (1.00, 0.16, 0.14))
+
+# El flequillo de la ruta Snowgrave: largo y parejo, tapando los ojos.
+fleco = []
+for k in range(7):
+    x = -0.105 + k * 0.035
+    fleco += Ht([(x * 0.9, 0.100, 1.985), (x, 0.158, 1.930), (x * 1.06, 0.178, 1.850), (x * 1.08, 0.176, 1.792)],
+                [0.032, 0.030, 0.024, 0.006])
+partes.append((kit.fundir(kit.de_skin("flequillo", "snowgrave"), fleco, PELO, voxel=0.0055, suavizado=4, caras=3500),
+               "cabeza"))
+# El Anillo de Espinas, en un dedo de la mano izquierda.
+xm, ym, zm = J["mano_l"]
+anillo = []
+for k in range(16):
+    a, b = 2 * math.pi * k / 16, 2 * math.pi * (k + 1) / 16
+    anillo.append(kit.capsula((xm + math.cos(a) * 0.016, ym + 0.012 + math.sin(a) * 0.016, zm - 0.050),
+                              (xm + math.cos(b) * 0.016, ym + 0.012 + math.sin(b) * 0.016, zm - 0.050), 0.0045, seg=8))
+    if k % 2 == 0:
+        anillo.append(kit.cono((xm + math.cos(a) * 0.018, ym + 0.012 + math.sin(a) * 0.018, zm - 0.050),
+                               (xm + math.cos(a) * 0.034, ym + 0.012 + math.sin(a) * 0.034, zm - 0.046), 0.005, seg=8))
+partes.append((kit.fundir(kit.de_skin("anillo", "snowgrave"), anillo, ESPINAS, voxel=0.0018, suavizado=1, caras=2500),
+               "codo_l"))
+# Los carambanos, colgando de las astas.
+carambanos = []
+for lado in (-1, 1):
+    for t, largo in ((0.25, 0.06), (0.55, 0.09), (0.80, 0.05)):
+        a = H((lado * (0.075 + 0.080 * t), -0.040 - 0.020 * t, 1.950 + 0.270 * t))
+        carambanos.append(kit.cono(a, (a[0], a[1], a[2] - largo), 0.010, 0.001, seg=10))
+    for t, largo in ((0.5, 0.07), (0.9, 0.05)):
+        a = H((lado * (0.118 + 0.132 * t), -0.042, 2.075 + 0.077 * t))
+        carambanos.append(kit.cono(a, (a[0], a[1], a[2] - largo), 0.009, 0.001, seg=10))
+partes.append((kit.pieza_fija(kit.de_skin("carambanos", "snowgrave", "escarcha"), carambanos, HIELO), "cabeza"))
+# La corona de escarcha: cristales parados alrededor de la cabeza.
+corona = []
+for k in range(11):
+    a = math.radians(-150 + k * 30)
+    base = H((math.sin(a) * 0.170, math.cos(a) * 0.168 - 0.030, 1.955))
+    alto = 0.07 if k % 2 else 0.11
+    corona.append(kit.cono(base, (base[0] * 1.08, base[1] * 1.08, base[2] + alto), 0.020, 0.002, seg=6))
+partes.append((kit.pieza_fija(kit.de_skin("corona_hielo", "escarcha"), corona, HIELO), "cabeza"))
+
+# AURORA: el pullover de cuello alto, con las franjas onduladas de la aurora.
+sueter = kit.fundir(kit.de_skin("sueter", "aurora"), [
+    kit.elipsoide((0, 0.0, 1.36), (0.206, 0.142, 0.218)),
+    kit.elipsoide((0, 0.0, 1.20), (0.184, 0.132, 0.140)),
+    kit.capsula((-0.152, 0.0, 1.465), (0.152, 0.0, 1.465), 0.088),
+    kit.capsula((0, -0.012, 1.50), (0, -0.012, 1.62), 0.074, 0.070),
+], SUETER_A, voxel=0.006, suavizado=8, caras=14000)
+kit.pintar(sueter, SUETER_B, lambda x, y, z: math.sin((z + 0.05 * math.sin(x * 18.0)) * 28.0) > 0.25)
+partes.append((sueter, "torso"))
+mangas_s = []
+for lado in (-1, 1):
+    mangas_s.append(kit.capsula((lado * 0.170, 0.0, 1.475), (lado * 0.29, 0.0, 1.450), 0.080, 0.074))
+    mangas_s += kit.tubo([(lado * 0.29, 0.0, 1.45), (lado * 0.29, 0.0, 1.13), (lado * 0.29, 0.0, 0.905)],
+                         [0.072, 0.065, 0.060])
+ms = kit.fundir(kit.de_skin("mangas_sueter", "aurora"), mangas_s, SUETER_A, voxel=0.006, suavizado=8, caras=5000)
+kit.pintar(ms, SUETER_B, lambda x, y, z: math.sin(z * 28.0) > 0.25)
+partes.append((ms, None))
+orejeras = [He((lado * 0.168, 0.0, 1.800), (0.040, 0.044, 0.050)) for lado in (-1, 1)]
+orejeras += Ht([(-0.150, 0.0, 1.84), (-0.10, -0.01, 1.99), (0.0, -0.02, 2.035), (0.10, -0.01, 1.99), (0.150, 0.0, 1.84)],
+               [0.012] * 5, seg=10)
+partes.append((kit.fundir(kit.de_skin("orejeras", "aurora"), orejeras, OREJERAS, voxel=0.0045, suavizado=4, caras=3000),
+               "cabeza"))
+# LA BUFANDA tejida: dos vueltas al cuello y las puntas, una adelante y una atras.
+bufanda = []
+for vuelta, z in enumerate((1.540, 1.585)):
+    for k in range(24):
+        a, b = 2 * math.pi * k / 24, 2 * math.pi * (k + 1) / 24
+        bufanda.append(kit.capsula((math.sin(a) * 0.088, math.cos(a) * 0.080 - 0.012, z),
+                                   (math.sin(b) * 0.088, math.cos(b) * 0.080 - 0.012, z), 0.030, seg=10))
+bufanda += kit.tubo([(-0.060, 0.070, 1.540), (-0.075, 0.120, 1.420), (-0.072, 0.135, 1.260)], [0.034, 0.032, 0.030])
+bufanda += kit.tubo([(0.060, -0.080, 1.540), (0.075, -0.150, 1.420), (0.070, -0.165, 1.300)], [0.034, 0.032, 0.030])
+partes.append((kit.fundir(kit.de_skin("bufanda", "sombra", "otono"), bufanda, LANA, voxel=0.006, suavizado=5, caras=5000),
+               "torso"))
+# CYBER: el visor sobre los ojos y los bordes del chaleco en neon.
+visor = []
+for k in range(15):
+    a = math.radians(-58 + k * (116 / 14))
+    visor.append(He((math.sin(a) * 0.168, math.cos(a) * 0.165 - 0.004, 1.822), (0.026, 0.012, 0.022), seg=12))
+partes.append((kit.fundir(kit.de_skin("visor", "cyber"), visor, VISOR, voxel=0.004, suavizado=4, caras=2500), "cabeza"))
+bordes = []
+for lado in (-1, 1):
+    bordes.append([kit.pegar(chaleco, (lado * x, 0.3, 1.40 + x * 2.2), 0.004) for x in (0.0, 0.03, 0.06, 0.09, 0.12)])
+bordes.append([kit.pegar(chaleco, (math.sin(a) * 0.30, math.cos(a) * 0.30, 1.118), 0.004) for a in
+               [i * math.pi / 12 for i in range(25)]])
+partes.append((kit.lineas(kit.de_skin("neon_bordes", "cyber"), bordes, 0.0055, NEON), "torso"))
+# FIESTA: el gorro de Navidad, de costado entre las astas, con el borde y el pompon blancos.
+gb = H((0.0, -0.030, 1.985))
+gorro = [kit.cono(gb, H((0.10, -0.10, 2.20)), 0.150 * 1.12, 0.020, seg=32)]
+partes.append((kit.fundir(kit.de_skin("gorro", "fiesta"), gorro, GORRO, voxel=0.006, suavizado=4, caras=3000), "cabeza"))
+borde = [kit.capsula(H((math.sin(a) * 0.160, math.cos(a) * 0.158 - 0.030, 1.975)),
+                     H((math.sin(b) * 0.160, math.cos(b) * 0.158 - 0.030, 1.975)), 0.026, seg=10)
+         for a, b in [(2 * math.pi * k / 24, 2 * math.pi * (k + 1) / 24) for k in range(24)]]
+borde.append(He((0.10, -0.10, 2.20), (0.034, 0.034, 0.034)))
+partes.append((kit.fundir(kit.de_skin("gorro_borde", "fiesta"), borde, BORDE_GORRO, voxel=0.005, suavizado=4, caras=3000),
+               "cabeza"))
+# MENTA: el gorro de lana con el pompon.
+lana = [He((0, -0.020, 1.905), (0.182, 0.176, 0.140)),
+        Hc((0, -0.020, 1.86), (0, -0.020, 1.89), 0.184, 0.180),
+        He((0, -0.020, 2.065), (0.040, 0.040, 0.040))]
+gl = kit.fundir(kit.de_skin("gorro_lana", "menta"), lana, GORRO_LANA, voxel=0.006, suavizado=6, caras=4000)
+kit.pintar(gl, BORDE_GORRO, lambda x, y, z: z < H((0, 0, 1.895))[2])
+partes.append((gl, "cabeza"))
+# RENO: las astas grandes, con mas puntas, y la nariz que brilla.
+astas_r = []
+for lado in (-1, 1):
+    base = (lado * 0.075, -0.035, 1.950)
+    medio = (lado * 0.130, -0.050, 2.100)
+    punta = (lado * 0.190, -0.075, 2.300)
+    astas_r += Ht([base, medio, punta], [0.032, 0.025, 0.016])
+    for t, sale in ((0.25, 0.10), (0.55, 0.12), (0.80, 0.09)):
+        q = (base[0] + (punta[0] - base[0]) * t, -0.05, base[2] + (punta[2] - base[2]) * t)
+        astas_r += Ht([q, (q[0] + lado * sale, q[1] + 0.01, q[2] + sale * 0.45)], [0.018, 0.010])
+    astas_r += Ht([(lado * 0.150, -0.060, 2.180), (lado * 0.110, -0.055, 2.280)], [0.016, 0.009])
+partes.append((kit.fundir(kit.de_skin("astas", "reno"), astas_r, ASTAS, voxel=0.0055, suavizado=4, caras=4500), "cabeza"))
+partes.append((kit.fundir(kit.de_skin("nariz_roja", "reno"), [He((0, 0.210, 1.748), (0.042, 0.032, 0.032))], NARIZ_RENO,
+                          voxel=0.004, suavizado=4, caras=900), "cabeza"))
+
+for obj, _r in partes:
+    if obj.name in ("astas", "nariz"):
+        kit.ocultar_en(obj, "reno")
+    elif obj.name in ("chaleco", "cuello", "mangas"):
+        kit.ocultar_en(obj, "aurora")
+
 # ---------------------------------------------------------------- Esqueleto
 arm = kit.esqueleto(J)
 brazos_y_torso = ["torso", "hombro_l", "codo_l", "hombro_r", "codo_r"]
 for obj, hueso in partes:
     if hueso:
         kit.pesar(obj, arm, J, solo=hueso)
-    elif obj.name == "falda":
+    elif obj.name.startswith("falda"):
         kit.pesar(obj, arm, J, permitidos=["torso", "pierna_l", "pierna_r"])
-    elif obj.name == "mangas":
+    elif obj.name.startswith("mangas"):
         kit.pesar(obj, arm, J, permitidos=brazos_y_torso)
-    elif obj.name in ("manos", "punos"):
+    elif obj.name.startswith(("manos", "punos")):
         kit.pesar(obj, arm, J, permitidos=["codo_l", "codo_r"])
     else:
         kit.pesar(obj, arm, J, permitidos=["pierna_l", "rodilla_l", "pierna_r", "rodilla_r"])
@@ -216,7 +358,9 @@ pb = H((0.0, 0.0, 1.676))
 p, n = kit.superficie(cabeza, 0.0, pb[2])
 cara = {
     "ojos": {"l": ojos["l"], "r": ojos["r"], "alto": 0.100, "ancho": 0.076,
-             "iris": [0.45, 0.28, 0.13], "pestanas": True, "giro": round(giro, 1)},
+             "iris": [0.45, 0.28, 0.13], "pestanas": True, "giro": round(giro, 1),
+             # Snowgrave: el flequillo le tapa los ojos, como en los sprites de esa ruta.
+             "formas": {"noelle_snowgrave": {"oculto": True}}},
     "cejas": {"alto": 0.066, "color": [0.62, 0.42, 0.18], "largo": 0.058},
     "boca": {"pos": kit.a_juego(tuple(p + n * 0.003), J), "ancho": 0.078, "dientes": True},
 }

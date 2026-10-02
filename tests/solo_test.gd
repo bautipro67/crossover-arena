@@ -33,6 +33,7 @@ func _run() -> void:
 	await _test_historia(main)
 	await _test_escenas_y_peleas(main)
 	await _test_skins_visibles()
+	await _test_mapas()
 	_test_siluetas()
 	await _test_music()
 	_test_settings()
@@ -1800,6 +1801,9 @@ func _firma(nodo: Node) -> String:
 		var n: Node = pila.pop_back()
 		if n.is_queued_for_deletion():
 			continue
+		# Lo escondido no se ve: las formas de un modelo son piezas que se prenden y se apagan.
+		if n is Node3D and not (n as Node3D).visible:
+			continue
 		var malla := n as MeshInstance3D
 		if malla != null and malla.mesh != null:
 			cuenta += 1
@@ -1808,12 +1812,84 @@ func _firma(nodo: Node) -> String:
 	return "%d/%.3f" % [cuenta, medida]
 
 
+## LOS MAPAS (2026-10-02): cada lugar de la historia se arma entero —con su navmesh, las
+## mismas coberturas que el resto (el trazado medido es uno solo) y su escenario encima—,
+## cada capitulo pasa en uno que existe, y los de una ruta secreta no se ven en la sala
+## antes de abrir la ruta.
+func _test_mapas() -> void:
+	var antes := Mapas.elegido
+	var coberturas := -1
+	var fallan := ""
+	for m: Dictionary in Mapas.LISTA:
+		Mapas.elegido = m["id"]
+		var a := Arena.new()
+		a.solo_escenario = true
+		a.name = "MapaDePrueba"
+		add_child(a)
+		await get_tree().process_frame
+		var region := a.get_node_or_null(^"NavRegion") as NavigationRegion3D
+		var nav := region != null and region.navigation_mesh != null and region.navigation_mesh.get_polygon_count() > 0
+		var n := 0
+		var mallas := 0
+		for h: Node in a.get_children():
+			if String(h.name).begins_with("Cover"):
+				n += 1
+			if h is MeshInstance3D:
+				mallas += 1
+		if coberturas < 0:
+			coberturas = n
+		if not nav or n != coberturas or mallas < 3:
+			fallan += "%s(nav %s, coberturas %d, mallas %d) " % [m["id"], nav, n, mallas]
+		a.queue_free()
+		await get_tree().process_frame
+	Mapas.elegido = antes
+	_check(fallan.is_empty(), "cada mapa se arma con su navmesh, las mismas coberturas y su escenario %s" % fallan)
+
+	var sin_mapa := ""
+	for i: int in range(Historia.cantidad()):
+		if not Mapas.existe(Mapas.de_capitulo(i)):
+			sin_mapa += "%d " % i
+	_check(sin_mapa.is_empty() and Mapas.de_capitulo(0) == &"hometown",
+		"cada capitulo pasa en un mapa que existe, y el primero en Hometown %s" % sin_mapa)
+	var lugares := {}
+	for i: int in range(Historia.cantidad()):
+		lugares[Mapas.de_capitulo(i)] = true
+	_check(lugares.size() == Mapas.LISTA.size(), "todos los mapas son el lugar de algun capitulo (%d de %d)" % [
+		lugares.size(), Mapas.LISTA.size()])
+	var disp := Mapas.disponibles()
+	_check((Progreso.ruta_abierta("snowgrave") or not (&"helada" in disp))
+			and (Progreso.ruta_abierta("cielo") or not (&"cielo" in disp)) and &"coliseo" in disp,
+		"los mapas de una ruta secreta no aparecen en la sala antes de abrirla")
+
+
+## Cuantas piezas del modelo del personaje son de esta skin ("algo__f_<skin>"): las skins
+## que cambian la forma desde el modelo de Blender, y no con un adorno del rig.
+func _piezas_de_skin(personaje: StringName, sid: StringName) -> int:
+	if not ModeloPersonaje.existe(personaje):
+		return 0
+	var escena := load(ModeloPersonaje.ruta(personaje)) as PackedScene
+	var raiz := escena.instantiate()
+	var n := 0
+	for nodo: Node in raiz.find_children("*__f_*", "Node3D", true, false):
+		var lista := String(nodo.name).get_slice("__f_", 1).split("+")
+		if String(sid) in lista or String(sid).trim_prefix(String(personaje) + "_") in lista:
+			n += 1
+	raiz.free()
+	return n
+
+
 ## Todos los materiales de un visual, sin repetir.
 func _materiales(nodo: Node, salida: Array) -> void:
 	var malla := nodo as MeshInstance3D
 	if malla != null and malla.material_override is StandardMaterial3D:
 		if not salida.has(malla.material_override):
 			salida.append(malla.material_override)
+	# Y los de cada superficie de un modelo de Blender (no usan material_override).
+	if malla != null and malla.mesh != null and malla.is_visible_in_tree():
+		for k: int in range(malla.mesh.get_surface_count()):
+			var m := malla.get_surface_override_material(k)
+			if m is StandardMaterial3D and not salida.has(m):
+				salida.append(m)
 	for h: Node in nodo.get_children():
 		_materiales(h, salida)
 
@@ -1847,7 +1923,7 @@ func _test_skins_visibles() -> void:
 	for sid: StringName in SkinDB.todas():
 		var sk := SkinDB.get_skin(sid)
 		var pj := CharacterDB.get_character(sk.character_id)
-		var cambios := sk.accesorios.size() + (1 if sk.forma != &"" else 0) + (1 if sk.accesorio != &"" else 0)
+		var cambios := sk.accesorios.size() + (1 if sk.forma != &"" else 0) + (1 if sk.accesorio != &"" else 0) 			+ _piezas_de_skin(sk.character_id, sid)
 		if sk.rareza != &"rara" and cambios == 0:
 			sin_forma += "%s(%s sin forma) " % [sid, sk.rareza]
 		var lejos := maxf(_distancia_color(sk.body_color, pj.body_color),
@@ -2184,7 +2260,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 339
+const CHEQUEOS_MINIMOS: int = 343
 
 
 func _finish() -> void:

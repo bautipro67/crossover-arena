@@ -18,7 +18,23 @@
    0.1,
    0.1
   ],
-  "estilo": "simple"
+  "estilo": "simple",
+  "formas": {
+   "pepino": {
+    "l": [
+     -0.0592,
+     0.1501,
+     -0.1599
+    ],
+    "r": [
+     0.0591,
+     0.1501,
+     -0.1599
+    ],
+    "alto": 0.075,
+    "ancho": 0.066
+   }
+  }
  },
  "cejas": {
   "alto": 0.04,
@@ -36,6 +52,16 @@
    -0.1422
   ],
   "ancho": 0.07,
-  "dientes": false
+  "dientes": false,
+  "formas": {
+   "pepino": {
+    "pos": [
+     0.0,
+     0.0501,
+     -0.1735
+    ],
+    "ancho": 0.09
+   }
+  }
  }
 }

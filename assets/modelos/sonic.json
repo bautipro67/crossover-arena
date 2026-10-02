@@ -36,6 +36,11 @@
    -0.2581
   ],
   "ancho": 0.09,
-  "dientes": false
+  "dientes": false,
+  "formas": {
+   "sonic_metal": {
+    "oculto": true
+   }
+  }
  }
 }

@@ -18,7 +18,15 @@
    0.06,
    0.06
   ],
-  "estilo": "sharingan"
+  "estilo": "sharingan",
+  "formas": {
+   "madara_rikudo": {
+    "estilo": "rinnegan"
+   },
+   "madara_edo": {
+    "estilo": "rinnegan_edo"
+   }
+  }
  },
  "cejas": {
   "alto": 0.036,

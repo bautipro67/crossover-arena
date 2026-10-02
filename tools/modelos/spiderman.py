@@ -73,11 +73,6 @@ partes.append((tr, "torso"))
 brazos = []
 for lado in (-1, 1):
     brazos += kit.brazo(lado, r_hombro=0.066, r_codo=0.054, r_muneca=0.046, hasta=0.875)
-    s = "_l" if lado < 0 else "_r"
-    h = J["hombro" + s]
-    # El biceps y el antebrazo marcados.
-    brazos.append(kit.elipsoide((h[0] - lado * 0.004, 0.018, 1.30), (0.064, 0.066, 0.090)))
-    brazos.append(kit.elipsoide((h[0], 0.006, 1.06), (0.058, 0.056, 0.080)))
     brazos += kit.mano(lado, r=0.046)
 br = kit.fundir("brazos", brazos, AZUL, voxel=0.005, suavizado=6, caras=18000)
 kit.cortar(br, (0, 0, 1.13))
@@ -88,9 +83,6 @@ partes.append((br, "brazos"))
 piernas = [kit.elipsoide((0, 0.0, 0.95), (0.150, 0.104, 0.080))]
 for lado in (-1, 1):
     piernas += kit.pierna(lado, r_muslo=0.082, r_rodilla=0.062, r_tobillo=0.050, hasta=0.12)
-    x = lado * 0.12
-    piernas.append(kit.elipsoide((x, 0.020, 0.76), (0.076, 0.070, 0.13)))
-    piernas.append(kit.elipsoide((x, -0.022, 0.40), (0.056, 0.056, 0.09)))
     piernas += kit.zapato(lado, largo=0.115, ancho=0.056, alto=0.050)
 pr = kit.fundir("piernas", piernas, AZUL, voxel=0.006, suavizado=8, caras=10000)
 kit.cortar(pr, (0, 0, 0.33))
@@ -202,8 +194,71 @@ def arana(nombre, escala, caras_, grosor):
     return kit.pieza_fija(nombre, piezas, EMBLEMA)
 
 
-partes.append((arana("emblema__sin_simbionte", 0.85, [False], 0.0050), "torso"))
+partes.append((arana("emblema__sin_simbionte+2099", 0.85, [False], 0.0050), "torso"))
 partes.append((arana("emblema_grande__f_simbionte", 2.3, [False, True], 0.0110), "torso"))
+
+# -------------------------------------------------------------------- Skins
+#
+#   2099    Miguel O'Hara: la araña roja grande con cara de calavera en el pecho y en la
+#           espalda, y la capa de tela rota.
+#   iron    Iron Spider: las cuatro patas mecanicas doradas saliendo de la espalda.
+#   clasico el de Ditko (1962): las alas de telaraña debajo de los brazos.
+ROJO_2099 = kit.material("emblema", (0.85, 0.12, 0.14))
+CAPA = kit.material("capa", (0.55, 0.08, 0.10))
+PATAS = kit.material("metal", (0.90, 0.72, 0.28), metal=0.85, rugosidad=0.3)
+ALA = kit.material("ala", (0.10, 0.18, 0.55))
+
+
+def calavera_2099(atras):
+    sgn = -1.0 if atras else 1.0
+    zc = 1.32
+    piezas = []
+    # La cara: dos ojos grandes en gota arriba y la mandibula angosta abajo.
+    for lado in (-1, 1):
+        q = kit.pegar(tr, (lado * 0.050, sgn * 0.3, zc + 0.08), 0.004)
+        e = [kit.elipsoide(q, (0.040, 0.008, 0.055), rot=(0, lado * 25, 0), seg=16)]
+        piezas += e
+    q = kit.pegar(tr, (0.0, sgn * 0.3, zc - 0.04), 0.004)
+    piezas.append(kit.elipsoide(q, (0.030, 0.008, 0.070), seg=16))
+    patas = []
+    for lado in (-1, 1):
+        patas.append([kit.pegar(tr, (lado * x, sgn * 0.3, z), 0.004) for x, z in ((0.07, 1.42), (0.14, 1.50), (0.20, 1.56))])
+        patas.append([kit.pegar(tr, (lado * x, sgn * 0.3, z), 0.004) for x, z in ((0.08, 1.36), (0.16, 1.38), (0.22, 1.30))])
+        patas.append([kit.pegar(tr, (lado * x, sgn * 0.3, z), 0.004) for x, z in ((0.05, 1.22), (0.13, 1.14), (0.18, 1.04))])
+        patas.append([kit.pegar(tr, (lado * x, sgn * 0.3, z), 0.004) for x, z in ((0.03, 1.18), (0.07, 1.06), (0.09, 0.98))])
+    piezas.append(kit.lineas("patas_2099_%d" % (1 if atras else 0), patas, 0.012, ROJO_2099))
+    return piezas
+
+
+partes.append((kit.pieza_fija(kit.de_skin("emblema_2099", "2099"), calavera_2099(False) + calavera_2099(True), ROJO_2099),
+               "torso"))
+capa = kit.capa("capa", ["2099"], CAPA, z_abajo=0.58, abre=0.18, cuello=0.0, ancho=0.205, fondo=0.140)
+# Rota: el ruedo en jirones.
+bm = kit.bmesh.new()
+bm.from_mesh(capa.data)
+fuera = [f for f in bm.faces if (f.calc_center_median().z < 0.70 + 0.10 * abs(math.sin(math.atan2(f.calc_center_median().x,
+                                                                                                    f.calc_center_median().y) * 7.0)))]
+kit.bmesh.ops.delete(bm, geom=fuera, context="FACES")
+bm.to_mesh(capa.data)
+bm.free()
+partes.append((capa, "torso"))
+# IRON SPIDER: las patas mecanicas, dos por lado, de la espalda hacia arriba y afuera, y
+# con la punta para abajo.
+patas = []
+for lado in (-1, 1):
+    for k, (alto, sale) in enumerate(((1.30, 0.42), (1.12, 0.46))):
+        base = (lado * 0.06, -0.14, alto)
+        codo = (lado * (0.06 + sale * 0.6), -0.30, alto + 0.30 - k * 0.12)
+        punta = (lado * (0.06 + sale), -0.28, alto - 0.10 - k * 0.15)
+        patas += kit.tubo([base, codo, punta], [0.024, 0.020, 0.006], seg=10)
+        patas.append(kit.elipsoide(codo, (0.030, 0.030, 0.030), seg=12))
+partes.append((kit.fundir(kit.de_skin("patas_arana", "iron"), patas, PATAS, voxel=0.004, suavizado=2, caras=4000), "torso"))
+# DITKO: las alas de telaraña entre el brazo y el costado.
+alas = []
+for lado in (-1, 1):
+    pts = [(lado * 0.17, 0.0, 1.36), (lado * 0.27, 0.0, 1.43), (lado * 0.30, 0.0, 1.16), (lado * 0.20, 0.0, 1.06)]
+    alas.append(kit.caja((lado * 0.24, 0.0, 1.25), (0.10, 0.008, 0.24), rot=(0, lado * -20, 0)))
+partes.append((kit.fundir(kit.de_skin("ala", "clasico"), alas, ALA, voxel=0.004, suavizado=3, caras=2000), "por_distancia"))
 
 arm = kit.esqueleto(J)
 for obj, regla in partes:

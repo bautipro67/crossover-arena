@@ -27,6 +27,8 @@ signal match_ended(winner_id: int)
 ## Seguimos insistiendo con un servidor que todavia no contesta (attempt, segundos).
 signal connection_retrying(attempt: int, elapsed: float)
 signal kill_registered(killer_id: int, victim_id: int)
+## Cambio el mapa elegido para la proxima partida (la sala lo muestra).
+signal mapa_cambiado()
 
 ## peer_id -> {name: String, character_id: String, kills: int, deaths: int}
 var players: Dictionary = {}
@@ -322,6 +324,25 @@ func get_player_name(id: int) -> String:
 	return String(get_player_info(id).get("name", "???"))
 
 
+## EL MAPA DE LA PARTIDA (ver Mapas). Lo elige el host —o la sala offline, o la historia—
+## y el servidor se lo manda a cada cliente: todos tienen que armar la MISMA arena, que es
+## la que el servidor simula. Viaja tambien con el aviso de que arranco la partida.
+func elegir_mapa(id: StringName) -> void:
+	if not Mapas.existe(id):
+		return
+	Mapas.elegido = id
+	if is_server() and _has_peer():
+		_net_mapa.rpc(String(id))
+	mapa_cambiado.emit()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_mapa(id: String) -> void:
+	if Mapas.existe(StringName(id)):
+		Mapas.elegido = StringName(id)
+	mapa_cambiado.emit()
+
+
 func set_local_character(id: String) -> void:
 	local_character_id = id
 	if is_server():
@@ -400,7 +421,7 @@ func start_match() -> void:
 	_broadcast_players()
 	in_match = true
 	if _has_peer():
-		_net_start_match.rpc()
+		_net_start_match.rpc(String(Mapas.elegido))
 	match_started.emit()
 
 
@@ -480,11 +501,13 @@ func _srv_register(player_name: String, character_id: String) -> void:
 	var was_in_match := in_match
 
 	_broadcast_players()
+	# El mapa elegido, para que su sala lo muestre (y su arena sea la del servidor).
+	_net_mapa.rpc_id(sender, String(Mapas.elegido))
 	player_list_changed.emit()
 
 	# Solo si la partida YA estaba en curso antes de que entrara.
 	if was_in_match:
-		_net_start_match.rpc_id(sender)
+		_net_start_match.rpc_id(sender, String(Mapas.elegido))
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -508,10 +531,12 @@ func _net_players(data: Dictionary) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _net_start_match() -> void:
+func _net_start_match(mapa: String) -> void:
 	# Idempotente: dos avisos seguidos no tienen que rearmar la partida.
 	if in_match:
 		return
+	if Mapas.existe(StringName(mapa)):
+		Mapas.elegido = StringName(mapa)
 	in_match = true
 	match_started.emit()
 

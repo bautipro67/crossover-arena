@@ -16,6 +16,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kit  # noqa: E402
 
 kit.limpiar()
+# Sans: las mangas anchas, las canillas de hueso y las pantuflas ya son de su tamaño.
+kit.FACTOR_BRAZO = kit.FACTOR_PIERNA = kit.FACTOR_MANO = kit.FACTOR_PIE = 1.0
+kit.MUSCULOS = False
 J = kit.juntas({"caderas": (0, 0, 0.74), "cabeza": (0, 0, 1.36),
                 "hombro_r": (0.30, 0, 1.24), "codo_r": (0.33, 0, 1.00), "mano_r": (0.34, 0, 0.79),
                 "pierna_r": (0.13, 0, 0.72), "rodilla_r": (0.13, 0, 0.41), "pie_r": (0.13, 0, 0.08)})
@@ -127,7 +130,64 @@ for lado in (-1, 1):
     pantuflas += kit.zapato(lado, j=J, largo=0.150, ancho=0.088, alto=0.072, punta=1.2)
 partes.append((kit.fundir("pantuflas", pantuflas, PANTUFLAS, voxel=0.006, suavizado=8, caras=4000), "pies"))
 
+# -------------------------------------------------------------------- Skins
+#
+#   mal_rato  la pelea del final: un ojo encendido (la forma un_ojo) y los dos Gaster
+#             Blasters, las calaveras de dragon, flotando a los costados con la boca abierta.
+#   juez      el que espera al final del pasillo dorado: la tunica larga de juez con el
+#             borde dorado.
+#   invierno  Snowdin: la bufanda roja y las orejeras.
+HUESO_B = kit.material("blaster", (0.96, 0.96, 0.94))
+OJO_B = kit.material("neon_blaster", (0.35, 0.70, 1.00))
+TUNICA = kit.material("capa", (0.10, 0.10, 0.14))
+DORADO = kit.material("capa_borde", (0.95, 0.80, 0.30), metal=0.5)
+BUFANDA = kit.material("bufanda", (0.85, 0.20, 0.25))
+OREJERAS = kit.material("orejeras", (0.95, 0.95, 0.95))
+blasters, ojos_b = [], []
+for lado in (-1, 1):
+    c = (lado * 0.62, -0.10, 1.72)
+    # El craneo alargado hacia adelante, la mandibula abierta abajo y los cuernos atras.
+    blasters.append(kit.elipsoide(c, (0.15, 0.20, 0.12)))
+    blasters.append(kit.elipsoide((c[0], c[1] + 0.20, c[2] - 0.02), (0.10, 0.14, 0.07)))
+    blasters.append(kit.elipsoide((c[0], c[1] + 0.20, c[2] - 0.15), (0.09, 0.15, 0.035), rot=(-18, 0, 0)))
+    for dx in (-1, 1):
+        blasters += kit.tubo([(c[0] + dx * 0.10, c[1] - 0.10, c[2] + 0.06), (c[0] + dx * 0.16, c[1] - 0.24, c[2] + 0.16),
+                              (c[0] + dx * 0.15, c[1] - 0.34, c[2] + 0.20)], [0.035, 0.022, 0.004], seg=10)
+        ojos_b.append(kit.elipsoide((c[0] + dx * 0.065, c[1] + 0.155, c[2] + 0.045), (0.032, 0.020, 0.026), seg=12))
+partes.append((kit.fundir(kit.de_skin("blaster", "mal_rato"), blasters, HUESO_B, voxel=0.006, suavizado=5, caras=6000),
+               "torso"))
+partes.append((kit.pieza_fija(kit.de_skin("neon_blaster", "mal_rato"), ojos_b, OJO_B), "torso"))
+# JUEZ: la tunica larga, abierta adelante, hasta los tobillos.
+tunica = kit.abrigo("capa", ["juez"], TUNICA, [(0.16, 0.270, 0.210), (0.50, 0.250, 0.195), (0.76, 0.240, 0.190),
+                                               (0.95, 0.250, 0.192), (1.12, 0.256, 0.192), (1.25, 0.212, 0.164)],
+                    lambda x, y, z: y > 0.0 and abs(x) < 0.085, z_arriba=1.30, z_abajo=0.18, corte=0.76,
+                    hombros=0.205, r_hombros=0.094)
+partes += tunica
+bordes = []
+for lado in (-1, 1):
+    bordes.append([kit.pegar(t[0], (lado * 0.090, 0.5, z), 0.004) for t, z in
+                   [(tunica[0], 1.24), (tunica[0], 1.0), (tunica[0], 0.78), (tunica[1], 0.6), (tunica[1], 0.4), (tunica[1], 0.2)]])
+partes.append((kit.lineas(kit.de_skin("capa_borde", "juez"), bordes, 0.012, DORADO), "por_distancia"))
+# INVIERNO: la bufanda roja con las puntas, y las orejeras.
+bufanda = []
+for k in range(24):
+    a, b = 2 * math.pi * k / 24, 2 * math.pi * (k + 1) / 24
+    bufanda.append(kit.capsula((math.sin(a) * 0.125, math.cos(a) * 0.110 - 0.015, 1.295),
+                               (math.sin(b) * 0.125, math.cos(b) * 0.110 - 0.015, 1.295), 0.040, seg=10))
+bufanda += kit.tubo([(0.07, 0.09, 1.28), (0.10, 0.15, 1.16), (0.11, 0.16, 1.02)], [0.044, 0.040, 0.038])
+partes.append((kit.fundir(kit.de_skin("bufanda", "invierno"), bufanda, BUFANDA, voxel=0.006, suavizado=5, caras=4000),
+               "torso"))
+orejeras = [kit.elipsoide((lado * 0.232, 0.0, 1.60), (0.050, 0.060, 0.062)) for lado in (-1, 1)]
+orejeras += kit.tubo([(-0.21, 0.0, 1.64), (-0.15, -0.01, 1.79), (0.0, -0.02, 1.835), (0.15, -0.01, 1.79), (0.21, 0.0, 1.64)],
+                     [0.016] * 5, seg=10)
+partes.append((kit.fundir(kit.de_skin("orejeras", "invierno"), orejeras, OREJERAS, voxel=0.005, suavizado=4, caras=3000),
+               "cabeza"))
+
 arm = kit.esqueleto(J)
+for obj, regla in partes:
+    if regla == "por_distancia":
+        kit.pesar(obj, arm, J, permitidos=["torso", "pierna_l", "pierna_r"])
+partes = [p for p in partes if p[1] != "por_distancia"]
 kit.pesar_estandar(partes, arm, J)
 datos = kit.cara_estandar(cabeza, J, 0.088, 1.628,
                           ojos_extra={"alto": 0.084, "ancho": 0.074, "iris": [1.0, 1.0, 1.0], "estilo": "cuenca",

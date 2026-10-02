@@ -975,7 +975,7 @@ func _material_modelo(nombre: StringName, base: Color) -> StandardMaterial3D:
 			base = _mat_shoe.albedo_color
 	var color := _tono(parte, base)
 	var m: StandardMaterial3D
-	if String(parte).begins_with("gema"):
+	if String(parte).begins_with("gema") or String(parte).begins_with("neon"):
 		# Las gemas del Guantelete brillan con luz propia, como en el disfraz de antes.
 		m = Art.glow(color, 2.6)
 	elif parte == &"lentes":
@@ -995,7 +995,7 @@ func _material_modelo(nombre: StringName, base: Color) -> StandardMaterial3D:
 const SIN_CONTORNO: Array[StringName] = [&"pecas", &"botones", &"detalle_chico", &"lineas"]
 ## Las partes de metal, con el brillo duro de Art.metal (el oro de Thanos, la placa de la
 ## bandana, el kunai).
-const METALICAS: Array[StringName] = [&"oro", &"guantelete", &"metal", &"placa", &"hebilla"]
+const METALICAS: Array[StringName] = [&"oro", &"guantelete", &"metal", &"placa", &"hebilla", &"corona"]
 
 
 ## Los pivotes van donde el modelo tiene sus juntas, y cada hueso queda atado a su pivote.
@@ -1060,9 +1060,12 @@ func _armar_cara_modelo(conf: Dictionary) -> void:
 	var ojos: Dictionary = conf.get("ojos", {})
 	# LO QUE CAMBIA CON LA FORMA DE LA SKIN: "formas": {"sin_venda": {...}} pisa lo de
 	# siempre (el iris, el estilo, "oculto" para los que van tapados, como Gojo con la venda).
+	# Y lo de una skin en particular ("formas": {"madara_rikudo": {...}}), encima de su forma.
 	var por_forma: Dictionary = ojos.get("formas", {})
-	if _skin != null and por_forma.has(String(_skin.forma)):
-		ojos = ojos.merged(por_forma[String(_skin.forma)], true)
+	if _skin != null:
+		for clave: String in [String(_skin.forma), String(_skin.id)]:
+			if por_forma.has(clave):
+				ojos = ojos.merged(por_forma[clave], true)
 	# "oculto" (la mascara de Spider-Man, la venda de Gojo): los ojos no se dibujan, pero su
 	# lugar queda, para lo que se pega a los ojos (el brillo de una skin).
 	var oculto := bool(ojos.get("oculto", false))
@@ -1107,7 +1110,12 @@ func _armar_cara_modelo(conf: Dictionary) -> void:
 				else:
 					_brow_r = ceja_piv
 	var boca: Dictionary = conf.get("boca", {})
-	if not boca.is_empty():
+	var boca_forma: Dictionary = boca.get("formas", {})
+	if _skin != null:
+		for clave: String in [String(_skin.forma), String(_skin.id)]:
+			if boca_forma.has(clave):
+				boca = boca.merged(boca_forma[clave], true)
+	if not boca.is_empty() and not bool(boca.get("oculto", false)):
 		var ancho := float(boca.get("ancho", 0.06))
 		var piv := Node3D.new()
 		piv.position = ModeloPersonaje._v(boca.get("pos"))
@@ -1447,10 +1455,11 @@ func _aplicar_extras() -> void:
 		_crear_aura(_skin.aura, _skin.aura_color)
 	if _skin.ojos_brillo.a > 0.0:
 		_ojos_que_brillan(_skin.ojos_brillo)
-	if _skin.accesorio != &"":
+	if _skin.accesorio != &"" and not _modelo_lo_trae(_skin.accesorio):
 		_crear_accesorio(_skin.accesorio)
 	for extra: StringName in _skin.accesorios:
-		_crear_accesorio(extra)
+		if not _modelo_lo_trae(extra):
+			_crear_accesorio(extra)
 
 
 ## La skin puesta cambia la forma de esto (ver SkinData.forma).
@@ -1458,9 +1467,31 @@ func _forma(cual: StringName) -> bool:
 	return _skin != null and _skin.forma == cual
 
 
+## "lista" es una o varias formas o skins separadas por "+": el modelo trae piezas que son
+## de UNA skin ("capa__f_vampiro" es de dio_vampiro: el id sin el personaje adelante, porque
+## Blender corta los nombres a 63 letras), ademas de las de las formas compartidas.
 func _alguna_forma(lista: String) -> bool:
 	for f: String in lista.split("+"):
-		if _forma(StringName(f)):
+		if _forma(StringName(f)) or _es_skin(f):
+			return true
+	return false
+
+
+func _es_skin(f: String) -> bool:
+	if _skin == null:
+		return false
+	var sid := String(_skin.id)
+	return sid == f or sid == String(_skin.character_id) + "_" + f
+
+
+## El modelo trae su propia version de este adorno para esta skin (una pieza visible que se
+## llama como el adorno y es de la skin): el del rig, hecho para el muñeco viejo, sobra.
+func _modelo_lo_trae(adorno: StringName) -> bool:
+	if not is_instance_valid(_modelo) or _skin == null:
+		return false
+	for nodo: Node in _modelo.find_children(String(adorno) + "*", "Node3D", true, false):
+		var n := nodo as Node3D
+		if n.is_visible_in_tree() and String(n.name).contains("__f_"):
 			return true
 	return false
 

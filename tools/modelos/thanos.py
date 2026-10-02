@@ -15,6 +15,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kit  # noqa: E402
 
 kit.limpiar()
+# EL CUERPO MAS GRANDE DEL JUEGO: brazos, piernas y manos de titan.
+kit.FACTOR_BRAZO = 1.38
+kit.FACTOR_PIERNA = 1.28
+kit.FACTOR_MANO = 1.40
 J = kit.juntas({"hombro_r": (0.31, 0, 1.44), "codo_r": (0.32, 0, 1.12), "mano_r": (0.32, 0, 0.82)})
 
 PIEL = kit.material("piel", (0.62, 0.48, 0.68))
@@ -149,6 +153,71 @@ for lado in (-1, 1):
     botas.append(kit.capsula((x, 0.0, 0.34), (x, 0.0, 0.10), 0.074, 0.072))
     botas += kit.zapato(lado, largo=0.135, ancho=0.074, alto=0.064)
 partes.append((kit.fundir("botas", botas, BOTAS, voxel=0.006, suavizado=6, caras=4000), "pies"))
+
+# -------------------------------------------------------------------- Skins
+#
+#   clasico   el de los comics: el casco dorado de titan, abierto en la cara, con las tres
+#             crestas arriba y las aletas a los costados.
+#   endgame   la armadura de batalla: el casco con la cresta del medio y la espada de dos
+#             hojas en la mano.
+#   infinito  ya es parte del universo: la capa larga, violeta, con las estrellas encima.
+CASCO = kit.material("casco_titan", (0.95, 0.76, 0.26), metal=0.8, rugosidad=0.3)
+ESPADA = kit.material("metal", (0.72, 0.74, 0.80), metal=0.85, rugosidad=0.25)
+MANGO = kit.material("mango", (0.30, 0.24, 0.20))
+CAPA = kit.material("capa", (0.30, 0.12, 0.55))
+ESTRELLA = kit.material("neon_estrellas", (1.00, 0.95, 0.80))
+
+
+def casco(extra=0.018):
+    return kit.cabeza_humana((0, 0.0, 1.80), ancho=0.142 + extra, alto=0.180 + extra, fondo=0.155 + extra,
+                             mandibula=1.18, nariz=1.0, orejas=False, menton=1.10)
+
+
+def abierto_cara(x, y, z):
+    return y > 0.04 and z < 1.885 and abs(x) < 0.118
+
+
+partes.append((kit.cascara(kit.de_skin("casco_titan", "clasico"), casco(), CASCO,
+                           lambda x, y, z: z > 1.66 and not abierto_cara(x, y, z), grosor=0.016, caras=6000), "cabeza"))
+crestas = []
+for dx in (-0.055, 0.0, 0.055):
+    crestas += kit.tubo([(dx, 0.13, 1.92), (dx * 1.1, 0.02, 2.00), (dx * 1.1, -0.12, 1.96), (dx, -0.17, 1.84)],
+                        [0.016, 0.022, 0.020, 0.012], seg=10)
+for lado in (-1, 1):
+    crestas.append(kit.cono((lado * 0.165, -0.02, 1.80), (lado * 0.235, -0.06, 1.90), 0.050, 0.006, seg=12))
+partes.append((kit.fundir(kit.de_skin("casco_titan_crestas", "clasico"), crestas, CASCO, voxel=0.004, suavizado=2,
+                          caras=3000), "cabeza"))
+casco_e = kit.cascara(kit.de_skin("casco_titan", "endgame"), casco(0.022), CASCO,
+                      lambda x, y, z: z > 1.64 and not abierto_cara(x, y, z), grosor=0.018, caras=6000)
+partes.append((casco_e, "cabeza"))
+cresta = kit.tubo([(0.0, 0.15, 1.90), (0.0, 0.08, 2.02), (0.0, -0.06, 2.05), (0.0, -0.18, 1.95)],
+                  [0.014, 0.020, 0.020, 0.010], seg=10)
+for lado in (-1, 1):
+    cresta += kit.tubo([(lado * 0.12, 0.10, 1.70), (lado * 0.15, 0.13, 1.64), (lado * 0.13, 0.15, 1.60)],
+                       [0.020, 0.016, 0.006], seg=10)
+partes.append((kit.fundir(kit.de_skin("casco_titan_cresta", "endgame"), cresta, CASCO, voxel=0.004, suavizado=2,
+                          caras=2500), "cabeza"))
+xm, ym, zm = J["mano_r"]
+hoja = [kit.capsula((xm, ym, zm + 0.20), (xm, ym, zm - 0.20), 0.020)]
+for sgn in (1, -1):
+    base = (xm, ym, zm + sgn * 0.20)
+    hoja.append(kit.caja((xm, ym, zm + sgn * 0.48), (0.018, 0.080, 0.52)))
+    hoja.append(kit.cono((xm, ym, zm + sgn * 0.74), (xm, ym, zm + sgn * 0.86), 0.050, 0.002, seg=4))
+partes.append((kit.fundir(kit.de_skin("espada", "endgame"), hoja, ESPADA, voxel=0.004, suavizado=1, caras=3000), "codo_r"))
+partes.append((kit.fundir(kit.de_skin("espada_mango", "endgame"),
+                          [kit.capsula((xm, ym, zm + 0.19), (xm, ym, zm - 0.19), 0.024)], MANGO, voxel=0.004, suavizado=2,
+                          caras=1200), "codo_r"))
+capa = kit.capa("capa", ["infinito"], CAPA, z_abajo=0.22, abre=0.16, cuello=0.08, ancho=0.250, fondo=0.170)
+partes.append((capa, "torso"))
+import random
+random.seed(41)
+estrellas = []
+for k in range(26):
+    x = random.uniform(-0.30, 0.30)
+    z = random.uniform(0.30, 1.40)
+    q = kit.pegar(capa, (x, -0.6, z), 0.010)
+    estrellas.append(kit.elipsoide(q, (0.010, 0.010, 0.010), seg=8))
+partes.append((kit.pieza_fija(kit.de_skin("capa_estrellas", "infinito"), estrellas, ESTRELLA), "torso"))
 
 arm = kit.esqueleto(J)
 for obj, regla in partes:

@@ -13,6 +13,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kit  # noqa: E402
 
 kit.limpiar()
+# Mario ya es de dibujo: los guantes grandes y los zapatos grandes son suyos.
+kit.FACTOR_BRAZO = kit.FACTOR_PIERNA = kit.FACTOR_MANO = kit.FACTOR_PIE = 1.0
 J = kit.juntas({"caderas": (0, 0, 0.60), "cabeza": (0, 0, 1.30),
                 "hombro_r": (0.31, 0, 1.16), "codo_r": (0.35, 0, 0.94), "mano_r": (0.37, 0, 0.74),
                 "pierna_r": (0.13, 0, 0.58), "rodilla_r": (0.14, 0, 0.33), "pie_r": (0.14, 0, 0.09)})
@@ -151,6 +153,41 @@ zapatos = []
 for lado in (-1, 1):
     zapatos += kit.zapato(lado, j=J, largo=0.175, ancho=0.096, alto=0.080, punta=1.15)
 partes.append((kit.fundir("zapatos", zapatos, ZAPATOS, voxel=0.006, suavizado=6, caras=4500), "pies"))
+
+# -------------------------------------------------------------------- Skins
+#
+# Los power-ups cambian el color, y lo que cambia la forma es lo que tiene en la mano:
+#   fuego  la bola de fuego en la mano.      hielo  la bola de hielo.
+#   dorado la Flor Dorada: las monedas de oro dando vueltas alrededor de la cintura.
+#   clasico el Jumpman de 1985: la gorra todavia sin la M ni el circulo.
+import math
+FUEGO = kit.material("neon_fuego", (1.00, 0.50, 0.12))
+NUCLEO = kit.material("neon_fuego_centro", (1.00, 0.92, 0.55))
+HIELO = kit.material("neon_hielo", (0.60, 0.88, 1.00))
+MONEDA = kit.material("moneda", (1.00, 0.84, 0.25), metal=0.8, rugosidad=0.25)
+xm, ym, zm = J["mano_r"]
+bola = (xm + 0.02, ym + 0.10, zm + 0.02)
+partes.append((kit.fundir(kit.de_skin("flor_fuego", "fuego"), [kit.elipsoide(bola, (0.070, 0.070, 0.070))], FUEGO,
+                          voxel=0.005, suavizado=3, caras=1500), "codo_r"))
+partes.append((kit.fundir(kit.de_skin("fuego_centro", "fuego"), [kit.elipsoide(bola, (0.040, 0.040, 0.040))], NUCLEO,
+                          voxel=0.004, suavizado=3, caras=800), "codo_r"))
+hielo = [kit.elipsoide(bola, (0.068, 0.068, 0.068))]
+for k in range(8):
+    a = 2 * math.pi * k / 8
+    hielo.append(kit.cono(bola, (bola[0] + math.cos(a) * 0.10, bola[1] + math.sin(a) * 0.10, bola[2] + (0.05 if k % 2 else -0.05)),
+                          0.026, 0.002, seg=6))
+partes.append((kit.pieza_fija(kit.de_skin("flor_fuego_hielo", "hielo"), hielo, HIELO), "codo_r"))
+monedas = []
+for k in range(6):
+    a = 2 * math.pi * k / 6
+    c = (math.cos(a) * 0.36, math.sin(a) * 0.32, 0.86 + 0.06 * math.sin(a * 2))
+    m = [kit.capsula((c[0] - math.sin(a) * 0.006, c[1] + math.cos(a) * 0.006, c[2]),
+                     (c[0] + math.sin(a) * 0.006, c[1] - math.cos(a) * 0.006, c[2]), 0.050, seg=20)]
+    monedas += m
+partes.append((kit.fundir(kit.de_skin("moneda", "dorado"), monedas, MONEDA, voxel=0.004, suavizado=2, caras=3000), "torso"))
+for obj, _r in partes:
+    if obj.name in ("emblema", "m"):
+        kit.ocultar_en(obj, "clasico")
 
 arm = kit.esqueleto(J)
 kit.pesar_estandar(partes, arm, J)

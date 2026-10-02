@@ -186,6 +186,97 @@ for lado in (-1, 1):
     sandalias.append(kit.elipsoide((x, 0.030, 0.070), (0.060, 0.055, 0.042)))
 partes.append((kit.fundir("sandalias", sandalias, SANDALIAS, voxel=0.005, suavizado=4, caras=3500), "pies"))
 
+# -------------------------------------------------------------------- Skins
+#
+#   kurama   el Modo Kurama: el manto de chakra dorado, abierto y con la cola en llamas,
+#            con las marcas negras del sello (los magatama del cuello y las lineas del
+#            pecho y la espalda); los ojos naranjas con la pupila en barra.
+#   seis     el de los Seis Caminos: el mismo manto, y las nueve esferas a la espalda.
+#   hokage   el manto blanco del Septimo con las llamas rojas abajo.
+#   sabio    el manto rojo del sabio con las llamas negras, el pergamino a la espalda y los
+#            ojos de sapo.
+#   genin    el de la academia: las antiparras en la frente.
+MANTO = kit.material("manto_chakra", (1.00, 0.72, 0.18))
+SELLO = kit.material("sello", (0.06, 0.05, 0.05))
+ORBE = kit.material("orbes", (0.05, 0.05, 0.07), rugosidad=0.3)
+CAPA = kit.material("capa", (0.96, 0.96, 0.94))
+LLAMA_R = kit.material("capa_llamas", (0.85, 0.15, 0.10))
+LLAMA_N = kit.material("capa_llamas_negras", (0.08, 0.07, 0.07))
+PERGAMINO = kit.material("pergamino", (0.90, 0.82, 0.62))
+PERG_B = kit.material("pergamino_borde", (0.72, 0.20, 0.15))
+GAFAS = kit.material("gafas", (0.20, 0.42, 0.75))
+VIDRIO = kit.material("neon_vidrio", (0.70, 0.95, 1.00))
+LARGO = [(0.38, 0.214, 0.164), (0.62, 0.208, 0.158), (0.84, 0.198, 0.150), (1.00, 0.190, 0.144), (1.18, 0.196, 0.146),
+         (1.34, 0.212, 0.152), (1.46, 0.210, 0.148), (1.56, 0.164, 0.124)]
+
+
+def llamas_abajo(z_base, alto):
+    """Las lenguas de fuego del ruedo: suben y bajan alrededor del manto."""
+    return lambda x, y, z: z < z_base + alto * abs(math.sin(math.atan2(x, y) * 4.0))
+
+
+# KURAMA y SEIS CAMINOS: el manto de chakra, abierto, hasta la canilla, con el ruedo en
+# lenguas de fuego, y las marcas del sello encima.
+manto = kit.abrigo("manto", ["kurama", "seis"], MANTO, LARGO, lambda x, y, z: y > 0.0 and abs(x) < 0.060 +
+                   max(0.0, 1.0 - z) * 0.10 or z < 0.42 + 0.10 * abs(math.sin(math.atan2(x, y) * 5.0)),
+                   z_abajo=0.40, hombros=0.170, r_hombros=0.088)
+partes += manto
+sello = []
+for k in range(8):
+    a = math.radians(-100 + k * 28.5)
+    q = kit.pegar(manto[0][0], (math.sin(a) * 0.4, math.cos(a) * 0.4, 1.53), 0.006)
+    sello.append([q, (q[0], q[1], q[2] - 0.035)])
+for x in (-0.12, 0.12):
+    sello.append([kit.pegar(manto[0][0], (x, 0.4, z), 0.006) for z in (1.48, 1.36, 1.24, 1.12)])
+for x in (-0.08, 0.0, 0.08):
+    sello.append([kit.pegar(manto[0][0], (x, -0.4, z), 0.006) for z in (1.50, 1.32, 1.14)])
+partes.append((kit.lineas(kit.de_skin("sello", "kurama", "seis"), sello, 0.010, SELLO), "torso"))
+orbes = []
+for k in range(9):
+    a = 2 * math.pi * k / 9
+    orbes.append(kit.elipsoide((math.cos(a) * 0.34, -0.34, 1.42 + math.sin(a) * 0.34), (0.046, 0.046, 0.046), seg=20))
+partes.append((kit.fundir(kit.de_skin("orbes", "seis"), orbes, ORBE, voxel=0.005, suavizado=3, caras=4000), "torso"))
+# HOKAGE y SABIO: el manto largo (haori) con mangas anchas cortas, y las llamas del ruedo.
+for skin, llama in (("hokage", LLAMA_R), ("sabio", LLAMA_N)):
+    haori = kit.abrigo("capa", [skin], CAPA, LARGO, lambda x, y, z: y > 0.0 and abs(x) < 0.085, z_abajo=0.40,
+                       hombros=0.170, r_hombros=0.090)
+    kit.cortar(haori[1][0], (0, 0, 0.66))
+    kit.pintar(haori[1][0], llama, llamas_abajo(0.47, 0.17))
+    partes += haori
+    mangas_h = []
+    for lado in (-1, 1):
+        s = "_l" if lado < 0 else "_r"
+        h, c = J["hombro" + s], J["codo" + s]
+        mangas_h += kit.tubo([h, (h[0], h[1], h[2] - 0.26)], [0.092, 0.110])
+    partes.append((kit.fundir(kit.de_skin("capa_mangas", skin), mangas_h, CAPA, voxel=0.006, suavizado=6, caras=3000),
+                   "brazos"))
+pergamino = [kit.capsula((-0.20, -0.20, 1.10), (0.20, -0.20, 1.10), 0.075, seg=24)]
+partes.append((kit.fundir(kit.de_skin("pergamino", "sabio"), pergamino, PERGAMINO, voxel=0.005, suavizado=3, caras=2500),
+               "torso"))
+partes.append((kit.fundir(kit.de_skin("pergamino_borde", "sabio"),
+                          [kit.capsula((lado * 0.215, -0.20, 1.10), (lado * 0.235, -0.20, 1.10), 0.080, seg=24) for lado in (-1, 1)],
+                          PERG_B, voxel=0.004, suavizado=2, caras=1500), "torso"))
+# GENIN: las antiparras de la academia, en la frente sobre el pelo.
+gafas, vidrios = [], []
+for lado in (-1, 1):
+    p, n = kit.superficie(cabeza, lado * 0.055, 1.905)
+    c = tuple(p + n * 0.030)
+    aro = [kit.capsula((c[0], c[1] - 0.012, c[2]), (c[0], c[1] + 0.012, c[2]), 0.034, 0.032, seg=20)]
+    kit.orientar(aro, c, n)
+    gafas += aro
+    v = [kit.elipsoide((c[0], c[1] + 0.014, c[2]), (0.028, 0.006, 0.028), seg=16)]
+    kit.orientar(v, c, n)
+    vidrios += v
+for k in range(28):
+    a, b = 2 * math.pi * k / 28, 2 * math.pi * (k + 1) / 28
+    gafas.append(kit.capsula((math.sin(a) * 0.170, math.cos(a) * 0.178 - 0.010, 1.905),
+                             (math.sin(b) * 0.170, math.cos(b) * 0.178 - 0.010, 1.905), 0.010, seg=6))
+partes.append((kit.fundir(kit.de_skin("gafas", "genin"), gafas, GAFAS, voxel=0.0035, suavizado=2, caras=3000), "cabeza"))
+partes.append((kit.pieza_fija(kit.de_skin("gafas_vidrio", "genin"), vidrios, VIDRIO), "cabeza"))
+for obj, _r in partes:
+    if obj.name in ("bandana", "placa", "grabado"):
+        kit.ocultar_en(obj, "genin")
+
 arm = kit.esqueleto(J)
 for obj, regla in partes:
     if regla.startswith("pierna_"):
@@ -193,7 +284,8 @@ for obj, regla in partes:
 kit.pesar_estandar([p for p in partes if not p[1].startswith("pierna_")], arm, J)
 cara = kit.cara_estandar(cabeza, J, 0.056, 1.812,
                          ojos_extra={"alto": 0.064, "ancho": 0.058, "iris": [0.25, 0.55, 0.95], "pestanas": False,
-                                     "formas": {"kurama": {"iris": [1.0, 0.55, 0.10]}}},
+                                     "formas": {"kurama": {"iris": [1.0, 0.55, 0.10], "estilo": "sapo"},
+                                                "naruto_sabio": {"iris": [0.95, 0.75, 0.20], "estilo": "sapo"}}},
                          cejas={"alto": 0.040, "color": [0.80, 0.60, 0.15], "largo": 0.052},
                          boca_z=1.698, boca_extra={"ancho": 0.066, "dientes": False})
 kit.exportar("naruto", arm, cara)

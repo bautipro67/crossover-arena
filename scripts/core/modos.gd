@@ -273,6 +273,8 @@ var mision: Node = null
 ## Arranca un capitulo de la historia.
 func iniciar_historia(i: int) -> void:
 	capitulo = i
+	# Cada capitulo pasa en su lugar de la historia (ver Mapas.de_capitulo).
+	Mapas.elegido = Mapas.de_capitulo(i)
 	iniciar(HISTORIA)
 
 

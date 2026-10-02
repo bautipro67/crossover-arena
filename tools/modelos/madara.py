@@ -94,17 +94,21 @@ for k, (z0, z1) in enumerate(((1.370, 1.520), (1.255, 1.355), (1.140, 1.240))):
         if z > 1.35 and abs(x) > 0.180:
             return False
         return not (z > 1.47 and math.hypot(x, y) < 0.105)
-    inflado = kit.torso_humano(pecho=0.206, cintura=0.184, fondo=0.141, hombros=0.150)
+    # De un perfil recto y apenas inflado: con el torso de elipsoides cada placa salia como
+    # un rollo inflado.
+    inflado = kit.perfil([(1.10, 0.186, 0.140), (1.20, 0.194, 0.144), (1.33, 0.212, 0.150), (1.45, 0.212, 0.146),
+                          (1.53, 0.170, 0.124)])
+    inflado.append(kit.capsula((-0.160, 0.0, 1.47), (0.160, 0.0, 1.47), 0.088))
     placa = kit.cascara("peto_%d__sin_sin_armadura" % k, inflado, ARMADURA, banda, grosor=0.013, caras=5000)
     partes.append((placa, "torso"))
 for lado in (-1, 1):
     s = "l" if lado < 0 else "r"
     cap = kit.cascara("hombrera_%s__sin_sin_armadura" % s,
-                      [kit.elipsoide((lado * 0.285, 0.0, 1.455), (0.125, 0.135, 0.105))], ARMADURA,
-                      lambda x, y, z: z > 1.385 and abs(x) > 0.200, grosor=0.016, caras=2500)
+                      [kit.elipsoide((lado * 0.290, 0.0, 1.450), (0.135, 0.140, 0.080))], ARMADURA,
+                      lambda x, y, z: z > 1.400 and abs(x) > 0.205, grosor=0.014, caras=2500)
     lam = kit.cascara("lamina_%s__sin_sin_armadura" % s,
-                      [kit.elipsoide((lado * 0.300, 0.0, 1.400), (0.135, 0.142, 0.100))], ARMADURA,
-                      lambda x, y, z: 1.322 < z < 1.400 and abs(x) > 0.250, grosor=0.016, caras=2500)
+                      [kit.elipsoide((lado * 0.312, 0.0, 1.395), (0.145, 0.148, 0.078))], ARMADURA,
+                      lambda x, y, z: 1.335 < z < 1.400 and abs(x) > 0.255, grosor=0.014, caras=2500)
     for o in (cap, lam):
         partes.append((o, "hombro_" + s))
 # Las placas de la cintura, largas hasta la mitad del muslo (las del muslo de la referencia):
@@ -180,6 +184,61 @@ for k in range(9):
                                (0.014, 0.008, 0.020), seg=10))
 partes.append((kit.fundir("cadena", negro, NEGRO, voxel=0.004, suavizado=2, caras=6000), "codo_r"))
 
+# -------------------------------------------------------------------- Skins
+#
+#   rikudo   el jinchuriki del Diez Colas: los cuernos, el Rinne Sharingan en la frente,
+#            las nueve esferas buscadoras de la verdad en anillo a la espalda, y el
+#            Rinnegan en los dos ojos.
+#   susanoo  envuelto en el chakra azul: las costillas del Susano'o alrededor del torso.
+#   edo      el Edo Tensei: las grietas en la cara y en las manos, y el Rinnegan con el
+#            blanco del ojo negro.
+#   joven    sin armadura (la forma sin_armadura).
+CUERNO = kit.material("cuernos", (0.92, 0.92, 0.94))
+TERCER = kit.material("gema_tercer_ojo", (0.92, 0.10, 0.12))
+ORBE = kit.material("orbes", (0.05, 0.05, 0.07), rugosidad=0.3)
+SUSANOO = kit.material("neon_susanoo", (0.35, 0.55, 1.00))
+GRIETA = kit.material("grietas", (0.25, 0.22, 0.24))
+cuernos = []
+for lado in (-1, 1):
+    cuernos += kit.tubo([(lado * 0.045, 0.080, 1.965), (lado * 0.060, 0.050, 2.050), (lado * 0.050, 0.000, 2.110)],
+                        [0.026, 0.018, 0.004], seg=12)
+partes.append((kit.fundir(kit.de_skin("cuernos", "rikudo"), cuernos, CUERNO, voxel=0.004, suavizado=3, caras=2500), "cabeza"))
+p, n = kit.superficie(cabeza, 0.0, 1.890)
+c = tuple(p + n * 0.004)
+tercero = [kit.elipsoide(c, (0.018, 0.006, 0.024), seg=18)]
+kit.orientar(tercero, c, n)
+partes.append((kit.fundir(kit.de_skin("tercer_ojo", "rikudo"), tercero, TERCER, voxel=0.0025, suavizado=1, caras=800), "cabeza"))
+orbes = []
+for k in range(9):
+    a = 2 * math.pi * k / 9
+    orbes.append(kit.elipsoide((math.cos(a) * 0.36, -0.36, 1.42 + math.sin(a) * 0.36), (0.048, 0.048, 0.048), seg=20))
+partes.append((kit.fundir(kit.de_skin("orbes", "rikudo"), orbes, ORBE, voxel=0.005, suavizado=3, caras=4000), "torso"))
+# SUSANOO: las costillas de chakra, arcos alrededor del pecho y la espalda.
+costillas = []
+for k in range(5):
+    z = 1.46 - k * 0.075
+    r = 0.300 - k * 0.012
+    for lado in (-1, 1):
+        costillas.append([(lado * math.sin(math.radians(a)) * r, math.cos(math.radians(a)) * r * 0.85 - 0.02, z - 0.02 * math.cos(math.radians(a)))
+                          for a in range(20, 175, 12)])
+costillas.append([(0.0, -0.27, 1.52 - t * 0.36) for t in (0.0, 0.33, 0.66, 1.0)])
+partes.append((kit.lineas(kit.de_skin("costillas", "susanoo"), costillas, 0.018, SUSANOO), "torso"))
+# EDO TENSEI: las grietas en la cara y en el dorso de las manos.
+grietas = []
+for x0, z0, pasos in ((-0.07, 1.78, ((-0.02, -0.03), (-0.01, -0.04), (-0.025, -0.03))),
+                      (0.075, 1.77, ((0.02, -0.035), (0.0, -0.04))), (0.03, 1.92, ((0.015, -0.03), (-0.01, -0.025)))):
+    pts = [(x0, 0.0, z0)]
+    for dx, dz in pasos:
+        pts.append((pts[-1][0] + dx, 0.0, pts[-1][2] + dz))
+    linea = []
+    for x, _y, z in pts:
+        q, nq = kit.superficie(cabeza, x, z)
+        if q is not None:
+            linea.append(tuple(q + nq * 0.002))
+    if len(linea) > 1:
+        grietas.append(linea)
+partes.append((kit.lineas(kit.de_skin("grietas", "edo"), grietas, 0.0035, GRIETA), "cabeza"))
+
 arm = kit.esqueleto(J)
 # Las hombreras van con el brazo y las musleras con el muslo, enteras.
 for obj, regla in partes:
@@ -187,7 +246,9 @@ for obj, regla in partes:
         kit.pesar(obj, arm, J, solo=regla)
 kit.pesar_estandar([p for p in partes if not p[1].startswith(("hombro_", "pierna_"))], arm, J)
 cara = kit.cara_estandar(cabeza, J, 0.055, 1.815,
-                         ojos_extra={"alto": 0.050, "ancho": 0.058, "iris": [0.86, 0.06, 0.06], "estilo": "sharingan"},
+                         ojos_extra={"alto": 0.050, "ancho": 0.058, "iris": [0.86, 0.06, 0.06], "estilo": "sharingan",
+                                     "formas": {"madara_rikudo": {"estilo": "rinnegan"},
+                                                "madara_edo": {"estilo": "rinnegan_edo"}}},
                          cejas={"alto": 0.036, "color": [0.06, 0.07, 0.12], "largo": 0.060},
                          boca_z=1.700, boca_extra={"ancho": 0.056, "dientes": False})
 kit.exportar("madara", arm, cara)

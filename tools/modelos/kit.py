@@ -427,6 +427,65 @@ def pesar(obj, arm, j, solo=None, permitidos=None, potencia=5.0):
 
 # ------------------------------------------------------------------- Exportar
 
+# ---------------------------------------------------------------- Las skins
+#
+# Una pieza de UNA skin se llama "<parte>__f_<skin>" y una que esa skin saca, "<parte>__sin_
+# <skin>+<otra>". <skin> es el id sin el personaje adelante ("vampiro" por dio_vampiro),
+# porque Blender corta los nombres a 63 letras. PlayerVisual prende y apaga cada una.
+
+def de_skin(nombre, *skins):
+    return nombre + "__f_" + "+".join(skins)
+
+
+def ocultar_en(obj, *skins):
+    """Que esta pieza de fabrica no aparezca con estas skins (o formas)."""
+    if "__sin_" in obj.name:
+        obj.name = obj.name + "+" + "+".join(skins)
+    else:
+        obj.name = obj.name + "__sin_" + "+".join(skins)
+    if len(obj.name) > 62:
+        raise ValueError("nombre de pieza demasiado largo para Blender: " + obj.name)
+    return obj
+
+
+def abrigo(nombre, skins, mat, puntos, abierto, z_arriba=1.585, z_abajo=0.64, corte=1.0, grosor=0.014,
+           hombros=0.150, r_hombros=0.084, caras=7000):
+    """Un abrigo largo de UNA o varias skins: tela con espesor de los hombros a `z_abajo`,
+    abierta donde `abierto(x, y, z)`. Sale en dos piezas: de la cintura para arriba va con el
+    torso, y el faldon con las piernas (como una pollera), asi no se estira al caminar."""
+    def cuerpo():
+        t = perfil(puntos)
+        t.append(capsula((-hombros, 0.0, 1.47), (hombros, 0.0, 1.47), r_hombros))
+        return t
+    arriba = cascara(de_skin(nombre, *skins), cuerpo(), mat,
+                     lambda x, y, z: corte - 0.02 < z < z_arriba and not abierto(x, y, z), grosor=grosor, caras=caras)
+    abajo = cascara(de_skin(nombre + "_faldon", *skins), cuerpo(), mat,
+                    lambda x, y, z: z_abajo < z <= corte + 0.02 and not abierto(x, y, z), grosor=grosor,
+                    caras=int(caras * 0.7))
+    return [(arriba, "torso"), (abajo, "cadera")]
+
+
+def capa(nombre, skins, mat, z_abajo=0.55, abre=0.10, cuello=0.0, ancho=0.215, fondo=0.150, grosor=0.014,
+         caras=6000):
+    """Una CAPA de UNA o varias skins: tela con espesor que nace en los hombros y cae por la
+    espalda hasta `z_abajo`, abriendose `abre` hacia los costados y hacia atras. `cuello`
+    levanta un cuello alto atras (el de un villano, el de un rey)."""
+    pasos = [(z_abajo, ancho + abre, fondo + abre * 0.9, -abre * 0.6), (1.00, ancho + abre * 0.45, fondo + abre * 0.45, -abre * 0.3),
+             (1.30, ancho + 0.010, fondo + 0.010, 0.0), (1.50, ancho, fondo - 0.005, 0.0)]
+    t = perfil(pasos)
+    t.append(capsula((-0.17, 0.0, 1.48), (0.17, 0.0, 1.48), 0.098))
+    if cuello > 0.0:
+        t.append(capsula((-0.11, -0.05, 1.50), (0.11, -0.05, 1.50 + cuello), 0.060, 0.090))
+
+    def tela(x, y, z):
+        if not (z_abajo + 0.01 < z < 1.60 + cuello):
+            return False
+        if z > 1.56 and cuello <= 0.0:
+            return False
+        return y < 0.02 or (z > 1.46 and y < 0.10 and abs(x) > 0.12)
+    return cascara(de_skin(nombre, *skins), t, mat, tela, grosor=grosor, caras=caras)
+
+
 def exportar(nombre, arm, cara=None):
     os.makedirs(SALIDA_MODELOS, exist_ok=True)
     # Un objeto que se llama como un hueso ("cabeza", "torso") hace que el importador de
@@ -599,52 +658,101 @@ def cabeza_humana(c=(0.0, 0.0, 1.80), ancho=0.150, alto=0.180, fondo=0.160, mand
     return piezas
 
 
+# LAS PROPORCIONES DE DIBUJO (2026-10-02, "hay modelos con malas proporciones"): con las
+# medidas de una persona, los brazos y las piernas eran tubos finos y las manos garritas, y
+# casi todos se leian como un muñeco de palitos. Un personaje de dibujo tiene los brazos y
+# las piernas mas gruesos, con el musculo marcado, y las manos y los pies mas grandes. Los
+# que son finos de verdad (Sonic) los ponen en 1 antes de armar.
+FACTOR_BRAZO = 1.15
+FACTOR_PIERNA = 1.10
+FACTOR_MANO = 1.22
+FACTOR_PIE = 1.12
+MUSCULOS = True
+
+
+def _entre(a, b, t):
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
+
+
 def brazo(lado, r_hombro=0.066, r_codo=0.056, r_muneca=0.046, j=None, hasta=0.875):
-    """El brazo entero (de hombro a muñeca), colgando de las juntas del rig."""
+    """El brazo entero (de hombro a muñeca), colgando de las juntas del rig, con el
+    deltoides, el biceps y el antebrazo marcados."""
     j = j or juntas()
     s = "_l" if lado < 0 else "_r"
+    f = FACTOR_BRAZO
     h, c = j["hombro" + s], j["codo" + s]
     m = (j["mano" + s][0], j["mano" + s][1], hasta)
-    return tubo([h, c, m], [r_hombro, r_codo, r_muneca])
+    piezas = tubo([h, c, m], [r_hombro * f, r_codo * f, r_muneca * f])
+    if MUSCULOS:
+        largo = h[2] - c[2]
+        piezas.append(elipsoide((h[0] + lado * 0.010, h[1], h[2] - 0.035),
+                                (r_hombro * f * 1.10, r_hombro * f * 1.08, r_hombro * f * 1.30)))
+        piezas.append(elipsoide(_entre(h, c, 0.50), (r_hombro * f * 0.98, r_hombro * f * 1.04, largo * 0.30)))
+        piezas += antebrazo(lado, r_codo, r_muneca, j, hasta)[1:]
+    return piezas
 
 
 def antebrazo(lado, r_codo=0.056, r_muneca=0.046, j=None, hasta=0.875):
     j = j or juntas()
     s = "_l" if lado < 0 else "_r"
-    return tubo([j["codo" + s], (j["mano" + s][0], j["mano" + s][1], hasta)], [r_codo, r_muneca])
+    f = FACTOR_BRAZO
+    c = j["codo" + s]
+    m = (j["mano" + s][0], j["mano" + s][1], hasta)
+    piezas = tubo([c, m], [r_codo * f, r_muneca * f])
+    if MUSCULOS and c[2] - m[2] > 0.10:
+        piezas.append(elipsoide(_entre(c, m, 0.30), (r_codo * f * 1.06, r_codo * f * 1.04, (c[2] - m[2]) * 0.30)))
+    return piezas
 
 
 def mano(lado, j=None, r=0.046, dedos=True, guante=1.0):
-    """Palma, pulgar y, si se pide, los cuatro dedos juntos en dos falanges."""
+    """La palma, el pulgar y los cuatro dedos, cada uno en tres falanges y apenas
+    cerrados hacia la palma (que mira al cuerpo)."""
     j = j or juntas()
     s = "_l" if lado < 0 else "_r"
     x, y, z = j["mano" + s]
-    g = guante
-    piezas = [elipsoide((x, y, z + 0.005), (r * g, r * 0.70 * g, r * 1.20 * g))]
+    g = guante * FACTOR_MANO
+    r = r * FACTOR_MANO
+    adentro = -lado
+    piezas = [elipsoide((x, y, z + 0.004 * g), (r * guante * 0.62, r * guante * 0.92, r * guante * 1.12))]
     # El pulgar, por delante y hacia adentro.
-    piezas.append(capsula((x - lado * 0.010, y + 0.030 * g, z + 0.025), (x - lado * 0.022, y + 0.052 * g, z - 0.012),
-                          0.016 * g, 0.014 * g))
+    piezas += tubo([(x + adentro * 0.008 * g, y + 0.026 * g, z + 0.020 * g),
+                    (x + adentro * 0.020 * g, y + 0.046 * g, z - 0.006 * g),
+                    (x + adentro * 0.026 * g, y + 0.054 * g, z - 0.030 * g)],
+                   [0.0150 * g, 0.0130 * g, 0.0110 * g], seg=12)
     if dedos:
+        largos = (0.92, 1.0, 0.96, 0.82)
         for k in range(4):
-            dy = (-0.024 + k * 0.016) * g
-            piezas.append(capsula((x + lado * 0.004, y + dy, z - 0.035 * g), (x + lado * 0.010, y + dy, z - 0.072 * g),
-                                  0.0115 * g, 0.0105 * g, seg=12))
+            dy = (0.022 - k * 0.0148) * g
+            lf = largos[k]
+            piezas += tubo([(x, y + dy, z - 0.026 * g),
+                            (x + adentro * 0.004 * g, y + dy * 1.04, z - (0.026 + 0.026 * lf) * g),
+                            (x + adentro * 0.011 * g, y + dy * 1.06, z - (0.026 + 0.046 * lf) * g),
+                            (x + adentro * 0.019 * g, y + dy * 1.06, z - (0.026 + 0.060 * lf) * g)],
+                           [0.0108 * g, 0.0100 * g, 0.0092 * g, 0.0080 * g], seg=12)
     return piezas
 
 
 def pierna(lado, r_muslo=0.082, r_rodilla=0.064, r_tobillo=0.050, j=None, hasta=0.12):
+    """La pierna, con el muslo y la pantorrilla marcados."""
     j = j or juntas()
     s = "_l" if lado < 0 else "_r"
+    f = FACTOR_PIERNA
     p, r = j["pierna" + s], j["rodilla" + s]
-    return tubo([p, r, (r[0], r[1], hasta)], [r_muslo, r_rodilla, r_tobillo])
+    piezas = tubo([p, r, (r[0], r[1], hasta)], [r_muslo * f, r_rodilla * f, r_tobillo * f])
+    if MUSCULOS:
+        piezas.append(elipsoide(_entre(p, r, 0.38), (r_muslo * f * 1.04, r_muslo * f * 1.06, (p[2] - r[2]) * 0.36)))
+        if r[2] - hasta > 0.16:
+            piezas.append(elipsoide((r[0], r[1] - 0.010, r[2] - (r[2] - hasta) * 0.30),
+                                    (r_rodilla * f * 1.04, r_rodilla * f * 1.10, (r[2] - hasta) * 0.26)))
+    return piezas
 
 
 def zapato(lado, j=None, largo=0.115, ancho=0.066, alto=0.058, suela=None, punta=1.0):
-    """El zapato: el talon, la capellada y la punta. `suela` = material de la suela, si se
-    quiere aparte (devuelve [zapato, suela])."""
+    """El zapato: el talon, la capellada y la punta."""
     j = j or juntas()
     s = "_l" if lado < 0 else "_r"
     x, y, z = j["pie" + s]
+    largo, ancho, alto = largo * FACTOR_PIE, ancho * FACTOR_PIE, alto * FACTOR_PIE
     piezas = [
         elipsoide((x, y - 0.020, z + 0.010), (ancho, largo * 0.55, alto * 1.05)),
         elipsoide((x, y + largo * 0.45, z - 0.005), (ancho * 0.95 * punta, largo * 0.55, alto * 0.80)),

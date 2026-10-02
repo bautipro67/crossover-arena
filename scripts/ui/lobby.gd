@@ -14,6 +14,10 @@ var _character_scroll: ScrollContainer = null
 var _kit_box: VBoxContainer = null
 var _start_button: Button = null
 var _status_label: Label = null
+## EL MAPA: el nombre y, al host (o jugando offline), las flechas para cambiarlo.
+var _mapa_label: Label = null
+var _mapa_ant: Button = null
+var _mapa_sig: Button = null
 
 var _selected_id: StringName = &"noelle"
 
@@ -130,6 +134,32 @@ func _ready() -> void:
 	leave_button.pressed.connect(func() -> void: leave_requested.emit())
 	buttons.add_child(leave_button)
 
+	# --- El mapa: los lugares de la historia, en los modos normales ---
+	var mapa_caja := HBoxContainer.new()
+	mapa_caja.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mapa_caja.add_theme_constant_override("separation", 6)
+	buttons.add_child(mapa_caja)
+	_mapa_ant = UITheme.make_button("<")
+	_mapa_ant.custom_minimum_size = Vector2(46, 46)
+	_mapa_ant.pressed.connect(func() -> void: _cambiar_mapa(-1))
+	mapa_caja.add_child(_mapa_ant)
+	_mapa_label = UITheme.make_label("", 15)
+	_mapa_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mapa_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_mapa_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_mapa_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mapa_caja.add_child(_mapa_label)
+	_mapa_sig = UITheme.make_button(">")
+	_mapa_sig.custom_minimum_size = Vector2(46, 46)
+	_mapa_sig.pressed.connect(func() -> void: _cambiar_mapa(1))
+	mapa_caja.add_child(_mapa_sig)
+	Net.mapa_cambiado.connect(_refresh_mapa)
+	# La sala vuelve al mapa que eligio el jugador: la historia lo pudo haber cambiado por
+	# el lugar de un capitulo.
+	if Net.is_server():
+		var quiero := Mapas.preferido if Mapas.preferido in Mapas.disponibles() else &"coliseo"
+		Net.elegir_mapa(quiero)
+
 	_start_button = UITheme.make_button("EMPEZAR PARTIDA", true)
 	_start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_start_button.pressed.connect(func() -> void: start_requested.emit())
@@ -138,6 +168,7 @@ func _ready() -> void:
 	Net.player_list_changed.connect(_refresh)
 	_build_character_list()
 	_refresh()
+	_refresh_mapa()
 
 
 ## La vitrina del personaje elegido, con su skin puesta.
@@ -157,6 +188,26 @@ func _poner_vitrina() -> void:
 func _exit_tree() -> void:
 	if Net.player_list_changed.is_connected(_refresh):
 		Net.player_list_changed.disconnect(_refresh)
+	if Net.mapa_cambiado.is_connected(_refresh_mapa):
+		Net.mapa_cambiado.disconnect(_refresh_mapa)
+
+
+func _cambiar_mapa(paso: int) -> void:
+	if not Net.is_server():
+		return
+	Mapas.preferido = Mapas.siguiente(Mapas.elegido, paso)
+	Net.elegir_mapa(Mapas.preferido)
+
+
+func _refresh_mapa() -> void:
+	if _mapa_label == null:
+		return
+	var tema := Mapas.actual()
+	_mapa_label.text = "MAPA: %s" % String(tema["nombre"])
+	_mapa_label.tooltip_text = String(tema.get("lugar", ""))
+	var puede := Net.is_server()
+	_mapa_ant.visible = puede
+	_mapa_sig.visible = puede
 
 
 ## Mientras esperamos que conteste el servidor, el cartel cuenta los segundos.

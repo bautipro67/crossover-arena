@@ -28,7 +28,7 @@ func _registrar_todas() -> void:
 	_add(_hacer(&"noelle_fiesta", &"noelle", "Noelle de Fiesta",
 		"Rojo y verde, como corresponde a su apellido.",
 		Color(0.92, 0.24, 0.26), Color(0.20, 0.62, 0.32),
-		Color(0.95, 0.87, 0.76), Color(0.14, 0.36, 0.22), &"rara", 900))
+		Color(0.84, 0.56, 0.37), Color(0.14, 0.36, 0.22), &"rara", 900))
 	_add(_hacer(&"noelle_sombra", &"noelle", "Noelle Sombra",
 		"Todo el pelaje en gris ceniza.",
 		Color(0.30, 0.31, 0.36), Color(0.62, 0.64, 0.72),
@@ -84,7 +84,7 @@ func _registrar_todas() -> void:
 	_add(_hacer(&"noelle_reno", &"noelle", "Noelle Reno",
 		"Se dejo de disimular lo de las astas.",
 		Color(0.86, 0.32, 0.28), Color(0.96, 0.94, 0.90),
-		Color(0.90, 0.76, 0.58), Color(0.48, 0.28, 0.20), &"rara", 900))
+		Color(0.62, 0.40, 0.25), Color(0.48, 0.28, 0.20), &"rara", 900))
 	_add(_hacer(&"dio_piedra", &"dio", "Dio de Piedra",
 		"La mascara lo tomo entero.",
 		Color(0.56, 0.54, 0.50), Color(0.72, 0.70, 0.64),
@@ -140,7 +140,7 @@ func _registrar_temporada_1() -> void:
 		_hacer(&"noelle_otono", &"noelle", "Noelle de Otoño",
 			"Hojas secas y chocolate caliente.",
 			Color(0.86, 0.46, 0.18), Color(0.95, 0.70, 0.30),
-			Color(0.95, 0.87, 0.76), Color(0.30, 0.18, 0.10), &"rara", 0),
+			Color(0.84, 0.56, 0.37), Color(0.30, 0.18, 0.10), &"rara", 0),
 		_hacer(&"flowery_primavera", &"flowery", "Flowery Primavera",
 			"Florece. Literalmente.",
 			Color(0.98, 0.95, 0.92), Color(0.98, 0.55, 0.72),
@@ -156,7 +156,7 @@ func _registrar_temporada_1() -> void:
 		_hacer(&"noelle_aurora", &"noelle", "Noelle Aurora",
 			"El cielo del norte, en un suéter.",
 			Color(0.35, 0.90, 0.75), Color(0.55, 0.35, 0.95),
-			Color(0.95, 0.90, 0.86), Color(0.12, 0.14, 0.30), &"legendaria", 0),
+			Color(0.84, 0.56, 0.37), Color(0.12, 0.14, 0.30), &"legendaria", 0),
 		_hacer(&"dio_cielo", &"dio", "Dio del Cielo",
 			"Más allá del cielo. Más allá de todo.",
 			Color(0.97, 0.97, 0.95), Color(1.00, 0.82, 0.30),
@@ -179,7 +179,7 @@ func _registrar_temporada_1() -> void:
 		_hacer(&"noelle_menta", &"noelle", "Noelle Menta",
 			"Fresca, como una mañana de invierno.",
 			Color(0.62, 0.92, 0.80), Color(0.30, 0.70, 0.60),
-			Color(0.95, 0.87, 0.76), Color(0.18, 0.34, 0.32), &"rara", 900),
+			Color(0.84, 0.56, 0.37), Color(0.18, 0.34, 0.32), &"rara", 900),
 		_hacer(&"rick_gala", &"rick", "Rick de Gala",
 			"Traje, moño y ninguna intención de quedarse a la cena.",
 			Color(0.96, 0.96, 0.96), Color(0.60, 0.10, 0.15),
@@ -254,7 +254,7 @@ func _registrar_temporada_2() -> void:
 		_hacer(&"noelle_cyber", &"noelle", "Noelle Cibernética",
 			"De la Ciudad Cibernética: todo el suéter en neón.",
 			Color(0.95, 0.25, 0.75), Color(0.20, 0.90, 0.95),
-			Color(0.95, 0.87, 0.76), Color(0.10, 0.10, 0.22), &"epica", 0),
+			Color(0.84, 0.56, 0.37), Color(0.10, 0.10, 0.22), &"epica", 0),
 		_hacer(&"sonic_hyper", &"sonic", "Hyper Sonic",
 			"Las siete Súper Esmeraldas: blanco, y todos los colores a la vez.",
 			Color(0.92, 0.95, 1.00), Color(0.60, 0.85, 1.00),
@@ -677,6 +677,13 @@ func _detallar() -> void:
 ## adornos de mas (SkinData.accesorios) y colores de partes que se suman a los de _det.
 	# ------------------------------------------------------------ Las formas
 	#
+	# DESDE LOS MODELOS DE BLENDER (2026-10-02, "las skins son demasiado parecidas a los
+	# modelos originales, en especial las legendarias"): lo que cambia la forma va adentro
+	# del modelo de cada personaje, como piezas de UNA skin ("capa__f_vampiro", ver
+	# tools/modelos/kit.py, de_skin). Un adorno de esta lista que el modelo ya trae —una pieza
+	# visible que se llama igual— no se arma con el muñeco viejo (PlayerVisual._modelo_lo_trae),
+	# asi que los nombres de aca siguen diciendo que tiene cada skin.
+	#
 	# CADA SKIN CAMBIA ALGO MAS QUE EL COLOR, y todas las epicas y legendarias cambian la
 	# forma (lo exige el arnes). Todo sale del original: la capa de vampiro, el halo de
 	# Heaven, la Mascara de Piedra, la corona de Asgore, las esferas del Rikudo, el pelo
@@ -686,7 +693,7 @@ func _detallar() -> void:
 	# que ser de otro color para que la paleta cierre.
 	var nada: Array[StringName] = []
 	# Noelle
-	_extra(&"noelle_snowgrave", &"", [&"corona_hielo"], {&"zapatos": Color(0.55, 0.75, 0.95)})
+	_extra(&"noelle_snowgrave", &"", nada, {&"zapatos": Color(0.55, 0.75, 0.95)})
 	_extra(&"noelle_fiesta", &"", nada, {&"zapatos": Color(0.12, 0.34, 0.20)})
 	_extra(&"noelle_sombra", &"", [&"bufanda"], {&"bufanda": Color(0.46, 0.47, 0.56)})
 	_extra(&"noelle_reno", &"", nada, {&"zapatos": Color(0.34, 0.22, 0.12)})
@@ -697,7 +704,7 @@ func _detallar() -> void:
 	_extra(&"noelle_cyber", &"", [&"visor"], {&"visor": Color(0.25, 0.95, 1.0),
 		&"zapatos": Color(0.20, 0.85, 0.95)})
 	# Dio
-	_extra(&"dio_vampiro", &"", [&"capa"], {&"capa": Color(0.40, 0.03, 0.07)})
+	_extra(&"dio_vampiro", &"", [&"plumas"], {&"plumas": Color(0.16, 0.03, 0.06)})
 	_extra(&"dio_dorado", &"", [&"corona"])
 	_extra(&"dio_noche", &"", nada, {&"zapatos": Color(0.18, 0.10, 0.28)})
 	_extra(&"dio_piedra", &"", [&"mascara"])
@@ -708,7 +715,7 @@ func _detallar() -> void:
 	_extra(&"dio_phantom", &"", [&"bufanda"], {&"bufanda": Color(0.95, 0.94, 0.90),
 		&"zapatos": Color(0.12, 0.10, 0.10)})
 	# Flowery
-	_extra(&"flowery_omega", &"", [&"petalos"], {&"petalos": Color(1.0, 0.55, 0.80)})
+	_extra(&"flowery_omega", &"", [&"omega"])
 	_extra(&"flowery_dorado", &"", [&"petalos"], {&"petalos": Color(1.0, 0.82, 0.30)})
 	_extra(&"flowery_nocturno", &"", [&"capa"], {&"capa": Color(0.07, 0.07, 0.11)})
 	_extra(&"flowery_primavera", &"", [&"flores"])
