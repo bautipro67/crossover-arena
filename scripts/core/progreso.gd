@@ -88,6 +88,10 @@ var dificultad_historia: int = Historia.DIFICULTAD_NORMAL
 var guardado_activo: bool = true
 
 ## MODO DESARROLLADOR: monedas infinitas, para probar skins sin tener que jugar horas.
+## Y DESDE EL 2026-10-03 (pedido: "dame mas poderes de desarrollador"): todos los
+## personajes, todas las skins puestas sin comprarlas, toda la historia abierta —rutas
+## secretas incluidas— y el panel de la practica en cualquier modo sin conexion, con
+## botones para llenar la definitiva, barrer a los enemigos y ganar la partida.
 ##
 ## SE PRENDE CON UN ARCHIVO, no con una opcion ni con un argumento, y es a proposito. El
 ## .exe de Windows es el MISMO que baja cualquiera de itch.io, asi que cualquier cosa
@@ -113,7 +117,7 @@ func _ready() -> void:
 func detectar_modo_dev() -> void:
 	modo_dev = FileAccess.file_exists(MARCA_DEV)
 	if modo_dev:
-		print("[progreso] modo desarrollador: monedas infinitas")
+		print("[progreso] modo desarrollador: monedas infinitas, todo desbloqueado y el panel en todos los modos")
 
 
 # ------------------------------------------------------------------- Niveles
@@ -228,6 +232,9 @@ func registrar_partida(gano: bool, cuenta: bool, premio: float = 1.0) -> void:
 # ---------------------------------------------------------------------- Skins
 
 func tiene_skin(skin_id: StringName) -> bool:
+	# En modo desarrollador se puede poner cualquiera, sin comprarla ni ganarla.
+	if modo_dev and SkinDB.existe(skin_id):
+		return true
 	return skins.get(String(skin_id), false)
 
 
@@ -263,7 +270,8 @@ func puede_usar_personaje(character_id: StringName) -> bool:
 	if not CharacterDB.has_character(character_id):
 		return false
 	var data := CharacterDB.get_character(character_id)
-	return not data.requiere_desbloqueo or personajes.get(String(character_id), false)
+	# En modo desarrollador, todos: tambien los que se ganan en el pase o en la historia.
+	return modo_dev or not data.requiere_desbloqueo or personajes.get(String(character_id), false)
 
 
 func desbloquear_personaje(character_id: StringName) -> void:
@@ -282,6 +290,9 @@ func capitulo_completado(i: int) -> bool:
 
 ## Se puede jugar? El primero siempre; los demas, con el anterior ganado.
 func capitulo_disponible(i: int) -> bool:
+	# En modo desarrollador, toda la historia: cualquier capitulo y las rutas secretas.
+	if modo_dev:
+		return i >= 0 and i < Historia.cantidad()
 	# La ruta secreta, ademas del capitulo de antes, pide los tres pasos.
 	if Historia.capitulo_secreto(i) and not ruta_abierta(Historia.ruta_de(i)):
 		return false

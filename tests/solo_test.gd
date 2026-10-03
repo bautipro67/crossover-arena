@@ -820,7 +820,19 @@ func _test_progresion() -> void:
 	_check(Progreso.alcanza(999999), "en modo desarrollador todo alcanza")
 	_check(Progreso.gastar_monedas(5000) and Progreso.monedas == 0,
 		"y comprar no descuenta nada: infinitas es que no se gastan")
+	# Los poderes del desarrollador: todo abierto, y el panel en cualquier modo sin conexion.
+	var modo_antes := Modos.actual
+	Modos.iniciar(Modos.DUELO)
+	_check(Progreso.puede_usar_personaje(&"sukuna") and Progreso.tiene_skin(&"goku_ssj4")
+		and Progreso.capitulo_disponible(Historia.cantidad() - 1) and &"shinjuku" in Mapas.disponibles()
+		and (Practica.disponible() == (Net.solo_mode and not Net.dedicated)),
+		"en modo desarrollador: todos los personajes, todas las skins, toda la historia, todos los mapas y el panel en un duelo")
 	Progreso.modo_dev = false
+	_check(not Progreso.puede_usar_personaje(&"sukuna") and not Progreso.tiene_skin(&"goku_ssj4")
+		and not Progreso.capitulo_disponible(Historia.cantidad() - 1) and not (&"shinjuku" in Mapas.disponibles())
+		and not Practica.disponible(),
+		"y sin el, cada cosa vuelve a su candado")
+	Modos.iniciar(modo_antes)
 	_check(not Progreso.alcanza(1), "y sin el modo, vuelve la regla de siempre")
 	# El marcador vive en user://, fuera del proyecto: no puede terminar dentro del .pck.
 	_check(Progreso.MARCA_DEV.begins_with("user://"),
@@ -870,6 +882,9 @@ func _test_historia(main: Node) -> void:
 	# SIN TOCAR EL ARCHIVO DEL JUGADOR: jugar un capitulo guarda que lo ganaste, y quien
 	# corre esto no lo gano.
 	Progreso.guardado_activo = false
+	# Y SIN EL MODO DESARROLLADOR, aunque esta maquina lo tenga: con el, toda la historia
+	# esta abierta, y lo que se prueba aca son los candados de verdad.
+	Progreso.modo_dev = false
 	Progreso.historia = {}
 	Progreso.snowgrave = {}
 	Progreso.rutas = {}
@@ -1522,6 +1537,7 @@ func _test_escenas_y_peleas(main: Node) -> void:
 	Net.set_local_character(antes_pj)
 	Progreso.guardado_activo = true
 	Progreso.cargar()
+	Progreso.detectar_modo_dev()
 	await get_tree().process_frame
 
 
@@ -1967,7 +1983,10 @@ func _test_mapas() -> void:
 		lugares[Mapas.de_capitulo(i)] = true
 	_check(lugares.size() == Mapas.LISTA.size(), "todos los mapas son el lugar de algun capitulo (%d de %d)" % [
 		lugares.size(), Mapas.LISTA.size()])
+	var dev_antes := Progreso.modo_dev
+	Progreso.modo_dev = false
 	var disp := Mapas.disponibles()
+	Progreso.modo_dev = dev_antes
 	_check((Progreso.ruta_abierta("snowgrave") or not (&"helada" in disp))
 			and (Progreso.ruta_abierta("cielo") or not (&"cielo" in disp))
 			and (Progreso.ruta_abierta("heroe") or not (&"luna" in disp))
@@ -2373,7 +2392,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 364
+const CHEQUEOS_MINIMOS: int = 366
 
 
 func _finish() -> void:

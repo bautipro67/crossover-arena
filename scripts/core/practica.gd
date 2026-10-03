@@ -51,7 +51,9 @@ func disponible() -> bool:
 	# Y SOLO EN EL MODO PRACTICA. Antes alcanzaba con estar solo porque solo habia una
 	# cosa para jugar solo; ahora hay cuatro, y el panel que deja ponerse invulnerable y
 	# sin cooldowns no puede estar abierto en un modo que paga monedas.
-	return Net.solo_mode and not Net.dedicated and Modos.actual == Modos.PRACTICA
+	# EL MODO DESARROLLADOR lo abre en cualquier modo sin conexion (la historia incluida),
+	# nunca en linea: Net.solo_mode es la llave, y una partida con otros no la tiene.
+	return Net.solo_mode and not Net.dedicated and (Modos.actual == Modos.PRACTICA or Progreso.modo_dev)
 
 
 ## Vuelve todo a los valores de fabrica.

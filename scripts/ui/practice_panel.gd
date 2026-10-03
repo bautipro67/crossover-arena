@@ -68,7 +68,8 @@ func _build() -> void:
 	caja.add_theme_constant_override("separation", 6)
 	scroll.add_child(caja)
 
-	var titulo := UITheme.make_label("SALA DE PRACTICA", 20)
+	var titulo := UITheme.make_label(
+		"SALA DE PRACTICA" if Modos.actual == Modos.PRACTICA else "PANEL DE DESARROLLADOR", 20)
 	caja.add_child(titulo)
 	_pista = UITheme.make_label("", 11, UITheme.TEXT_DIM)
 	caja.add_child(_pista)
@@ -107,6 +108,21 @@ func _build() -> void:
 	var reiniciar := UITheme.make_button("VALORES DE FABRICA")
 	reiniciar.pressed.connect(func() -> void: Practica.restablecer())
 	caja.add_child(reiniciar)
+
+	# --- Desarrollador: solo con el archivo del modo desarrollador en esta maquina ---
+	if Progreso.modo_dev:
+		caja.add_child(UITheme.make_spacer(10))
+		caja.add_child(UITheme.make_heading("DESARROLLADOR", 14))
+		var ulti := UITheme.make_button("LLENAR LA DEFINITIVA")
+		ulti.pressed.connect(_llenar_definitiva)
+		caja.add_child(ulti)
+		var barrer := UITheme.make_button("MATAR A LOS ENEMIGOS")
+		barrer.pressed.connect(_matar_enemigos)
+		caja.add_child(barrer)
+		if Modos.actual != Modos.PRACTICA:
+			var ganar := UITheme.make_button("GANAR LA PARTIDA", true)
+			ganar.pressed.connect(_ganar_partida)
+			caja.add_child(ganar)
 
 	# UN BOTON PARA CERRAR, que antes no hacia falta: se cerraba con la misma tecla que lo
 	# abre. Con el dedo no hay tecla —y los botones de la pantalla se esconden mientras el
@@ -217,6 +233,44 @@ func _curar_todo() -> void:
 		jugador.stamina.restore_full()
 		jugador.status.clear_all()
 		jugador.caster.reset_state()
+
+
+## Desarrollador: el medidor y la stamina llenos, para tirar la definitiva ya.
+func _llenar_definitiva() -> void:
+	var p := _jugador()
+	if p == null:
+		return
+	p.ultimate.current = UltimateCharge.MAX_CHARGE
+	p.stamina.restore_full()
+
+
+## Desarrollador: todos los enemigos al piso, con la baja a tu nombre (cuenta para el modo
+## y para el capitulo, como si los hubieras derribado).
+func _matar_enemigos() -> void:
+	var p := _jugador()
+	if p == null:
+		return
+	for node: Node in get_tree().get_nodes_in_group("players"):
+		var otro := node as Player
+		if otro == null or otro == p or not is_instance_valid(otro) or otro.health.is_dead:
+			continue
+		if CombatUtils.son_aliados(p, otro):
+			continue
+		otro.health.apply_damage(otro.health.max_health + otro.health.get_shield() + 1.0, p.peer_id)
+
+
+## Desarrollador: la partida (o el capitulo, con su escena final) se gana ya.
+func _ganar_partida() -> void:
+	cerrar()
+	if Modos.actual == Modos.HISTORIA and Modos.mision != null and is_instance_valid(Modos.mision):
+		Modos.mision.call("_ganar")
+	elif Modos.activo:
+		Modos._finalizar(true, "¡GANASTE!", "Modo desarrollador")
+
+
+func _jugador() -> Player:
+	var arena := get_tree().current_scene.get_node_or_null("Arena") as Arena if get_tree().current_scene != null else null
+	return arena.get_local_player() if arena != null else null
 
 
 # ------------------------------------------------------------------------ Apertura

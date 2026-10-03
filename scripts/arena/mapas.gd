@@ -254,7 +254,8 @@ static func disponibles() -> Array[StringName]:
 	var ids: Array[StringName] = []
 	for m: Dictionary in LISTA:
 		var ruta := String(m.get("secreto", ""))
-		if ruta != "" and not Progreso.ruta_abierta(ruta):
+		# En modo desarrollador se ven todos, tambien los de las rutas sin abrir.
+		if ruta != "" and not Progreso.ruta_abierta(ruta) and not Progreso.modo_dev:
 			continue
 		ids.append(m["id"])
 	return ids
