@@ -306,6 +306,12 @@ const CUESTA_CAPITULO: float = 0.015
 const CUESTA_PARTE: float = 0.05
 const CUESTA_JEFE: float = 1.12
 const CUESTA_DAÑO: float = 0.5
+## DESDE ACA LA CUESTA SUBE MAS DESPACIO (a un cuarto). Con 92 capitulos la recta seguia
+## de largo: los jefes de las partes 7 y 8 salian con casi tres veces la vida de su numero
+## (2026-10-03, "algunas partes del modo historia son muy dificiles"). Sigue subiendo, pero
+## lo que importa del final es el jefe, no la cuenta de capitulos.
+const CUESTA_CODO: float = 1.9
+const CUESTA_DESPUES: float = 0.25
 
 
 static func dificultad(d: int) -> Dictionary:
@@ -316,6 +322,8 @@ static func dificultad(d: int) -> Dictionary:
 ## elegida. El daño sube la mitad: ver CUESTA_DAÑO.
 static func cuesta(i: int, jefe: bool) -> float:
 	var f := 1.0 + CUESTA_CAPITULO * float(i) + CUESTA_PARTE * float(parte_de(i))
+	if f > CUESTA_CODO:
+		f = CUESTA_CODO + (f - CUESTA_CODO) * CUESTA_DESPUES
 	return f * CUESTA_JEFE if jefe else f
 
 
@@ -325,9 +333,27 @@ static func escalar(e: Dictionary, i: int, d: int) -> Dictionary:
 	var out := e.duplicate()
 	var dif := dificultad(d)
 	var f := cuesta(i, e.get("jefe", false))
-	out["vida"] = float(e.get("vida", 60.0)) * f * float(dif["vida"])
-	out["daño"] = float(e.get("daño", 0.4)) * (1.0 + (f - 1.0) * CUESTA_DAÑO) * float(dif["daño"])
+	# EL ALIVIO DEL CAPITULO: los que medidos salian muy por encima del resto (ver ALIVIO).
+	var alivio := float(ALIVIO.get(i, 1.0))
+	out["vida"] = float(e.get("vida", 60.0)) * f * float(dif["vida"]) * alivio
+	out["daño"] = float(e.get("daño", 0.4)) * (1.0 + (f - 1.0) * CUESTA_DAÑO) * float(dif["daño"]) * alivio
 	return out
+
+
+## CAPITULOS ALIVIADOS (2026-10-03): el heroe simulado ganaba 1 o 2 de 6 en estos, cuando
+## el resto de su parte salia 5 o 6 de 6. Los enemigos aguantan y pegan menos en ellos.
+## Indice de capitulo (desde 0) -> multiplicador de vida y daño.
+const ALIVIO: Dictionary = {
+	15: 0.82,  # La flor y su sombra
+	16: 0.78,  # Un saiyajin contra el tiempo
+	26: 0.88,  # Lo que se guarda
+	29: 0.78,  # ???%
+	30: 0.85,  # Del otro lado del fuego
+	32: 0.85,  # Un espiritu con nombre
+	49: 0.85,  # Sin limites
+	50: 0.80,  # Segui (ruta Snowgrave)
+	52: 0.90,  # Snowgrave
+}
 
 
 ## El nombre de quien habla, para los carteles.
@@ -4269,8 +4295,8 @@ static func _armar() -> Array[Dictionary]:
 		"condicion": "jefe_ulti",
 		"jefe_ulti": &"recipiente",
 		"enemigos": [
-			{"id": &"recipiente", "personaje": &"sukuna", "nombre": "Recipiente de Sukuna", "vida": 200.0,
-				"daño": 0.22, "pos": Vector2(0, -9), "jefe": true},
+			{"id": &"recipiente", "personaje": &"sukuna", "nombre": "Recipiente de Sukuna", "vida": 120.0,
+				"daño": 0.17, "pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"recipiente", "texto": "Derrotá al recipiente"},
 		"eventos": [
@@ -4281,7 +4307,7 @@ static func _armar() -> Array[Dictionary]:
 					["decir", &"recipiente", "Basta de jugar. Te voy a mostrar lo que es un tajo de verdad."],
 					["habilidad", &"recipiente", &"santuario"],
 				]],
-				["lluvia", "cortes", 15.0, 1.2],
+				["lluvia", "cortes", 15.0, 1.7],
 				["potenciar", &"recipiente", 10.0]]],
 			[["vida", &"recipiente", 0.25], [["decir", &"saitama", "Ok. Esto ya no es divertido."]]],
 		],
@@ -4312,14 +4338,14 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "Rey de las Maldiciones",
 		"personaje": &"gojo",
 		"enemigos": [
-			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 210.0, "daño": 0.24,
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 170.0, "daño": 0.21,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "hasta": 0.5, "texto": "Frená al Rey de las Maldiciones"},
 		"eventos": [
 			[["inicio"], [["decir", &"sukuna", "Gojo Satoru. Hasta en otro mundo me tenés que molestar."]]],
 			[["vida", &"sukuna", 0.8], [
-				["lluvia", "cortes", 20.0, 1.3],
+				["lluvia", "cortes", 20.0, 1.7],
 				["decir", &"sukuna", "¡Desmantelar! ¡Cortá todo lo que se mueva!"]]],
 			[["vida", &"sukuna", 0.65], [["decir", &"gojo", "El Infinito no se corta. Probá otra cosa."]]],
 		],
@@ -4353,7 +4379,7 @@ static func _armar() -> Array[Dictionary]:
 		"personaje": &"saitama",
 		"aliados": [_aliado(&"gojo", "Gojo", Vector2(2.5, 1.5), 105.0, 0.45)],
 		"enemigos": [
-			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 235.0, "daño": 0.24,
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 185.0, "daño": 0.21,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "hasta": 0.25, "texto": "Hacé que Sukuna se lo tome en serio"},
@@ -4367,7 +4393,7 @@ static func _armar() -> Array[Dictionary]:
 					["plano", "cerca", &"gojo"],
 					["decir", &"gojo", "¡Salí del círculo! ¡Adentro, todo es un corte seguro!"],
 				]],
-				["lluvia", "cortes", 20.0, 1.0],
+				["lluvia", "cortes", 20.0, 1.7],
 				["potenciar", &"sukuna", 12.0]]],
 			[["vida", &"sukuna", 0.4], [["decir", &"saitama", "Ok. Ahora en serio."]]],
 		],
@@ -4452,8 +4478,8 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "El señor del universo",
 		"personaje": &"saitama",
 		"enemigos": [
-			{"id": &"conquistador", "personaje": &"thanos", "nombre": "Eco del Conquistador", "vida": 240.0,
-				"daño": 0.26, "pos": Vector2(0, -9), "jefe": true, "eco": true},
+			{"id": &"conquistador", "personaje": &"thanos", "nombre": "Eco del Conquistador", "vida": 110.0,
+				"daño": 0.15, "pos": Vector2(0, -9), "jefe": true, "eco": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"conquistador", "texto": "Derrotá al conquistador"},
 		"eventos": [
@@ -4464,8 +4490,7 @@ static func _armar() -> Array[Dictionary]:
 					["decir", &"conquistador", "¡Te voy a mostrar todo mi poder! ¡Hasta la última gota!"],
 					["temblor", 1.4],
 				]],
-				["lluvia", "meteoritos", 20.0, 1.0],
-				["potenciar", &"conquistador", 15.0]]],
+				["lluvia", "meteoritos", 12.0, 1.6]]],
 		],
 		"intro": [
 			["colocar", &"saitama", Vector2(0, 0), 0.0],
@@ -4492,15 +4517,15 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "Por fin un rival",
 		"personaje": &"saitama",
 		"enemigos": [
-			{"id": &"eco_saitama", "personaje": &"saitama", "nombre": "Eco de Saitama", "vida": 260.0,
-				"daño": 0.27, "pos": Vector2(0, -9), "jefe": true, "eco": true},
+			{"id": &"eco_saitama", "personaje": &"saitama", "nombre": "Eco de Saitama", "vida": 140.0,
+				"daño": 0.17, "pos": Vector2(0, -9), "jefe": true, "eco": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"eco_saitama", "texto": "Por fin, alguien que aguanta"},
 		"eventos": [
 			[["inicio"], [["decir", &"saitama", "¿Sos yo? ...Pegás como yo."]]],
 			[["vida", &"eco_saitama", 0.5], [
 				["decir", &"saitama", "¡Esto sí! ¡Una pelea de verdad! ¡No te caigas, eh!"],
-				["potenciar", &"eco_saitama", 12.0]]],
+				["potenciar", &"eco_saitama", 6.0]]],
 		],
 		"intro": [
 			["colocar", &"saitama", Vector2(0, 0), 0.0],
@@ -4546,18 +4571,18 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "Expansión",
 		"personaje": &"gojo",
 		"enemigos": [
-			_eco("p1", &"sukuna", Vector2(-5, -12), 26.0, 0.13),
-			_eco("p2", &"sukuna", Vector2(5, -12), 26.0, 0.13),
-			_eco("p3", &"madara", Vector2(0, -14), 26.0, 0.13),
+			_eco("p1", &"sukuna", Vector2(-5, -12), 24.0, 0.12),
+			_eco("p2", &"sukuna", Vector2(5, -12), 24.0, 0.12),
+			_eco("p3", &"madara", Vector2(0, -14), 24.0, 0.12),
 		],
 		"objetivo": {"tipo": "sobrevivir", "segundos": 40.0, "texto": "Aguantá adentro del dominio"},
 		"eventos": [
 			[["inicio"], [
-				["lluvia", "cortes", 0.0, 1.1],
+				["lluvia", "cortes", 0.0, 1.7],
 				["decir", &"gojo", "Un dominio sin barrera, del tamaño de la Arena. Qué exagerado."]]],
 			[["quedan", 1], [
-				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 26.0, 0.13, false),
-					_eco("p5", &"thanos", Vector2(7, -14), 26.0, 0.13, false)]],
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 24.0, 0.12, false),
+					_eco("p5", &"thanos", Vector2(7, -14), 24.0, 0.12, false)]],
 				["decir", &"gojo", "Hace ecos con su cara. Le gusta mirarse."]]],
 		],
 		"intro": [
@@ -4729,7 +4754,7 @@ static func _armar() -> Array[Dictionary]:
 		"objetivo": {"tipo": "derrotar_todos", "limite": 70.0, "texto": "Un golpe cada uno, entre los tajos"},
 		"eventos": [
 			[["inicio"], [
-				["lluvia", "cortes", 0.0, 1.3],
+				["lluvia", "cortes", 0.0, 1.7],
 				["decir", &"saitama", "Tienen todos la misma cara. Más fácil."]]],
 			[["quedan", 1], [
 				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 32.0, 0.15, false),
@@ -4809,7 +4834,7 @@ static func _armar() -> Array[Dictionary]:
 		"personaje": &"scorpion",
 		"aliados": [_aliado(&"thanos", "Thanos", Vector2(2.5, 1.5), 120.0, 0.42)],
 		"enemigos": [
-			{"id": &"eco_rey", "personaje": &"sukuna", "nombre": "Eco del Rey", "vida": 170.0, "daño": 0.21,
+			{"id": &"eco_rey", "personaje": &"sukuna", "nombre": "Eco del Rey", "vida": 140.0, "daño": 0.19,
 				"pos": Vector2(0, -9), "jefe": true, "eco": true},
 			_eco("p1", &"sukuna", Vector2(-6, -12), 24.0, 0.12),
 		],
@@ -4902,7 +4927,7 @@ static func _armar() -> Array[Dictionary]:
 		"condicion": "jefe_ulti",
 		"jefe_ulti": &"sukuna",
 		"enemigos": [
-			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 250.0, "daño": 0.25,
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 110.0, "daño": 0.15,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "texto": "El más fuerte contra el Rey de las Maldiciones"},
@@ -4916,8 +4941,8 @@ static func _armar() -> Array[Dictionary]:
 					["plano", "cerca", &"gojo"],
 					["decir", &"gojo", "Dominio contra dominio. Esto se pone lindo."],
 				]],
-				["lluvia", "cortes", 20.0, 1.0],
-				["potenciar", &"sukuna", 12.0]]],
+				["lluvia", "cortes", 20.0, 1.7],
+				["potenciar", &"sukuna", 6.0]]],
 			[["vida", &"sukuna", 0.3], [["decir", &"gojo", "Rojo y azul, al doscientos por ciento. Mirá bien."]]],
 		],
 		"intro": [
@@ -4957,7 +4982,7 @@ static func _armar() -> Array[Dictionary]:
 				"pos": Vector2(-2.5, 1.5), "reserva": true},
 		],
 		"enemigos": [
-			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Rey de las Maldiciones", "vida": 280.0, "daño": 0.26,
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Rey de las Maldiciones", "vida": 180.0, "daño": 0.19,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "texto": "Derrotá al Rey de las Maldiciones"},
@@ -4973,7 +4998,7 @@ static func _armar() -> Array[Dictionary]:
 					["decir", &"goku", "¡Perdón la tardanza! ¡Abajo eran un montón!"],
 				]],
 				["entrar", &"goku"],
-				["lluvia", "cortes", 25.0, 1.0],
+				["lluvia", "cortes", 25.0, 1.7],
 				["potenciar", &"sukuna", 14.0]]],
 			[["vida", &"sukuna", 0.3], [["decir", &"saitama", "Ok. Ahora sí. En serio."]]],
 		],
@@ -5023,22 +5048,17 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "Nah, ganaría",
 		"personaje": &"gojo",
 		"enemigos": [
-			_eco("p1", &"sukuna", Vector2(-5, -12), 32.0, 0.16),
-			_eco("p2", &"sukuna", Vector2(5, -12), 32.0, 0.16),
-			_eco("p3", &"sukuna", Vector2(0, -14), 32.0, 0.16),
+			_eco("p1", &"sukuna", Vector2(-5, -12), 24.0, 0.12),
+			_eco("p2", &"madara", Vector2(5, -12), 24.0, 0.12),
+			_eco("p3", &"goku", Vector2(0, -14), 24.0, 0.12),
 		],
 		"objetivo": {"tipo": "derrotar_todos", "texto": "Despejá Shinjuku"},
 		"eventos": [
 			[["inicio"], [["decir", &"gojo", "¿Que si le gano? Nah. Ganaría."]]],
 			[["quedan", 1], [
-				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 32.0, 0.16, false),
-					_eco("p5", &"sukuna", Vector2(7, -14), 32.0, 0.16, false)]],
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 24.0, 0.12, false),
+					_eco("p5", &"thanos", Vector2(7, -14), 24.0, 0.12, false)]],
 				["decir", &"gojo", "Hace copias porque sabe que una sola no le alcanza."]]],
-			[["quedan", 0], [
-				["refuerzos", [_eco("p6", &"sukuna", Vector2(-6, -14), 32.0, 0.16, false),
-					_eco("p7", &"sukuna", Vector2(6, -14), 32.0, 0.16, false),
-					_eco("p8", &"sukuna", Vector2(0, -16), 32.0, 0.16, false)]],
-				["decir", &"gojo", "¿Ves? Ninguna le alcanza."]]],
 		],
 		"intro": [
 			["colocar", &"gojo", Vector2(0, 0), 0.0],
@@ -5063,14 +5083,14 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "Adaptación",
 		"personaje": &"gojo",
 		"enemigos": [
-			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 240.0, "daño": 0.26,
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 150.0, "daño": 0.18,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "hasta": 0.4, "texto": "Que no se adapte"},
 		"eventos": [
 			[["inicio"], [["decir", &"sukuna", "Te corté una vez. Te puedo cortar mil."]]],
 			[["vida", &"sukuna", 0.75], [
-				["lluvia", "cortes", 0.0, 1.2],
+				["lluvia", "cortes", 0.0, 1.7],
 				["decir", &"sukuna", "¡Adentro de mi dominio no hay Infinito que valga!"]]],
 			[["vida", &"sukuna", 0.55], [["decir", &"gojo", "Te adaptás a lo que conocés. Así que hago algo que no conocés."]]],
 		],
@@ -5097,7 +5117,7 @@ static func _armar() -> Array[Dictionary]:
 		"titulo": "El más fuerte",
 		"personaje": &"gojo",
 		"enemigos": [
-			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Rey de las Maldiciones", "vida": 290.0, "daño": 0.27,
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Rey de las Maldiciones", "vida": 110.0, "daño": 0.15,
 				"pos": Vector2(0, -9), "jefe": true},
 		],
 		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "texto": "Demostrá quién es el más fuerte"},
@@ -5112,8 +5132,8 @@ static func _armar() -> Array[Dictionary]:
 					["decir", &"gojo", "Púrpura. Al doscientos por ciento."],
 					["habilidad", &"gojo", &"purpura"],
 				]],
-				["lluvia", "cortes", 25.0, 0.9],
-				["potenciar", &"sukuna", 15.0]]],
+				["lluvia", "cortes", 25.0, 1.7],
+				["potenciar", &"sukuna", 6.0]]],
 			[["vida", &"sukuna", 0.2], [["decir", &"sukuna", "¡No! ¡Yo soy el Rey! ¡Yo soy el que corta!"]]],
 		],
 		"intro": [

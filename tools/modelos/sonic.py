@@ -215,6 +215,52 @@ for lado in (-1, 1):
         cintas.append(kit.capsula((r[0], r[1], r[2] + dz + 0.012), (r[0], r[1], r[2] + dz - 0.012), 0.050))
 partes.append((kit.fundir(kit.de_skin("cinta", "boom"), cintas, CINTA, voxel=0.004, suavizado=2, caras=3000), "por_distancia"))
 
+# EXCALIBUR (Sonic and the Black Knight): la armadura dorada que lo cubre entero menos la
+# cola, la capa roja atras y la espada en la mano derecha. La cabeza queda al aire.
+ARMADURA_ORO = kit.material("placa", (0.96, 0.78, 0.30), metal=0.8, rugosidad=0.3)
+CAPA_ROJA = kit.material("capa", (0.78, 0.08, 0.10))
+HOJA = kit.material("metal", (0.85, 0.88, 0.92), metal=0.8, rugosidad=0.2)
+inflado = kit.perfil([(0.74, 0.130, 0.112), (0.86, 0.144, 0.124), (1.00, 0.152, 0.130), (1.12, 0.150, 0.124),
+                      (1.22, 0.124, 0.104)])
+inflado.append(kit.capsula((-0.15, 0.0, 1.18), (0.15, 0.0, 1.18), 0.064))
+partes.append((kit.cascara(kit.de_skin("peto", "excalibur"), inflado, ARMADURA_ORO,
+                           lambda x, y, z: 0.80 < z < 1.24 and not (y < -0.06 and z < 0.86), grosor=0.012, caras=6000),
+               "torso"))
+hombreras = []
+for lado in (-1, 1):
+    h = J["hombro_r" if lado > 0 else "hombro_l"]
+    hombreras.append(kit.elipsoide((h[0] + lado * 0.012, h[1], h[2] + 0.010), (0.070, 0.074, 0.050)))
+partes.append((kit.fundir(kit.de_skin("hombreras", "excalibur"), hombreras, ARMADURA_ORO, voxel=0.004, suavizado=3,
+                          caras=2500), "torso"))
+brazales = []
+for lado in (-1, 1):
+    s2 = "_l" if lado < 0 else "_r"
+    c, m = J["codo" + s2], J["mano" + s2]
+    brazales += kit.tubo([(c[0], c[1], c[2] + 0.06), (m[0], m[1], m[2] + 0.12)], [0.046, 0.044])
+partes.append((kit.fundir(kit.de_skin("brazales", "excalibur"), brazales, ARMADURA_ORO, voxel=0.004, suavizado=3,
+                          caras=2500), "brazos"))
+grebas = []
+for lado in (-1, 1):
+    r = J["rodilla_r" if lado > 0 else "rodilla_l"]
+    grebas += kit.tubo([(r[0], r[1] + 0.006, r[2] + 0.07), (r[0], r[1], 0.19)], [0.056, 0.050])
+    grebas.append(kit.elipsoide((r[0], r[1] + 0.030, r[2]), (0.050, 0.040, 0.050)))
+partes.append((kit.fundir(kit.de_skin("grebas", "excalibur"), grebas, ARMADURA_ORO, voxel=0.004, suavizado=3,
+                          caras=3000), "piernas"))
+capa_p = kit.perfil([(0.40, 0.230, 0.200, -0.06), (0.70, 0.190, 0.160, -0.03), (1.00, 0.160, 0.130),
+                     (1.22, 0.140, 0.112)])
+partes.append((kit.cascara(kit.de_skin("capa", "excalibur"), capa_p, CAPA_ROJA,
+                           lambda x, y, z: 0.42 < z < 1.24 and y < -0.02, grosor=0.012, caras=5000), "torso"))
+xm, ym, zm = J["mano_r"]
+espada = [kit.caja((xm + 0.005, ym + 0.300, zm - 0.010), (0.016, 0.480, 0.060)),
+          kit.cono((xm + 0.005, ym + 0.540, zm - 0.010), (xm + 0.005, ym + 0.610, zm - 0.010), 0.034, 0.002, seg=4)]
+partes.append((kit.fundir(kit.de_skin("espada", "excalibur"), espada, HOJA, voxel=0.003, suavizado=1, caras=2000),
+               "codo_r"))
+guarda = [kit.caja((xm + 0.005, ym + 0.060, zm - 0.010), (0.030, 0.026, 0.160)),
+          kit.capsula((xm + 0.005, ym - 0.040, zm - 0.010), (xm + 0.005, ym + 0.050, zm - 0.010), 0.016),
+          kit.elipsoide((xm + 0.005, ym - 0.050, zm - 0.010), (0.022, 0.022, 0.022))]
+partes.append((kit.fundir(kit.de_skin("espada_guarda", "excalibur"), guarda, ARMADURA_ORO, voxel=0.003, suavizado=1,
+                          caras=1500), "codo_r"))
+
 arm = kit.esqueleto(J)
 for obj, regla in partes:
     if regla == "por_distancia":

@@ -443,6 +443,45 @@ func _registrar_temporada_4() -> void:
 			"Su verdadera forma: cuatro brazos, dos caras y una boca en el vientre.",
 			Color(0.96, 0.95, 0.92), Color(0.08, 0.06, 0.08),
 			Color(0.92, 0.78, 0.68), Color(0.96, 0.95, 0.92), &"legendaria", 2600),
+		# --- La tienda: los que hacia mas tiempo que no estrenaban nada (2026-10-03) ---
+		# Rick y Goku no tenian nada nuevo desde la temporada 1; Flowery, Sonic, Mario,
+		# Madara, Mob y Thanos, desde la 2. Todo sale del original de cada uno.
+		_hacer(&"rick_policia", &"rick", "Rick Policía",
+			"El uniforme de policía de la Ciudadela de los Ricks, con la gorra y la placa.",
+			Color(0.12, 0.16, 0.34), Color(0.10, 0.10, 0.12),
+			Color(0.90, 0.78, 0.63), Color(0.12, 0.16, 0.34), &"epica", 1800),
+		_hacer(&"goku_ssj4", &"goku", "Goku Super Saiyajin 4",
+			"El de Dragon Ball GT: el pelo largo y negro, el pelaje rojo y la cola.",
+			Color(0.72, 0.12, 0.10), Color(0.15, 0.22, 0.55),
+			Color(0.98, 0.83, 0.68), Color(0.15, 0.22, 0.55), &"legendaria", 2600),
+		_hacer(&"goku_kaioken", &"goku", "Goku Kaioken",
+			"El aura roja de la técnica del Kaio del Norte, multiplicada por diez.",
+			Color(0.88, 0.14, 0.10), Color(0.95, 0.30, 0.20),
+			Color(0.98, 0.78, 0.66), Color(0.80, 0.12, 0.10), &"rara", 900),
+		_hacer(&"flowery_disco", &"flowery", "Flowery Disco",
+			"El traje blanco de fiesta, listo para la pista de San Fransdisco.",
+			Color(0.97, 0.96, 0.92), Color(0.95, 0.78, 0.30),
+			Color(0.69, 0.80, 0.33), Color(0.97, 0.96, 0.92), &"rara", 900),
+		_hacer(&"sonic_excalibur", &"sonic", "Excalibur Sonic",
+			"El caballero del Rey Arturo: la armadura dorada, la capa roja y la espada sagrada.",
+			Color(0.13, 0.40, 0.86), Color(0.96, 0.78, 0.30),
+			Color(0.99, 0.79, 0.58), Color(0.11, 0.33, 0.72), &"legendaria", 2600),
+		_hacer(&"mario_constructor", &"mario", "Mario Constructor",
+			"El de Super Mario Maker 2: el casco de obra, la camisa amarilla y las herramientas.",
+			Color(0.98, 0.80, 0.12), Color(0.98, 0.80, 0.12),
+			Color(0.99, 0.80, 0.64), Color(0.13, 0.27, 0.74), &"epica", 1800),
+		_hacer(&"madara_anciano", &"madara", "Madara Anciano",
+			"El que espera a Obito en la cueva: el pelo blanco, la túnica y el Rinnegan.",
+			Color(0.16, 0.16, 0.19), Color(0.60, 0.10, 0.12),
+			Color(0.90, 0.84, 0.78), Color(0.14, 0.14, 0.17), &"epica", 1800),
+		_hacer(&"mob_club", &"mob", "Mob del Club de Mejora Corporal",
+			"La ropa de entrenar del club: corre detrás de los demás, pero no abandona.",
+			Color(0.95, 0.95, 0.94), Color(0.85, 0.20, 0.20),
+			Color(0.98, 0.86, 0.76), Color(0.20, 0.20, 0.24), &"rara", 900),
+		_hacer(&"thanos_granjero", &"thanos", "Thanos Granjero",
+			"Después del chasquido, en su granja: la camisa de lona y el brazo quemado.",
+			Color(0.88, 0.85, 0.78), Color(0.55, 0.45, 0.32),
+			Color(0.62, 0.48, 0.68), Color(0.32, 0.26, 0.20), &"epica", 1800),
 	]
 	for sk: SkinData in nuevas:
 		sk.temporada = 4
@@ -884,6 +923,38 @@ func _detallar() -> void:
 		&"", &"chispas", Color(0.95, 0.12, 0.16), Color(0, 0, 0, 0), &"",
 		Color(0.95, 0.12, 0.16, 0.85))
 	_extra(&"sukuna_heian", &"heian", [])
+	# Los que hacia tiempo que no estrenaban nada.
+	_det(&"rick_policia", {&"pantalon": Color(0.12, 0.16, 0.34), &"gorra_policia": Color(0.10, 0.12, 0.24),
+		&"placa": Color(0.92, 0.76, 0.30)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"gorra_policia", Color(0.40, 0.55, 1.0, 0.75))
+	_extra(&"rick_policia", &"policia", [])
+	_det(&"goku_ssj4", {&"pelo": Color(0.06, 0.05, 0.06), &"pantalon": Color(0.15, 0.22, 0.55),
+		&"faja": Color(0.90, 0.70, 0.22), &"munequeras": Color(0.70, 0.10, 0.12)},
+		&"", &"chispas", Color(1.0, 0.55, 0.25), Color(0, 0, 0, 0), &"",
+		Color(1.0, 0.40, 0.20, 0.85))
+	_extra(&"goku_ssj4", &"ssj4", [])
+	_det(&"goku_kaioken", {&"pantalon": Color(0.80, 0.12, 0.10), &"faja": Color(0.55, 0.05, 0.06),
+		&"munequeras": Color(0.55, 0.05, 0.06), &"camiseta": Color(0.45, 0.04, 0.05)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.20, 0.15, 0.85))
+	_det(&"flowery_disco", {&"campera": Color(0.97, 0.96, 0.92), &"chaleco_a": Color(0.95, 0.78, 0.30),
+		&"chaleco_b": Color(0.85, 0.85, 0.90), &"pantalon": Color(0.97, 0.96, 0.92), &"zapatos": Color(0.95, 0.95, 0.95)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(1.0, 0.85, 0.40, 0.8))
+	_det(&"sonic_excalibur", {&"placa": Color(0.96, 0.78, 0.30), &"capa": Color(0.78, 0.08, 0.10)},
+		&"", &"chispas", Color(1.0, 0.85, 0.40), Color(0, 0, 0, 0), &"", Color(1.0, 0.82, 0.35, 0.85))
+	_extra(&"sonic_excalibur", &"excalibur", [])
+	_det(&"mario_constructor", {&"casco": Color(0.98, 0.80, 0.10), &"cinto_herramientas": Color(0.42, 0.26, 0.12)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"casco", Color(1.0, 0.82, 0.20, 0.75))
+	_extra(&"mario_constructor", &"constructor", [])
+	_det(&"madara_anciano", {&"pelo": Color(0.82, 0.82, 0.86), &"tunica": Color(0.16, 0.16, 0.19),
+		&"pantalon": Color(0.14, 0.14, 0.17)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"tunica", Color(0.70, 0.70, 0.78, 0.75))
+	_extra(&"madara_anciano", &"anciano", [])
+	_det(&"mob_club", {&"cuello": Color(0.95, 0.95, 0.94), &"botones": Color(0.95, 0.95, 0.94),
+		&"zapatos": Color(0.92, 0.92, 0.94)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.60, 0.80, 1.0, 0.7))
+	_det(&"thanos_granjero", {&"camisa": Color(0.88, 0.85, 0.78), &"pantalon": Color(0.32, 0.26, 0.20)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"camisa", Color(0.85, 0.75, 0.55, 0.75))
+	_extra(&"thanos_granjero", &"granjero", [])
 	# Scorpion
 	_det(&"scorpion_clasico", {&"traje": Color(1.00, 0.84, 0.10), &"mascara": Color(1.00, 0.88, 0.20),
 		&"ropa": Color(0.10, 0.10, 0.10)},

@@ -18,7 +18,16 @@
    0.08,
    0.08
   ],
-  "pestanas": false
+  "pestanas": false,
+  "formas": {
+   "ssj4": {
+    "iris": [
+     0.95,
+     0.78,
+     0.15
+    ]
+   }
+  }
  },
  "cejas": {
   "alto": 0.042,

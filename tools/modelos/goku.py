@@ -100,7 +100,7 @@ def pelo_ssj(puntas=9, alto=0.32, grueso=1.0):
     return piezas
 
 
-partes.append((kit.fundir("pelo__sin_ssj+ui", pelo_base(), PELO, voxel=0.0058, suavizado=5, caras=10000), "cabeza"))
+partes.append((kit.fundir("pelo__sin_ssj+ui+ssj4", pelo_base(), PELO, voxel=0.0058, suavizado=5, caras=10000), "cabeza"))
 partes.append((kit.fundir("pelo_ssj__f_goku_ssj", pelo_ssj(), PELO, voxel=0.0058, suavizado=5, caras=10000), "cabeza"))
 partes.append((kit.fundir(kit.de_skin("pelo_blue", "blue"), pelo_ssj(8, 0.25, 1.18), PELO, voxel=0.0058, suavizado=5,
                           caras=10000), "cabeza"))
@@ -213,10 +213,70 @@ for obj, _r in partes:
     if obj.name in ("gi", "simbolo", "kanji", "mangas"):
         kit.ocultar_en(obj, "ui")
 
+# EL SUPER SAIYAJIN 4 (Dragon Ball GT): el pelo negro y largo hasta la espalda, el cuerpo
+# cubierto de pelaje rojo salvo el pecho, la cola, y el pantalon azul con el cinturon (los
+# colores los pone la skin). Sin el gi de arriba.
+PELAJE = kit.material("pelaje_rojo!pelaje", (0.72, 0.12, 0.10))
+
+
+def pelo_ssj4():
+    piezas = [kit.elipsoide((0, -0.030, 1.880), (0.172, 0.172, 0.158)),
+              kit.elipsoide((0, -0.120, 1.700), (0.160, 0.110, 0.200))]
+    # Las puntas de arriba, salvajes, y las largas que caen por la espalda.
+    for k in range(9):
+        a = -1.15 + k * (2.3 / 8)
+        dx, dz = math.sin(a), math.cos(a)
+        base = (dx * 0.11, -0.03, 1.93)
+        punta = (dx * 0.30, -0.10, 1.98 + dz * 0.20)
+        piezas += kit.tubo([base, ((base[0] + punta[0]) / 2, -0.06, (base[2] + punta[2]) / 2 + 0.02), punta],
+                           [0.070, 0.046, 0.008])
+    for k in range(7):
+        dx = -0.15 + k * 0.05
+        piezas += kit.tubo([(dx * 0.6, -0.12, 1.86), (dx * 1.2, -0.24, 1.55), (dx * 1.3, -0.22, 1.20)],
+                           [0.060, 0.050, 0.010])
+    # El flequillo que cae sobre la frente.
+    for dx, largo in ((-0.08, 0.070), (-0.02, 0.090), (0.05, 0.075)):
+        piezas += kit.tubo([(dx, 0.10, 1.97), (dx * 1.3, 0.168, 1.93), (dx * 1.5, 0.172, 1.93 - largo)],
+                           [0.040, 0.028, 0.006])
+    return piezas
+
+
+partes.append((kit.fundir(kit.de_skin("pelo_ssj4", "ssj4"), pelo_ssj4(), PELO, voxel=0.0058, suavizado=5, caras=11000),
+               "cabeza"))
+cuerpo4 = kit.torso_humano(pecho=0.222, cintura=0.170, fondo=0.134, hombros=0.188)
+for lado in (-1, 1):
+    cuerpo4.append(kit.elipsoide((lado * 0.090, 0.080, 1.395), (0.112, 0.056, 0.070)))
+    for z in (1.250, 1.180, 1.110):
+        cuerpo4.append(kit.elipsoide((lado * 0.040, 0.105, z), (0.038, 0.030, 0.032)))
+c4 = kit.fundir(kit.de_skin("cuerpo_ssj4", "ssj4"), cuerpo4, PELAJE, voxel=0.0055, suavizado=8, caras=11000)
+# El pecho y la panza sin pelaje.
+kit.pintar(c4, PIEL, lambda x, y, z: y > 0.03 and abs(x) < 0.150 - max(0.0, z - 1.40) * 0.6 and 1.02 < z < 1.47)
+partes.append((c4, "torso"))
+brazos4 = []
+for lado in (-1, 1):
+    s4 = "_l" if lado < 0 else "_r"
+    h, c = J["hombro" + s4], J["codo" + s4]
+    brazos4 += kit.tubo([h, c], [0.084, 0.068])
+    brazos4.append(kit.elipsoide((h[0] + lado * 0.010, h[1], h[2] - 0.035), (0.090, 0.088, 0.100)))
+    brazos4 += kit.antebrazo(lado, r_codo=0.068, r_muneca=0.054)
+partes.append((kit.fundir(kit.de_skin("brazos_ssj4", "ssj4"), brazos4, PELAJE, voxel=0.0055, suavizado=6, caras=6000),
+               "brazos"))
+manos4 = []
+for lado in (-1, 1):
+    manos4 += kit.mano(lado, r=0.050)
+partes.append((kit.fundir(kit.de_skin("manos_ssj4", "ssj4"), manos4, PIEL, voxel=0.005, suavizado=5, caras=3500), "manos"))
+cola = kit.tubo([(0.0, -0.150, 0.980), (0.10, -0.280, 0.880), (0.20, -0.300, 0.720), (0.24, -0.220, 0.600),
+                 (0.20, -0.140, 0.560)], [0.034, 0.036, 0.034, 0.028, 0.012])
+partes.append((kit.fundir(kit.de_skin("cola", "ssj4"), cola, PELAJE, voxel=0.004, suavizado=4, caras=3000), "torso"))
+for obj, _r in partes:
+    if obj.name.split("__")[0] in ("gi", "simbolo", "kanji", "mangas", "brazos"):
+        kit.ocultar_en(obj, "ssj4")
+
 arm = kit.esqueleto(J)
 kit.pesar_estandar(partes, arm, J)
 cara = kit.cara_estandar(cabeza, J, 0.060, 1.815,
-                         ojos_extra={"alto": 0.062, "ancho": 0.058, "iris": [0.10, 0.08, 0.08], "pestanas": False},
+                         ojos_extra={"alto": 0.062, "ancho": 0.058, "iris": [0.10, 0.08, 0.08], "pestanas": False,
+                                     "formas": {"ssj4": {"iris": [0.95, 0.78, 0.15]}}},
                          cejas={"alto": 0.042, "color": [0.07, 0.07, 0.09], "largo": 0.060},
                          boca_z=1.697, boca_extra={"ancho": 0.062, "dientes": False})
 kit.exportar("goku", arm, cara)

@@ -425,7 +425,8 @@ func _vigilar_lluvia(delta: float) -> void:
 ## quedo adentro. Como el meteorito, pero mas chico y mas rapido.
 const CORTE_RADIO: float = 2.6
 const CORTE_AVISO: float = 1.0
-const CORTE_DAÑO: float = 16.0
+## 12 y no 16: con la vida x1.5, dos tajos seguidos eran la mitad de la barra.
+const CORTE_DAÑO: float = 12.0
 
 
 func _tirar_corte(punto: Vector3) -> void:

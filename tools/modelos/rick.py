@@ -238,6 +238,32 @@ partes.append((kit.fundir(kit.de_skin("pistola_carga", "cosmico"),
                           [kit.capsula((xm + 0.005, ym + 0.030, zm + 0.022), (xm + 0.005, ym + 0.090, zm + 0.022), 0.016)],
                           PORTAL, voxel=0.003, suavizado=2, caras=800), "codo_r"))
 
+# POLICIA: el Rick policia de la Ciudadela. Sin el guardapolvo: la camisa del uniforme
+# (el azul oscuro lo pone la skin) con mangas largas, la gorra de policia con su escudo y la
+# placa en el pecho.
+GORRA_POL = kit.material("gorra_policia", (0.10, 0.12, 0.24))
+PLACA = kit.material("placa", (0.90, 0.74, 0.30), metal=0.8, rugosidad=0.3)
+mangas_pol = []
+for lado in (-1, 1):
+    mangas_pol += kit.brazo(lado, r_hombro=0.058, r_codo=0.050, r_muneca=0.046, hasta=0.905)
+partes.append((kit.fundir(kit.de_skin("mangas_policia", "policia"), mangas_pol, CAMISA, voxel=0.006, suavizado=6,
+                          caras=4000), "brazos"))
+gorra = [kit.capsula((0, -0.030, 1.940), (0, -0.030, 2.055), 0.168, 0.188),
+         kit.elipsoide((0, -0.030, 2.060), (0.198, 0.200, 0.030)),
+         kit.elipsoide((0, 0.130, 1.945), (0.150, 0.090, 0.016), rot=(-12, 0, 0))]
+partes.append((kit.fundir(kit.de_skin("gorra_policia", "policia"), gorra, GORRA_POL, voxel=0.005, suavizado=5,
+                          caras=5000), "cabeza"))
+escudo = [kit.elipsoide((0, 0.152, 2.000), (0.030, 0.010, 0.034))]
+partes.append((kit.fundir(kit.de_skin("escudo_gorra", "policia"), escudo, PLACA, voxel=0.002, suavizado=2, caras=800),
+               "cabeza"))
+pc, nc = kit.superficie(kit.bpy.data.objects["camisa__sin_pepino"], -0.080, 1.400)
+placa = [kit.elipsoide(tuple(pc + nc * 0.006), (0.026, 0.008, 0.032), seg=20)]
+kit.orientar(placa, tuple(pc + nc * 0.006), nc)
+partes.append((kit.fundir(kit.de_skin("placa", "policia"), placa, PLACA, voxel=0.002, suavizado=2, caras=800), "torso"))
+for obj, _r in partes:
+    if obj.name.split("__")[0] in ("guardapolvo", "faldon", "solapas", "mangas"):
+        kit.ocultar_en(obj, "policia")
+
 arm = kit.esqueleto(J)
 for obj, regla in partes:
     if regla == "por_distancia":

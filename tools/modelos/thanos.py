@@ -218,6 +218,44 @@ for k in range(26):
     q = kit.pegar(capa, (x, -0.6, z), 0.010)
     estrellas.append(kit.elipsoide(q, (0.010, 0.010, 0.010), seg=8))
 partes.append((kit.pieza_fija(kit.de_skin("capa_estrellas", "infinito"), estrellas, ESTRELLA), "torso"))
+# GRANJERO (Endgame): la armadura colgada de espantapajaros y el en su granja, con una camisa
+# blanca de lona arremangada. Sin el Guantelete: el brazo izquierdo al aire, quemado por el
+# chasquido.
+CAMISA_LONA = kit.material("camisa", (0.88, 0.85, 0.78))
+camisa = kit.perfil([(0.90, 0.206, 0.156), (1.05, 0.206, 0.156), (1.20, 0.224, 0.163), (1.34, 0.250, 0.172),
+                     (1.46, 0.246, 0.164), (1.54, 0.188, 0.134)])
+camisa += [kit.capsula((-0.20, 0.0, 1.48), (0.20, 0.0, 1.48), 0.100)]
+for lado in (-1, 1):
+    camisa.append(kit.elipsoide((lado * 0.100, 0.100, 1.375), (0.120, 0.066, 0.086)))
+    camisa.append(kit.capsula((lado * 0.06, -0.02, 1.56), (lado * 0.21, 0.0, 1.50), 0.062, 0.072))
+cam = kit.fundir(kit.de_skin("camisa", "granjero"), camisa, CAMISA_LONA, voxel=0.006, suavizado=8, caras=10000)
+# El cuello abierto: se ve la piel.
+kit.pintar(cam, PIEL, lambda x, y, z: y > 0.06 and z > 1.44 + abs(x) * 1.6)
+partes.append((cam, "torso"))
+mangas_lona = []
+for lado in (-1, 1):
+    sx = "_l" if lado < 0 else "_r"
+    h, c = J["hombro" + sx], J["codo" + sx]
+    mangas_lona += kit.tubo([h, (c[0], c[1], c[2] + 0.06)], [0.096, 0.090])
+    mangas_lona.append(kit.capsula((c[0], c[1], c[2] + 0.10), (c[0], c[1], c[2] + 0.04), 0.096))
+partes.append((kit.fundir(kit.de_skin("mangas_lona", "granjero"), mangas_lona, CAMISA_LONA, voxel=0.006, suavizado=6,
+                          caras=3500), "brazos"))
+brazo_l = kit.antebrazo(-1, r_codo=0.074, r_muneca=0.056, j=J) + kit.mano(-1, j=J, r=0.056)
+partes.append((kit.fundir(kit.de_skin("brazo_l", "granjero"), brazo_l, PIEL, voxel=0.0055, suavizado=6, caras=4000),
+               "manos"))
+cicatrices = []
+cl = J["codo_l"]
+for k in range(5):
+    z0 = cl[2] - 0.04 - k * 0.055
+    a0 = k * 1.3
+    cicatrices.append([(cl[0] + math.cos(a0 + t) * 0.064, cl[1] + math.sin(a0 + t) * 0.064, z0 - t * 0.02)
+                       for t in (0.0, 0.5, 1.0, 1.5, 2.0)])
+partes.append((kit.lineas(kit.de_skin("cicatrices", "granjero"), cicatrices, 0.0040, LINEAS), "manos"))
+for obj, _r in partes:
+    base = obj.name.split("__")[0]
+    if base in ("armadura", "cintas", "cinto", "hebilla_oro", "hombrera_l", "hombrera_r", "lamina_l", "lamina_r",
+                "mangas", "guantelete", "rodilleras_oro") or base.startswith("gema_"):
+        kit.ocultar_en(obj, "granjero")
 
 arm = kit.esqueleto(J)
 for obj, regla in partes:

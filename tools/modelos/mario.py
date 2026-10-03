@@ -185,9 +185,35 @@ for k in range(6):
                      (c[0] + math.sin(a) * 0.006, c[1] - math.cos(a) * 0.006, c[2]), 0.050, seg=20)]
     monedas += m
 partes.append((kit.fundir(kit.de_skin("moneda", "dorado"), monedas, MONEDA, voxel=0.004, suavizado=2, caras=3000), "torso"))
+# CONSTRUCTOR (Super Mario Maker 2): el casco amarillo de obra en vez de la gorra, la
+# camisa amarilla (el color lo pone la skin) y el cinturon de herramientas.
+CASCO = kit.material("casco", (0.98, 0.80, 0.10), rugosidad=0.35)
+CINTO = kit.material("cinto_herramientas", (0.42, 0.26, 0.12))
+HERRAMIENTA = kit.material("metal", (0.62, 0.64, 0.68), metal=0.7)
+casco = [kit.elipsoide((0, -0.005, 1.712), (0.246, 0.238, 0.178)),
+         kit.capsula((0, -0.20, 1.80), (0, 0.20, 1.80), 0.040),
+         kit.elipsoide((0, 0.010, 1.630), (0.300, 0.290, 0.022))]
+kit.mover(casco, **CABEZA)
+partes.append((kit.fundir(kit.de_skin("casco", "constructor"), casco, CASCO, voxel=0.006, suavizado=6, caras=6000),
+               "cabeza"))
+cinto = kit.perfil([(0.840, 0.272, 0.228), (0.895, 0.268, 0.226)])
+for lado in (-1, 1):
+    cinto.append(kit.caja((lado * 0.215, 0.110, 0.810), (0.075, 0.050, 0.090), rot=(0, 0, lado * -28)))
+cinto.append(kit.caja((0.0, -0.220, 0.815), (0.120, 0.050, 0.085)))
+kit.mover(cinto, **TORSO)
+partes.append((kit.fundir(kit.de_skin("cinto_herramientas", "constructor"), cinto, CINTO, voxel=0.005, suavizado=3,
+                          caras=4000), "torso"))
+# Un martillo colgado del costado derecho.
+martillo = [kit.capsula((0.262, 0.03, 0.700), (0.262, 0.03, 0.860), 0.012),
+            kit.caja((0.262, 0.03, 0.700), (0.030, 0.090, 0.030))]
+kit.mover(martillo, **TORSO)
+partes.append((kit.fundir(kit.de_skin("martillo", "constructor"), martillo, HERRAMIENTA, voxel=0.003, suavizado=2,
+                          caras=1500), "torso"))
 for obj, _r in partes:
     if obj.name in ("emblema", "m"):
-        kit.ocultar_en(obj, "clasico")
+        kit.ocultar_en(obj, "clasico", "constructor")
+    if obj.name == "gorra":
+        kit.ocultar_en(obj, "constructor")
 
 arm = kit.esqueleto(J)
 kit.pesar_estandar(partes, arm, J)

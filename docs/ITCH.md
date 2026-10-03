@@ -227,7 +227,8 @@ rojo; cuidar a alguien que se quedó dormido; aguantar en la fila del supermerca
 que abren su dominio a mitad de pelea.
 
 DIFICULTAD. Fácil, Normal o Difícil, y se cambia cuando quieras desde la pantalla
-de capítulos. Fácil paga la mitad de monedas y experiencia; Difícil, un 50% más. Y en
+de capítulos. Los capítulos que se habían quedado muy por encima del resto (el DIO del
+capítulo 17, el ???% de la parte 3, los jefes de las partes 7 y 8...) ahora están parejos. Fácil paga la mitad de monedas y experiencia; Difícil, un 50% más. Y en
 cualquiera de las tres, cada capítulo es un poco más duro que el anterior, cada parte más
 que la anterior, y los jefes un escalón por encima de todo lo demás.
 
@@ -299,7 +300,12 @@ Sukuna: el uniforme carmesí, el kimono de Shinjuku en el cuerpo de Megumi y su 
 forma de la era Heian, con cuatro brazos y dos caras. Los escalones también se compran, a
 200 monedas cada uno: lo que se gana en el tiempo que tarda subirlo jugando.
 
-81 skins entre el pase y la tienda. Cada una cambia el
+Y en la tienda, skins nuevas para los que hacía más tiempo que no estrenaban nada: Goku
+Super Saiyajin 4 (con la cola y el pelaje rojo) y Kaioken, Rick Policía de la Ciudadela,
+Excalibur Sonic con la armadura y la espada, Mario Constructor de Super Mario Maker 2,
+Madara Anciano, Thanos Granjero, Flowery Disco y Mob del Club de Mejora Corporal.
+
+90 skins entre el pase y la tienda. Cada una cambia el
 modelo con cosas que son del original: el Ultra Instinto sin el gi, Pickle Rick con la
 armadura de ratas, el Madara del Diez Colas con sus esferas y el Rinne Sharingan, los
 Gaster Blasters de Sans, el manto Hokage, el abrigo de capitán de Luffy, el Iron Spider con

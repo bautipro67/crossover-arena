@@ -285,6 +285,17 @@ func _pelea_mision(c: int, cap: Dictionary, heroe: StringName) -> Array:
 		if is_instance_valid(m._zona) and cerebro != null:
 			cerebro.home = m._zona.global_position
 			h.set_meta(&"correa", float(cap["objetivo"].get("radio", 6.0)) * 0.7)
+		# JUNTAR: el heroe va a buscar lo que falta, el mas cercano, como haria una persona
+		# (un bot solo pelea, y sin esto el capitulo nunca se termina).
+		var falta: Node3D = null
+		for cosa: Node3D in m._juntables:
+			if is_instance_valid(cosa) and not cosa.has_meta(&"tomado") and (falta == null
+					or cosa.global_position.distance_to(h.global_position) < falta.global_position.distance_to(h.global_position)):
+				falta = cosa
+		if falta != null:
+			h.set_meta(&"ir_a", falta.global_position)
+		elif h.has_meta(&"ir_a"):
+			h.remove_meta(&"ir_a")
 	Modos.termino.disconnect(al_terminar)
 	if diag:
 		print("  diag cap %d: el heroe recibe %.0f y usa %s; el jefe usa %s, distancia media %.1f m" % [c + 1,

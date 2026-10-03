@@ -238,6 +238,25 @@ for x0, z0, pasos in ((-0.07, 1.78, ((-0.02, -0.03), (-0.01, -0.04), (-0.025, -0
     if len(linea) > 1:
         grietas.append(linea)
 partes.append((kit.lineas(kit.de_skin("grietas", "edo"), grietas, 0.0035, GRIETA), "cabeza"))
+# ANCIANO: el Madara viejo que espera a Obito en la cueva. Sin armadura y sin el gunbai, una
+# tunica oscura larga hasta los tobillos sobre el manto, y el pelo encanecido (el color lo
+# pone la skin). Ya tiene el Rinnegan.
+TUNICA = kit.material("tunica", (0.16, 0.16, 0.19))
+LARGA = [(0.20, 0.250, 0.200), (0.50, 0.215, 0.170), (0.80, 0.190, 0.150), (1.00, 0.180, 0.140), (1.20, 0.190, 0.142),
+         (1.36, 0.208, 0.148), (1.46, 0.206, 0.142), (1.53, 0.160, 0.112)]
+
+
+def cruce(x, y, z):
+    # El cruce del kimono: abierto en V hasta el pecho.
+    return y > 0.04 and z > 1.30 and abs(x - (z - 1.30) * 0.10) < (z - 1.30) * 0.35
+
+
+partes += kit.abrigo("tunica", ["anciano"], TUNICA, LARGA, cruce, z_abajo=0.22, corte=0.98, hombros=0.170,
+                     r_hombros=0.088)
+for obj, _r in partes:
+    base = obj.name.split("__")[0]
+    if "sin_armadura" in obj.name or base in ("gunbai", "cadena", "obi", "cinturon"):
+        kit.ocultar_en(obj, "anciano")
 
 arm = kit.esqueleto(J)
 # Las hombreras van con el brazo y las musleras con el muslo, enteras.
@@ -248,6 +267,7 @@ kit.pesar_estandar([p for p in partes if not p[1].startswith(("hombro_", "pierna
 cara = kit.cara_estandar(cabeza, J, 0.055, 1.815,
                          ojos_extra={"alto": 0.050, "ancho": 0.058, "iris": [0.86, 0.06, 0.06], "estilo": "sharingan",
                                      "formas": {"madara_rikudo": {"estilo": "rinnegan"},
+                                                "madara_anciano": {"estilo": "rinnegan"},
                                                 "madara_edo": {"estilo": "rinnegan_edo"}}},
                          cejas={"alto": 0.036, "color": [0.06, 0.07, 0.12], "largo": 0.060},
                          boca_z=1.700, boca_extra={"ancho": 0.056, "dientes": False})
