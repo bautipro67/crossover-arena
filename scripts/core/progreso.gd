@@ -345,6 +345,9 @@ func pasos_ruta(ruta: String) -> int:
 
 
 func ruta_abierta(ruta: String) -> bool:
+	# En modo desarrollador, todas: el menu de la historia las muestra y se pueden jugar.
+	if modo_dev and Historia.RUTAS.has(ruta):
+		return true
 	var total := int((Historia.RUTAS.get(ruta, {}) as Dictionary).get("pasos", 0))
 	return total > 0 and pasos_ruta(ruta) >= total
 

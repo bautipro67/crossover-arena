@@ -825,11 +825,14 @@ func _test_progresion() -> void:
 	Modos.iniciar(Modos.DUELO)
 	_check(Progreso.puede_usar_personaje(&"sukuna") and Progreso.tiene_skin(&"goku_ssj4")
 		and Progreso.capitulo_disponible(Historia.cantidad() - 1) and &"shinjuku" in Mapas.disponibles()
+		and Progreso.ruta_abierta("snowgrave") and Progreso.ruta_abierta("cielo") and Progreso.ruta_abierta("heroe")
+		and Progreso.ruta_abierta("fuerte")
 		and (Practica.disponible() == (Net.solo_mode and not Net.dedicated)),
 		"en modo desarrollador: todos los personajes, todas las skins, toda la historia, todos los mapas y el panel en un duelo")
 	Progreso.modo_dev = false
 	_check(not Progreso.puede_usar_personaje(&"sukuna") and not Progreso.tiene_skin(&"goku_ssj4")
 		and not Progreso.capitulo_disponible(Historia.cantidad() - 1) and not (&"shinjuku" in Mapas.disponibles())
+		and not Progreso.ruta_abierta("fuerte")
 		and not Practica.disponible(),
 		"y sin el, cada cosa vuelve a su candado")
 	Modos.iniciar(modo_antes)

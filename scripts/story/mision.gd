@@ -581,7 +581,8 @@ func _cerrar_paso_snowgrave() -> String:
 		var ruta := Historia.ruta_de_parte(k)
 		if ruta == "" or not Historia.es_secreta(k):
 			continue
-		if Historia.requisito(Historia.primero_de(k)) == capitulo and Progreso.ruta_abierta(ruta):
+		# En modo desarrollador todas dan abiertas: el aviso solo cuando se abrio de verdad.
+		if Historia.requisito(Historia.primero_de(k)) == capitulo and Progreso.ruta_abierta(ruta) 				and not Progreso.modo_dev:
 			extra += "\n" + String(Historia.RUTAS[ruta]["abierta"])
 	return extra
 
