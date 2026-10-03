@@ -52,6 +52,12 @@ extends RefCounted
 ##   Mario    llega en la parte 2 por una tuberia equivocada. Habla poco y contento —
 ##            "¡Mamma mia!", "¡Wahoo!", "okey-dokey", "¡Let's-a go!"— y rescatar gente es
 ##            lo que hace siempre. Lo esperan la princesa Peach y un pastel.
+##   Saitama  llega en la parte 7 volviendo del supermercado. Habla poco y sin ganas, con
+##            cara de nada; le importan las ofertas y que las peleas no terminen tan rapido.
+##            "Un heroe por diversion". Cuando se enoja de verdad, no lo dice: pega en serio.
+##   Sukuna   el Rey de las Maldiciones. Se rie de todo, desprecia a los debiles, disfruta
+##            pelear con los fuertes; habla de mil años y de su santuario. Cruel y
+##            caprichoso: cumple los pactos, pero a su manera.
 ##
 ## LA PARTE 2. Cuando Dio apreto el nucleo, se partio: los fragmentos quedaron repartidos
 ## por la Arena y Dio escapo con el mas grande. La Arena, herida, llama a un TORNEO para
@@ -76,6 +82,16 @@ extends RefCounted
 ## Mob. Si se lo juega a DIO siguiendo el diario (tres pasos), se abre la RUTA DEL CIELO,
 ## donde el plan se cumple y la Arena vuelve a empezar.
 ##
+## LA PARTE 7. Saitama cae en la Arena volviendo del supermercado, y por la misma grieta
+## entran los dedos de Sukuna. Los ecos se los comen, uno se vuelve su recipiente, y Sukuna
+## despierta. Con Saitama siguiendo tres pasos (solo el golpe normal, el folleto de la
+## oferta, el recipiente terminado con el Golpe Serio) se abre la RUTA DEL HEROE, en la Luna.
+##
+## LA PARTE 8. Sukuna convierte la Arena en su santuario. Gojo lo enfrenta y cae; Saitama lo
+## derrota, y Sukuna se queda en la Arena por un pacto: AHI SE DESBLOQUEA. Con Gojo siguiendo
+## tres pasos (todas las bajas, la Prision rota, Sukuna terminado con el Purpura) se abre la
+## RUTA DEL MAS FUERTE, donde Gojo no cae.
+##
 ## TODO LO QUE SE DICE ES ORIGINAL. De las obras salen los personajes y las frases que son
 ## su marca, nada mas.
 ##
@@ -95,6 +111,10 @@ const PARTES: Array[Dictionary] = [
 	{"titulo": "❄ RUTA SNOWGRAVE", "capitulos": 3, "secreta": true, "ruta": "snowgrave"},
 	{"titulo": "PARTE 6: EL DIARIO DE DIO", "capitulos": 10},
 	{"titulo": "✦ RUTA DEL CIELO", "capitulos": 3, "secreta": true, "ruta": "cielo"},
+	{"titulo": "PARTE 7: EL HÉROE POR DIVERSIÓN", "capitulos": 10},
+	{"titulo": "★ RUTA DEL HÉROE", "capitulos": 3, "secreta": true, "ruta": "heroe"},
+	{"titulo": "PARTE 8: EL REY DE LAS MALDICIONES", "capitulos": 10},
+	{"titulo": "✧ RUTA DEL MÁS FUERTE", "capitulos": 3, "secreta": true, "ruta": "fuerte"},
 ]
 
 ## LAS RUTAS SECRETAS: quien las juega, cuantos pasos piden y lo que dicen los carteles.
@@ -107,6 +127,18 @@ const RUTAS: Dictionary = {
 	# treinta y seis almas y el hueso—, jugando con DIO en la parte 6.
 	"cielo": {"personaje": &"dio", "pasos": 3, "color": Color(1.0, 0.85, 0.45),
 		"pista": "✦ Otra página del diario de DIO se cumplió.", "abierta": "✦ Se abrió la RUTA DEL CIELO."},
+	# LA RUTA DEL HEROE: Saitama en la parte 7. "ve" y "toma" son lo que dice al ver y al
+	# agarrar el objeto escondido (el folleto de la oferta).
+	"heroe": {"personaje": &"saitama", "pasos": 3, "color": Color(1.0, 0.86, 0.25),
+		"pista": "★ Saitama sigue aburrido. Le falta algo.", "abierta": "★ Se abrió la RUTA DEL HÉROE.",
+		"ve": "¿Eso es... un folleto de ofertas? Hay que agarrarlo.",
+		"toma": "Carne a mitad de precio, mañana a las nueve. Ahora sí."},
+	# LA RUTA DEL MAS FUERTE: Gojo en la parte 8 (el objeto es la Prision, el cubo que en su
+	# mundo lo encerro).
+	"fuerte": {"personaje": &"gojo", "pasos": 3, "color": Color(0.55, 0.80, 1.0),
+		"pista": "✧ Gojo se lo está tomando en serio.", "abierta": "✧ Se abrió la RUTA DEL MÁS FUERTE.",
+		"ve": "Ese cubo... la Prisión. Mejor romperla antes de que alguien la use.",
+		"toma": "Listo. A mí nadie me mete en una caja."},
 }
 
 ## LA RUTA SNOWGRAVE: tres cosas especificas que hay que hacer en la parte 5, jugando con
@@ -3882,6 +3914,1234 @@ static func _armar() -> Array[Dictionary]:
 			["narrar", "Todo es igual que la primera vez. Casi todo. En algún lugar, alguien ya sabe cómo termina."],
 			["fundido", "negro", 1.2],
 			["titulo", "FIN DE LA RUTA DEL CIELO", "Todo vuelve a empezar"],
+		],
+	})
+
+	# ================================================================ PARTE 7
+	#
+	# EL HEROE POR DIVERSION. Saitama vuelve del supermercado y la grieta se lo traga: la
+	# Arena le copio la Ciudad Z entera. Al mismo tiempo, por la misma grieta, entran los
+	# dedos del Rey de las Maldiciones, y Gojo los reconoce. Los ecos se los comen, y uno
+	# termina siendo el recipiente de Sukuna. La parte termina con Sukuna escapandose con
+	# los dedos que le faltan.
+	#
+	# LAS PELEAS CAMBIAN DE FORMA en cada capitulo: juntar cosas con ecos encima, una regla
+	# en la que cada golpe de Saitama mata, una lluvia de meteoritos, cuidar a alguien que se
+	# quedo dormido, aguantar en la puerta del supermercado, un jefe que abre su dominio.
+	#
+	# TRES CAPITULOS DE SAITAMA (el 2, el 5 y el 8 de la parte) esconden los pasos de la RUTA
+	# DEL HEROE: ganar solo con el golpe normal, el folleto de la oferta y terminar al
+	# recipiente con el Golpe Serio.
+
+	# ------------------------------------------------------------------ 61
+	c.append({
+		"titulo": "Oferta del día",
+		"personaje": &"saitama",
+		"enemigos": [
+			_eco("p1", &"mario", Vector2(-5, -12), 22.0, 0.11),
+			_eco("p2", &"sonic", Vector2(5, -12), 22.0, 0.11),
+			_eco("p3", &"luffy", Vector2(0, -14), 22.0, 0.11),
+		],
+		"objetivo": {"tipo": "recolectar", "objeto": "bolsa", "cantidad": 5, "texto": "Juntá las bolsas del supermercado"},
+		"eventos": [
+			[["inicio"], [["decir", &"saitama", "Los huevos estaban a mitad de precio. Si se rompió uno, alguien la va a pasar mal."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"naruto", Vector2(-7, -14), 22.0, 0.11, false),
+					_eco("p5", &"spiderman", Vector2(7, -14), 22.0, 0.11, false)]],
+				["decir", &"saitama", "Siguen saliendo. Como las moscas en verano."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Un martes cualquiera, en la Ciudad Z, un hombre calvo vuelve del supermercado con la oferta del día."],
+			["temblor", 1.0],
+			["narrar", "Y el piso se abre. Del otro lado de la grieta, la Arena le copió la ciudad entera."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "...¿Y esto? Se me cayeron las bolsas."],
+			["aparecer", &"p1", &"mario", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"sonic", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"luffy", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Ah. Monstruos. Bueno, rápido, que se me derrite el helado."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Cinco bolsas. Falta un huevo, pero bueno."],
+			["aparecer", &"gojo", &"gojo", Vector2(4, -6), "teletransporte"],
+			["plano", "dos", &"gojo", &"saitama"],
+			["decir", &"gojo", "Che, pelado. ¿Sabés qué eran esos? Ecos. La Arena los hace para pelear con los más fuertes. Y los bajaste de una piña."],
+			["decir", &"saitama", "No sé. Les pegué normal."],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "...Ok. Esto se puso interesante."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 62
+	c.append({
+		"titulo": "Un golpe normal",
+		"personaje": &"saitama",
+		# PASO 1 DE LA RUTA DEL HEROE: ganar solo con el golpe normal. Ninguna habilidad.
+		"paso": {"ruta": "heroe", "n": 1},
+		"condicion": "solo_basico",
+		# CADA GOLPE DE SAITAMA MATA (los ecos pegan normal). Hay que bajarlos a todos antes
+		# de que se acabe el tiempo.
+		"regla": "un_golpe",
+		"enemigos": [
+			_eco("p1", &"goku", Vector2(-5, -12), 30.0, 0.14),
+			_eco("p2", &"madara", Vector2(5, -12), 30.0, 0.14),
+			_eco("p3", &"thanos", Vector2(0, -14), 30.0, 0.14),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "limite": 70.0, "texto": "Un golpe cada uno, antes de que se acabe el tiempo"},
+		"eventos": [
+			[["inicio"], [["decir", &"saitama", "Uno por golpe. Como en el gimnasio."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"scorpion", Vector2(-7, -14), 30.0, 0.14, false),
+					_eco("p5", &"dio", Vector2(7, -14), 30.0, 0.14, false)]],
+				["decir", &"saitama", "Más. Bien."]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p6", &"gojo", Vector2(-6, -14), 30.0, 0.14, false),
+					_eco("p7", &"naruto", Vector2(6, -14), 30.0, 0.14, false),
+					_eco("p8", &"sans", Vector2(0, -16), 30.0, 0.14, false)]],
+				["decir", &"saitama", "¿Una copia del de los ojos? Que no se entere, que se ofende."]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p9", &"luffy", Vector2(-6, -14), 30.0, 0.14, false),
+					_eco("p10", &"mob", Vector2(6, -14), 30.0, 0.14, false)]],
+				["decir", &"saitama", "Últimos. Creo."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["aparecer", &"gojo", &"gojo", Vector2(4, 2), "teletransporte"],
+			["plano", "dos", &"gojo", &"saitama"],
+			["decir", &"gojo", "Te propongo algo. Ecos de los más fuertes de la Arena, de a montones. A ver cuánto tardás."],
+			["decir", &"saitama", "¿Hay premio?"],
+			["decir", &"gojo", "...Te invito a comer."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Trato hecho."],
+			["desaparecer", &"gojo", "teletransporte"],
+			["aparecer", &"p1", &"goku", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"madara", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"thanos", Vector2(0, -14), "sombra"],
+			["narrar", "Esta vez cada golpe de Saitama es el último que recibe un eco. Pero los ecos pegan igual, y Gojo tiene un reloj en la mano."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["aparecer", &"gojo", &"gojo", Vector2(3, -4), "teletransporte"],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Diez ecos. Uno por piña. ¿Qué sos?"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Un héroe por diversión."],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "¿Y por qué tenés esa cara de aburrido?"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Porque terminó rápido."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 63
+	c.append({
+		"titulo": "Algo maldito",
+		"personaje": &"gojo",
+		"enemigos": [
+			_eco("p1", &"madara", Vector2(-5, -12), 28.0, 0.13),
+			_eco("p2", &"thanos", Vector2(5, -12), 28.0, 0.13),
+			_eco("p3", &"dio", Vector2(0, -14), 28.0, 0.13),
+		],
+		"objetivo": {"tipo": "recolectar", "objeto": "dedo", "cantidad": 4, "texto": "Juntá los dedos antes que los ecos"},
+		"eventos": [
+			[["inicio"], [["decir", &"gojo", "No dejes que ninguno se los coma. Ni uno."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"scorpion", Vector2(-7, -14), 28.0, 0.13, false),
+					_eco("p5", &"sans", Vector2(7, -14), 28.0, 0.13, false)]],
+				["decir", &"gojo", "Huelen la energía maldita. Como perros a un hueso."]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Por la misma grieta que trajo a Saitama entró algo más. Algo que Gojo conoce bien."],
+			["plano", "cerca", &"gojo"],
+			["pose", &"gojo", &"pensar", 1.2],
+			["decir", &"gojo", "Esto no es de la Arena. Es de mi mundo. Dedos del Rey de las Maldiciones. Veinte, en total."],
+			["decir", &"gojo", "Si un eco se come uno, va a tener algo que no quiero ver en esta Arena."],
+			["aparecer", &"p1", &"madara", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"thanos", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"dio", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Cuatro. Me faltan... muchos más."],
+			["narrar", "Gojo los sella uno por uno. Pero hay más grietas que manos."],
+			["decir", &"gojo", "Voy a necesitar ayuda. Ugh. Qué raro decir eso."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 64
+	c.append({
+		"titulo": "El meteorito",
+		"personaje": &"saitama",
+		"aliados": [_aliado(&"spiderman", "Spider-Man", Vector2(2.5, 1.5), 90.0, 0.42)],
+		"enemigos": [
+			_eco("p1", &"sonic", Vector2(-5, -12), 26.0, 0.12),
+			_eco("p2", &"mario", Vector2(5, -12), 26.0, 0.12),
+			_eco("p3", &"rick", Vector2(0, -14), 26.0, 0.12),
+		],
+		"objetivo": {"tipo": "sobrevivir", "segundos": 45.0, "texto": "Aguantá la lluvia de meteoritos"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "meteoritos", 0.0, 1.4],
+				["decir", &"spiderman", "¡Sombras en el piso! ¡Si ves una sombra, no te quedes abajo! ¡Lección uno de Nueva York!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"luffy", Vector2(-7, -14), 26.0, 0.12, false),
+					_eco("p5", &"goku", Vector2(7, -14), 26.0, 0.12, false)]],
+				["decir", &"saitama", "Los ecos no miran para arriba. Usalo."]]],
+			[["tiempo", 30.0], [["decir", &"spiderman", "¡Mi sentido arácnido está gritando! ¡Viene uno MUY grande!"]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["aparecer", &"spiderman", &"spiderman", Vector2(2.5, 1.5), "caida"],
+			["plano", "general"],
+			["narrar", "El núcleo roto de la Arena escupe piedras al cielo, y las piedras vuelven encendidas."],
+			["plano", "dos", &"spiderman", &"saitama"],
+			["decir", &"spiderman", "¿Sos el de la capa? Tu amigable vecino. Hay meteoritos. Muchos. ¿Tenés un plan?"],
+			["decir", &"saitama", "No pararme abajo."],
+			["decir", &"spiderman", "...Es un buen plan, en realidad."],
+			["aparecer", &"p1", &"sonic", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"mario", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"rick", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"spiderman", Vector2(2.5, 1.0), 20.0],
+			["plano", "general"],
+			["narrar", "Y entonces cae el más grande de todos. Tan grande que tapa el cielo."],
+			["temblor", 1.5],
+			["plano", "abajo", &"saitama"],
+			["habilidad", &"saitama", &"golpe_serio"],
+			["narrar", "Un golpe. El meteorito se vuelve polvo, y el polvo se vuelve lluvia."],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "...Ok. Voy a hacer como que no vi eso. No. No puedo. ¡¿QUÉ FUE ESO?!"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Un golpe."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 65
+	c.append({
+		"titulo": "La oferta especial",
+		"personaje": &"saitama",
+		# PASO 2 DE LA RUTA DEL HEROE: el folleto de la oferta, escondido en el mapa. Solo
+		# aparece con el paso 1 hecho.
+		"paso": {"ruta": "heroe", "n": 2},
+		"condicion": "objeto",
+		"objeto": "folleto",
+		"objeto_pos": Vector2(-18, 16),
+		"enemigos": [
+			_eco("p1", &"naruto", Vector2(-5, -12), 28.0, 0.13),
+			_eco("p2", &"luffy", Vector2(5, -12), 28.0, 0.13),
+			_eco("p3", &"goku", Vector2(0, -14), 28.0, 0.13),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -8), "radio": 6.0, "segundos": 30.0,
+			"texto": "Aguantá en la fila del supermercado"},
+		"eventos": [
+			[["inicio"], [["decir", &"saitama", "La fila no se abandona. Nunca."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"madara", Vector2(-7, -14), 28.0, 0.13, false),
+					_eco("p5", &"gojo", Vector2(7, -14), 28.0, 0.13, false)]],
+				["decir", &"saitama", "Se quieren colar. Eso no."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"saitama"],
+			["narrar", "La Ciudad Z de la Arena tiene hasta el mismo supermercado. Y la misma oferta, a la misma hora."],
+			["decir", &"saitama", "Carne de primera, a mitad de precio. Si aguanto la fila, ceno bien hoy."],
+			["aparecer", &"p1", &"naruto", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"luffy", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"goku", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Hasta los ecos quieren la oferta. Tiene sentido."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Medio kilo de carne. La vida es buena."],
+			["narrar", "Esa noche, en una olla prestada, Saitama cocina para los que lo ayudaron. Gojo trae los postres."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 66
+	c.append({
+		"titulo": "Dormido",
+		"personaje": &"luffy",
+		"aliados": [
+			{"id": &"saitama", "personaje": &"saitama", "nombre": "Saitama", "vida": 100.0, "daño": 0.5,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"tirado"},
+		],
+		"enemigos": [
+			_eco("p1", &"dio", Vector2(-5, -12), 26.0, 0.13),
+			_eco("p2", &"scorpion", Vector2(5, -12), 26.0, 0.13),
+			_eco("p3", &"sans", Vector2(0, -14), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "proteger", "id": &"saitama", "segundos": 40.0, "texto": "Que nadie despierte a Saitama"},
+		"eventos": [
+			[["inicio"], [["decir", &"luffy", "¡Shishishi! ¡Duerme como Zoro! ¡Nadie lo toca!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"thanos", Vector2(-7, -14), 26.0, 0.13, false),
+					_eco("p5", &"madara", Vector2(7, -14), 26.0, 0.13, false)]],
+				["decir", &"luffy", "¡Más ecos! ¡Gomu gomu no... ¡no lo van a despertar!"]]],
+		],
+		"intro": [
+			["colocar", &"luffy", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"saitama"],
+			["narrar", "Después de la cena, Saitama se quedó dormido en el medio de la calle. Y los ecos huelen la oportunidad."],
+			["plano", "dos", &"luffy", &"saitama"],
+			["decir", &"luffy", "¡Ey! ¿Estás vivo? ...Ronca. Está vivo."],
+			["aparecer", &"p1", &"dio", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"scorpion", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"sans", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"luffy"],
+			["pose", &"luffy", &"desafio", 1.2],
+			["decir", &"luffy", "¡Él me dio carne! ¡Alguien que te da carne es tu amigo!"],
+		],
+		"outro": [
+			["colocar", &"luffy", Vector2(0, 0), 0.0],
+			["colocar", &"saitama", Vector2(0, 3), 0.0],
+			["plano", "dos", &"saitama", &"luffy"],
+			["decir", &"saitama", "...¿Pasó algo?"],
+			["decir", &"luffy", "¡Nada! ¿Te quedó carne?"],
+			["decir", &"saitama", "No."],
+			["decir", &"luffy", "Ah."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 67
+	c.append({
+		"titulo": "Los fragmentos",
+		"personaje": &"naruto",
+		"aliados": [_aliado(&"spiderman", "Spider-Man", Vector2(2.5, 1.5), 90.0, 0.42)],
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 26.0, 0.13),
+			_eco("p2", &"madara", Vector2(5, -12), 26.0, 0.13),
+			_eco("p3", &"dio", Vector2(0, -14), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "recolectar", "objeto": "dedo", "cantidad": 5, "texto": "Juntá los dedos entre los tajos"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "cortes", 0.0, 1.6],
+				["decir", &"naruto", "¡Los dedos cortan el aire! ¡Si ves un círculo rojo, salí de ahí, de veras!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 26.0, 0.13, false),
+					_eco("p5", &"scorpion", Vector2(7, -14), 26.0, 0.13, false)]],
+				["decir", &"spiderman", "¿Esos ecos tienen... tatuajes? ¿Desde cuándo los ecos tienen estilo?"]]],
+		],
+		"intro": [
+			["colocar", &"naruto", Vector2(0, 0), 0.0],
+			["aparecer", &"spiderman", &"spiderman", Vector2(2.5, 1.5), "caida"],
+			["plano", "dos", &"naruto", &"spiderman"],
+			["decir", &"naruto", "¡Gojo dijo que juntemos los dedos antes que los ecos! ¡Y yo nunca retiro lo que digo!"],
+			["decir", &"spiderman", "Lo dijo Gojo, no vos. Pero bueno, me gusta la energía."],
+			["narrar", "Donde caen los dedos, el aire se corta solo. Y algunos ecos ya se comieron uno."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"madara", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"dio", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"naruto", Vector2(0, 0), 0.0],
+			["colocar", &"spiderman", Vector2(2.5, 1.0), 20.0],
+			["plano", "general"],
+			["narrar", "Cinco dedos más, sellados. Pero un eco se escapó con el último entre los dientes."],
+			["aparecer", &"recipiente", &"sukuna", Vector2(0, -10), "sombra"],
+			["plano", "abajo", &"recipiente"],
+			["decir", &"recipiente", "Je. Je je. Qué cuerpo tan cómodo me armó esta Arena."],
+			["desaparecer", &"recipiente", "sombra"],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "Eso. Eso no me gustó nada."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 68
+	c.append({
+		"titulo": "Recipiente",
+		"personaje": &"saitama",
+		# PASO 3 DE LA RUTA DEL HEROE: terminar al recipiente con el Golpe Serio. Con los
+		# pasos 1 y 2 hechos.
+		"paso": {"ruta": "heroe", "n": 3},
+		"condicion": "jefe_ulti",
+		"jefe_ulti": &"recipiente",
+		"enemigos": [
+			{"id": &"recipiente", "personaje": &"sukuna", "nombre": "Recipiente de Sukuna", "vida": 200.0,
+				"daño": 0.22, "pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"recipiente", "texto": "Derrotá al recipiente"},
+		"eventos": [
+			[["inicio"], [["decir", &"recipiente", "¿Un humano sin energía maldita? Vas a ser un bocado rápido."]]],
+			[["vida", &"recipiente", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"recipiente"],
+					["decir", &"recipiente", "Basta de jugar. Te voy a mostrar lo que es un tajo de verdad."],
+					["habilidad", &"recipiente", &"santuario"],
+				]],
+				["lluvia", "cortes", 15.0, 1.2],
+				["potenciar", &"recipiente", 10.0]]],
+			[["vida", &"recipiente", 0.25], [["decir", &"saitama", "Ok. Esto ya no es divertido."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["aparecer", &"recipiente", &"sukuna", Vector2(0, -9), "sombra"],
+			["plano", "general"],
+			["narrar", "El eco que se comió los dedos ya no es un eco. Tiene ojos de más, y se ríe solo."],
+			["plano", "abajo", &"recipiente"],
+			["decir", &"recipiente", "Diecinueve dedos me faltan para ser yo. Uno me alcanza para destrozarte."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "¿Sos el que se comió los dedos? Qué asco."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"recipiente", Vector2(0, -7), 180.0],
+			["plano", "abajo", &"recipiente"],
+			["decir", &"recipiente", "Este cuerpo... no aguanta... Pero yo no estoy en el cuerpo, humano. Estoy en los dedos."],
+			["desaparecer", &"recipiente", "sombra"],
+			["plano", "cerca", &"saitama"],
+			["narrar", "El eco se deshace. Lo que tenía adentro se fue con los dedos que todavía andan sueltos."],
+			["decir", &"saitama", "Se escapó. Odio cuando se escapan."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 69
+	c.append({
+		"titulo": "Rey de las Maldiciones",
+		"personaje": &"gojo",
+		"enemigos": [
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 210.0, "daño": 0.24,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "hasta": 0.5, "texto": "Frená al Rey de las Maldiciones"},
+		"eventos": [
+			[["inicio"], [["decir", &"sukuna", "Gojo Satoru. Hasta en otro mundo me tenés que molestar."]]],
+			[["vida", &"sukuna", 0.8], [
+				["lluvia", "cortes", 20.0, 1.3],
+				["decir", &"sukuna", "¡Desmantelar! ¡Cortá todo lo que se mueva!"]]],
+			[["vida", &"sukuna", 0.65], [["decir", &"gojo", "El Infinito no se corta. Probá otra cosa."]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Con quince dedos, Sukuna ya no necesita a nadie: la Arena le armó un cuerpo con lo que sobró de los ecos."],
+			["aparecer", &"sukuna", &"sukuna", Vector2(0, -9), "sombra"],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Esta Arena es un buen lugar. Gente fuerte. Mucha sangre. Me la quedo."],
+			["plano", "cerca", &"gojo"],
+			["pose", &"gojo", &"senalar", 1.2],
+			["decir", &"gojo", "En el cielo y en la tierra, solo yo soy el honrado."],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Tus frases siguen siendo aburridas."],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["colocar", &"sukuna", Vector2(0, -7), 180.0],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Faltan cinco dedos, hechicero. Cuando los tenga, esta Arena va a ser mi santuario."],
+			["desaparecer", &"sukuna", "sombra"],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Necesito a alguien que pegue más fuerte que yo. Y creo que sé dónde hay uno."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 70
+	c.append({
+		"titulo": "Un golpe serio",
+		"personaje": &"saitama",
+		"aliados": [_aliado(&"gojo", "Gojo", Vector2(2.5, 1.5), 105.0, 0.45)],
+		"enemigos": [
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 235.0, "daño": 0.24,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "hasta": 0.25, "texto": "Hacé que Sukuna se lo tome en serio"},
+		"eventos": [
+			[["inicio"], [["decir", &"sukuna", "¿Un pelado con capa? Gojo, caíste bajo."]]],
+			[["vida", &"sukuna", 0.55], [
+				["cinematica", [
+					["plano", "abajo", &"sukuna"],
+					["decir", &"sukuna", "Te ganaste ver esto. Expansión de dominio."],
+					["habilidad", &"sukuna", &"santuario"],
+					["plano", "cerca", &"gojo"],
+					["decir", &"gojo", "¡Salí del círculo! ¡Adentro, todo es un corte seguro!"],
+				]],
+				["lluvia", "cortes", 20.0, 1.0],
+				["potenciar", &"sukuna", 12.0]]],
+			[["vida", &"sukuna", 0.4], [["decir", &"saitama", "Ok. Ahora en serio."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"gojo", Vector2(2.5, 1.5), 0.0],
+			["aparecer", &"sukuna", &"sukuna", Vector2(0, -9), "sombra"],
+			["plano", "dos", &"gojo", &"saitama"],
+			["decir", &"gojo", "Ese es el Rey de las Maldiciones. El más fuerte de la historia de mi mundo. Después de mí."],
+			["decir", &"saitama", "¿Y vos querés que le pegue?"],
+			["decir", &"gojo", "Quiero ver qué pasa cuando le pegás."],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Vengan los dos. Me aburro rápido."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"gojo", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"sukuna", Vector2(0, -7), 180.0],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "...Ese golpe. ¿Qué sos, humano?"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Un héroe por diversión."],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Je. Entonces la próxima vez no te va a resultar tan divertido."],
+			["desaparecer", &"sukuna", "sombra"],
+			["narrar", "Sukuna se hunde en la grieta con los cinco dedos que le faltaban. Y el cielo de la Arena se pone rojo."],
+			["fundido", "negro", 1.0],
+			["titulo", "FIN DE LA PARTE 7", "El Rey de las Maldiciones despertó"],
+		],
+	})
+
+	# ============================================================= RUTA DEL HEROE
+	#
+	# LA TERCERA RUTA SECRETA. Se abre con los tres pasos de la parte 7 (solo el golpe
+	# normal, el folleto y el recipiente terminado con el Golpe Serio) y cuenta lo que Saitama
+	# busca desde que se volvio fuerte: un rival que le dure. En la Luna, como con Boros.
+
+	# ------------------------------------------------------------------ H1
+	c.append({
+		"titulo": "Demasiado fácil",
+		"personaje": &"saitama",
+		"regla": "un_golpe",
+		"enemigos": [
+			_eco("p1", &"goku", Vector2(-5, -12), 34.0, 0.17),
+			_eco("p2", &"gojo", Vector2(5, -12), 34.0, 0.17),
+			_eco("p3", &"madara", Vector2(0, -14), 34.0, 0.17),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "limite": 75.0, "texto": "Los más fuertes de la Arena, de un golpe"},
+		"eventos": [
+			[["inicio"], [["decir", &"saitama", "La Luna. Otra vez. Por lo menos acá no hay vecinos."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"thanos", Vector2(-7, -14), 34.0, 0.17, false),
+					_eco("p5", &"dio", Vector2(7, -14), 34.0, 0.17, false)]],
+				["decir", &"saitama", "Más fuertes que los de antes. Un poco."]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p6", &"sukuna", Vector2(-6, -14), 34.0, 0.17, false),
+					_eco("p7", &"naruto", Vector2(6, -14), 34.0, 0.17, false),
+					_eco("p8", &"luffy", Vector2(0, -16), 34.0, 0.17, false)]],
+				["decir", &"saitama", "...Sigue siendo un golpe."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Una ruta que nadie debería ver: la del héroe que no necesitó nada más que un golpe normal."],
+			["narrar", "La Arena, desesperada, lo tira a la Luna con los ecos más fuertes que sabe hacer."],
+			["aparecer", &"p1", &"goku", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"gojo", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"madara", Vector2(0, -14), "sombra"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "¿Estos son los más fuertes? Bueno. Veamos."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Un golpe cada uno. Como siempre."],
+			["narrar", "Saitama mira la Tierra, chiquita, colgada del cielo negro. Y bosteza."],
+		],
+	})
+
+	# ------------------------------------------------------------------ H2
+	c.append({
+		"titulo": "El señor del universo",
+		"personaje": &"saitama",
+		"enemigos": [
+			{"id": &"conquistador", "personaje": &"thanos", "nombre": "Eco del Conquistador", "vida": 240.0,
+				"daño": 0.26, "pos": Vector2(0, -9), "jefe": true, "eco": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"conquistador", "texto": "Derrotá al conquistador"},
+		"eventos": [
+			[["inicio"], [["decir", &"conquistador", "Recorrí el universo buscando a alguien que me haga sentir algo."]]],
+			[["vida", &"conquistador", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"conquistador"],
+					["decir", &"conquistador", "¡Te voy a mostrar todo mi poder! ¡Hasta la última gota!"],
+					["temblor", 1.4],
+				]],
+				["lluvia", "meteoritos", 20.0, 1.0],
+				["potenciar", &"conquistador", 15.0]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["aparecer", &"conquistador", &"thanos", Vector2(0, -9), "teletransporte"],
+			["plano", "abajo", &"conquistador"],
+			["decir", &"conquistador", "Me dijeron que acá hay alguien que no se cansa. Que no pierde. Quiero ver si es cierto."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Yo también busco eso. Alguien que no se caiga de una."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"conquistador", Vector2(0, -7), 180.0],
+			["plano", "abajo", &"conquistador"],
+			["decir", &"conquistador", "Ni con todo... Ni siquiera te lo tomaste en serio."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Fuiste fuerte. De verdad. Pero no alcanzó."],
+			["desaparecer", &"conquistador", "sombra"],
+			["narrar", "Detrás de Saitama, algo se mueve. Algo con capa, guantes rojos y cara de aburrido."],
+		],
+	})
+
+	# ------------------------------------------------------------------ H3
+	c.append({
+		"titulo": "Por fin un rival",
+		"personaje": &"saitama",
+		"enemigos": [
+			{"id": &"eco_saitama", "personaje": &"saitama", "nombre": "Eco de Saitama", "vida": 260.0,
+				"daño": 0.27, "pos": Vector2(0, -9), "jefe": true, "eco": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"eco_saitama", "texto": "Por fin, alguien que aguanta"},
+		"eventos": [
+			[["inicio"], [["decir", &"saitama", "¿Sos yo? ...Pegás como yo."]]],
+			[["vida", &"eco_saitama", 0.5], [
+				["decir", &"saitama", "¡Esto sí! ¡Una pelea de verdad! ¡No te caigas, eh!"],
+				["potenciar", &"eco_saitama", 12.0]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["aparecer", &"eco_saitama", &"saitama", Vector2(0, -9), "sombra"],
+			["plano", "general"],
+			["narrar", "La Arena hizo lo único que le quedaba: una copia del único que nunca pudo hacer caer."],
+			["plano", "dos", &"saitama", &"eco_saitama"],
+			["decir", &"eco_saitama", "..."],
+			["plano", "cerca", &"saitama"],
+			["pose", &"saitama", &"desafio", 1.2],
+			["decir", &"saitama", "Por fin. Por fin alguien que no se va a caer de una."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"eco_saitama", Vector2(0, -6), 180.0],
+			["plano", "dos", &"saitama", &"eco_saitama"],
+			["narrar", "Los dos echan el puño atrás al mismo tiempo."],
+			["habilidad", &"saitama", &"golpe_serio"],
+			["fundido", "claro", 1.2],
+			["narrar", "Un departamento chico en la Ciudad Z. Un despertador que suena."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "...Un sueño. Era un sueño."],
+			["decir", &"saitama", "¡LA OFERTA! ¡Llego tarde!"],
+			["fundido", "negro", 1.2],
+			["titulo", "FIN DE LA RUTA DEL HÉROE", "Algún día, un rival"],
+		],
+	})
+
+	# ================================================================ PARTE 8
+	#
+	# EL REY DE LAS MALDICIONES. Con los veinte dedos, Sukuna abre su dominio sobre la Arena
+	# y el cielo se pone rojo: la Arena entera es su santuario. Los tajos caen del cielo en
+	# casi todos los capitulos. Gojo y Saitama lo enfrentan, Gojo cae, y al final Saitama
+	# lo derrota. Sukuna se queda en la Arena por un pacto: AL TERMINAR LA PARTE 8 SE PUEDE
+	# ELEGIR (ver "desbloquea" en el ultimo capitulo y Progreso.completar_capitulo).
+	#
+	# TRES CAPITULOS DE GOJO (el 3, el 6 y el 9 de la parte) esconden los pasos de la RUTA DEL
+	# MAS FUERTE: llevarse todas las bajas, romper la Prision y terminar a Sukuna con el
+	# Purpura.
+
+	# ------------------------------------------------------------------ 71
+	c.append({
+		"titulo": "Expansión",
+		"personaje": &"gojo",
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 26.0, 0.13),
+			_eco("p2", &"sukuna", Vector2(5, -12), 26.0, 0.13),
+			_eco("p3", &"madara", Vector2(0, -14), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "sobrevivir", "segundos": 40.0, "texto": "Aguantá adentro del dominio"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "cortes", 0.0, 1.1],
+				["decir", &"gojo", "Un dominio sin barrera, del tamaño de la Arena. Qué exagerado."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 26.0, 0.13, false),
+					_eco("p5", &"thanos", Vector2(7, -14), 26.0, 0.13, false)]],
+				["decir", &"gojo", "Hace ecos con su cara. Le gusta mirarse."]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Sukuna juntó los veinte dedos. Y la Arena entera empezó a parecerse a su santuario: el cielo rojo, el piso lleno de huesos."],
+			["temblor", 1.0],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Los tajos caen solos. Adentro de este dominio, el aire mismo corta."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"sukuna", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"madara", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Cuarenta segundos adentro de un dominio ajeno. Y sin un rasguño. Obvio."],
+			["narrar", "Pero el dominio no se cierra. Sukuna no necesita cerrarlo: la Arena le da toda la energía que quiere."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 72
+	c.append({
+		"titulo": "El sello de Mob",
+		"personaje": &"saitama",
+		"aliados": [
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 95.0, "daño": 0.4,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"channel_up"},
+		],
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 26.0, 0.13),
+			_eco("p2", &"dio", Vector2(5, -12), 26.0, 0.13),
+			_eco("p3", &"scorpion", Vector2(0, -14), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "proteger", "id": &"mob", "segundos": 40.0, "texto": "Cuidá a Mob mientras arma el sello"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "cortes", 25.0, 1.5],
+				["decir", &"mob", "Necesito concentrarme. Por favor, que nadie me interrumpa."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 26.0, 0.13, false),
+					_eco("p5", &"madara", Vector2(7, -14), 26.0, 0.13, false)]],
+				["decir", &"saitama", "Pibe, vos seguí. Yo me encargo."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, 3), 0.0],
+			["plano", "dos", &"mob", &"saitama"],
+			["decir", &"mob", "Mi maestro dice que todo espíritu tiene un borde. Si encuentro el borde de este dominio, lo puedo cerrar."],
+			["decir", &"saitama", "Tu maestro parece un tipo sabio."],
+			["decir", &"mob", "Es el más sabio del mundo."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"dio", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"scorpion", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, 3), 0.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Lo encontré. El borde está en el templo. Ahí está él."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Bien. Entonces vamos al templo."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 73
+	c.append({
+		"titulo": "Solo yo",
+		"personaje": &"gojo",
+		# PASO 1 DE LA RUTA DEL MAS FUERTE: todas las bajas de Gojo. Naruto y Luffy pelean,
+		# pero cada eco se lo tiene que llevar el.
+		"paso": {"ruta": "fuerte", "n": 1},
+		"condicion": "bajas_propias",
+		"aliados": [
+			_aliado(&"naruto", "Naruto", Vector2(2.5, 1.5), 95.0, 0.40),
+			_aliado(&"luffy", "Luffy", Vector2(-2.5, 1.5), 95.0, 0.40),
+		],
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 30.0, 0.14),
+			_eco("p2", &"goku", Vector2(5, -12), 30.0, 0.14),
+			_eco("p3", &"thanos", Vector2(0, -14), 30.0, 0.14),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Abrí camino hacia el templo"},
+		"eventos": [
+			[["inicio"], [["decir", &"gojo", "Ustedes dos, quédense atrás. Esto es cosa mía."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 30.0, 0.14, false),
+					_eco("p5", &"madara", Vector2(7, -14), 30.0, 0.14, false)]],
+				["decir", &"naruto", "¡No te hagas el canchero! ¡Dejanos pelear también, de veras!"]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["colocar", &"naruto", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"luffy", Vector2(-2.5, 1.5), 0.0],
+			["plano", "general"],
+			["narrar", "El camino al templo está lleno de ecos con la cara de Sukuna."],
+			["plano", "cerca", &"luffy"],
+			["decir", &"luffy", "¡Shishishi! ¡Yo quiero pegarle al de los cuatro ojos!"],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Tranquilo. El más fuerte soy yo. Ustedes miren y aprendan."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"goku", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"thanos", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["colocar", &"naruto", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"luffy", Vector2(-2.5, 1.0), -20.0],
+			["plano", "cerca", &"naruto"],
+			["decir", &"naruto", "Sos bastante fuerte, eh. Pero un poco agrandado."],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Un poco no. Bastante. Y tengo con qué."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 74
+	c.append({
+		"titulo": "Dedos falsos",
+		"personaje": &"spiderman",
+		"aliados": [_aliado(&"sans", "Sans", Vector2(2.5, 1.5), 75.0, 0.40)],
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 26.0, 0.13),
+			_eco("p2", &"sukuna", Vector2(5, -12), 26.0, 0.13),
+			_eco("p3", &"naruto", Vector2(0, -14), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "recolectar", "objeto": "dedo", "cantidad": 5, "limite": 80.0,
+			"texto": "Sacale los dedos a los ecos antes de que se los coman"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "cortes", 0.0, 1.8],
+				["decir", &"sans", "dicen que sukuna escupió unos dedos de más. para despistar. qué asco, ¿no?"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 26.0, 0.13, false),
+					_eco("p5", &"rick", Vector2(7, -14), 26.0, 0.13, false)]],
+				["decir", &"spiderman", "¡Juntar dedos! ¡Mi tía May estaría tan orgullosa!"]]],
+		],
+		"intro": [
+			["colocar", &"spiderman", Vector2(0, 0), 0.0],
+			["aparecer", &"sans", &"sans", Vector2(2.5, 1.5), "teletransporte"],
+			["plano", "dos", &"spiderman", &"sans"],
+			["decir", &"sans", "ey. ¿sabías que si un eco se come un dedo de estos, sukuna se vuelve un poquito más fuerte?"],
+			["decir", &"spiderman", "¿Y cuántos dedos hay?"],
+			["decir", &"sans", "bastantes. por eso te llamé a vos. tenés manos de sobra."],
+			["decir", &"spiderman", "Tengo dos manos. Como todo el mundo."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"sukuna", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"naruto", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"spiderman", Vector2(0, 0), 0.0],
+			["colocar", &"sans", Vector2(2.5, 1.0), 20.0],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "buen trabajo. ahora sukuna es un poquito menos fuerte. un poquito."],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "Voy a tener pesadillas con dedos. Muchas."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 75
+	c.append({
+		"titulo": "Otra vez un golpe",
+		"personaje": &"saitama",
+		"regla": "un_golpe",
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 32.0, 0.15),
+			_eco("p2", &"sukuna", Vector2(5, -12), 32.0, 0.15),
+			_eco("p3", &"sukuna", Vector2(0, -14), 32.0, 0.15),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "limite": 70.0, "texto": "Un golpe cada uno, entre los tajos"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "cortes", 0.0, 1.3],
+				["decir", &"saitama", "Tienen todos la misma cara. Más fácil."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 32.0, 0.15, false),
+					_eco("p5", &"madara", Vector2(7, -14), 32.0, 0.15, false)]],
+				["decir", &"saitama", "Siguen."]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p6", &"sukuna", Vector2(-6, -14), 32.0, 0.15, false),
+					_eco("p7", &"dio", Vector2(6, -14), 32.0, 0.15, false),
+					_eco("p8", &"sukuna", Vector2(0, -16), 32.0, 0.15, false)]],
+				["decir", &"saitama", "Ya casi estoy en el templo. Fuera."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Las escaleras del templo. Cientos de ecos de Sukuna, y una lluvia de tajos que no para."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Uno por golpe, como la otra vez. Pero ahora con lluvia."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"sukuna", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"sukuna", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Ya está. ¿Dónde está el de verdad?"],
+			["narrar", "Arriba, en el templo, alguien se ríe. Y abajo, alguien más llega primero."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 76
+	c.append({
+		"titulo": "La Prisión",
+		"personaje": &"gojo",
+		# PASO 2 DE LA RUTA DEL MAS FUERTE: la Prision escondida en el mapa (el cubo que en
+		# su mundo lo encerro). Solo aparece con el paso 1 hecho.
+		"paso": {"ruta": "fuerte", "n": 2},
+		"condicion": "objeto",
+		"objeto": "cubo",
+		"objeto_pos": Vector2(17, 15),
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 28.0, 0.14),
+			_eco("p2", &"madara", Vector2(5, -12), 28.0, 0.14),
+			_eco("p3", &"scorpion", Vector2(0, -14), 28.0, 0.14),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -8), "radio": 6.0, "segundos": 30.0,
+			"texto": "Sostené la puerta del templo"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "cortes", 0.0, 1.5],
+				["decir", &"gojo", "Si cierran la puerta del templo, no entramos más. Me quedo acá."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 28.0, 0.14, false),
+					_eco("p5", &"dio", Vector2(7, -14), 28.0, 0.14, false)]],
+				["decir", &"gojo", "Más caras de Sukuna. Una sola ya me alcanzaba."]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "La puerta del templo se cierra sola, de a poco. Si se cierra del todo, el dominio queda sellado con todos adentro."],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Treinta segundos. Fácil."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"madara", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"scorpion", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Abierta. Saitama ya debe estar subiendo."],
+			["narrar", "Gojo entra primero. Siempre entra primero."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 77
+	c.append({
+		"titulo": "Fuego y venganza",
+		"personaje": &"scorpion",
+		"aliados": [_aliado(&"thanos", "Thanos", Vector2(2.5, 1.5), 120.0, 0.42)],
+		"enemigos": [
+			{"id": &"eco_rey", "personaje": &"sukuna", "nombre": "Eco del Rey", "vida": 170.0, "daño": 0.21,
+				"pos": Vector2(0, -9), "jefe": true, "eco": true},
+			_eco("p1", &"sukuna", Vector2(-6, -12), 24.0, 0.12),
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"eco_rey", "texto": "Derribá al eco del Rey"},
+		"eventos": [
+			[["inicio"], [["decir", &"scorpion", "Usa fuego. Yo vengo del fuego. No le tengo miedo."]]],
+			[["vida", &"eco_rey", 0.5], [
+				["lluvia", "meteoritos", 18.0, 1.4],
+				["decir", &"thanos", "Las piedras del techo del templo se caen. Muévanse."]]],
+		],
+		"intro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["colocar", &"thanos", Vector2(2.5, 1.5), 0.0],
+			["aparecer", &"eco_rey", &"sukuna", Vector2(0, -9), "fuego"],
+			["aparecer", &"p1", &"sukuna", Vector2(-6, -12), "sombra"],
+			["plano", "abajo", &"eco_rey"],
+			["decir", &"eco_rey", "Fuga. ¿Sabés lo que quiere decir? Que nada que yo queme vuelve a crecer."],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "Mi clan ardió una vez. No va a arder nada más mientras yo pelee."],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Un hombre que pierde todo y sigue de pie. Eso es equilibrio."],
+		],
+		"outro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["colocar", &"thanos", Vector2(2.5, 1.0), 20.0],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "El fuego volvió a donde pertenece."],
+			["plano", "abajo", &"thanos"],
+			["decir", &"thanos", "Arriba, el hechicero y el calvo ya están frente al Rey. Que el equilibrio les sea favorable."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 78
+	c.append({
+		"titulo": "Contra todos",
+		"personaje": &"goku",
+		"aliados": [
+			_aliado(&"naruto", "Naruto", Vector2(2.5, 1.5), 100.0, 0.42),
+			_aliado(&"luffy", "Luffy", Vector2(-2.5, 1.5), 100.0, 0.42),
+		],
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 34.0, 0.16),
+			_eco("p2", &"sukuna", Vector2(5, -12), 34.0, 0.16),
+			_eco("p3", &"gojo", Vector2(0, -14), 34.0, 0.16),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Que ningún eco suba al templo"},
+		"eventos": [
+			[["inicio"], [["decir", &"goku", "¡Siento dos ki enormes arriba! ¡Y uno que no siento para nada, que es el del calvo!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 34.0, 0.16, false),
+					_eco("p5", &"madara", Vector2(7, -14), 34.0, 0.16, false)]],
+				["decir", &"luffy", "¡Shishishi! ¡Son un montón! ¡Qué divertido!"]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p6", &"sukuna", Vector2(-6, -14), 34.0, 0.16, false),
+					_eco("p7", &"thanos", Vector2(6, -14), 34.0, 0.16, false)]],
+				["decir", &"naruto", "¡No los dejen pasar! ¡Ellos están peleando arriba por todos nosotros!"]]],
+		],
+		"intro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["colocar", &"naruto", Vector2(2.5, 1.5), 0.0],
+			["colocar", &"luffy", Vector2(-2.5, 1.5), 0.0],
+			["temblor", 1.2],
+			["plano", "general"],
+			["narrar", "Arriba, en el templo, empieza la pelea. Abajo, los ecos suben las escaleras para ayudar a su rey."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Ufff, quisiera estar allá arriba! Pero bueno, ¡acá también hay con quién pelear!"],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"sukuna", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"gojo", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["colocar", &"naruto", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"luffy", Vector2(-2.5, 1.0), -20.0],
+			["temblor", 1.6],
+			["plano", "general"],
+			["narrar", "Desde arriba llega una luz violeta. Y después, el silencio."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "...El ki de Gojo bajó de golpe."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 79
+	c.append({
+		"titulo": "El honrado",
+		"personaje": &"gojo",
+		# PASO 3 DE LA RUTA DEL MAS FUERTE: terminar a Sukuna con el Purpura. Con los pasos
+		# 1 y 2 hechos.
+		"paso": {"ruta": "fuerte", "n": 3},
+		"condicion": "jefe_ulti",
+		"jefe_ulti": &"sukuna",
+		"enemigos": [
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 250.0, "daño": 0.25,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "texto": "El más fuerte contra el Rey de las Maldiciones"},
+		"eventos": [
+			[["inicio"], [["decir", &"sukuna", "Por fin. Sin estorbos. Vos y yo, Gojo Satoru."]]],
+			[["vida", &"sukuna", 0.6], [
+				["cinematica", [
+					["plano", "abajo", &"sukuna"],
+					["decir", &"sukuna", "Expansión de dominio."],
+					["habilidad", &"sukuna", &"santuario"],
+					["plano", "cerca", &"gojo"],
+					["decir", &"gojo", "Dominio contra dominio. Esto se pone lindo."],
+				]],
+				["lluvia", "cortes", 20.0, 1.0],
+				["potenciar", &"sukuna", 12.0]]],
+			[["vida", &"sukuna", 0.3], [["decir", &"gojo", "Rojo y azul, al doscientos por ciento. Mirá bien."]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["aparecer", &"sukuna", &"sukuna", Vector2(0, -9), "sombra"],
+			["plano", "general"],
+			["narrar", "La cima del templo. El Rey de las Maldiciones espera sentado sobre una montaña de cráneos."],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Mil años esperé a alguien como vos. No me decepciones."],
+			["plano", "cerca", &"gojo"],
+			["pose", &"gojo", &"desafio", 1.2],
+			["decir", &"gojo", "Tranquilo. Soy el más fuerte."],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["colocar", &"sukuna", Vector2(0, -7), 180.0],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Bien... Muy bien... Pero ya me adapté a tu Infinito."],
+			["habilidad", &"sukuna", &"desmantelar"],
+			["plano", "cerca", &"gojo"],
+			["pose", &"gojo", &"tirado", -1.0],
+			["narrar", "Un corte que no corta el Infinito: corta el espacio donde está el Infinito. Gojo cae."],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Fuiste el mejor, hechicero. Quedan los demás."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 80
+	c.append({
+		"titulo": "El héroe por diversión",
+		"personaje": &"saitama",
+		# AL TERMINAR LA PARTE 8, SUKUNA SE QUEDA EN LA ARENA Y SE PUEDE ELEGIR.
+		"desbloquea": &"sukuna",
+		"aliados": [
+			_aliado(&"mob", "Mob", Vector2(2.5, 1.5), 95.0, 0.40),
+			{"id": &"goku", "personaje": &"goku", "nombre": "Goku", "vida": 110.0, "daño": 0.45,
+				"pos": Vector2(-2.5, 1.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Rey de las Maldiciones", "vida": 280.0, "daño": 0.26,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "texto": "Derrotá al Rey de las Maldiciones"},
+		"eventos": [
+			[["inicio"], [["decir", &"sukuna", "El calvo. Te guardé para el final."]]],
+			[["vida", &"sukuna", 0.6], [
+				["cinematica", [
+					["plano", "abajo", &"sukuna"],
+					["decir", &"sukuna", "Santuario Malévolo. Adentro, todo se corta. Hasta vos."],
+					["habilidad", &"sukuna", &"santuario"],
+					["aparecer", &"goku", &"goku", Vector2(-2.5, 1.5), "teletransporte"],
+					["plano", "cerca", &"goku"],
+					["decir", &"goku", "¡Perdón la tardanza! ¡Abajo eran un montón!"],
+				]],
+				["entrar", &"goku"],
+				["lluvia", "cortes", 25.0, 1.0],
+				["potenciar", &"sukuna", 14.0]]],
+			[["vida", &"sukuna", 0.3], [["decir", &"saitama", "Ok. Ahora sí. En serio."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.5), 0.0],
+			["aparecer", &"sukuna", &"sukuna", Vector2(0, -9), "sombra"],
+			["plano", "general"],
+			["narrar", "Gojo está tirado en la cima del templo. Saitama llega caminando, con las manos en los bolsillos."],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Tu amigo fue el rival más interesante en mil años. ¿Vos qué sos?"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Ya te dije. Un héroe por diversión."],
+			["decir", &"saitama", "Y no me divierte lo que le hiciste."],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Mi porcentaje sube. Él está enojado. Nunca lo vi enojado."],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"goku", Vector2(-2.5, 1.0), -20.0],
+			["colocar", &"sukuna", Vector2(0, -7), 180.0],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Un golpe... Un solo golpe, y mi dominio se partió en dos."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "¿Te rendís?"],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Un pacto, humano. Me quedo en esta Arena. Peleo cuando quiero, con quien quiero. Y algún día te voy a ganar."],
+			["decir", &"saitama", "Mientras no te comas más dedos."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Uy, yo también quiero pelear con los dos! ¡Esto se pone cada vez mejor!"],
+			["plano", "general"],
+			["narrar", "El cielo rojo se apaga. El santuario queda en la Arena, como un recuerdo. Y Gojo, de a poco, se levanta."],
+			["fundido", "negro", 1.0],
+			["titulo", "FIN DE LA PARTE 8", "Sukuna se quedó en la Arena"],
+		],
+	})
+
+	# ======================================================== RUTA DEL MAS FUERTE
+	#
+	# LA CUARTA RUTA SECRETA. Se abre con los tres pasos de la parte 8 (todas las bajas, la
+	# Prision rota y Sukuna terminado con el Purpura): Gojo no cae. Pasa en Shinjuku, la
+	# ciudad en ruinas donde en su mundo pelearon los dos.
+
+	# ------------------------------------------------------------------ F1
+	c.append({
+		"titulo": "Nah, ganaría",
+		"personaje": &"gojo",
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 32.0, 0.16),
+			_eco("p2", &"sukuna", Vector2(5, -12), 32.0, 0.16),
+			_eco("p3", &"sukuna", Vector2(0, -14), 32.0, 0.16),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Despejá Shinjuku"},
+		"eventos": [
+			[["inicio"], [["decir", &"gojo", "¿Que si le gano? Nah. Ganaría."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -14), 32.0, 0.16, false),
+					_eco("p5", &"sukuna", Vector2(7, -14), 32.0, 0.16, false)]],
+				["decir", &"gojo", "Hace copias porque sabe que una sola no le alcanza."]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p6", &"sukuna", Vector2(-6, -14), 32.0, 0.16, false),
+					_eco("p7", &"sukuna", Vector2(6, -14), 32.0, 0.16, false),
+					_eco("p8", &"sukuna", Vector2(0, -16), 32.0, 0.16, false)]],
+				["decir", &"gojo", "¿Ves? Ninguna le alcanza."]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Una ruta que no debería existir: la del hechicero que rompió la Prisión antes de que nadie la usara."],
+			["narrar", "En esta, el corte no llega. Gojo se levanta, se acomoda la venda y sigue."],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Me cortó. Me dolió. Y me di cuenta de cómo lo hizo. Esa es la diferencia."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"sukuna", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"sukuna", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Shinjuku. Me gusta. Mucho espacio para romper."],
+		],
+	})
+
+	# ------------------------------------------------------------------ F2
+	c.append({
+		"titulo": "Adaptación",
+		"personaje": &"gojo",
+		"enemigos": [
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Ryomen Sukuna", "vida": 240.0, "daño": 0.26,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "hasta": 0.4, "texto": "Que no se adapte"},
+		"eventos": [
+			[["inicio"], [["decir", &"sukuna", "Te corté una vez. Te puedo cortar mil."]]],
+			[["vida", &"sukuna", 0.75], [
+				["lluvia", "cortes", 0.0, 1.2],
+				["decir", &"sukuna", "¡Adentro de mi dominio no hay Infinito que valga!"]]],
+			[["vida", &"sukuna", 0.55], [["decir", &"gojo", "Te adaptás a lo que conocés. Así que hago algo que no conocés."]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["aparecer", &"sukuna", &"sukuna", Vector2(0, -9), "sombra"],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Estabas en el piso. Te vi caer."],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Me viste caer. No me viste quedarme."],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["colocar", &"sukuna", Vector2(0, -7), 180.0],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Je... Je je je. Esto es lo que quería. ¡Esto es pelear!"],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "Disfrutalo. Es la última."],
+		],
+	})
+
+	# ------------------------------------------------------------------ F3
+	c.append({
+		"titulo": "El más fuerte",
+		"personaje": &"gojo",
+		"enemigos": [
+			{"id": &"sukuna", "personaje": &"sukuna", "nombre": "Rey de las Maldiciones", "vida": 290.0, "daño": 0.27,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"sukuna", "texto": "Demostrá quién es el más fuerte"},
+		"eventos": [
+			[["inicio"], [["decir", &"gojo", "En el cielo y en la tierra..."]]],
+			[["vida", &"sukuna", 0.5], [
+				["cinematica", [
+					["plano", "abajo", &"sukuna"],
+					["decir", &"sukuna", "Santuario Malévolo. Esta vez, con todo."],
+					["habilidad", &"sukuna", &"santuario"],
+					["plano", "cerca", &"gojo"],
+					["decir", &"gojo", "Púrpura. Al doscientos por ciento."],
+					["habilidad", &"gojo", &"purpura"],
+				]],
+				["lluvia", "cortes", 25.0, 0.9],
+				["potenciar", &"sukuna", 15.0]]],
+			[["vida", &"sukuna", 0.2], [["decir", &"sukuna", "¡No! ¡Yo soy el Rey! ¡Yo soy el que corta!"]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["aparecer", &"sukuna", &"sukuna", Vector2(0, -9), "sombra"],
+			["plano", "general"],
+			["narrar", "Shinjuku, al atardecer. Los edificios que quedan de pie tiemblan con cada paso de los dos."],
+			["plano", "dos", &"gojo", &"sukuna"],
+			["decir", &"sukuna", "¿Te das cuenta de lo solo que estás, siendo el más fuerte?"],
+			["decir", &"gojo", "Antes, sí. Ahora tengo amigos que pegan más fuerte que yo. Es un alivio, la verdad."],
+			["plano", "cerca", &"gojo"],
+			["pose", &"gojo", &"desafio", 1.2],
+			["decir", &"gojo", "Pero esta la gano yo."],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["colocar", &"sukuna", Vector2(0, -7), 180.0],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "...Perdí. Contra un hechicero. Qué... aburrido."],
+			["desaparecer", &"sukuna", "sombra"],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "En el cielo y en la tierra, solo yo soy el honrado."],
+			["aparecer", &"saitama", &"saitama", Vector2(3, -3), "caida"],
+			["plano", "dos", &"saitama", &"gojo"],
+			["decir", &"saitama", "¿Ya terminó? Traje comida."],
+			["decir", &"gojo", "Llegás tarde, pelado. Como siempre."],
+			["fundido", "negro", 1.2],
+			["titulo", "FIN DE LA RUTA DEL MÁS FUERTE", "El más fuerte siguió siendo el más fuerte"],
 		],
 	})
 

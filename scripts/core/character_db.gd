@@ -421,9 +421,9 @@ func _register_all() -> void:
 
 	# ----------------------------------------------------------------- Gojo
 	#
-	# De Jujutsu Kaisen. LA RECOMPENSA FINAL DEL PASE PRO DE LA TEMPORADA 3, como Goku y Mob:
-	# no viene de fabrica y no puede ser el mas fuerte. El Azul atrae, el Rojo empuja, y el
-	# Purpura atraviesa todo.
+	# De Jujutsu Kaisen. Fue LA RECOMPENSA FINAL DEL PASE PRO DE LA TEMPORADA 3, como Goku y
+	# Mob, y por eso no puede ser el mas fuerte. El Azul atrae, el Rojo empuja, y el Purpura
+	# atraviesa todo.
 	var gojo := CharacterData.new()
 	gojo.id = &"gojo"
 	gojo.display_name = "Gojo"
@@ -438,8 +438,64 @@ func _register_all() -> void:
 	gojo.max_stamina = 110.0
 	gojo.move_speed = 6.5
 	gojo.silhouette = &"venda"
-	gojo.requiere_desbloqueo = true
+	# GRATIS DESDE LA TEMPORADA 4: termino la 3 y el premio de su pase queda para todos,
+	# como Goku al cerrar la 1 y Mob al cerrar la 2.
+	gojo.requiere_desbloqueo = false
 	_add(gojo)
+
+	# ======================================================== Temporada 4
+	#
+	# UN HEROE Y UN VILLANO. Saitama gratis (y jugable en la historia); Sukuna se gana en la
+	# historia, no en el pase.
+
+	# --------------------------------------------------------------- Saitama
+	#
+	# De One Punch Man. EL HEROE DE LA TEMPORADA 4: gratis desde el principio y jugable en
+	# la historia (partes 7 y 8, y su ruta secreta). Golpes normales, saltos que esquivan
+	# todo y una definitiva que barre una linea entera. Aguanta un poco mas que el resto
+	# (105): pelea de cerca, y tiene que llegar entero a los que le tiran de lejos.
+	var saitama := CharacterData.new()
+	saitama.id = &"saitama"
+	saitama.display_name = "Saitama"
+	saitama.origin_game = "One Punch Man"
+	saitama.body_color = Color(0.98, 0.84, 0.16)
+	saitama.accent_color = Color(0.86, 0.10, 0.12)
+	saitama.skin_color = Color(0.98, 0.84, 0.72)
+	saitama.trouser_color = Color(0.98, 0.84, 0.16)
+	saitama.shoe_color = Color(0.86, 0.10, 0.12)
+	saitama.build_scale = Vector3(0.99, 1.08, 1.00)
+	saitama.max_health = 105.0
+	saitama.max_stamina = 105.0
+	# Rapido: en la serie llega antes que nadie. Sin eso, contra los que pelean de lejos
+	# (Rick, Flowery) no llegaba nunca a pegar (0 de 8 en la simulacion).
+	saitama.move_speed = 7.0
+	saitama.silhouette = &"capa_heroe"
+	_add(saitama)
+
+	# ---------------------------------------------------------------- Sukuna
+	#
+	# De Jujutsu Kaisen. EL VILLANO DE LA TEMPORADA 4: NO viene de fabrica y no esta en el
+	# pase. Se gana terminando la parte 8 de la historia (que pide la 7). Como todo premio,
+	# no puede ser el mas fuerte (~45% en duelos). Cortes de cerca y de lejos, una flecha de
+	# fuego, y un dominio que corta a todo lo que quede adentro.
+	var sukuna := CharacterData.new()
+	sukuna.id = &"sukuna"
+	sukuna.display_name = "Sukuna"
+	sukuna.origin_game = "Jujutsu Kaisen"
+	# En el cuerpo de Itadori: el uniforme negro del colegio con la capucha roja.
+	sukuna.body_color = Color(0.09, 0.10, 0.14)
+	sukuna.accent_color = Color(0.82, 0.10, 0.14)
+	sukuna.skin_color = Color(0.93, 0.80, 0.70)
+	sukuna.trouser_color = Color(0.08, 0.08, 0.10)
+	sukuna.shoe_color = Color(0.10, 0.09, 0.10)
+	sukuna.build_scale = Vector3(1.05, 1.10, 1.00)
+	sukuna.max_health = 100.0
+	sukuna.max_stamina = 110.0
+	sukuna.move_speed = 6.5
+	sukuna.silhouette = &"maldicion"
+	sukuna.requiere_desbloqueo = true
+	sukuna.como_se_gana = "terminando la parte 8 de la historia"
+	_add(sukuna)
 
 
 func _add(data: CharacterData) -> void:
@@ -558,6 +614,16 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(Azul.new())
 			list.append(Rojo.new())
 			list.append(Purpura.new())
+		&"saitama":
+			list.append(GolpeNormal.new())
+			list.append(GolpesConsecutivos.new())
+			list.append(SaltosSerios.new())
+			list.append(GolpeSerio.new())
+		&"sukuna":
+			list.append(Partir.new())
+			list.append(Desmantelar.new())
+			list.append(Fuga.new())
+			list.append(SantuarioMalevolo.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

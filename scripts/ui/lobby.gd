@@ -235,8 +235,14 @@ func _build_character_list() -> void:
 		# Solo el nombre: la serie de la que viene sale arriba del kit, y con ella el boton
 		# no entraba en media columna.
 		if not Progreso.puede_usar_personaje(id):
-			var cerrado := UITheme.make_button("🔒  %s  ·  pase pro T%d" % [data.display_name, Pase.TEMPORADA])
-			cerrado.tooltip_text = "Completá el pase pro de la temporada %d para jugarlo." % Pase.TEMPORADA
+			var cerrado: Button
+			if data.como_se_gana != "":
+				# Los que no son del pase (Sukuna, de la historia) dicen de donde salen.
+				cerrado = UITheme.make_button("🔒  %s  ·  historia" % data.display_name)
+				cerrado.tooltip_text = "Se gana %s." % data.como_se_gana
+			else:
+				cerrado = UITheme.make_button("🔒  %s  ·  pase pro T%d" % [data.display_name, Pase.TEMPORADA])
+				cerrado.tooltip_text = "Completá el pase pro de la temporada %d para jugarlo." % Pase.TEMPORADA
 			cerrado.disabled = true
 			_boton_de_lista(cerrado)
 			continue

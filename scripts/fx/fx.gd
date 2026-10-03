@@ -3418,6 +3418,24 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 				var c3 := caster as Node3D
 				spawn_tengai_shinsei(caster, TengaiShinsei.donde_caen(c3, origin, dir),
 					TengaiShinsei.rumbo_de(c3, dir))
+		&"golpe_normal":
+			spawn_melee_arc(caster, origin, dir)
+		&"golpes_consecutivos":
+			if caster is Node3D:
+				spawn_rafaga_saitama(caster as Node3D)
+		&"saltos_serios":
+			if caster is Node3D:
+				spawn_saltos_serios(caster as Node3D)
+		&"golpe_serio":
+			GolpeSerio.spawn_cosmetic(caster, origin, dir)
+		&"partir":
+			spawn_slash_arc(caster, origin, dir, Partir.ROJO)
+		&"desmantelar":
+			Desmantelar.spawn_cosmetic(caster, origin, dir)
+		&"fuga":
+			Fuga.spawn_cosmetic(caster, origin, dir)
+		&"santuario":
+			SantuarioMalevolo.spawn_cosmetic(caster, origin, dir)
 		_:
 			pass
 
@@ -3433,3 +3451,701 @@ func _fade_light(light: OmniLight3D, duration: float) -> void:
 	var tween := light.create_tween()
 	tween.tween_property(light, "light_energy", 0.0, duration)
 	tween.tween_callback(light.queue_free)
+
+
+# =================================================================== Temporada 4
+#
+# Saitama y Sukuna. Sus definitivas tienen ademas una escena para el que las tira (ver
+# EscenaUlti); lo de aca es lo que ven TODOS, cada uno desde donde esta mirando.
+
+
+## POLVO Y VIENTO QUE NO SUMAN LUZ. Art.particula_suave se SUMA a lo que hay detras (es
+## para chispas): sesenta encimadas cerca de la camara de la escena de la definitiva se
+## volvian una nube blanca que tapaba a Saitama entero. Esta se mezcla, no se suma.
+var _particula_mezcla: QuadMesh = null
+
+
+func _particula_polvo() -> QuadMesh:
+	if _particula_mezcla != null:
+		return _particula_mezcla
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = Art.punto_suave()
+	_particula_mezcla = QuadMesh.new()
+	_particula_mezcla.size = Vector2(1.0, 1.0)
+	_particula_mezcla.material = mat
+	return _particula_mezcla
+
+
+## Rayitas de viento: alargadas en la direccion en que se mueven, sin brillo propio.
+func _raya_de_viento() -> BoxMesh:
+	var m := BoxMesh.new()
+	m.size = Vector3(0.025, 0.42, 0.025)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.vertex_color_use_as_albedo = true
+	m.material = mat
+	return m
+
+
+## Un material que brilla y se puede apagar con el alfa.
+func _brillo_que_se_apaga(color: Color, energia: float) -> StandardMaterial3D:
+	var mat := Art.glow(color, energia)
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return mat
+
+
+## LA IMAGEN RESIDUAL de los Saltos Serios: una silueta del color del traje que se queda
+## donde estaba y se apaga. Tres seguidas, en zigzag, se leen como "esta en todos lados".
+func spawn_imagen_residual(cuerpo: Node3D, color: Color) -> void:
+	var world := _world_of(cuerpo)
+	if world == null:
+		return
+	var sombra := Node3D.new()
+	world.add_child(sombra)
+	sombra.global_transform = cuerpo.global_transform
+	var mat := _brillo_que_se_apaga(color, 1.6)
+	var capa := _brillo_que_se_apaga(Color(1.0, 0.98, 0.95), 1.2)
+	sombra.add_child(Art.capsule(0.32, 1.25, mat, Vector3(0.0, 0.95, 0.0)))
+	sombra.add_child(Art.sphere(0.2, mat, Vector3(0.0, 1.72, 0.0)))
+	sombra.add_child(Art.box(Vector3(0.62, 1.0, 0.04), capa, Vector3(0.0, 1.05, 0.24)))
+	var tw := sombra.create_tween().set_parallel()
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.4).from(0.55)
+	tw.tween_property(capa, "albedo_color:a", 0.0, 0.4).from(0.45)
+	tw.chain().tween_callback(sombra.queue_free)
+
+
+## Los saltos vistos desde otra pantalla: el cuerpo lo mueve la red, las siluetas no.
+func spawn_saltos_serios(cuerpo: Node3D) -> void:
+	for k: int in range(SaltosSerios.SALTOS):
+		if k > 0:
+			await get_tree().create_timer(SaltosSerios.DURACION_SALTO).timeout
+		if not is_instance_valid(cuerpo):
+			return
+		spawn_imagen_residual(cuerpo, Color(1.0, 0.85, 0.20))
+
+
+## LOS PUÑOS de los Golpes Normales Consecutivos: un puñado de guantes rojos que salen
+## disparados hacia adelante y se apagan. Muchos a la vez, en distintos lugares, que es
+## como el manga dibuja "golpes tan rapidos que parecen cien".
+func spawn_puños(caster: Node, origin: Vector3, dir: Vector3) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var rumbo := dir.normalized()
+	if rumbo.is_zero_approx():
+		return
+	var costado := rumbo.cross(Vector3.UP).normalized()
+	for k: int in range(4):
+		var mat := _brillo_que_se_apaga(Color(0.95, 0.15, 0.15), 1.4)
+		var puño := Art.sphere(0.17, mat)
+		world.add_child(puño)
+		var desde := origin + rumbo * 0.5 + costado * randf_range(-0.55, 0.55) + Vector3.UP * randf_range(-0.35, 0.35)
+		puño.global_position = desde
+		var tw := puño.create_tween().set_parallel()
+		tw.tween_property(puño, "global_position", desde + rumbo * randf_range(1.6, 2.6), 0.14)
+		tw.tween_property(mat, "albedo_color:a", 0.0, 0.16).from(0.9)
+		tw.chain().tween_callback(puño.queue_free)
+	spawn_slash_arc(caster, origin, rumbo, Color(1.0, 0.95, 0.80))
+	Sfx.play_3d(caster, &"hit_punch", origin, -5.0)
+
+
+## La rafaga vista desde otra pantalla, golpe a golpe (ver spawn_stand_barrage).
+func spawn_rafaga_saitama(caster: Node3D) -> void:
+	for i: int in range(GolpesConsecutivos.TICKS):
+		if i > 0:
+			await get_tree().create_timer(GolpesConsecutivos.TICK_INTERVAL).timeout
+		if not is_instance_valid(caster):
+			return
+		spawn_puños(caster, caster.global_position + Vector3.UP * 1.1, -caster.global_transform.basis.z)
+
+
+## LA CARGA DEL GOLPE SERIO, la que ven todos: el puño atras, el viento que se arremolina
+## alrededor y el piso que se levanta. Va pegada al cuerpo y se borra al soltar.
+func spawn_carga_golpe_serio(cuerpo: Node3D, duracion: float) -> Node3D:
+	if not is_instance_valid(cuerpo):
+		return null
+	var carga := Node3D.new()
+	carga.name = &"CargaGolpeSerio"
+	cuerpo.add_child(carga)
+
+	# El viento: rayitas que giran alrededor y se cierran sobre el puño derecho.
+	var viento := CPUParticles3D.new()
+	viento.amount = 28
+	viento.lifetime = 0.5
+	viento.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	viento.emission_ring_axis = Vector3.UP
+	viento.emission_ring_radius = 1.5
+	viento.emission_ring_inner_radius = 0.9
+	viento.emission_ring_height = 1.8
+	viento.radial_accel_min = -14.0
+	viento.radial_accel_max = -8.0
+	viento.tangential_accel_min = 10.0
+	viento.tangential_accel_max = 16.0
+	viento.gravity = Vector3.ZERO
+	viento.scale_amount_min = 0.7
+	viento.scale_amount_max = 1.2
+	viento.color = Color(1.0, 0.98, 0.92, 0.5)
+	viento.mesh = _raya_de_viento()
+	viento.particle_flag_align_y = true
+	viento.position = Vector3(0.0, 1.0, 0.0)
+	carga.add_child(viento)
+
+	# Piedritas que flotan: el piso no aguanta lo que viene.
+	var piedras := CPUParticles3D.new()
+	piedras.amount = 26
+	piedras.lifetime = 1.2
+	piedras.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	piedras.emission_sphere_radius = 2.6
+	piedras.direction = Vector3.UP
+	piedras.spread = 15.0
+	piedras.initial_velocity_min = 0.8
+	piedras.initial_velocity_max = 2.0
+	piedras.gravity = Vector3(0.0, 0.4, 0.0)
+	piedras.scale_amount_min = 0.06
+	piedras.scale_amount_max = 0.16
+	piedras.color = Color(0.55, 0.50, 0.45)
+	piedras.position = Vector3(0.0, 0.1, 0.0)
+	carga.add_child(piedras)
+
+	# El aro de polvo en el piso, que se abre mientras carga.
+	var aro := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.9
+	toro.outer_radius = 1.0
+	aro.mesh = toro
+	var mat_aro := _brillo_que_se_apaga(Color(0.95, 0.90, 0.80), 1.4)
+	mat_aro.albedo_color.a = 0.55
+	aro.material_override = mat_aro
+	aro.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	aro.position = Vector3(0.0, 0.08, 0.0)
+	carga.add_child(aro)
+	var tw := aro.create_tween()
+	tw.tween_property(aro, "scale", Vector3(3.2, 1.0, 3.2), maxf(0.1, duracion)).from(Vector3(0.6, 1.0, 0.6))
+
+	# El brillo en el puño derecho (atras, a la altura del pecho, que es donde lo tiene).
+	var puño := Art.sphere(0.12, Art.glow(Color(1.0, 0.95, 0.75), 1.6), Vector3(0.38, 1.25, 0.42))
+	puño.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	carga.add_child(puño)
+	var tw2 := puño.create_tween()
+	tw2.tween_property(puño, "scale", Vector3.ONE * 1.8, maxf(0.1, duracion)).from(Vector3.ONE * 0.3)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.92, 0.7)
+	luz.light_energy = 0.8
+	luz.omni_range = 3.5
+	luz.position = Vector3(0.38, 1.25, 0.42)
+	carga.add_child(luz)
+	camera_shake(0.5)
+	return carga
+
+
+## EL GOLPE SERIO: la onda que barre la linea. La ven todos y tiembla la camara de todos:
+## es el golpe que en la serie partio las nubes del planeta.
+##
+## Tres capas: el tubo de viento que se abre (por donde paso), los anillos de choque que
+## salen en fila (hacia donde iba) y, al final de la linea, un anillo enorme en el cielo,
+## las nubes abriendose.
+func spawn_golpe_serio(caster: Node, origin: Vector3, rumbo: Vector3, largo: float) -> void:
+	var world := _world_of(caster)
+	if world == null or rumbo.is_zero_approx() or largo <= 0.1:
+		return
+	var base := Basis.looking_at(rumbo, Vector3.UP if absf(rumbo.y) < 0.95 else Vector3.FORWARD)
+
+	# --- El tubo: un cono acostado, del ancho real con el que pega ---
+	var tubo := MeshInstance3D.new()
+	var cil := CylinderMesh.new()
+	cil.bottom_radius = GolpeSerio.ANCHO
+	cil.top_radius = GolpeSerio.ANCHO + GolpeSerio.ABRE * largo
+	cil.height = largo
+	cil.radial_segments = 24
+	cil.cap_top = false
+	cil.cap_bottom = false
+	tubo.mesh = cil
+	var mat_tubo := _brillo_que_se_apaga(Color(1.0, 0.97, 0.88), 0.9)
+	tubo.material_override = mat_tubo
+	tubo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(tubo)
+	# El eje Y del cilindro sobre el rumbo: girado desde la base que mira hacia -Z.
+	tubo.global_basis = base * Basis(Vector3.RIGHT, -PI * 0.5)
+	tubo.global_position = origin + rumbo * (largo * 0.5)
+	var tw := tubo.create_tween().set_parallel()
+	tw.tween_property(tubo, "scale", Vector3(1.35, 1.0, 1.35), 0.6).from(Vector3(0.3, 1.0, 0.3)) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mat_tubo, "albedo_color:a", 0.0, 0.7).from(0.32)
+	tw.chain().tween_callback(tubo.queue_free)
+
+	# --- Los anillos de choque, en fila, cada uno un poco despues ---
+	var n := clampi(int(largo / 4.0), 2, 9)
+	for k: int in range(n):
+		var d := largo * (float(k) + 0.5) / float(n)
+		var anillo := MeshInstance3D.new()
+		var toro := TorusMesh.new()
+		toro.inner_radius = 0.88
+		toro.outer_radius = 1.0
+		anillo.mesh = toro
+		var mat := _brillo_que_se_apaga(Color(1.0, 0.95, 0.80), 1.2)
+		mat.albedo_color.a = 0.0
+		anillo.material_override = mat
+		anillo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(anillo)
+		anillo.global_basis = base * Basis(Vector3.RIGHT, PI * 0.5)
+		anillo.global_position = origin + rumbo * d
+		var r := GolpeSerio.ANCHO + GolpeSerio.ABRE * d + 0.6
+		var t2 := anillo.create_tween()
+		t2.tween_interval(0.025 * float(k))
+		t2.set_parallel()
+		t2.tween_property(anillo, "scale", Vector3(r * 1.5, 1.0, r * 1.5), 0.45).from(Vector3(r * 0.4, 1.0, r * 0.4)) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		t2.tween_property(mat, "albedo_color:a", 0.0, 0.45).from(0.7)
+		t2.chain().tween_callback(anillo.queue_free)
+
+	# --- Polvo levantado a lo largo de toda la linea ---
+	var polvo := CPUParticles3D.new()
+	polvo.emitting = true
+	polvo.one_shot = true
+	polvo.amount = 90
+	polvo.lifetime = 1.1
+	polvo.explosiveness = 0.9
+	polvo.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	polvo.emission_box_extents = Vector3(GolpeSerio.ANCHO, 0.3, largo * 0.5)
+	polvo.direction = Vector3.UP
+	polvo.spread = 60.0
+	polvo.initial_velocity_min = 2.0
+	polvo.initial_velocity_max = 6.0
+	polvo.gravity = Vector3(0.0, -3.0, 0.0)
+	polvo.scale_amount_min = 0.15
+	polvo.scale_amount_max = 0.45
+	polvo.color = Color(0.80, 0.75, 0.66, 0.55)
+	polvo.mesh = _particula_polvo()
+	world.add_child(polvo)
+	var plano := Vector3(rumbo.x, 0.0, rumbo.z).normalized()
+	if not plano.is_zero_approx():
+		polvo.global_basis = Basis.looking_at(plano, Vector3.UP)
+	polvo.global_position = Vector3(origin.x, 0.3, origin.z) + plano * (largo * 0.5)
+	_auto_free(polvo, 2.0)
+
+	# --- Las nubes que se abren: un anillo enorme alla arriba, al final de la linea ---
+	var cielo := MeshInstance3D.new()
+	var toro_cielo := TorusMesh.new()
+	toro_cielo.inner_radius = 0.9
+	toro_cielo.outer_radius = 1.0
+	cielo.mesh = toro_cielo
+	var mat_cielo := _brillo_que_se_apaga(Color(1.0, 1.0, 0.95), 1.8)
+	cielo.material_override = mat_cielo
+	cielo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(cielo)
+	cielo.global_position = Vector3(origin.x, 34.0, origin.z) + plano * minf(largo + 10.0, 40.0)
+	var tw3 := cielo.create_tween().set_parallel()
+	tw3.tween_property(cielo, "scale", Vector3(60.0, 2.0, 60.0), 1.4).from(Vector3(4.0, 1.0, 4.0)) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw3.tween_property(mat_cielo, "albedo_color:a", 0.0, 1.4).from(0.8)
+	tw3.chain().tween_callback(cielo.queue_free)
+
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.96, 0.85)
+	luz.light_energy = 6.0
+	luz.omni_range = 14.0
+	world.add_child(luz)
+	luz.global_position = origin + rumbo * 2.0
+	_fade_light(luz, 0.6)
+	camera_shake(2.4)
+	Sfx.play_3d(caster, &"golpe_serio", origin, 6.0)
+
+
+## Unos tajos en el aire: rayas finas, blancas con el filo rojo, que aparecen de golpe en
+## cualquier angulo y se apagan. Los cortes de Sukuna no se ven venir; se ven cuando ya
+## cortaron.
+func spawn_cortes(context: Node, pos: Vector3, cuantos: int) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	for k: int in range(cuantos):
+		var raya := Node3D.new()
+		world.add_child(raya)
+		raya.global_position = pos + Vector3(randf_range(-0.3, 0.3), randf_range(-0.3, 0.3), randf_range(-0.3, 0.3))
+		raya.rotation = Vector3(randf() * TAU, randf() * TAU, randf() * TAU)
+		var mat := _brillo_que_se_apaga(Color(1.0, 0.96, 0.96), 3.2)
+		var filo := _brillo_que_se_apaga(Color(0.95, 0.10, 0.12), 2.6)
+		raya.add_child(Art.box(Vector3(1.7, 0.035, 0.035), mat))
+		raya.add_child(Art.box(Vector3(1.5, 0.07, 0.02), filo, Vector3(0.0, -0.04, 0.0)))
+		var tw := raya.create_tween().set_parallel()
+		tw.tween_property(raya, "scale", Vector3.ONE, 0.06).from(Vector3(0.1, 1.0, 1.0))
+		tw.tween_property(mat, "albedo_color:a", 0.0, 0.28).from(1.0).set_delay(0.06)
+		tw.tween_property(filo, "albedo_color:a", 0.0, 0.28).from(1.0).set_delay(0.06)
+		tw.chain().tween_callback(raya.queue_free)
+	Sfx.play_3d(context, &"corte", pos, -8.0)
+
+
+## La explosion de Fuga: una bola de fuego que se abre hasta el radio real y se apaga,
+## con llamaradas que suben.
+func spawn_explosion_fuga(context: Node, pos: Vector3, radio: float) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var nucleo := _brillo_que_se_apaga(Color(1.0, 0.85, 0.5), 3.4)
+	var bola := Art.sphere(1.0, nucleo)
+	bola.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(bola)
+	bola.global_position = pos
+	var borde := _brillo_que_se_apaga(Color(1.0, 0.35, 0.05), 2.4)
+	var halo := Art.sphere(1.0, borde)
+	halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(halo)
+	halo.global_position = pos
+	var tw := bola.create_tween().set_parallel()
+	tw.tween_property(bola, "scale", Vector3.ONE * radio * 0.7, 0.25).from(Vector3.ONE * 0.3)
+	tw.tween_property(nucleo, "albedo_color:a", 0.0, 0.45).from(0.95)
+	tw.chain().tween_callback(bola.queue_free)
+	var tw2 := halo.create_tween().set_parallel()
+	tw2.tween_property(halo, "scale", Vector3.ONE * radio, 0.35).from(Vector3.ONE * 0.5) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(borde, "albedo_color:a", 0.0, 0.6).from(0.8)
+	tw2.chain().tween_callback(halo.queue_free)
+	var llamas := CPUParticles3D.new()
+	llamas.emitting = true
+	llamas.one_shot = true
+	llamas.amount = 60
+	llamas.lifetime = 0.9
+	llamas.explosiveness = 0.85
+	llamas.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	llamas.emission_sphere_radius = radio * 0.6
+	llamas.direction = Vector3.UP
+	llamas.spread = 40.0
+	llamas.initial_velocity_min = 2.0
+	llamas.initial_velocity_max = 5.0
+	llamas.gravity = Vector3(0.0, 3.0, 0.0)
+	llamas.scale_amount_min = 0.2
+	llamas.scale_amount_max = 0.5
+	llamas.mesh = Art.particula_suave()
+	llamas.color_ramp = Art.rampa_que_se_apaga(Color(1.0, 0.5, 0.1, 0.95))
+	world.add_child(llamas)
+	llamas.global_position = pos
+	_auto_free(llamas, 1.6)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.55, 0.15)
+	luz.light_energy = 8.0
+	luz.omni_range = radio * 3.0
+	world.add_child(luz)
+	luz.global_position = pos
+	_fade_light(luz, 0.7)
+	camera_shake(0.9)
+	Sfx.play_3d(context, &"plasma_blast", pos, 2.0)
+	Sfx.play_3d(context, &"fuego", pos, 0.0)
+
+
+## EL SANTUARIO MALEVOLO: un templo oscuro de techo curvo, sobre una montaña de huesos y
+## con una boca de dientes en el frente. Mira hacia +Z del nodo que devuelve (de frente a
+## los que estan delante de Sukuna) y mide unos siete metros: se ve desde toda la arena.
+func armar_santuario() -> Node3D:
+	var templo := Node3D.new()
+	templo.name = &"Santuario"
+	var hueso := Art.toon(Color(0.90, 0.86, 0.76))
+	var madera := Art.toon(Color(0.16, 0.08, 0.08))
+	var rojo := Art.toon(Color(0.55, 0.06, 0.08))
+	var techo := Art.toon(Color(0.10, 0.08, 0.09))
+	var boca := Art.flat(Color(0.25, 0.02, 0.04))
+	# La montaña de huesos: calaveras y huesos largos apilados en cono.
+	var semilla := RandomNumberGenerator.new()
+	semilla.seed = 4711
+	for k: int in range(34):
+		var a := semilla.randf() * TAU
+		var alto := semilla.randf()
+		var r := (1.0 - alto) * 3.2 + 0.4
+		var p := Vector3(cos(a) * r, alto * 1.4, sin(a) * r * 0.8)
+		if k % 3 == 0:
+			var hb := Art.capsule(0.12, 1.1, hueso, p)
+			hb.rotation = Vector3(semilla.randf() * TAU, semilla.randf() * TAU, PI * 0.5)
+			templo.add_child(hb)
+		else:
+			templo.add_child(Art.sphere(0.32 + semilla.randf() * 0.12, hueso, p))
+	# La plataforma y los cuatro pilares.
+	templo.add_child(Art.box(Vector3(4.6, 0.35, 3.4), madera, Vector3(0.0, 1.55, 0.0)))
+	for x: float in [-1.9, 1.9]:
+		for z: float in [-1.3, 1.3]:
+			templo.add_child(Art.cylinder(0.16, 2.8, rojo, Vector3(x, 3.1, z)))
+	# La boca: un hueco oscuro entre los pilares de adelante, con dientes arriba y abajo.
+	templo.add_child(Art.box(Vector3(3.0, 1.6, 0.2), boca, Vector3(0.0, 2.6, 1.32)))
+	var diente := Art.toon(Color(0.96, 0.94, 0.88))
+	for k: int in range(9):
+		var x := -1.35 + 2.7 * float(k) / 8.0
+		for arriba: bool in [true, false]:
+			var d := MeshInstance3D.new()
+			var cono := CylinderMesh.new()
+			cono.top_radius = 0.0 if not arriba else 0.11
+			cono.bottom_radius = 0.11 if not arriba else 0.0
+			cono.height = 0.42
+			d.mesh = cono
+			d.material_override = diente
+			d.position = Vector3(x, 3.22 if arriba else 1.98, 1.45)
+			templo.add_child(d)
+	# El techo: dos aleros anchos y oscuros, con las puntas levantadas.
+	for piso: int in range(2):
+		var y := 4.6 + float(piso) * 1.15
+		var ancho := 6.4 - float(piso) * 1.6
+		templo.add_child(Art.box(Vector3(ancho, 0.28, ancho * 0.72), techo, Vector3(0.0, y, 0.0)))
+		templo.add_child(Art.box(Vector3(ancho * 0.92, 0.1, ancho * 0.66), rojo, Vector3(0.0, y - 0.18, 0.0)))
+		for sx: float in [-1.0, 1.0]:
+			for sz: float in [-1.0, 1.0]:
+				var punta := Art.box(Vector3(0.9, 0.2, 0.3), techo,
+					Vector3(sx * ancho * 0.5, y + 0.2, sz * ancho * 0.36))
+				punta.rotation = Vector3(0.0, atan2(sz, sx) * -1.0, 0.0)
+				punta.rotate_object_local(Vector3.FORWARD, 0.5 * sx)
+				templo.add_child(punta)
+	templo.add_child(Art.box(Vector3(1.4, 0.5, 1.0), techo, Vector3(0.0, 6.35, 0.0)))
+	# Cuernos de vaca a los costados del techo (el santuario esta lleno de cráneos).
+	for sx: float in [-1.0, 1.0]:
+		var cuerno := Art.capsule(0.09, 1.3, hueso, Vector3(sx * 2.4, 5.3, 1.6))
+		cuerno.rotation = Vector3(0.0, 0.0, -0.9 * sx)
+		templo.add_child(cuerno)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.15, 0.12)
+	luz.light_energy = 3.5
+	luz.omni_range = 9.0
+	luz.position = Vector3(0.0, 2.6, 2.2)
+	templo.add_child(luz)
+	for m: Node in templo.get_children():
+		var gi := m as GeometryInstance3D
+		if gi != null:
+			gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return templo
+
+
+## Donde va el santuario: tres metros y medio detras del que lo invoca, de frente a lo
+## que el tiene adelante.
+func _lugar_santuario(centro: Vector3, frente: Vector3) -> Transform3D:
+	var plano := Vector3(frente.x, 0.0, frente.z).normalized()
+	if plano.is_zero_approx():
+		plano = Vector3.FORWARD
+	# El templo mira hacia +Z: la base que "mira" hacia -plano deja su +Z sobre plano.
+	var base := Basis.looking_at(-plano, Vector3.UP)
+	return Transform3D(base, Vector3(centro.x, 0.0, centro.z) - plano * 3.5)
+
+
+## LA CARGA DEL SANTUARIO, la que ven todos: el templo sube del piso detras de Sukuna
+## mientras junta las manos. Se borra al soltar; el dominio arma el suyo ya parado.
+func spawn_santuario_alzandose(cuerpo: Node3D, duracion: float) -> Node3D:
+	var world := _world_of(cuerpo)
+	if world == null:
+		return null
+	var templo := armar_santuario()
+	world.add_child(templo)
+	var lugar := _lugar_santuario(cuerpo.global_position, -cuerpo.global_transform.basis.z)
+	templo.global_transform = lugar
+	var arriba := lugar.origin
+	templo.global_position = arriba - Vector3.UP * 7.0
+	var tw := templo.create_tween()
+	tw.tween_property(templo, "global_position", arriba, maxf(0.1, duracion * 0.92)) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	var humo := CPUParticles3D.new()
+	humo.amount = 50
+	humo.lifetime = 1.0
+	humo.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	humo.emission_box_extents = Vector3(3.2, 0.2, 2.4)
+	humo.direction = Vector3.UP
+	humo.spread = 30.0
+	humo.initial_velocity_min = 1.0
+	humo.initial_velocity_max = 2.5
+	humo.gravity = Vector3.ZERO
+	humo.scale_amount_min = 0.4
+	humo.scale_amount_max = 0.9
+	humo.mesh = Art.particula_suave()
+	humo.color_ramp = Art.rampa_que_se_apaga(Color(0.25, 0.02, 0.04, 0.8))
+	templo.add_child(humo)
+	# Pegado al piso aunque el templo este subiendo: va como hijo, asi que se corrige.
+	humo.top_level = true
+	humo.global_position = arriba + Vector3.UP * 0.2
+	camera_shake(0.7)
+	Sfx.play_3d(cuerpo, &"dominio", arriba, 2.0)
+	return templo
+
+
+## EL DOMINIO ABIERTO: el templo parado, el circulo rojo del piso con el radio real y el
+## mundo entero mas oscuro mientras dura. Va colgado del nodo del dominio y se va con el.
+func spawn_dominio_sukuna(dominio: Node3D, frente: Vector3, radio: float, duracion: float) -> void:
+	if not is_instance_valid(dominio):
+		return
+	var templo := armar_santuario()
+	dominio.add_child(templo)
+	templo.global_transform = _lugar_santuario(dominio.global_position, frente)
+	# Al final se hunde, no desaparece de golpe.
+	var tw := templo.create_tween()
+	tw.tween_interval(maxf(0.0, duracion - 0.45))
+	tw.tween_property(templo, "position:y", templo.position.y - 7.0, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+	# El borde: hasta aca corta. Tiene que leerse desde adentro y desde afuera.
+	var aro := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.97
+	toro.outer_radius = 1.0
+	toro.rings = 64
+	aro.mesh = toro
+	var mat_aro := _brillo_que_se_apaga(Color(1.0, 0.12, 0.14), 2.6)
+	aro.material_override = mat_aro
+	aro.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	dominio.add_child(aro)
+	aro.position = Vector3(0.0, 0.1, 0.0)
+	aro.scale = Vector3(radio, 3.0, radio)
+	# El piso de adentro, oscuro y rojizo.
+	var piso := MeshInstance3D.new()
+	var disco := CylinderMesh.new()
+	disco.top_radius = 1.0
+	disco.bottom_radius = 1.0
+	disco.height = 0.02
+	disco.radial_segments = 48
+	piso.mesh = disco
+	var mat_piso := Art.flat(Color(0.30, 0.0, 0.03, 0.28))
+	mat_piso.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	piso.material_override = mat_piso
+	piso.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	dominio.add_child(piso)
+	piso.position = Vector3(0.0, 0.06, 0.0)
+	var tw2 := piso.create_tween().set_parallel()
+	tw2.tween_property(piso, "scale", Vector3(radio, 1.0, radio), 0.35).from(Vector3(0.5, 1.0, 0.5)) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(aro, "scale", Vector3(radio, 3.0, radio), 0.35).from(Vector3(0.5, 3.0, 0.5)) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw2.chain().tween_interval(maxf(0.0, duracion - 0.8))
+	tw2.chain().tween_property(mat_aro, "albedo_color:a", 0.0, 0.4)
+	tw2.parallel().tween_property(mat_piso, "albedo_color:a", 0.0, 0.4)
+	dominio_grade(duracion)
+	Sfx.play_3d(dominio, &"dominio", dominio.global_position + Vector3.UP, 4.0)
+
+
+## El mundo se apaga mientras el dominio esta abierto: menos color, como ZA WARUDO pero
+## sin llegar al gris.
+func dominio_grade(duracion: float) -> void:
+	if _environment == null:
+		return
+	var env := _environment
+	var tween := create_tween()
+	tween.tween_property(env, "adjustment_saturation", 0.45, 0.25)
+	tween.tween_interval(maxf(0.0, duracion - 0.65))
+	tween.tween_property(env, "adjustment_saturation", _base_saturation, 0.4)
+
+
+## LO QUE SE JUNTA en los capitulos de recolectar, y lo que esconden las rutas: un dedo de
+## Sukuna (envuelto en papel de sellos), una bolsa del supermercado de Saitama, el folleto
+## de la oferta, el cubo de la Prision. Flota, gira, y tiene una columna de luz encima para
+## que se encuentre desde lejos: un objetivo que no se ve es un capitulo que no se termina.
+func armar_juntable(context: Node, pos: Vector3, tipo: String) -> Node3D:
+	var world := _world_of(context)
+	if world == null:
+		return null
+	var cosa := Node3D.new()
+	cosa.name = StringName("Juntable_" + tipo)
+	world.add_child(cosa)
+	cosa.global_position = pos + Vector3.UP * 1.0
+	var giro := Node3D.new()
+	cosa.add_child(giro)
+	var color := Color(1.0, 0.85, 0.40)
+	match tipo:
+		"dedo":
+			# Un dedo seco y oscuro, con el sello de papel atado.
+			color = Color(0.95, 0.20, 0.25)
+			var carne := Art.toon(Color(0.36, 0.22, 0.22))
+			var falange := Art.capsule(0.07, 0.34, carne, Vector3(0.0, 0.0, 0.0))
+			giro.add_child(falange)
+			var punta := Art.capsule(0.065, 0.24, carne, Vector3(0.0, 0.25, 0.04))
+			punta.rotation.x = 0.4
+			giro.add_child(punta)
+			giro.add_child(Art.box(Vector3(0.18, 0.12, 0.17), Art.toon(Color(0.92, 0.88, 0.76)), Vector3(0.0, -0.05, 0.0)))
+			giro.add_child(Art.box(Vector3(0.05, 0.13, 0.18), Art.toon(Color(0.75, 0.10, 0.12)), Vector3(0.0, -0.05, 0.0)))
+			giro.rotation.z = 0.5
+		"bolsa":
+			# La bolsa del supermercado, con un puerro asomando.
+			color = Color(1.0, 0.95, 0.70)
+			giro.add_child(Art.box(Vector3(0.42, 0.46, 0.26), Art.toon(Color(0.96, 0.96, 0.94)), Vector3(0.0, 0.0, 0.0)))
+			giro.add_child(Art.box(Vector3(0.43, 0.08, 0.27), Art.toon(Color(0.86, 0.12, 0.14)), Vector3(0.0, 0.1, 0.0)))
+			var puerro := Art.capsule(0.05, 0.5, Art.toon(Color(0.45, 0.80, 0.30)), Vector3(0.1, 0.36, 0.0))
+			puerro.rotation.z = -0.3
+			giro.add_child(puerro)
+		"folleto":
+			# EL FOLLETO DE LA OFERTA: un papel amarillo con un sello rojo de "¡OFERTA!".
+			color = Color(1.0, 0.90, 0.30)
+			giro.add_child(Art.box(Vector3(0.46, 0.62, 0.02), Art.toon(Color(1.0, 0.92, 0.35))))
+			giro.add_child(Art.box(Vector3(0.3, 0.16, 0.03), Art.toon(Color(0.90, 0.12, 0.14)), Vector3(0.0, 0.14, 0.0)))
+			giro.add_child(Art.box(Vector3(0.34, 0.04, 0.03), Art.toon(Color(0.15, 0.15, 0.18)), Vector3(0.0, -0.08, 0.0)))
+			giro.add_child(Art.box(Vector3(0.28, 0.04, 0.03), Art.toon(Color(0.15, 0.15, 0.18)), Vector3(0.0, -0.18, 0.0)))
+		"cubo":
+			# LA PRISION: un cubo de piedra con un ojo en cada cara.
+			color = Color(0.70, 0.55, 1.0)
+			giro.add_child(Art.box(Vector3(0.42, 0.42, 0.42), Art.toon(Color(0.30, 0.28, 0.34))))
+			for k: int in range(4):
+				var ojo := Art.sphere(0.07, Art.glow(Color(0.85, 0.75, 1.0), 2.4))
+				var a := float(k) * PI * 0.5
+				ojo.position = Vector3(sin(a) * 0.22, 0.0, cos(a) * 0.22)
+				giro.add_child(ojo)
+		_:
+			giro.add_child(Art.sphere(0.2, Art.glow(color, 2.4)))
+	for n: Node in giro.get_children():
+		var gi := n as GeometryInstance3D
+		if gi != null:
+			gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# La columna de luz que lo marca de lejos.
+	var columna := MeshInstance3D.new()
+	var cil := CylinderMesh.new()
+	cil.top_radius = 0.18
+	cil.bottom_radius = 0.32
+	cil.height = 9.0
+	cil.cap_top = false
+	cil.cap_bottom = false
+	columna.mesh = cil
+	var mat := _brillo_que_se_apaga(color, 1.6)
+	mat.albedo_color.a = 0.28
+	columna.material_override = mat
+	columna.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	columna.position = Vector3(0.0, 3.6, 0.0)
+	cosa.add_child(columna)
+	var luz := OmniLight3D.new()
+	luz.light_color = color
+	luz.light_energy = 2.4
+	luz.omni_range = 5.0
+	cosa.add_child(luz)
+	var tw := giro.create_tween().set_loops()
+	tw.tween_property(giro, "rotation:y", TAU, 2.6).from(0.0)
+	var flota := giro.create_tween().set_loops()
+	flota.tween_property(giro, "position:y", 0.15, 0.9).set_trans(Tween.TRANS_SINE)
+	flota.tween_property(giro, "position:y", -0.05, 0.9).set_trans(Tween.TRANS_SINE)
+	return cosa
+
+
+## El aviso de un tajo que cae (la lluvia de cortes de la historia): un circulo rojo que se
+## cierra hasta el borde real mientras corre el aviso. Cuando se completa, corta.
+func spawn_aviso_corte(context: Node, punto: Vector3, radio: float, aviso: float) -> void:
+	var world := _world_of(context)
+	if world == null:
+		return
+	var marca := Node3D.new()
+	world.add_child(marca)
+	marca.global_position = punto + Vector3.UP * 0.06
+	var borde := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.92
+	toro.outer_radius = 1.0
+	toro.rings = 40
+	borde.mesh = toro
+	var mat := _brillo_que_se_apaga(Color(1.0, 0.15, 0.18), 2.2)
+	borde.material_override = mat
+	borde.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	borde.scale = Vector3(radio, 1.0, radio)
+	marca.add_child(borde)
+	var lleno := MeshInstance3D.new()
+	var disco := CylinderMesh.new()
+	disco.top_radius = 1.0
+	disco.bottom_radius = 1.0
+	disco.height = 0.02
+	lleno.mesh = disco
+	var mat_lleno := _brillo_que_se_apaga(Color(0.9, 0.05, 0.08), 1.2)
+	mat_lleno.albedo_color.a = 0.35
+	lleno.material_override = mat_lleno
+	lleno.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	marca.add_child(lleno)
+	var tw := lleno.create_tween()
+	tw.tween_property(lleno, "scale", Vector3(radio, 1.0, radio), aviso).from(Vector3(0.1, 1.0, 0.1))
+	tw.tween_callback(marca.queue_free)

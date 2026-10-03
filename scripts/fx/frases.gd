@@ -58,6 +58,13 @@ const LINEAS: Dictionary = {
 	&"gomu_rocket": [["¡GOMU GOMU NO... ROCKET!", 0.0, &"voz_gomu_gomu"]],
 	# --- GOJO: el nombre sale al soltar la esfera ---
 	&"purpura": [["¡PÚRPURA!", 0.0, &"voz_purpura"]],
+	# --- SAITAMA: nombra sus golpes como quien lee una lista, sin gritar ---
+	&"golpes_consecutivos": [["Golpes normales consecutivos.", 0.0, &"voz_consecutivos"]],
+	&"saltos_serios": [["Saltos laterales serios.", 0.0, &"voz_saltos_serios"]],
+	&"golpe_serio": [["¡GOLPE SERIO!", 0.0, &"voz_golpe_serio"]],
+	# --- SUKUNA ---
+	&"fuga": [["■ FUGA ■", 0.0, &"voz_fuga"]],
+	&"santuario": [["SANTUARIO MALÉVOLO.", 0.0, &"voz_santuario"]],
 }
 
 ## Frases que salen AL EMPEZAR a canalizar, no al soltar.
@@ -84,6 +91,10 @@ const LINEAS_CARGA: Dictionary = {
 	# Sans lo dice en minuscula, como en el juego: no grita nunca.
 	&"gaster_blaster": [["vas a pasar un mal rato.", 0.0, &"voz_mal_rato"]],
 	&"red_total": [["¡TU AMIGABLE VECINO!", 0.0, &"voz_vecino"]],
+	# Saitama echa el puño atras y lo dice serio: es la unica tecnica que anuncia en serio.
+	&"golpe_serio": [["Serie seria...", 0.0, &"voz_serie_seria"]],
+	# Sukuna, con las manos en el sello de Enma.
+	&"santuario": [["Expansión de dominio...", 0.0, &"voz_expansion"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el

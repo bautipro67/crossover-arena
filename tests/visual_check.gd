@@ -218,6 +218,7 @@ func _run() -> void:
 	await _thanos()
 	await _scorpion()
 	await _temporada_3()
+	await _temporada_4()
 	await _lluvia()
 	await _modos_juego()
 
@@ -565,6 +566,44 @@ func _temporada_3() -> void:
 		await _shot(t[3])
 		await _wait(1.0)
 		player.status.clear_all()
+	player.health.set_max(100.0)
+
+
+## Saitama y Sukuna: la escena de cada definitiva (lo que ve el que la tira, plano por
+## plano) y lo que queda en el mundo despues de soltarla.
+func _temporada_4() -> void:
+	var arena := _main.get_node_or_null("Arena") as Arena
+	var player := arena.get_local_player() if arena != null else null
+	if arena == null or player == null:
+		return
+	var tomas: Array = [
+		[&"saitama", [[3, [[0.30, "55_golpe_serio_cara"], [0.95, "56_golpe_serio_hombro"],
+			[GolpeSerio.new().channel_time + 0.18, "57_golpe_serio_onda"]]]]],
+		[&"sukuna", [[1, [[0.22, "58_desmantelar"]]], [2, [[0.30, "59_fuga"]]],
+			[3, [[0.30, "60_santuario_manos"], [1.20, "61_santuario_templo"],
+			[SantuarioMalevolo.new().channel_time + 0.7, "62_dominio"]]]]],
+	]
+	for t: Array in tomas:
+		player.setup_character(CharacterDB.get_character(t[0]))
+		var hud := _find_hud()
+		if hud != null:
+			hud.bind_player(player)
+		for uso: Array in t[1]:
+			_place(player, Vector3(-8.0, 0.0, -16.0), 0.0)
+			player.health.set_max(3000.0)
+			player.status.clear_all()
+			await _wait(0.8)
+			player.stamina.restore_full()
+			player.ultimate.current = UltimateCharge.MAX_CHARGE
+			player.caster.reset_state()
+			player.caster.request_use(int(uso[0]))
+			var pasado := 0.0
+			for foto: Array in uso[1]:
+				await _wait(float(foto[0]) - pasado)
+				pasado = float(foto[0])
+				await _shot(String(foto[1]))
+			await _wait(2.4)
+			player.status.clear_all()
 	player.health.set_max(100.0)
 
 

@@ -122,6 +122,9 @@ static func vestir(arena: Node3D, tema: Dictionary, bloques: Array, pilares: Arr
 		"glaciar": _glaciar(lejos, tema, rng)
 		"nucleo": _nucleo(lejos, tema, rng)
 		"nubes": _nubes(lejos, tema, rng)
+		"ciudad": _ciudad(lejos, tema, rng)
+		"luna": _luna(lejos, tema, rng)
+		"santuario": _santuario(lejos, tema, rng)
 	cerca.cerrar(arena, true)
 	lejos.cerrar(arena, false)
 	_particulas(arena, tema)
@@ -527,6 +530,17 @@ static func _paredes(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator) -
 						var alto := rng.randf_range(3.0, 8.0)
 						lote.cilindro(punta + Vector3(0.0, alto * 0.5, 0.0), 0.7, 0.7, alto, luz(color.lightened(0.3), 0.9), 6,
 							Vector3(rng.randf_range(-15, 15), 0, rng.randf_range(-15, 15)))
+				"ciudad":
+					# La baranda de una calle, con postes de luz cada tanto.
+					lote.caja(pos + Vector3(0.0, 0.5, 0.0) + adentro * 0.7, _rot_tam(Vector3(12.0, 1.0, 0.5), lado), toon(color))
+					lote.caja(pos + Vector3(0.0, 1.05, 0.0) + adentro * 0.7, _rot_tam(Vector3(12.0, 0.12, 0.6), lado),
+						toon(color.lightened(0.15)))
+					if k % 2 == 0:
+						var poste := pos + adentro * 1.4
+						lote.cilindro(poste + Vector3(0.0, 3.0, 0.0), 0.1, 0.1, 6.0, toon(Color(0.30, 0.31, 0.34)), 8)
+						lote.caja(poste + Vector3(0.0, 6.0, 0.0) + adentro * 0.6, _rot_tam(Vector3(0.3, 0.12, 1.4), lado),
+							toon(Color(0.30, 0.31, 0.34)))
+						lote.esfera(poste + Vector3(0.0, 5.9, 0.0) + adentro * 1.2, 0.2, luz(trim, 2.4), Vector3(1.4, 0.6, 1.4), 8)
 				"nubes":
 					# Una balaustrada de marmol con el pasamanos dorado.
 					for t: int in range(12):
@@ -920,3 +934,147 @@ static func _particulas(arena: Node3D, tema: Dictionary) -> void:
 			p.scale_amount_min = 0.040
 			p.scale_amount_max = 0.090
 	arena.add_child(p)
+
+
+## CIUDAD Z (y SHINJUKU, con "ruinas"): edificios grises detras del muro, con las ventanas
+## en filas, carteles y tanques de agua en las terrazas. En ruinas, los techos rotos y
+## algunos inclinados, como despues de una pelea entre los mas fuertes.
+static func _ciudad(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator) -> void:
+	var ruinas: bool = tema.get("ruinas", false)
+	var grises: Array[Color] = [Color(0.56, 0.57, 0.60), Color(0.66, 0.64, 0.60), Color(0.46, 0.48, 0.53),
+		Color(0.72, 0.70, 0.66)]
+	var vidrio := toon(Color(0.30, 0.42, 0.55)) if not ruinas else toon(Color(0.12, 0.13, 0.16))
+	var prendida := luz(Color(1.0, 0.86, 0.55), 1.6)
+	for lado: int in range(4):
+		for k: int in range(9):
+			var u := -MITAD + 6.0 + k * 14.0 + rng.randf_range(-2.0, 2.0)
+			var d := rng.randf_range(8.0, 18.0)
+			var ancho := rng.randf_range(9.0, 13.0)
+			var alto := rng.randf_range(16.0, 46.0)
+			if ruinas and k % 3 == 1:
+				alto *= 0.5
+			var base := _afuera(lado, u, d)
+			var color := grises[(k + lado) % grises.size()]
+			var giro := Vector3.ZERO
+			if ruinas and k % 4 == 2:
+				giro = Vector3(rng.randf_range(-6.0, 6.0), 0.0, rng.randf_range(-6.0, 6.0))
+			lote.caja(base + Vector3(0.0, alto * 0.5, 0.0), _rot_tam(Vector3(ancho, alto, 10.0), lado), toon(color), giro)
+			# Las ventanas en la cara que mira a la Arena, en filas.
+			var cara := base + _hacia_adentro(lado) * 5.05
+			var pisos := int(alto / 3.2)
+			for f: int in range(1, pisos):
+				for v: int in range(3):
+					var w := cara + _a_lo_largo(lado) * (float(v) - 1.0) * ancho * 0.3 + Vector3(0.0, float(f) * 3.2, 0.0)
+					var encendida := not ruinas and rng.randf() < 0.18
+					lote.caja(w, _rot_tam(Vector3(ancho * 0.22, 1.5, 0.08), lado), prendida if encendida else vidrio)
+			if ruinas:
+				# El techo roto: bloques sueltos arriba y un hueco negro.
+				for t: int in range(3):
+					lote.caja(base + Vector3(rng.randf_range(-3.0, 3.0), alto + rng.randf_range(0.3, 1.6), rng.randf_range(-3.0, 3.0)),
+						Vector3(rng.randf_range(1.0, 3.0), rng.randf_range(0.6, 2.0), rng.randf_range(1.0, 3.0)), toon(color.darkened(0.2)),
+						Vector3(rng.randf_range(-30, 30), rng.randf_range(0, 90), rng.randf_range(-30, 30)))
+			else:
+				# Un tanque de agua o un cartel en la terraza.
+				if k % 2 == 0:
+					lote.cilindro(base + Vector3(2.0, alto + 1.4, 0.0), 1.2, 1.2, 2.8, toon(Color(0.62, 0.40, 0.30)), 10)
+				else:
+					lote.caja(base + Vector3(0.0, alto + 1.8, 0.0) + _hacia_adentro(lado) * 3.0,
+						_rot_tam(Vector3(6.0, 2.6, 0.3), lado), luz(tema.get("acento", Color.RED), 1.3))
+	if ruinas:
+		# El humo de la ciudad que se quema, en columnas lejanas.
+		for k: int in range(10):
+			var a := TAU * float(k) / 10.0 + rng.randf_range(-0.2, 0.2)
+			var p := Vector3(sin(a) * 120.0, 0.0, cos(a) * 120.0)
+			for s: int in range(6):
+				lote.esfera(p + Vector3(float(s) * 2.0, 20.0 + float(s) * 9.0, 0.0), 6.0 + float(s) * 2.0,
+					toon(Color(0.20, 0.18, 0.20).lightened(0.05 * s)), Vector3(1.0, 0.8, 1.0), 8)
+	else:
+		# Las nubes de un dia de sol, como en la serie.
+		for k: int in range(26):
+			var a := rng.randf_range(0.0, TAU)
+			var p := Vector3(sin(a) * rng.randf_range(90.0, 180.0), rng.randf_range(55.0, 90.0), cos(a) * rng.randf_range(90.0, 180.0))
+			lote.esfera(p, rng.randf_range(8.0, 16.0), toon(Color(0.98, 0.98, 1.0)), Vector3(1.8, 0.6, 1.2), 10)
+
+
+## LA LUNA: el piso gris lleno de crateres, el cielo negro con estrellas y la Tierra grande,
+## azul, sobre el horizonte. Donde termino la pelea con el señor del universo.
+static func _luna(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator) -> void:
+	var roca := toon(Color(0.48, 0.48, 0.50))
+	var oscura := toon(Color(0.30, 0.30, 0.33))
+	for k: int in range(400):
+		var dir := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(0.0, 1.0), rng.randf_range(-1.0, 1.0)).normalized()
+		lote.esfera(dir * 280.0, rng.randf_range(0.4, 1.4), luz(Color(0.95, 0.95, 1.0), rng.randf_range(1.5, 3.5)), Vector3.ONE, 4)
+	# La Tierra: el mar, los continentes y las nubes.
+	var tierra := Vector3(-120.0, 70.0, -200.0)
+	lote.esfera(tierra, 40.0, luz(Color(0.20, 0.42, 0.85), 1.0), Vector3.ONE, 24)
+	for k: int in range(7):
+		var d := Vector3(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.6, 0.6), 1.0).normalized()
+		lote.esfera(tierra + d * 37.0, rng.randf_range(8.0, 14.0), luz(Color(0.30, 0.62, 0.30), 0.9), Vector3(1.0, 0.7, 0.3), 10)
+	for k: int in range(6):
+		var d := Vector3(rng.randf_range(-0.7, 0.7), rng.randf_range(-0.7, 0.7), 1.0).normalized()
+		lote.esfera(tierra + d * 39.5, rng.randf_range(6.0, 12.0), luz(Color(0.95, 0.97, 1.0), 1.0), Vector3(1.6, 0.6, 0.3), 10)
+	# Crateres y lomas del otro lado del muro.
+	for k: int in range(60):
+		var a := rng.randf_range(0.0, TAU)
+		var d := rng.randf_range(70.0, 200.0)
+		var p := Vector3(sin(a) * d, -1.0, cos(a) * d)
+		var r := rng.randf_range(5.0, 14.0)
+		lote.cilindro(p, r, r * 0.8, 3.0, roca if k % 2 else oscura, 16)
+		lote.cilindro(p + Vector3(0.0, 1.55, 0.0), r * 0.7, r * 0.7, 0.2, oscura, 16)
+	for k: int in range(24):
+		var a := rng.randf_range(0.0, TAU)
+		var p := Vector3(sin(a) * rng.randf_range(80.0, 170.0), 0.0, cos(a) * rng.randf_range(80.0, 170.0))
+		lote.esfera(p, rng.randf_range(10.0, 26.0), roca, Vector3(1.6, 0.5, 1.3), 10)
+
+
+## EL SANTUARIO MALEVOLO: el templo de Sukuna enorme detras del muro norte, montañas de
+## craneos alrededor, torii negros y una luna roja.
+static func _santuario(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator) -> void:
+	var hueso := toon(Color(0.86, 0.82, 0.72))
+	var madera := toon(Color(0.14, 0.07, 0.07))
+	var rojo := toon(Color(0.50, 0.05, 0.07))
+	var techo := toon(Color(0.08, 0.06, 0.07))
+	# El templo: tres veces el de la definitiva, al fondo.
+	var base := Vector3(0.0, 0.0, -MITAD - 40.0)
+	var s := 4.0
+	for k: int in range(90):
+		var a := rng.randf_range(0.0, TAU)
+		var alto := rng.randf()
+		var r := (1.0 - alto) * 3.4 * s + 1.0
+		lote.esfera(base + Vector3(cos(a) * r, alto * 1.6 * s, sin(a) * r * 0.7), rng.randf_range(0.9, 1.6), hueso, Vector3.ONE, 8)
+	lote.caja(base + Vector3(0.0, 1.6 * s, 0.0), Vector3(4.8, 0.4, 3.4) * s, madera)
+	for x: float in [-1.9, 1.9]:
+		for z: float in [-1.3, 1.3]:
+			lote.cilindro(base + Vector3(x * s, 3.1 * s, z * s), 0.18 * s, 0.18 * s, 2.8 * s, rojo, 10)
+	lote.caja(base + Vector3(0.0, 2.6 * s, 1.32 * s), Vector3(3.0, 1.6, 0.2) * s, toon(Color(0.22, 0.02, 0.04)))
+	for k: int in range(9):
+		var x := (-1.35 + 2.7 * float(k) / 8.0) * s
+		lote.cilindro(base + Vector3(x, 3.22 * s, 1.45 * s), 0.11 * s, 0.0, 0.42 * s, hueso, 6, Vector3(180, 0, 0))
+		lote.cilindro(base + Vector3(x, 1.98 * s, 1.45 * s), 0.11 * s, 0.0, 0.42 * s, hueso, 6)
+	for piso: int in range(2):
+		var y := (4.6 + float(piso) * 1.15) * s
+		var ancho := (6.4 - float(piso) * 1.6) * s
+		lote.caja(base + Vector3(0.0, y, 0.0), Vector3(ancho, 0.3 * s, ancho * 0.72), techo)
+		lote.caja(base + Vector3(0.0, y - 0.18 * s, 0.0), Vector3(ancho * 0.92, 0.1 * s, ancho * 0.66), rojo)
+	lote.caja(base + Vector3(0.0, 6.35 * s, 0.0), Vector3(1.4, 0.5, 1.0) * s, techo)
+	# Montañas de craneos por todo el borde, y torii negros.
+	for lado: int in range(4):
+		for k: int in range(6):
+			var u := -MITAD + 10.0 + k * 20.0 + rng.randf_range(-4.0, 4.0)
+			var p := _afuera(lado, u, rng.randf_range(10.0, 26.0))
+			var r := rng.randf_range(4.0, 8.0)
+			for c: int in range(14):
+				var a := rng.randf_range(0.0, TAU)
+				var h := rng.randf()
+				lote.esfera(p + Vector3(cos(a) * (1.0 - h) * r, h * r * 0.8, sin(a) * (1.0 - h) * r), rng.randf_range(0.6, 1.1), hueso,
+					Vector3.ONE, 6)
+		for k: int in range(3):
+			var u := -MITAD + 20.0 + k * 40.0
+			var p := _afuera(lado, u, 6.0)
+			var lado_x := _a_lo_largo(lado) * 3.4
+			lote.cilindro(p + lado_x + Vector3(0.0, 5.0, 0.0), 0.4, 0.4, 10.0, techo, 8)
+			lote.cilindro(p - lado_x + Vector3(0.0, 5.0, 0.0), 0.4, 0.4, 10.0, techo, 8)
+			lote.caja(p + Vector3(0.0, 9.6, 0.0), _rot_tam(Vector3(10.0, 0.6, 0.8), lado), techo)
+			lote.caja(p + Vector3(0.0, 8.2, 0.0), _rot_tam(Vector3(8.0, 0.4, 0.5), lado), rojo)
+	# La luna roja.
+	lote.esfera(Vector3(90.0, 110.0, -160.0), 18.0, luz(Color(0.95, 0.18, 0.15), 1.6), Vector3.ONE, 20)

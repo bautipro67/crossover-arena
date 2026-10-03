@@ -450,6 +450,23 @@ func _pose_targets() -> Dictionary:
 				"spread_l": 0.10, "spread_r": -0.35,
 				"torso": 0.12,
 			}
+		&"golpe_serio":
+			# GOLPE SERIO, CARGANDO: el puño derecho bien atras, el izquierdo adelante
+			# apuntando, el torso girado. Al soltar pasa a "release": la piña.
+			return {
+				"arm_l": 1.45, "arm_r": -0.75,
+				"elbow_l": -0.25, "elbow_r": -1.75,
+				"spread_l": -0.15, "spread_r": 0.30,
+				"torso": -0.18,
+			}
+		&"santuario":
+			# EL SELLO DE ENMA: las dos manos juntas delante del pecho, los codos afuera.
+			return {
+				"arm_l": 0.95, "arm_r": 0.95,
+				"elbow_l": -1.75, "elbow_r": -1.75,
+				"spread_l": -0.45, "spread_r": 0.45,
+				"torso": 0.04,
+			}
 		&"channel_point":
 			# ZA WARUDO: brazo derecho arriba, izquierdo cruzado sobre el pecho.
 			return {
@@ -684,6 +701,10 @@ func _on_channel_started(index: int, _duration: float) -> void:
 		&"chasquido":
 			# El Guantelete en alto: es la mano IZQUIERDA, la del guante.
 			_pose = &"chasquido"
+		&"golpe_serio":
+			_pose = &"golpe_serio"
+		&"santuario":
+			_pose = &"santuario"
 		_:
 			_pose = &"channel_up"
 	_channel_fx = FX.spawn_channel_ritual(self, ability.icon_color)
@@ -712,6 +733,16 @@ func _on_channel_started(index: int, _duration: float) -> void:
 		FX.spawn_esfera_mano(cuerpo, Color(0.70, 0.90, 1.0), ability.channel_time)
 	elif ability.id == &"purpura" and cuerpo != null:
 		FX.spawn_esfera_mano(cuerpo, Color(0.70, 0.30, 1.0), ability.channel_time)
+
+	# SAITAMA Y SUKUNA: lo que ven TODOS desde donde estan —el viento alrededor del puño,
+	# el templo subiendo detras— y, solo en la pantalla del que la tira, la escena de la
+	# definitiva (EscenaUlti), con su camara y su titulo.
+	if ability.id == &"golpe_serio" and cuerpo != null:
+		_channel_fx_extra = FX.spawn_carga_golpe_serio(cuerpo, ability.channel_time)
+	elif ability.id == &"santuario" and cuerpo != null:
+		_channel_fx_extra = FX.spawn_santuario_alzandose(cuerpo, ability.channel_time)
+	if EscenaUlti.tiene(ability.id) and cuerpo is Player:
+		EscenaUlti.empezar(cuerpo as Player, ability.id, ability.channel_time)
 
 	# LA FATALITY: Scorpion se saca la mascara mientras carga, y abajo esta la calavera.
 	# Se queda mientras escupe el fuego y despues vuelve la mascara.
@@ -992,7 +1023,7 @@ func _material_modelo(nombre: StringName, base: Color) -> StandardMaterial3D:
 	return m
 
 
-const SIN_CONTORNO: Array[StringName] = [&"pecas", &"botones", &"detalle_chico", &"lineas"]
+const SIN_CONTORNO: Array[StringName] = [&"pecas", &"botones", &"detalle_chico", &"lineas", &"cierre", &"tatuajes"]
 ## Las partes de metal, con el brillo duro de Art.metal (el oro de Thanos, la placa de la
 ## bandana, el kunai).
 const METALICAS: Array[StringName] = [&"oro", &"guantelete", &"metal", &"placa", &"hebilla", &"corona"]

@@ -45,6 +45,9 @@ const ALIAS: Dictionary = {
 	&"luz_sonic": &"hit_punch",
 	&"gear_fifth": &"goma",
 	&"cien_por_ciento": &"explosion_psiquica",
+	&"corte": &"knife",
+	&"golpe_serio": &"explosion_psiquica",
+	&"dominio": &"susanoo",
 	# Estos no tienen reemplazo: si no estan grabados, no suenan.
 	# `golpe`: cada golpe que conecta, de cualquiera (FX.spawn_hit_impact).
 	&"golpe": &"",
@@ -375,7 +378,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 60
+const TOTAL_SONIDOS: int = 67
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -430,6 +433,13 @@ func _build_combate() -> void:
 		[&"voz_mal_rato", _synth_voz_mal_rato],
 		[&"voz_vecino", _synth_voz_vecino],
 		[&"voz_purpura", _synth_voz_purpura],
+		[&"voz_consecutivos", _synth_voz_consecutivos],
+		[&"voz_saltos_serios", _synth_voz_saltos_serios],
+		[&"voz_serie_seria", _synth_voz_serie_seria],
+		[&"voz_golpe_serio", _synth_voz_golpe_serio],
+		[&"voz_fuga", _synth_voz_fuga],
+		[&"voz_expansion", _synth_voz_expansion],
+		[&"voz_santuario", _synth_voz_santuario],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -982,6 +992,56 @@ func _synth_voz_vecino() -> PackedFloat32Array:
 func _synth_voz_purpura() -> PackedFloat32Array:
 	return _voz([["u", 0.16, "golpe"], ["u", 0.12, "golpe"], ["a", 0.28, ""]],
 		GO_TONO, 1.0, 0.1, 0.8, 1.0, 0.05)
+
+
+const SAI_TONO: float = 124.0
+const SU_TONO: float = 98.0
+
+
+## "Golpes normales consecutivos." — sin gritar: Saitama nombra sus golpes como quien lee
+## la lista del supermercado. Dramatismo casi cero.
+func _synth_voz_consecutivos() -> PackedFloat32Array:
+	return _voz([["o", 0.09, "golpe"], ["e", 0.08, "aire"], ["o", 0.08, "nasal"], ["a", 0.08, ""],
+		["e", 0.08, "aire"], ["o", 0.08, "golpe"], ["e", 0.08, "golpe"], ["u", 0.08, "aire"],
+		["i", 0.08, "golpe"], ["o", 0.18, "aire"]], SAI_TONO, 1.0, 0.08, 0.2, 0.9, 0.0)
+
+
+## "Saltos laterales serios." — igual de plano.
+func _synth_voz_saltos_serios() -> PackedFloat32Array:
+	return _voz([["a", 0.09, "aire"], ["o", 0.08, "golpe"], ["a", 0.08, ""], ["e", 0.08, "golpe"],
+		["a", 0.08, "aire"], ["e", 0.08, "aire"], ["i", 0.08, ""], ["o", 0.18, "aire"]],
+		SAI_TONO, 1.0, 0.08, 0.2, 0.9, 0.0)
+
+
+## "Serie seria..." — mientras echa el puño atras, ya con la cara seria.
+func _synth_voz_serie_seria() -> PackedFloat32Array:
+	return _voz([["e", 0.12, "aire"], ["i", 0.10, ""], ["e", 0.14, ""], ["e", 0.12, "aire"],
+		["i", 0.10, ""], ["a", 0.26, ""]], SAI_TONO - 8.0, 1.02, 0.10, 0.5, 0.8, 0.05)
+
+
+## "¡GOLPE SERIO!" — la unica vez que levanta la voz.
+func _synth_voz_golpe_serio() -> PackedFloat32Array:
+	return _voz([["o", 0.12, "golpe"], ["e", 0.10, "golpe"], ["e", 0.12, "aire"], ["i", 0.10, ""],
+		["o", 0.30, ""]], SAI_TONO + 14.0, 1.02, 0.14, 1.4, 1.1, 0.12)
+
+
+## "Fuga." — grave y arrastrado, con media sonrisa.
+func _synth_voz_fuga() -> PackedFloat32Array:
+	return _voz([["u", 0.16, "aire"], ["a", 0.34, "golpe"]], SU_TONO, 0.94, 0.16, 0.6, 0.7, 0.22)
+
+
+## "Expansion de dominio..." — con las manos en el sello.
+func _synth_voz_expansion() -> PackedFloat32Array:
+	return _voz([["e", 0.10, ""], ["a", 0.10, "aire"], ["a", 0.10, "aire"],
+		["o", 0.14, "nasal"], ["e", 0.09, "golpe"], ["o", 0.10, "golpe"], ["i", 0.10, "nasal"],
+		["i", 0.10, "nasal"], ["o", 0.24, ""]], SU_TONO, 0.94, 0.16, 0.7, 0.7, 0.22)
+
+
+## "Santuario malevolo." — al abrirse el dominio.
+func _synth_voz_santuario() -> PackedFloat32Array:
+	return _voz([["a", 0.10, "aire"], ["u", 0.10, "golpe"], ["a", 0.10, ""], ["i", 0.08, "golpe"],
+		["o", 0.12, ""], ["a", 0.10, "nasal"], ["e", 0.09, ""], ["o", 0.10, "aire"],
+		["o", 0.26, ""]], SU_TONO - 4.0, 0.94, 0.18, 0.9, 0.7, 0.25)
 
 
 ## Un hueso: dos golpecitos huecos, como madera.

@@ -2,10 +2,14 @@ extends Node
 ## Autoload: Pase
 ## El pase de temporada. Treinta escalones, dos vias: la gratuita y la pro.
 ##
-## TEMPORADA 3. La 1 termino el 2026-09-25 y la 2 el 2026-09-27: al abrir el juego con un
-## archivo de una temporada anterior, lo que se habia alcanzado y no se habia cobrado se
-## cobra solo, y el pase arranca de cero. Ver _cerrar_temporada_vieja(). Goku (premio de
-## la 1) y Mob (premio de la 2) quedaron de todos; el de la 3 es Gojo.
+## TEMPORADA 4. La 1 termino el 2026-09-25, la 2 el 2026-09-27 y la 3 el 2026-10-02: al
+## abrir el juego con un archivo de una temporada anterior, lo que se habia alcanzado y no
+## se habia cobrado se cobra solo, y el pase arranca de cero. Ver _cerrar_temporada_vieja().
+## Goku (premio de la 1), Mob (de la 2) y Gojo (de la 3) quedaron de todos.
+##
+## LA 4 NO TERMINA EN UN PERSONAJE. Los dos que llegan con ella no son del pase: Saitama es
+## gratis y Sukuna se gana en la historia (parte 8). El ultimo escalon del pro es una skin
+## legendaria de Saitama.
 ##
 ## LAS DOS VIAS AVANZAN CON LA MISMA EXPERIENCIA. Comprar el pro no acelera nada: abre la
 ## fila de abajo, incluidas las recompensas de los escalones que ya pasaste. Es lo que
@@ -16,8 +20,8 @@ extends Node
 ## compran mas skins, y la experiencia solo mueve estas mismas barras. Un circuito cerrado
 ## que empieza y termina en lo cosmetico, a proposito.
 
-const TEMPORADA: int = 3
-const NOMBRE: String = "TEMPORADA 3 — SIN LÍMITES"
+const TEMPORADA: int = 4
+const NOMBRE: String = "TEMPORADA 4 — HÉROES Y MALDICIONES"
 const ESCALONES: int = 30
 ## Experiencia por escalon. 250 x 30 = 7500 para el pase entero, que a unos 170 por
 ## partida son unas 45 partidas. Una temporada tiene que durar, pero tiene que terminarse.
@@ -28,7 +32,7 @@ const MONEDAS: StringName = &"monedas"
 const EXP: StringName = &"exp"
 const SKIN: StringName = &"skin"
 ## Un personaje entero: el premio del ultimo escalon del pro. Goku en la 1, Mob en la 2,
-## Gojo en la 3.
+## Gojo en la 3. La 4 no tiene.
 const PERSONAJE: StringName = &"personaje"
 const NADA: StringName = &"nada"
 
@@ -51,8 +55,9 @@ var _viejas: Dictionary = {}
 
 
 func _ready() -> void:
-	_viejas = {0: _armar_temporada_0(), 1: _armar_temporada_1(), 2: _armar_temporada_2()}
-	_tabla = _armar_temporada_3()
+	_viejas = {0: _armar_temporada_0(), 1: _armar_temporada_1(), 2: _armar_temporada_2(),
+		3: _armar_temporada_3()}
+	_tabla = _armar_temporada_4()
 	_cerrar_temporada_vieja()
 
 
@@ -135,6 +140,24 @@ func _armar_temporada_3() -> Dictionary:
 	return t
 
 
+func _armar_temporada_4() -> Dictionary:
+	var t := _base()
+	# Las tres de Saitama, que es el que llega gratis: la epica enseguida en el pro, la rara
+	# en la gratuita y la legendaria al final. Las de Sukuna van a la tienda: el pase no
+	# puede dar skins de un personaje que todavia no se gano.
+	_poner(t, 3, null, [SKIN, "saitama_oficinista"])
+	_poner(t, 7, [SKIN, "saitama_jersey"], null)
+	# Sin skins en el medio, el pro paga mas monedas para la tienda (las de Sukuna).
+	_poner(t, 10, null, [MONEDAS, 400])
+	_poner(t, 14, [MONEDAS, 200], [MONEDAS, 500])
+	_poner(t, 18, null, [MONEDAS, 500])
+	_poner(t, 22, [MONEDAS, 250], [MONEDAS, 600])
+	_poner(t, 26, null, [MONEDAS, 700])
+	# EL ULTIMO ESCALON DEL PRO: Saitama despues de la pelea con Boros.
+	_poner(t, 30, [MONEDAS, 500], [SKIN, "saitama_boros"])
+	return t
+
+
 func _poner(t: Dictionary, escalon: int, gratis: Variant, pro: Variant) -> void:
 	var fila: Array = t.get(escalon, [[NADA, 0], [NADA, 0]])
 	if gratis != null:
@@ -170,13 +193,15 @@ func _cerrar_temporada_vieja() -> void:
 	Progreso.temporada = TEMPORADA
 	Progreso.guardar()
 	Progreso.cambio.emit()
-	aviso_cierre = "Terminó la Temporada %d y empezó la Temporada %d: Sin Límites." % [vieja, TEMPORADA]
+	aviso_cierre = "Terminó la Temporada %d y empezó la Temporada %d: Héroes y Maldiciones." % [vieja, TEMPORADA]
 	# Los premios de las que terminaron quedan para todos (ver CharacterDB: Goku y Mob ya no
 	# piden desbloqueo).
 	if vieja <= 1:
 		aviso_cierre += " Goku ahora es de todos: ya lo podés elegir."
 	if vieja <= 2:
 		aviso_cierre += " Mob ahora es de todos: ya lo podés elegir."
+	if vieja <= 3:
+		aviso_cierre += " Gojo ahora es de todos: ya lo podés elegir."
 	if cobradas > 0:
 		aviso_cierre += " Se cobraron solas %d recompensas que tenías pendientes." % cobradas
 	if tenia_pro:

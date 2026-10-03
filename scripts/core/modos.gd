@@ -326,6 +326,17 @@ func un_toque() -> bool:
 	return actual == TOQUE
 
 
+## UN GOLPE (regla de capitulo, "regla": "un_golpe"): cada golpe DEL JUGADOR mata, como
+## Saitama. Los enemigos pegan normal: el capitulo se pierde igual si te descuidas.
+func un_golpe_del_heroe(source_id: int) -> bool:
+	if mision == null or not is_instance_valid(mision) or actual != HISTORIA:
+		return false
+	if String((mision.get("datos") as Dictionary).get("regla", "")) != "un_golpe":
+		return false
+	var heroe: Player = mision.call("jugador")
+	return heroe != null and heroe.peer_id == source_id
+
+
 # ------------------------------------------------------------------- La bomba
 
 ## La mecha de la ronda `r`: cada ronda mas corta, hasta un minimo.

@@ -19,13 +19,19 @@ extends Node
 ##   proteger  {id, segundos}   ganar = aguantar esos segundos; perder = que caiga ese
 ##   sobrevivir {segundos}      ganar = seguir en pie esos segundos
 ##   zona {centro, radio, segundos}   ganar = estar adentro ese tiempo, acumulado
+##   recolectar {objeto, cantidad, puntos?}   ganar = juntar todos (pasando por encima)
 ## Y en todos: perder si cae el jugador, y si hay "limite", perder al pasarlo.
+##
+## REGLAS DEL CAPITULO ("regla"): "un_golpe" = cada golpe DEL JUGADOR mata (Saitama: el
+## chiste de One Punch Man); los enemigos pegan normal. Ver Modos.un_golpe_del_heroe.
 ##
 ## EVENTOS: [condicion, acciones]. Condiciones: ["inicio"], ["tiempo", s],
 ## ["vida", id, fraccion], ["muere", id], ["quedan", n]. Acciones: ["decir", quien, texto],
 ## ["refuerzos", [enemigos]], ["aliado", aliado], ["potenciar", id, segundos],
 ## ["curar", id], ["retirar", id], ["entrar", id], ["objetivo", objetivo],
-## ["cinematica", pasos], ["ganar"], ["perder", texto]. Cada evento pasa una sola vez.
+## ["cinematica", pasos], ["ganar"], ["perder", texto], ["lluvia", tipo, segundos, cada]
+## (meteoritos o cortes que caen avisando con una sombra; los bots tambien los esquivan),
+## ["parar_lluvia"]. Cada evento pasa una sola vez.
 ##
 ## PARTICIPANTES ("aliados" y "enemigos"): id, personaje, nombre, vida, daño, pos, y
 ## opcionales: eco (copia oscura), jefe (barra arriba), quieto (no pelea: trabaja o
@@ -70,6 +76,20 @@ var _paso_ok: bool = true
 var _congelado_t: Dictionary = {}
 var _anillo: Node3D = null
 var _anillo_tomado: bool = false
+## Lo que hay para juntar (objetivo "recolectar") y cuantos se juntaron.
+var _juntables: Array[Node3D] = []
+var _juntados: int = 0
+## LA LLUVIA (accion "lluvia"): de que, hasta cuando y cada cuanto cae algo.
+var _lluvia_tipo: String = ""
+var _lluvia_hasta: float = 0.0
+var _lluvia_cada: float = 1.0
+var _lluvia_prox: float = 0.0
+var _lluvia_n: int = 0
+## Cuando tiro la definitiva el jugador por ultima vez (paso "jefe_ulti").
+var _ulti_t: float = -99.0
+## El jefe del paso "jefe_ulti" cayo, y con la definitiva. Se anota al caer: la escena final
+## revive a los que habla, y para entonces el jefe ya no esta muerto.
+var _jefe_ulti_cayo: bool = false
 ## Para el arnes: se salta las escenas.
 static var sin_cinematicas: bool = false
 
@@ -135,6 +155,9 @@ func _arrancar() -> void:
 		_sumar(e, 1)
 	if objetivo.get("tipo", "") == "zona":
 		_crear_zona()
+	# Lo que usa el jugador: para los pasos que piden COMO se gana (solo con el basico, el
+	# jefe terminado con la definitiva).
+	p.caster.ability_used.connect(_al_usar)
 
 	var intro: Array = [["titulo", Historia.titulo_capitulo(capitulo), String(datos.get("titulo", ""))]]
 	intro.append_array(datos.get("intro", []))
@@ -286,6 +309,8 @@ func _comenzar() -> void:
 			b.visual.actuar(StringName(d["pose"]))
 	Arena.set_bots_active(true)
 	_en_pelea = true
+	if objetivo.get("tipo", "") == "recolectar":
+		_crear_juntables()
 	_armar_paso_snowgrave()
 	if is_instance_valid(hud) and hud.has_method("anunciar"):
 		hud.anunciar(String(objetivo.get("texto", "¡A pelear!")).to_upper(), 2.2)
@@ -316,9 +341,122 @@ func _process(delta: float) -> void:
 		if mat != null:
 			mat.albedo_color = mat.albedo_color.lerp(
 				Color(0.45, 1.0, 0.55) if dentro else Color(0.45, 0.85, 1.0), delta * 6.0)
+	_vigilar_juntables()
+	_vigilar_lluvia(delta)
 	_vigilar_paso_snowgrave()
 	_revisar_eventos()
 	_revisar_objetivo()
+
+
+# --------------------------------------------------------- Juntar y esquivar
+
+## Lo que hay para juntar: en los puntos que diga el capitulo o, si no dice, repartido en
+## un anillo alrededor del ancla. Siempre en un lugar abierto (ver el anillo de espinas).
+func _crear_juntables() -> void:
+	for n: Node3D in _juntables:
+		if is_instance_valid(n):
+			n.queue_free()
+	_juntables.clear()
+	_juntados = 0
+	var cuantos := int(objetivo.get("cantidad", 4))
+	var puntos: Array = objetivo.get("puntos", [])
+	for k: int in range(cuantos):
+		var rel := Vector2.ZERO
+		if k < puntos.size():
+			rel = puntos[k]
+		else:
+			var a := TAU * float(k) / float(cuantos) + 0.4
+			rel = Vector2(cos(a), sin(a)) * (12.0 + 6.0 * float(k % 2))
+		var donde := al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 2.0))
+		var cosa := FX.armar_juntable(arena, donde, String(objetivo.get("objeto", "dedo")))
+		_juntables.append(cosa)
+
+
+func _vigilar_juntables() -> void:
+	if _juntables.is_empty():
+		return
+	var p := jugador()
+	if p == null or p.health.is_dead:
+		return
+	for cosa: Node3D in _juntables:
+		if not is_instance_valid(cosa) or cosa.has_meta(&"tomado"):
+			continue
+		var d := Vector2(p.global_position.x - cosa.global_position.x,
+			p.global_position.z - cosa.global_position.z).length()
+		if d <= 1.8 and absf(p.global_position.y - cosa.global_position.y) < 2.5:
+			cosa.set_meta(&"tomado", true)
+			_juntados += 1
+			FX.spawn_impact_burst(cosa, cosa.global_position + Vector3.UP * 0.6, Color(1.0, 0.85, 0.4))
+			Sfx.play_3d(cosa, &"gema", cosa.global_position, -2.0)
+			cosa.visible = false
+
+
+## LA LLUVIA: algo cae cada tanto, avisando con una sombra. Uno de cada tres, cerca del
+## jugador (no encima: le da donde estaba parado si no se mueve); el resto, por la zona de
+## la pelea. Le pega a cualquiera —enemigos y aliados tambien—, asi que se puede usar.
+func _vigilar_lluvia(delta: float) -> void:
+	if _lluvia_tipo == "":
+		return
+	if _lluvia_hasta > 0.0 and tiempo >= _lluvia_hasta:
+		_lluvia_tipo = ""
+		return
+	_lluvia_prox -= delta
+	if _lluvia_prox > 0.0:
+		return
+	_lluvia_prox = _lluvia_cada
+	_lluvia_n += 1
+	var p := jugador()
+	var centro := ancla
+	if p != null and _lluvia_n % 3 == 0:
+		centro = p.global_position + Vector3(randf_range(-1.5, 1.5), 0.0, randf_range(-1.5, 1.5))
+	else:
+		var a := randf() * TAU
+		var r := sqrt(randf()) * 20.0
+		var base := p.global_position if p != null and randf() < 0.5 else ancla
+		centro = base + Vector3(cos(a) * r, 0.0, sin(a) * r)
+	var punto := al_piso(arena, centro)
+	if _lluvia_tipo == "cortes":
+		_tirar_corte(punto)
+	else:
+		arena.tirar_meteorito(punto)
+
+
+## Un tajo de Sukuna que cae del cielo: el circulo rojo avisa, y al rato corta todo lo que
+## quedo adentro. Como el meteorito, pero mas chico y mas rapido.
+const CORTE_RADIO: float = 2.6
+const CORTE_AVISO: float = 1.0
+const CORTE_DAÑO: float = 16.0
+
+
+func _tirar_corte(punto: Vector3) -> void:
+	FX.spawn_aviso_corte(arena, punto, CORTE_RADIO, CORTE_AVISO)
+	var zona := {"punto": punto, "radio": CORTE_RADIO, "reaccion": 0.3}
+	BotBrain.peligros.append(zona)
+	await get_tree().create_timer(CORTE_AVISO).timeout
+	BotBrain.peligros.erase(zona)
+	if terminada or not is_inside_tree() or Cinematica.activa:
+		return
+	FX.spawn_cortes(arena, punto + Vector3.UP * 0.9, 4)
+	for node: Node in get_tree().get_nodes_in_group("players"):
+		var b := node as Player
+		if b == null or b.health.is_dead:
+			continue
+		var d := Vector2(b.global_position.x - punto.x, b.global_position.z - punto.z).length()
+		if d > CORTE_RADIO or absf(b.global_position.y - punto.y) > 3.0:
+			continue
+		# Sin dueño, como el meteorito: no paga carga ni cuenta como baja de nadie.
+		CombatUtils.deal_damage(b, CORTE_DAÑO * GameConfig.VIDA, 0, false)
+		CombatUtils.apply_knockback(b, b.global_position - punto, 5.0, 1.5)
+
+
+## Lo que usa el jugador. Ver los pasos "solo_basico" y "jefe_ulti".
+func _al_usar(index: int) -> void:
+	if not _en_pelea or terminada:
+		return
+	if index == 3:
+		_ulti_t = tiempo
+	if _paso > 0 and String(datos.get("condicion", "")) == "solo_basico" and index != 0:
+		_paso_ok = false
 
 
 # ---------------------------------------------------------- Las rutas secretas
@@ -349,9 +487,15 @@ func _armar_paso_snowgrave() -> void:
 		if cual == "hueso":
 			_anillo = FX.armar_hueso_dio(arena, donde)
 			dijo.emit(&"dio", "Ese brillo dorado... Lo reconozco. Es mío. Una parte de DIO.")
-		else:
+		elif cual == "anillo":
 			_anillo = FX.armar_anillo_espinas(arena, donde)
 			dijo.emit(&"noelle", "...¿Qué es eso que brilla allá atrás? Tiene... espinas.")
+		else:
+			# Las rutas nuevas: el objeto y lo que dice su personaje al verlo (RUTAS "ve").
+			_anillo = FX.armar_juntable(arena, donde, cual)
+			var ve := String(Historia.RUTAS[_ruta].get("ve", ""))
+			if ve != "":
+				dijo.emit(StringName(Historia.RUTAS[_ruta]["personaje"]), ve)
 
 
 func _vigilar_paso_snowgrave() -> void:
@@ -376,6 +520,8 @@ func _vigilar_paso_snowgrave() -> void:
 				_anillo.queue_free()
 				if _ruta == "cielo":
 					dijo.emit(&"dio", "El hueso de DIO. Con esto, el cielo ya no está tan lejos.")
+				elif Historia.RUTAS[_ruta].has("toma"):
+					dijo.emit(StringName(Historia.RUTAS[_ruta]["personaje"]), String(Historia.RUTAS[_ruta]["toma"]))
 				else:
 					dijo.emit(&"noelle", "Un anillo de espinas... Duele. Pero el frío... el frío se siente bien.")
 
@@ -401,6 +547,15 @@ func _paso_al_caer(b: Player, asesino: int = 0) -> void:
 			var p := jugador()
 			if p == null or asesino != p.peer_id:
 				_paso_ok = false
+		"jefe_ulti":
+			# EL JEFE, CON LA DEFINITIVA: el golpe final tiene que ser del jugador y llegar
+			# mientras la definitiva sigue pegando (el dominio dura mas de tres segundos).
+			if StringName(_datos_de(b).get("id", "")) == StringName(datos.get("jefe_ulti", "")):
+				var p := jugador()
+				if p == null or asesino != p.peer_id or tiempo - _ulti_t > 4.0:
+					_paso_ok = false
+				else:
+					_jefe_ulti_cayo = true
 
 
 ## Al ganar: si el paso se cumplio, se guarda, y el cartel del final lo dice.
@@ -410,6 +565,9 @@ func _cerrar_paso_snowgrave() -> String:
 	var cumplido := _paso > 0 and _paso_ok
 	if condicion == "anillo" or condicion == "objeto":
 		cumplido = cumplido and _anillo_tomado
+	if condicion == "jefe_ulti":
+		# Que haya caido de verdad: un "derrotar hasta" que gana con el jefe en pie no cuenta.
+		cumplido = cumplido and _jefe_ulti_cayo
 	if condicion == "aliado_vivo":
 		var aliado := participantes.get(StringName(datos.get("aliado_vivo", ""))) as Player
 		cumplido = cumplido and aliado != null and not aliado.health.is_dead
@@ -448,6 +606,9 @@ func _revisar_objetivo() -> void:
 				_ganar()
 		"zona":
 			if _zona_t >= float(objetivo.get("segundos", 30.0)):
+				_ganar()
+		"recolectar":
+			if not _juntables.is_empty() and _juntados >= _juntables.size():
 				_ganar()
 
 
@@ -543,6 +704,8 @@ func texto_objetivo() -> String:
 			t += "   ·   %d s" % maxi(0, int(ceil(float(objetivo.get("segundos", 30.0)) - tiempo)))
 		"zona":
 			t += "   ·   %d / %d s" % [int(_zona_t), int(objetivo.get("segundos", 30.0))]
+		"recolectar":
+			t += "   ·   %d / %d" % [_juntados, int(objetivo.get("cantidad", 4))]
 	var limite := float(objetivo.get("limite", 0.0))
 	if limite > 0.0:
 		t += "   ·   ⏱ %d s" % maxi(0, int(ceil(limite - tiempo)))
@@ -630,12 +793,21 @@ func _hacer(acciones: Array) -> void:
 				_zona_t = 0.0
 				if objetivo.get("tipo", "") == "zona":
 					_crear_zona()
+				if objetivo.get("tipo", "") == "recolectar":
+					_crear_juntables()
 				if is_instance_valid(hud) and hud.has_method("anunciar"):
 					hud.anunciar(String(objetivo.get("texto", "")).to_upper(), 2.2)
 			"cinematica":
 				await _escena(a[1], true)
 				if not terminada:
 					Arena.set_bots_active(true)
+			"lluvia":
+				_lluvia_tipo = String(a[1])
+				_lluvia_hasta = (tiempo + float(a[2])) if a.size() > 2 and float(a[2]) > 0.0 else 0.0
+				_lluvia_cada = float(a[3]) if a.size() > 3 else 1.2
+				_lluvia_prox = 0.6
+			"parar_lluvia":
+				_lluvia_tipo = ""
 			"ganar":
 				_ganar()
 			"perder":
@@ -763,7 +935,16 @@ func _ganar() -> void:
 			if aura != null:
 				aura.queue_free()
 	_fuera.clear()
+	_lluvia_tipo = ""
+	for cosa: Node3D in _juntables:
+		if is_instance_valid(cosa):
+			cosa.queue_free()
 	var frio := _cerrar_paso_snowgrave()
+	# EL PREMIO DEL CAPITULO: un personaje que se queda en la Arena (Sukuna, al final de la
+	# parte 8). Lo guarda Progreso.completar_capitulo; aca solo se avisa.
+	var premio := StringName(datos.get("desbloquea", ""))
+	if premio != &"" and CharacterDB.has_character(premio) and not Progreso.puede_usar_personaje(premio):
+		frio += "\n★ %s se quedó en la Arena: ya lo podés elegir." % CharacterDB.get_character(premio).display_name.to_upper()
 	await _escena(datos.get("outro", []))
 	Modos.terminar_historia(true, "¡%s COMPLETADO!" % Historia.titulo_capitulo(capitulo),
 		String(datos.get("titulo", "")) + frio)

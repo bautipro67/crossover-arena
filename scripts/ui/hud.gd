@@ -91,6 +91,8 @@ var _respawn_left: float = 0.0
 
 func _ready() -> void:
 	layer = 10
+	# Para que la escena de una definitiva (EscenaUlti) lo pueda esconder mientras dura.
+	add_to_group(&"hud")
 	_build()
 
 

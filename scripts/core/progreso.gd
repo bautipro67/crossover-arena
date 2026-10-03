@@ -340,6 +340,11 @@ func ruta_abierta(ruta: String) -> bool:
 
 func completar_capitulo(i: int) -> void:
 	historia[str(i)] = true
+	# EL PREMIO DEL CAPITULO: Sukuna se queda en la Arena al terminar la parte 8 (que pide
+	# la 7). Es la unica forma de ganarlo.
+	var premio := StringName(Historia.capitulo(i).get("desbloquea", ""))
+	if premio != &"":
+		personajes[String(premio)] = true
 	cambio.emit()
 	guardar()
 

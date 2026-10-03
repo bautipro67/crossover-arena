@@ -118,36 +118,54 @@ gente.
    rival, y la Fatality: se saca la máscara y escupe fuego por la calavera.
    Katana · Lanza · Fuego del Infierno · ALIENTO DEL INFIERNO
 
-💀 SANS — Undertale  (NUEVO, gratis)
+💀 SANS — Undertale  (gratis)
    Bajito, con la menor vida del juego y todo a distancia: huesos que vuelan, una fila de
    huesos que sale del piso, el alma azul que te deja pesado, y tres Gaster Blaster que
    disparan al mismo punto.
    Hueso · Huesos del Piso · Alma Azul · GASTER BLASTER
 
-🍥 NARUTO — Naruto Shippuden  (NUEVO, gratis)
+🍥 NARUTO — Naruto Shippuden  (gratis)
    ¡De veras! Clones de sombra que corren a pegar, el Rasengan que se estampa en el
    primero que alcanza, y el Rasen-Shuriken que revienta en un área enorme.
    Taijutsu · Kage Bunshin · Rasengan · RASEN-SHURIKEN
 
-👒 LUFFY — One Piece  (NUEVO, gratis)
+👒 LUFFY — One Piece  (gratis)
    Goma: el golpe de más alcance, la lluvia de piñas del Gatling, el Rocket que lo tira
    encima del rival, y el Gear Fifth: los puños se vuelven gigantes, y todo llega más
    lejos, pega más ancho y manda a volar como en un dibujo animado.
    Gomu Gomu no Pistol · Gatling · Rocket · GEAR FIFTH
 
-🕷 SPIDER-MAN — Marvel  (NUEVO, gratis)
+🕷 SPIDER-MAN — Marvel  (gratis)
    El más ágil: telarañas que te dejan pegoteado, el balanceo para entrar o salir, y la
    Red Total, que le pega a todos los que ve. Y el SENTIDO ARÁCNIDO: el primer golpe que
    le llega lo esquiva solo, con un salto al costado (vuelve cada 8 segundos). El traje
    ahora tiene la telaraña completa.
    Golpe Arácnido · Telaraña · Balanceo · RED TOTAL
 
-♾ GOJO — Jujutsu Kaisen  (NUEVO, se gana completando el pase pro de la Temporada 3)
+♾ GOJO — Jujutsu Kaisen  (gratis desde que terminó la Temporada 3)
    El Azul atrae a todos a un punto, el Rojo los manda lejos, y el Púrpura —una esfera
    enorme— atraviesa todo lo que tiene adelante.
    Golpe · Azul · Rojo · PÚRPURA
 
-═══ MODO HISTORIA — SEIS PARTES, SESENTA CAPÍTULOS (Y DOS RUTAS SECRETAS) ═══
+👊 SAITAMA — One Punch Man  (NUEVO, gratis)
+   Un héroe por diversión. Golpes normales —muchos, uno atrás del otro—, saltos laterales
+   tan rápidos que nada lo toca mientras salta, y el GOLPE SERIO: echa el puño atrás y
+   suelta una onda que barre toda la línea y manda a volar a los que agarra.
+   Golpe Normal · Golpes Normales Consecutivos · Saltos Laterales Serios · GOLPE SERIO
+
+👹 SUKUNA — Jujutsu Kaisen  (NUEVO, se gana terminando la parte 8 de la historia)
+   El Rey de las Maldiciones. Zarpazos de cerca, Desmantelar —tres cortes que vuelan y
+   atraviesan—, la flecha de fuego de Fuga, y la EXPANSIÓN DE DOMINIO: detrás de él sube
+   su santuario, y todo lo que quede adentro del círculo recibe cortes sin parar.
+   Partir · Desmantelar · Fuga · SANTUARIO MALÉVOLO
+
+LAS DEFINITIVAS CON ESCENA (NUEVO): cuando Saitama carga el Golpe Serio o Sukuna abre su
+dominio, el que la tira ve una escena propia —la cámara se va a su cara, aparecen las
+barras de cine y el nombre de la técnica, y al soltar se ve el golpe desde lejos—. Los
+demás no pierden su cámara: ven lo mismo desde donde están parados, el viento alrededor
+del puño y el templo que sube del piso.
+
+═══ MODO HISTORIA — OCHO PARTES, OCHENTA CAPÍTULOS (Y CUATRO RUTAS SECRETAS) ═══
 
 PARTE 1: LA GRIETA. Un experimento de Rick rompe la pared entre los mundos, y todo lo que
 cae por la grieta termina en la Arena: un coliseo entre mundos que vive de las peleas.
@@ -183,11 +201,30 @@ Y ESCONDIDA EN LA PARTE 5 HAY UNA RUTA SECRETA. Nadie te la va a decir de frente
 hacer ciertas cosas, con Noelle, de cierta manera. Sans sabe algo. Si lo que hiciste
 cuenta, el final del capítulo te lo avisa.
 
-PARTE 6: EL DIARIO DE DIO (NUEVA). DIO se escapa del Inframundo con un diario: el plan
-para llegar al "cielo". Scorpion lo persigue, Thanos vuelve a cerrar la grieta, y en el
-núcleo de la Arena lo esperan Noelle, Rick y Mob. Tres capítulos se juegan con DIO... y
-si seguís su diario al pie de la letra, se abre otra ruta secreta. Se abre al terminar
-la parte 5.
+PARTE 6: EL DIARIO DE DIO. DIO se escapa del Inframundo con un diario: el plan para
+llegar al "cielo". Scorpion lo persigue, Thanos vuelve a cerrar la grieta, y en el núcleo
+de la Arena lo esperan Noelle, Rick y Mob. Tres capítulos se juegan con DIO... y si
+seguís su diario al pie de la letra, se abre otra ruta secreta. Se abre al terminar la
+parte 5.
+
+PARTE 7: EL HÉROE POR DIVERSIÓN (NUEVA). Saitama vuelve del supermercado y la grieta se
+lo traga: la Arena le copió la Ciudad Z entera. Por la misma grieta entran los dedos del
+Rey de las Maldiciones, y Gojo los reconoce. Los ecos se los comen... y uno se vuelve su
+recipiente. Se abre al terminar la parte 6.
+
+PARTE 8: EL REY DE LAS MALDICIONES (NUEVA). Sukuna convierte la Arena entera en su
+santuario: el cielo rojo y los tajos cayendo del aire. Gojo lo enfrenta. Saitama llega
+caminando, con las manos en los bolsillos. Terminala y SUKUNA SE QUEDA EN LA ARENA: es la
+única forma de ganarlo.
+
+Y EN LAS DOS HAY OTRA RUTA SECRETA: una se juega con Saitama, la otra con Gojo. Lo que
+hay que hacer no lo dice nadie; el final de cada capítulo te avisa si cuenta.
+
+PELEAS DISTINTAS (NUEVO). Juntar las bolsas del supermercado o los dedos malditos con
+ecos encima; capítulos donde cada golpe de Saitama mata pero los ecos no paran de llegar
+y corre el reloj; lluvias de meteoritos y de tajos que avisan con una sombra o un círculo
+rojo; cuidar a alguien que se quedó dormido; aguantar en la fila del supermercado; jefes
+que abren su dominio a mitad de pelea.
 
 DIFICULTAD. Fácil, Normal o Difícil, y se cambia cuando quieras desde la pantalla
 de capítulos. Fácil paga la mitad de monedas y experiencia; Difícil, un 50% más. Y en
@@ -236,25 +273,33 @@ el servidor los va rotando):
   · El Inframundo — obsidiana, grietas de lava, volcanes y cadenas.
   · El Vacío Infinito — lo que se abre en el centro de la Arena: negro y lleno de estrellas.
   · El Núcleo — el cristal del corazón de la Arena, con las islas colgando dadas vuelta.
-  · Y dos más que se abren con las rutas secretas.
+  · Ciudad Z (NUEVO) — las calles vacías donde vive Saitama, un día de sol, con los
+    edificios y los carteles.
+  · El Santuario Malévolo (NUEVO) — el dominio de Sukuna: cielo rojo, montañas de
+    cráneos, torii negros y el templo gigante al fondo.
+  · Y cuatro más que se abren con las rutas secretas.
 
 El trazado es el mismo en todos —es el que está medido para que ningún personaje gane
 por el mapa—; lo que cambia es todo lo que se ve.
 
-═══ TEMPORADA 3: SIN LÍMITES (NUEVA) ═══
+═══ TEMPORADA 4: HÉROES Y MALDICIONES (NUEVA) ═══
 
 Jugar da experiencia y monedas: subís de nivel (del 1 al 60) y avanzás los 30 escalones
 del pase, con skins, monedas y experiencia de premio. El pase pro se desbloquea con
 monedas que se ganan peleando, fuera de la sala de práctica.
 
-Terminó la Temporada 2, y MOB, que era su premio, ahora es de todos (como Goku con la 1).
-Lo pendiente de las temporadas anteriores se cobra solo al entrar.
+Terminó la Temporada 3, y GOJO, que era su premio, ahora es de todos (como Goku con la 1
+y Mob con la 2). Lo pendiente de las temporadas anteriores se cobra solo al entrar.
 
-El último escalón del pase pro de la 3 es GOJO: no se vende ni sale de otro lado. Los
-escalones también se compran, a 200 monedas cada uno: lo que se gana en el tiempo que
-tarda subirlo jugando.
+Esta temporada llegan dos: SAITAMA, gratis desde el primer día, y SUKUNA, que no se vende
+ni está en el pase: se gana terminando la parte 8 de la historia. El pase trae las skins
+de Saitama —el jersey de entrenar, el oficinista con pelo y traje, y en el último escalón
+del pro, Saitama con el traje roto después de pelear con Boros—, y la tienda las de
+Sukuna: el uniforme carmesí, el kimono de Shinjuku en el cuerpo de Megumi y su verdadera
+forma de la era Heian, con cuatro brazos y dos caras. Los escalones también se compran, a
+200 monedas cada uno: lo que se gana en el tiempo que tarda subirlo jugando.
 
-75 skins entre el pase y la tienda, 22 nuevas en esta temporada. Cada una cambia el
+81 skins entre el pase y la tienda. Cada una cambia el
 modelo con cosas que son del original: el Ultra Instinto sin el gi, Pickle Rick con la
 armadura de ratas, el Madara del Diez Colas con sus esferas y el Rinne Sharingan, los
 Gaster Blasters de Sans, el manto Hokage, el abrigo de capitán de Luffy, el Iron Spider con
@@ -311,7 +356,7 @@ en pantalla y reintenta solo. A partir de ahí entra al instante.
 
 ═══ HECHO POR CÓDIGO ═══
 
-Los 16 personajes están modelados uno por uno en Blender, también por código: cada uno
+Los 18 personajes están modelados uno por uno en Blender, también por código: cada uno
 es un script que esculpe el cuerpo, la ropa, el pelo y los detalles —la telaraña de
 Spider-Man, las placas de la armadura de Madara, la trama del sombrero de Luffy— y lo
 exporta con su esqueleto. La arena, los efectos, las caras y la música se generan al
@@ -329,6 +374,8 @@ Dio Brando es de JoJo's Bizarre Adventure, creación de Hirohiko Araki (Shueisha
 Rick Sanchez es de Rick and Morty, creación de Justin Roiland y Dan Harmon (Adult Swim).
 Sonic es de Sonic the Hedgehog, de SEGA.
 Goku es de Dragon Ball, creación de Akira Toriyama (Bird Studio / Shueisha, Toei Animation).
+Saitama es de One Punch Man, creación de ONE y Yusuke Murata (Shueisha).
+Gojo y Sukuna son de Jujutsu Kaisen, creación de Gege Akutami (Shueisha).
 Los clips de voz y sonido pertenecen a sus respectivos dueños.
 
 Este juego no se vende, no acepta donaciones y no tiene publicidad. Si alguno de los

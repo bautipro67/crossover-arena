@@ -350,6 +350,25 @@ func _habilidad(id: StringName, habilidad: StringName) -> void:
 			await _espera(0.6)
 			FX.spawn_time_stop(a, a.global_position, ZaWarudo.RADIUS)
 			FX.camera_shake(1.2)
+		&"golpe_serio":
+			# El puño atras con el viento alrededor, y la onda.
+			a.visual.actuar(&"golpe_serio", 1.0)
+			var carga := FX.spawn_carga_golpe_serio(a, 1.0)
+			await _espera(1.0)
+			if is_instance_valid(carga):
+				carga.queue_free()
+			a.visual.actuar(&"release", 0.8)
+			var rumbo := GolpeSerio.rumbo_de(dir)
+			FX.spawn_golpe_serio(a, origen, rumbo, GolpeSerio.largo_hasta_pared(a, origen, rumbo))
+		&"santuario":
+			# El sello de Enma con el templo subiendo, y el dominio abierto (sin daño: es
+			# cosmetico, como todo lo de una escena).
+			a.visual.actuar(&"santuario", 1.3)
+			var templo := FX.spawn_santuario_alzandose(a, 1.2)
+			await _espera(1.3)
+			if is_instance_valid(templo):
+				templo.queue_free()
+			SantuarioMalevolo.abrir(a, true)
 		_:
 			a.visual.actuar(&"release", 0.6)
 			FX.play_ability_cosmetic(a, habilidad, origen, dir)

@@ -160,6 +160,69 @@ const LISTA: Array[Dictionary] = [
 		"particulas": {"tipo": "chispas_doradas", "color": Color(1.0, 0.90, 0.55)},
 		"decorado": "nubes", "acento": Color(1.0, 0.82, 0.35), "acento2": Color(0.95, 0.95, 1.0),
 	},
+	# --- Temporada 4 ---
+	{
+		"id": &"ciudad_z", "nombre": "Ciudad Z", "lugar": "Las calles vacias donde vive Saitama, un dia de sol",
+		"cielo": {"arriba": Color(0.22, 0.46, 0.86), "horizonte": Color(0.78, 0.86, 0.95),
+			"suelo": Color(0.30, 0.30, 0.32), "energia": 1.1},
+		"niebla": [Color(0.70, 0.78, 0.90), 0.0030], "ambiente": 0.40,
+		"sol": [Color(1.0, 0.96, 0.88), 1.15, Vector3(-50.0, 30.0, 0.0)], "relleno": [Color(0.60, 0.75, 1.0), 0.40],
+		"luces": {"centro": Color(1.0, 0.92, 0.70), "calida": Color(1.0, 0.85, 0.55), "fria": Color(0.60, 0.80, 1.0), "energia": 5.5},
+		"piso": {"estilo": "losas", "a": Color(0.36, 0.36, 0.38), "b": Color(0.42, 0.42, 0.44), "marca": Color(1.0, 0.86, 0.25)},
+		"pared": {"estilo": "ciudad", "color": Color(0.62, 0.62, 0.64), "trim": Color(1.0, 0.92, 0.70)},
+		"cobertura": {"estilo": "ruina", "calida": Color(0.60, 0.58, 0.55), "fria": Color(0.50, 0.52, 0.56),
+			"tope": Color(0.70, 0.70, 0.70), "detalle": Color(0.35, 0.34, 0.33)},
+		"pilar": {"estilo": "columna", "color": Color(0.70, 0.70, 0.72), "detalle": Color(1.0, 0.86, 0.25)},
+		"particulas": {"tipo": "polvo", "color": Color(1.0, 0.95, 0.85)},
+		"decorado": "ciudad", "acento": Color(0.90, 0.15, 0.18), "acento2": Color(1.0, 0.86, 0.25),
+	},
+	{
+		"id": &"luna", "nombre": "La Luna", "lugar": "Donde termino la pelea con el señor del universo",
+		"secreto": "heroe",
+		"cielo": {"arriba": Color(0.0, 0.0, 0.02), "horizonte": Color(0.05, 0.05, 0.09),
+			"suelo": Color(0.02, 0.02, 0.03), "energia": 0.7},
+		"niebla": [Color(0.10, 0.10, 0.14), 0.0016], "ambiente": 0.36, "ambiente_color": Color(0.60, 0.65, 0.80),
+		"sol": [Color(1.0, 0.98, 0.95), 1.25, Vector3(-30.0, 50.0, 0.0)], "relleno": [Color(0.40, 0.55, 1.0), 0.35],
+		"luces": {"centro": Color(1.0, 0.95, 0.85), "calida": Color(1.0, 0.90, 0.70), "fria": Color(0.55, 0.70, 1.0), "energia": 5.0},
+		"piso": {"estilo": "roca", "a": Color(0.50, 0.50, 0.52), "b": Color(0.42, 0.42, 0.45), "marca": Color(1.0, 0.86, 0.25)},
+		"pared": {"estilo": "caverna", "color": Color(0.44, 0.44, 0.47), "trim": Color(1.0, 0.86, 0.25)},
+		"cobertura": {"estilo": "cripta", "calida": Color(0.52, 0.52, 0.54), "fria": Color(0.44, 0.45, 0.50),
+			"tope": Color(0.60, 0.60, 0.62), "detalle": Color(1.0, 0.86, 0.25)},
+		"pilar": {"estilo": "estalagmita", "color": Color(0.48, 0.48, 0.50), "detalle": Color(1.0, 0.86, 0.25)},
+		"particulas": {"tipo": "polvo", "color": Color(0.85, 0.85, 0.90)},
+		"decorado": "luna", "acento": Color(1.0, 0.86, 0.25), "acento2": Color(0.30, 0.55, 1.0),
+	},
+	{
+		"id": &"santuario", "nombre": "El Santuario Malevolo", "lugar": "Adentro del dominio del Rey de las Maldiciones",
+		"cielo": {"arriba": Color(0.06, 0.0, 0.01), "horizonte": Color(0.45, 0.04, 0.06),
+			"suelo": Color(0.04, 0.0, 0.0), "energia": 1.0},
+		"niebla": [Color(0.32, 0.04, 0.06), 0.0060], "ambiente": 0.40, "ambiente_color": Color(0.85, 0.45, 0.45),
+		"sol": [Color(1.0, 0.60, 0.55), 1.0, Vector3(-40.0, 160.0, 0.0)], "relleno": [Color(1.0, 0.20, 0.20), 0.45],
+		"luces": {"centro": Color(1.0, 0.25, 0.20), "calida": Color(1.0, 0.35, 0.20), "fria": Color(0.80, 0.10, 0.20), "energia": 8.0},
+		"piso": {"estilo": "roca", "a": Color(0.20, 0.13, 0.13), "b": Color(0.25, 0.16, 0.15), "marca": Color(1.0, 0.20, 0.22)},
+		"pared": {"estilo": "volcan", "color": Color(0.14, 0.08, 0.08), "trim": Color(1.0, 0.20, 0.22)},
+		"cobertura": {"estilo": "obsidiana", "calida": Color(0.24, 0.12, 0.12), "fria": Color(0.18, 0.12, 0.14),
+			"tope": Color(0.80, 0.76, 0.66), "detalle": Color(1.0, 0.20, 0.22)},
+		"pilar": {"estilo": "espina", "color": Color(0.84, 0.80, 0.70), "detalle": Color(1.0, 0.20, 0.22)},
+		"particulas": {"tipo": "brasas", "color": Color(1.0, 0.25, 0.25)},
+		"decorado": "santuario", "acento": Color(1.0, 0.20, 0.22), "acento2": Color(0.86, 0.82, 0.72),
+	},
+	{
+		"id": &"shinjuku", "nombre": "Shinjuku", "lugar": "La ciudad en ruinas donde pelearon los mas fuertes",
+		"secreto": "fuerte",
+		"cielo": {"arriba": Color(0.16, 0.18, 0.28), "horizonte": Color(0.85, 0.52, 0.38),
+			"suelo": Color(0.10, 0.09, 0.10), "energia": 1.0},
+		"niebla": [Color(0.55, 0.42, 0.40), 0.0050], "ambiente": 0.38,
+		"sol": [Color(1.0, 0.75, 0.55), 1.0, Vector3(-18.0, 70.0, 0.0)], "relleno": [Color(0.55, 0.60, 1.0), 0.40],
+		"luces": {"centro": Color(0.60, 0.80, 1.0), "calida": Color(1.0, 0.65, 0.40), "fria": Color(0.50, 0.65, 1.0), "energia": 7.0},
+		"piso": {"estilo": "losas", "a": Color(0.30, 0.29, 0.30), "b": Color(0.36, 0.34, 0.34), "marca": Color(0.55, 0.80, 1.0)},
+		"pared": {"estilo": "ciudad", "color": Color(0.42, 0.40, 0.40), "trim": Color(1.0, 0.70, 0.45)},
+		"cobertura": {"estilo": "ruina", "calida": Color(0.46, 0.42, 0.40), "fria": Color(0.38, 0.38, 0.42),
+			"tope": Color(0.52, 0.50, 0.48), "detalle": Color(0.25, 0.23, 0.22)},
+		"pilar": {"estilo": "columna", "color": Color(0.50, 0.48, 0.48), "detalle": Color(0.55, 0.80, 1.0)},
+		"particulas": {"tipo": "polvo", "color": Color(0.80, 0.70, 0.65)},
+		"decorado": "ciudad", "ruinas": true, "acento": Color(0.55, 0.80, 1.0), "acento2": Color(0.95, 0.25, 0.25),
+	},
 ]
 
 
@@ -220,6 +283,10 @@ static func de_capitulo(i: int) -> StringName:
 		return &"helada"
 	if ruta == "cielo":
 		return &"cielo"
+	if ruta == "heroe":
+		return &"luna"
+	if ruta == "fuerte":
+		return &"shinjuku"
 	if titulo.begins_with("PARTE 2"):
 		return &"torre"
 	if titulo.begins_with("PARTE 3"):
@@ -232,4 +299,10 @@ static func de_capitulo(i: int) -> StringName:
 		return &"vacio" if i >= Historia.primero_de(parte) + 8 else &"coliseo"
 	if titulo.begins_with("PARTE 6"):
 		return &"nucleo"
+	if titulo.begins_with("PARTE 7"):
+		# Saitama llega a la Ciudad Z de la Arena; desde que Sukuna despierta (el capitulo
+		# 9 de la parte), el dominio empieza a tragarse todo.
+		return &"santuario" if i >= Historia.primero_de(parte) + 8 else &"ciudad_z"
+	if titulo.begins_with("PARTE 8"):
+		return &"santuario"
 	return &"coliseo"

@@ -229,7 +229,10 @@ func _refrescar() -> void:
 
 		var titulo := personaje.display_name.to_upper()
 		if not Progreso.puede_usar_personaje(cid):
-			titulo += "   🔒 se gana completando el pase pro de la temporada %d" % Pase.TEMPORADA
+			if personaje.como_se_gana != "":
+				titulo += "   🔒 se gana %s" % personaje.como_se_gana
+			else:
+				titulo += "   🔒 se gana completando el pase pro de la temporada %d" % Pase.TEMPORADA
 		_grilla.add_child(UITheme.make_label(titulo, 17, UITheme.ACCENT))
 
 		var fila := HFlowContainer.new()

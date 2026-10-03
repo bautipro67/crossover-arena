@@ -73,6 +73,9 @@ El nombre tiene que ser **exactamente** el de la tabla, con extensión `.ogg`
 | `sentido_aracnido`   | Spider-Man | el sentido arácnido (sin archivo: `dash`)       |
 | `goma`               | Luffy      | el brazo de goma                                |
 | `gear_fifth`         | Luffy      | el Gear Fifth (sin archivo: `goma`)             |
+| `golpe_serio`        | Saitama    | la onda del Golpe Serio (sin archivo: `explosion_psiquica`) |
+| `corte`              | Sukuna     | los tajos de Desmantelar y del dominio (sin archivo: `knife`) |
+| `dominio`            | Sukuna     | el santuario que sube (sin archivo: `susanoo`)  |
 
 ## Modos de juego
 
@@ -112,6 +115,13 @@ El nombre tiene que ser **exactamente** el de la tabla, con extensión `.ogg`
 | `voz_gear_fifth`    | Luffy      | ¡GEAR FIFTH!                   |
 | `voz_vecino`        | Spider-Man | ¡TU AMIGABLE VECINO!           |
 | `voz_purpura`       | Gojo       | ¡PÚRPURA!                      |
+| `voz_consecutivos`  | Saitama    | Golpes normales consecutivos.  |
+| `voz_saltos_serios` | Saitama    | Saltos laterales serios.       |
+| `voz_serie_seria`   | Saitama    | Serie seria... (al cargar)     |
+| `voz_golpe_serio`   | Saitama    | ¡GOLPE SERIO!                  |
+| `voz_fuga`          | Sukuna     | Fuga.                          |
+| `voz_expansion`     | Sukuna     | Expansión de dominio... (al cargar) |
+| `voz_santuario`     | Sukuna     | Santuario Malévolo.            |
 
 ## Música
 

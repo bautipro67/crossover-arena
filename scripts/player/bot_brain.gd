@@ -625,6 +625,26 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 			# Caen sobre el que apunta, hasta 36 m, pero tardan en bajar: de muy lejos da
 			# tiempo de sobra a salirse de la sombra.
 			return dist < 22.0 and _a_la_vista
+		&"golpes_consecutivos":
+			# El aire de las piñas llega a seis metros, en una franja angosta.
+			return dist < 5.6 and _a_la_vista
+		&"saltos_serios":
+			# Tres saltos de unos cuatro metros, unos diez hacia adelante: para llegar
+			# encima, o para salir de una definitiva (no lo toca nada mientras salta).
+			return dist > 3.0 and dist < 13.0
+		&"golpe_serio":
+			# Una onda recta de 34 m que las paredes cortan.
+			return dist < 22.0 and _a_la_vista
+		&"desmantelar":
+			# Tres cortes que vuelan veinte metros.
+			return dist < 17.0 and _a_la_vista
+		&"fuga":
+			# Revienta en casi cuatro metros: tirada encima, la come el que la tiro.
+			return dist > 4.5 and dist < 20.0 and _a_la_vista
+		&"santuario":
+			# El dominio mide doce metros: abrirlo con el rival bien adentro, que no le
+			# alcance con dar dos pasos para salir.
+			return dist < 7.5
 		_:
 			return dist <= MELEE_RANGE + 0.6
 

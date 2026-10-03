@@ -71,6 +71,7 @@ func _run() -> void:
 	await _test_thanos(player, arena)
 	await _test_scorpion(player, arena)
 	await _test_temporada_3(player, arena)
+	await _test_temporada_4(player, arena)
 	_test_lugar_libre(arena)
 	await _test_modos_nuevos(player, arena)
 	await _test_modos_juego(player, arena)
@@ -1962,8 +1963,8 @@ func _test_mob(player: Player, arena: Arena) -> void:
 	_check(data != null and not data.requiere_desbloqueo,
 		"Mob es de todos desde que termino la temporada 2, como Goku con la 1")
 	var gojo := CharacterDB.get_character(&"gojo")
-	_check(gojo != null and gojo.requiere_desbloqueo and Pase.recompensa(Pase.ESCALONES, true) == [Pase.PERSONAJE, "gojo"],
-		"Gojo NO viene de fabrica: es el ultimo escalon del pase pro de la temporada 3")
+	_check(gojo != null and not gojo.requiere_desbloqueo and Pase.recompensa(Pase.ESCALONES, true)[0] == Pase.SKIN,
+		"Gojo, el premio de la temporada 3, ya es de todos; el pase de la 4 termina en una skin")
 	# ES UN PREMIO Y NO PUEDE SER EL MAS FUERTE. Un personaje que se gana jugando y que
 	# ademas le gana a los otros convertiria el pase en un requisito para competir.
 	var vida_max := 0.0
@@ -2391,8 +2392,8 @@ func _test_temporada_3(player: Player, arena: Arena) -> void:
 		and not CharacterDB.get_character(&"naruto").requiere_desbloqueo
 		and not CharacterDB.get_character(&"luffy").requiere_desbloqueo
 		and not CharacterDB.get_character(&"spiderman").requiere_desbloqueo
-		and CharacterDB.get_character(&"gojo").requiere_desbloqueo,
-		"Sans, Naruto, Luffy y Spider-Man son gratis; Gojo es del pase")
+		and not CharacterDB.get_character(&"gojo").requiere_desbloqueo,
+		"Sans, Naruto, Luffy y Spider-Man son gratis, y Gojo (que era del pase) tambien")
 
 	var puesto := arena.find_clear_spot(Vector3(30.0, 0.6, -30.0), 1.5)
 	player.respawn_at(puesto, 0.0)
@@ -2522,6 +2523,153 @@ func _test_temporada_3(player: Player, arena: Arena) -> void:
 			r[0], vida_detras - detras.health.current])
 	r[1].queue_free()
 	detras.queue_free()
+
+	player.aim_override = Vector3.ZERO
+	player.status.clear_all()
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
+# ------------------------------------------------------------- Temporada 4
+
+## SAITAMA Y SUKUNA: el kit de cada uno, gratis el basico, la definitiva con medidor, cada
+## habilidad pegando de verdad a la distancia que dice, y LA ESCENA DE LA DEFINITIVA: la
+## camara propia solo en la pantalla del que la tira, y de vuelta a la de siempre al terminar.
+func _test_temporada_4(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	var kits := {
+		&"saitama": [GolpeNormal, GolpesConsecutivos, SaltosSerios, GolpeSerio],
+		&"sukuna": [Partir, Desmantelar, Fuga, SantuarioMalevolo],
+	}
+	var mal := ""
+	for pj: StringName in kits:
+		var data := CharacterDB.get_character(pj)
+		var kit := CharacterDB.build_abilities_for(pj)
+		var clases: Array = kits[pj]
+		if data == null or data.id != pj or kit.size() != 4:
+			mal += "%s:kit " % pj
+			continue
+		for k: int in range(4):
+			if not is_instance_of(kit[k], clases[k]):
+				mal += "%s:%d " % [pj, k]
+		if not is_zero_approx(kit[0].stamina_cost) or not kit[3].requires_charge or kit[3].stamina_cost != 100.0 \
+				or kit[3].channel_time <= 0.0:
+			mal += "%s:costos " % pj
+		if SkinDB.de_personaje(pj).size() < 3:
+			mal += "%s:skins " % pj
+		if not ModeloPersonaje.existe(pj):
+			mal += "%s:modelo " % pj
+	_check(mal.is_empty(), "Saitama y Sukuna tienen su kit, basico gratis, definitiva canalizada con medidor, tres skins y modelo %s" % mal)
+	_check(not CharacterDB.get_character(&"saitama").requiere_desbloqueo
+		and CharacterDB.get_character(&"sukuna").requiere_desbloqueo
+		and CharacterDB.get_character(&"sukuna").como_se_gana != ""
+		and not CharacterDB.get_character(&"gojo").requiere_desbloqueo,
+		"Saitama es gratis, Sukuna se gana en la historia, y Gojo ya es de todos")
+	_check(EscenaUlti.tiene(&"golpe_serio") and EscenaUlti.tiene(&"santuario") and not EscenaUlti.tiene(&"kamehameha"),
+		"las dos definitivas nuevas tienen escena propia (y las demas no)")
+
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, 30.0), 1.5)
+	player.respawn_at(puesto, 0.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var rumbo := _carril_libre(player, puesto, 24.0)
+
+	# --- SAITAMA ---
+	player.setup_character(CharacterDB.get_character(&"saitama"))
+	var r := await _probar_habilidad(player, arena, puesto, rumbo, 0, 2.4, 0.3)
+	_check(r[0] >= GolpeNormal.DAMAGE * 0.9, "el golpe normal de Saitama pega (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 2.6,
+		float(GolpesConsecutivos.TICKS) * GolpesConsecutivos.TICK_INTERVAL + 0.3)
+	_check(r[0] >= GolpesConsecutivos.DAMAGE_PER_TICK * float(GolpesConsecutivos.TICKS) * 0.7,
+		"los golpes consecutivos pegan casi todos (%.0f)" % r[0])
+	r[1].queue_free()
+	# Los saltos: mientras salta no lo toca nada, y al caer le pega al que quedo cerca.
+	player.respawn_at(puesto, atan2(-rumbo.x, -rumbo.z))
+	# Donde cae: dos saltos abiertos y el ultimo derecho.
+	var avance := SaltosSerios.SPEED * SaltosSerios.DURACION_SALTO 		* (1.0 + 2.0 * cos(deg_to_rad(SaltosSerios.ABERTURA)))
+	var blanco := _spawn_dummy(arena, puesto + rumbo * (avance - 0.4))
+	blanco.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.health.revive_full()
+	var vida_b := blanco.health.current
+	player.caster.request_use(2)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var en_el_aire := CombatUtils.deal_damage(player, 20.0, -77)
+	await get_tree().create_timer(float(SaltosSerios.SALTOS) * SaltosSerios.DURACION_SALTO + 0.4).timeout
+	_check(is_zero_approx(en_el_aire) and vida_b - blanco.health.current >= SaltosSerios.DAMAGE * 0.9,
+		"en los saltos serios nada lo toca, y al caer le pega al de adelante (%.0f, %.0f)" % [
+			en_el_aire, vida_b - blanco.health.current])
+	blanco.queue_free()
+	# EL GOLPE SERIO, con su escena: mientras carga, la camara es la de la escena; al
+	# terminar, vuelve la del jugador.
+	player.respawn_at(puesto, atan2(-rumbo.x, -rumbo.z))
+	var lejos := _spawn_dummy(arena, puesto + rumbo * 20.0)
+	lejos.health.set_max(3000.0)
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	player.aim_override = rumbo
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.ultimate.current = UltimateCharge.MAX_CHARGE
+	var vida_l := lejos.health.current
+	player.caster.request_use(3)
+	await get_tree().create_timer(0.4).timeout
+	var escena := EscenaUlti.actual
+	var camara_propia := player.camera_pivot.camera
+	_check(is_instance_valid(escena) and not camara_propia.current,
+		"mientras carga el Golpe Serio, la pantalla del que lo tira muestra la escena")
+	await get_tree().create_timer(GolpeSerio.new().channel_time + 0.2).timeout
+	_check(vida_l - lejos.health.current >= GolpeSerio.DAMAGE * 0.9,
+		"el Golpe Serio le llega al que esta a veinte metros (%.0f)" % (vida_l - lejos.health.current))
+	await get_tree().create_timer(EscenaUlti.VUELTA + 1.2).timeout
+	_check(not is_instance_valid(EscenaUlti.actual) and camara_propia.current,
+		"y al terminar la escena, vuelve la camara de siempre")
+	lejos.queue_free()
+	# Un bot que tira la definitiva NO arma escena: es solo para el jugador que la tira.
+	var bot_s := _spawn_dummy(arena, puesto + rumbo * 6.0)
+	bot_s.setup_character(CharacterDB.get_character(&"saitama"))
+	bot_s.visual._on_channel_started(3, 1.3)
+	_check(not is_instance_valid(EscenaUlti.actual) and camara_propia.current,
+		"la escena no se arma en la pantalla de los que la ven tirar")
+	bot_s.visual._on_channel_cancelled(3)
+	bot_s.queue_free()
+
+	# --- SUKUNA ---
+	player.setup_character(CharacterDB.get_character(&"sukuna"))
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 0, 2.4, 0.3)
+	_check(r[0] >= Partir.DAMAGE * 0.9, "el zarpazo de Sukuna pega (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 12.0, 0.7)
+	_check(r[0] >= Desmantelar.DAMAGE * 0.9, "Desmantelar corta al que esta a doce metros (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 2, 10.0, 0.8)
+	_check(r[0] >= Fuga.DAMAGE * 0.9, "la flecha de Fuga revienta sobre el que alcanza (%.0f)" % r[0])
+	r[1].queue_free()
+	var afuera := _spawn_dummy(arena, puesto - rumbo * (SantuarioMalevolo.RADIO + 5.0))
+	afuera.health.set_max(3000.0)
+	var vida_af := afuera.health.current
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, 6.0,
+		SantuarioMalevolo.new().channel_time + SantuarioMalevolo.DURACION + 0.3)
+	_check(r[0] >= SantuarioMalevolo.DAMAGE_INICIAL + SantuarioMalevolo.DAMAGE_CORTE * 4.0
+		and is_equal_approx(afuera.health.current, vida_af),
+		"el Santuario corta sin parar al que quedo adentro (%.0f) y no toca al de afuera" % r[0])
+	r[1].queue_free()
+	afuera.queue_free()
+	await get_tree().create_timer(EscenaUlti.VUELTA + 0.5).timeout
+	_check(not is_instance_valid(EscenaUlti.actual) and camara_propia.current,
+		"y despues del Santuario tambien vuelve la camara de siempre")
 
 	player.aim_override = Vector3.ZERO
 	player.status.clear_all()
@@ -2975,7 +3123,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 344
+const CHEQUEOS_MINIMOS: int = 359
 
 
 func _finish() -> void:

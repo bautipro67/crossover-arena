@@ -200,7 +200,7 @@ static func deal_damage(target: Node, amount: float, source_id: int, feeds_resou
 	if Modos.sin_daño():
 		Modos.golpe_bomba(source_id, target)
 		final_amount = 0.0
-	elif Modos.un_toque():
+	elif Modos.un_toque() or Modos.un_golpe_del_heroe(source_id):
 		final_amount = health.max_health + health.get_shield() + 1.0
 	var was_alive := not health.is_dead
 	health.apply_damage(final_amount, source_id)

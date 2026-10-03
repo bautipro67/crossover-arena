@@ -46,6 +46,9 @@ extends Resource
 ## del pase pro de la temporada 1. Lo que cuenta si ya se lo gano es Progreso, no esto:
 ## esto solo dice que NO viene de fabrica.
 @export var requiere_desbloqueo: bool = false
+## Como se gana, si requiere desbloqueo y NO es del pase (Sukuna, que se gana en la
+## historia). La sala y la tienda lo muestran en el candado; "" = del pase pro.
+@export var como_se_gana: String = ""
 ## Lo que el personaje hace solo, sin tecla (el Sentido Aracnido de Spider-Man). La sala de
 ## espera lo muestra con el kit; "" = no tiene.
 @export var pasiva: String = ""

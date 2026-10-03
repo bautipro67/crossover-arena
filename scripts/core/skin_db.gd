@@ -119,6 +119,7 @@ func _registrar_todas() -> void:
 	_registrar_temporada_1()
 	_registrar_temporada_2()
 	_registrar_temporada_3()
+	_registrar_temporada_4()
 
 
 # ------------------------------------------------------------- Temporada 1
@@ -411,6 +412,40 @@ func _registrar_temporada_3() -> void:
 	]
 	for sk: SkinData in nuevas:
 		sk.temporada = 3
+		_add(sk)
+
+
+func _registrar_temporada_4() -> void:
+	var nuevas: Array[SkinData] = [
+		# --- El pase: las de Saitama, que es el que llega gratis ---
+		_hacer(&"saitama_jersey", &"saitama", "Saitama de Jersey",
+			"El jersey rojo de los días de entrenamiento: cien flexiones, cien abdominales, diez kilómetros.",
+			Color(0.82, 0.16, 0.22), Color(0.95, 0.95, 0.95),
+			Color(0.98, 0.84, 0.72), Color(0.82, 0.16, 0.22), &"rara", 0),
+		_hacer(&"saitama_oficinista", &"saitama", "Saitama Oficinista",
+			"El de antes de ser héroe: pelo negro, traje y corbata, buscando trabajo.",
+			Color(0.12, 0.12, 0.15), Color(0.62, 0.10, 0.12),
+			Color(0.98, 0.84, 0.72), Color(0.12, 0.12, 0.15), &"epica", 0),
+		_hacer(&"saitama_boros", &"saitama", "Saitama contra Boros",
+			"El traje roto después de pelear en serio con el señor del universo.",
+			Color(0.96, 0.80, 0.14), Color(0.86, 0.10, 0.12),
+			Color(0.96, 0.80, 0.70), Color(0.96, 0.80, 0.14), &"legendaria", 0),
+		# --- La tienda: las de Sukuna, para el que se lo gane en la historia ---
+		_hacer(&"sukuna_carmesi", &"sukuna", "Sukuna Carmesí",
+			"El uniforme teñido del rojo de los que se cruzaron con él.",
+			Color(0.55, 0.05, 0.08), Color(0.95, 0.85, 0.80),
+			Color(0.93, 0.80, 0.70), Color(0.20, 0.03, 0.05), &"rara", 900),
+		_hacer(&"sukuna_megumi", &"sukuna", "Sukuna en el Cuerpo de Megumi",
+			"El kimono blanco de Shinjuku, con el pelo negro de su nuevo recipiente.",
+			Color(0.95, 0.94, 0.90), Color(0.06, 0.06, 0.08),
+			Color(0.94, 0.84, 0.76), Color(0.95, 0.94, 0.90), &"epica", 1800),
+		_hacer(&"sukuna_heian", &"sukuna", "Sukuna de la Era Heian",
+			"Su verdadera forma: cuatro brazos, dos caras y una boca en el vientre.",
+			Color(0.96, 0.95, 0.92), Color(0.08, 0.06, 0.08),
+			Color(0.92, 0.78, 0.68), Color(0.96, 0.95, 0.92), &"legendaria", 2600),
+	]
+	for sk: SkinData in nuevas:
+		sk.temporada = 4
 		_add(sk)
 
 
@@ -821,6 +856,34 @@ func _detallar() -> void:
 	_extra(&"spiderman_2099", &"", [&"capa"], {&"capa": Color(0.55, 0.08, 0.10)})
 	_extra(&"gojo_joven", &"sin_venda", [])
 	_extra(&"gojo_dominio", &"sin_venda", [])
+	# --- Temporada 4 ---
+	# Saitama: el jersey es solo color (los guantes y las botas blancas de las zapatillas);
+	# el oficinista y el de Boros cambian el modelo entero.
+	_det(&"saitama_jersey", {&"traje": Color(0.82, 0.16, 0.22), &"guantes": Color(0.95, 0.95, 0.95),
+		&"botas": Color(0.95, 0.95, 0.95), &"cinturon": Color(0.95, 0.95, 0.95), &"capa": Color(0.82, 0.16, 0.22)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.95, 0.35, 0.40, 0.7))
+	_det(&"saitama_oficinista", {&"saco": Color(0.12, 0.12, 0.15), &"corbata": Color(0.62, 0.10, 0.12),
+		&"pelo": Color(0.06, 0.06, 0.07)},
+		&"brillo", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.75, 0.75, 0.80, 0.7))
+	_extra(&"saitama_oficinista", &"oficinista", [])
+	_det(&"saitama_boros", {&"traje": Color(0.96, 0.80, 0.14), &"capa": Color(0.92, 0.90, 0.86),
+		&"guantes": Color(0.80, 0.08, 0.10)},
+		&"", &"chispas", Color(1.0, 0.86, 0.30), Color(0, 0, 0, 0), &"",
+		Color(1.0, 0.86, 0.30, 0.85))
+	_extra(&"saitama_boros", &"rasgado", [])
+	# Sukuna
+	_det(&"sukuna_carmesi", {&"uniforme": Color(0.55, 0.05, 0.08), &"capucha": Color(0.95, 0.85, 0.80),
+		&"tatuajes": Color(0.10, 0.02, 0.03)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.85, 0.12, 0.16, 0.75))
+	_det(&"sukuna_megumi", {&"kimono": Color(0.95, 0.94, 0.90), &"obi": Color(0.06, 0.06, 0.08),
+		&"pelo": Color(0.06, 0.06, 0.08)},
+		&"", &"chispas", Color(0.90, 0.15, 0.20), Color(0, 0, 0, 0), &"", Color(0.90, 0.15, 0.20, 0.8))
+	_extra(&"sukuna_megumi", &"kimono", [])
+	_det(&"sukuna_heian", {&"kimono": Color(0.96, 0.95, 0.92), &"obi": Color(0.08, 0.06, 0.08),
+		&"tatuajes": Color(0.06, 0.04, 0.05), &"ojos": Color(0.95, 0.15, 0.18)},
+		&"", &"chispas", Color(0.95, 0.12, 0.16), Color(0, 0, 0, 0), &"",
+		Color(0.95, 0.12, 0.16, 0.85))
+	_extra(&"sukuna_heian", &"heian", [])
 	# Scorpion
 	_det(&"scorpion_clasico", {&"traje": Color(1.00, 0.84, 0.10), &"mascara": Color(1.00, 0.88, 0.20),
 		&"ropa": Color(0.10, 0.10, 0.10)},
