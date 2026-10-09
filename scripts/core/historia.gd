@@ -58,6 +58,12 @@ extends RefCounted
 ##   Sukuna   el Rey de las Maldiciones. Se rie de todo, desprecia a los debiles, disfruta
 ##            pelear con los fuertes; habla de mil años y de su santuario. Cruel y
 ##            caprichoso: cumple los pactos, pero a su manera.
+##   Tanjiro  llega en la parte 9. Amable y honesto (no sabe mentir), terco, huele lo que
+##            sienten los demas; se da animo solo ("¡vos podes!"), es el hermano mayor y
+##            busca volver con su hermana Nezuko. Le dan pena hasta los demonios.
+##   Kratos   el de Midgard: habla poco y grave, le dice "chico" al que tiene al lado, se
+##            frena aunque pueda terminar la pelea. Carga con lo que fue en Grecia, el
+##            Fantasma de Esparta. "Tenemos que ser mejores". NO SE JUEGA EN LA HISTORIA.
 ##
 ## LA PARTE 2. Cuando Dio apreto el nucleo, se partio: los fragmentos quedaron repartidos
 ## por la Arena y Dio escapo con el mas grande. La Arena, herida, llama a un TORNEO para
@@ -92,6 +98,10 @@ extends RefCounted
 ## tres pasos (todas las bajas, la Prision rota, Sukuna terminado con el Purpura) se abre la
 ## RUTA DEL MAS FUERTE, donde Gojo no cae.
 ##
+## LA PARTE 9. En el bosque de glicinas que crecio en la Arena cae Tanjiro, y por un portal
+## roto llega Kratos. Sin rey, la Arena arma un dios propio con la forma del Fantasma de
+## Esparta. Sin ruta secreta: lo nuevo son las peleas (escolta, recorrido, sellos, cerco).
+##
 ## TODO LO QUE SE DICE ES ORIGINAL. De las obras salen los personajes y las frases que son
 ## su marca, nada mas.
 ##
@@ -115,6 +125,7 @@ const PARTES: Array[Dictionary] = [
 	{"titulo": "★ RUTA DEL HÉROE", "capitulos": 3, "secreta": true, "ruta": "heroe"},
 	{"titulo": "PARTE 8: EL REY DE LAS MALDICIONES", "capitulos": 10},
 	{"titulo": "✧ RUTA DEL MÁS FUERTE", "capitulos": 3, "secreta": true, "ruta": "fuerte"},
+	{"titulo": "PARTE 9: EL CAZADOR DE DIOSES", "capitulos": 10},
 ]
 
 ## LAS RUTAS SECRETAS: quien las juega, cuantos pasos piden y lo que dicen los carteles.
@@ -353,6 +364,7 @@ const ALIVIO: Dictionary = {
 	49: 0.85,  # Sin limites
 	50: 0.80,  # Segui (ruta Snowgrave)
 	52: 0.90,  # Snowgrave
+	101: 0.90,  # Danza del Dios del Fuego (el final de la parte 9: 3 de 6 sin esto)
 }
 
 
@@ -5162,6 +5174,493 @@ static func _armar() -> Array[Dictionary]:
 			["decir", &"gojo", "Llegás tarde, pelado. Como siempre."],
 			["fundido", "negro", 1.2],
 			["titulo", "FIN DE LA RUTA DEL MÁS FUERTE", "El más fuerte siguió siendo el más fuerte"],
+		],
+	})
+
+	# ================================================================ PARTE 9
+	#
+	# EL CAZADOR DE DIOSES. Cuando el santuario de Sukuna se apago, en una punta de la Arena
+	# crecio un bosque de glicinas, y esa noche cayo ahi Tanjiro, oliendo demonios: los ecos
+	# ahora tienen hambre. Por un portal roto llega Kratos persiguiendo a lo mismo. La Arena,
+	# que se quedo sin rey, quiere un DIOS propio, y lo arma con el peor recuerdo del que mas
+	# dioses mato: el Fantasma de Esparta, un eco de Kratos de cuando era pura furia.
+	#
+	# PELEAS QUE NO SE REPITEN (2026-10-08): seguir un rastro contra reloj, escoltar a alguien
+	# que camina, un duelo adentro de un anillo de fuego que se cierra, jefes con sellos que
+	# hay que romper en vez de pegarles, juntar flores con un eco rapido atras, aguantar en una
+	# runa con el fuego encima, oleadas al lado de Kratos, y un final en tres fases. KRATOS NO
+	# SE JUEGA (es el premio del pase pro de la temporada 5): aparece, pelea y habla.
+
+	# ------------------------------------------------------------------ 81
+	c.append({
+		"titulo": "Olor a sangre",
+		"personaje": &"tanjiro",
+		"enemigos": [
+			_eco("p1", &"sonic", Vector2(-5, -12), 22.0, 0.12),
+			_eco("p2", &"spiderman", Vector2(5, -12), 22.0, 0.12),
+		],
+		"objetivo": {"tipo": "recorrido", "radio": 3.0, "limite": 75.0,
+			"puntos": [Vector2(0, -14), Vector2(-14, -24), Vector2(-4, -38), Vector2(12, -30), Vector2(16, -12)],
+			"texto": "Seguí el olor por el bosque"},
+		"eventos": [
+			[["inicio"], [["decir", &"tanjiro", "Sangre... y algo que no es humano. ¡Por acá!"]]],
+			[["tiempo", 25.0], [["decir", &"tanjiro", "¡No me alcanzan! ¡Vamos, Tanjiro, vos podés!"]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p3", &"naruto", Vector2(-7, -14), 22.0, 0.12, false),
+					_eco("p4", &"dio", Vector2(7, -14), 22.0, 0.12, false)]],
+				["decir", &"tanjiro", "Salen de entre los árboles. Huelen a hambre."]]],
+		],
+		"intro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "La noche en que el santuario de Sukuna se apagó, en una punta de la Arena creció un bosque. Nadie lo plantó. Está lleno de glicinas."],
+			["narrar", "Y esa misma noche cayó en él un chico con un haori a cuadros verdes y negros, y una katana negra."],
+			["plano", "cerca", &"tanjiro"],
+			["pose", &"tanjiro", &"pensar", 1.2],
+			["decir", &"tanjiro", "Esta no es la montaña... ¿Dónde está Nezuko? Tengo que volver con ella."],
+			["decir", &"tanjiro", "Pero este olor... Alguien está sangrando. Y lo que lo sigue no es una persona."],
+			["aparecer", &"p1", &"sonic", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"spiderman", Vector2(5, -12), "sombra"],
+		],
+		"outro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["aparecer", &"noelle", &"noelle", Vector2(0, -4), ""],
+			["plano", "dos", &"tanjiro", &"noelle"],
+			["decir", &"noelle", "¡Ah! P-perdón, no te vi... ¿Vos no sos uno de ellos, no?"],
+			["decir", &"tanjiro", "No. Soy Tanjiro Kamado. Estás lastimada: el olor era tuyo."],
+			["decir", &"noelle", "Es solo un raspón... Los ecos me siguieron desde el templo. Antes no hacían esto. Antes no... comían."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 82
+	c.append({
+		"titulo": "Hasta el torii",
+		"personaje": &"tanjiro",
+		"aliados": [
+			{"id": &"noelle", "personaje": &"noelle", "nombre": "Noelle", "vida": 80.0, "daño": 0.3,
+				"pos": Vector2(1.5, 1.5)},
+		],
+		"enemigos": [
+			_eco("p1", &"luffy", Vector2(-6, -14), 24.0, 0.12),
+			_eco("p2", &"goku", Vector2(6, -16), 24.0, 0.12),
+		],
+		"objetivo": {"tipo": "escoltar", "id": &"noelle",
+			"ruta": [Vector2(0, -10), Vector2(-10, -20), Vector2(-6, -32), Vector2(6, -40)],
+			"texto": "Llevá a Noelle hasta el torii"},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "Si alguno se me acerca, me quedo quieta... Perdón, no sé pelear con esta pierna."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p3", &"scorpion", Vector2(-6, -30), 24.0, 0.12, false),
+					_eco("p4", &"mario", Vector2(6, -32), 24.0, 0.12, false)]],
+				["decir", &"tanjiro", "¡Están esperando en el camino! Noelle, quedate atrás mío."]]],
+			[["vida", &"noelle", 0.5], [["decir", &"noelle", "¡Ay! Estoy bien, estoy bien... sigamos."]]],
+		],
+		"intro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["colocar", &"noelle", Vector2(1.5, 1.5), 0.0],
+			["plano", "dos", &"tanjiro", &"noelle"],
+			["decir", &"noelle", "Rick armó un campamento en el torii del fondo. Dice que las glicinas espantan a los ecos."],
+			["decir", &"tanjiro", "Espantan a los demonios. Si estos se les parecen, ahí vamos a estar a salvo."],
+			["decir", &"tanjiro", "Vos caminá. Yo me encargo de que nadie te toque."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "...Gracias. Sos muy amable para alguien que lleva una espada."],
+			["aparecer", &"p1", &"luffy", Vector2(-6, -14), "sombra"],
+			["aparecer", &"p2", &"goku", Vector2(6, -16), "sombra"],
+		],
+		"outro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["colocar", &"noelle", Vector2(1.5, 1.0), 20.0],
+			["aparecer", &"rick", &"rick", Vector2(-2, -4), "portal"],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Llegaron. Y trajeron a un pibe con espada. Genial, otro más que me va a romper todo."],
+			["decir", &"rick", "Escuchen. Algo grande cruzó por un portal que yo NO abrí. Desde un mundo con nieve. Y viene para acá."],
+			["temblor", 0.8],
+		],
+	})
+
+	# ------------------------------------------------------------------ 83
+	c.append({
+		"titulo": "El hombre del hacha",
+		"personaje": &"tanjiro",
+		"enemigos": [
+			{"id": &"kratos", "personaje": &"kratos", "nombre": "Kratos", "vida": 120.0, "daño": 0.15,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"kratos", "hasta": 0.5, "texto": "Hacé que Kratos te escuche"},
+		"eventos": [
+			[["inicio"], [["decir", &"kratos", "Hablás mucho, chico. Mostrame."]]],
+			[["vida", &"kratos", 0.8], [
+				["cerco", 32.0, 12.0, 24.0, 6.0],
+				["decir", &"rick", "¡La Arena los está encerrando en un anillo de fuego! ¡Le encanta esta pelea, la muy enferma!"]]],
+			[["vida", &"kratos", 0.65], [["decir", &"tanjiro", "Huele a tristeza. Mucha. No es un demonio... es un padre."]]],
+		],
+		"intro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["aparecer", &"kratos", &"kratos", Vector2(0, -9), "caida"],
+			["plano", "abajo", &"kratos"],
+			["narrar", "Bajó de un salto entre las glicinas: un hombre enorme, ceniza de la cabeza a los pies, con un hacha que escarcha el aire."],
+			["decir", &"kratos", "Algo de este lugar cruzó a mi mundo. Se llevó la forma de un muerto. Lo voy a encontrar."],
+			["plano", "cerca", &"tanjiro"],
+			["decir", &"tanjiro", "¡Espere! No somos enemigos. Yo también busco a lo que hace esto."],
+			["plano", "abajo", &"kratos"],
+			["decir", &"kratos", "Todos dicen eso. Tenés olor a monstruo encima, chico."],
+			["plano", "cerca", &"tanjiro"],
+			["pose", &"tanjiro", &"desafio", 1.0],
+			["decir", &"tanjiro", "Es el olor de mi hermana. Y no voy a dejar que nadie la llame así."],
+		],
+		"outro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["colocar", &"kratos", Vector2(0, -6), 180.0],
+			["plano", "abajo", &"kratos"],
+			["decir", &"kratos", "...Suficiente."],
+			["decir", &"kratos", "No peleás para matar. Peleás para proteger. Lo vi en tus golpes."],
+			["plano", "cerca", &"tanjiro"],
+			["decir", &"tanjiro", "Usted tampoco. Se frenó cada vez que pudo terminarme."],
+			["plano", "abajo", &"kratos"],
+			["decir", &"kratos", "Hace mucho que aprendí a frenarme. Me costó todo lo que tenía."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 84
+	c.append({
+		"titulo": "Sellos de glicina",
+		"personaje": &"rick",
+		"aliados": [_aliado(&"noelle", "Noelle", Vector2(2.5, 1.5), 85.0, 0.40)],
+		"sellos": {"jefe": &"guardian", "cantidad": 3, "segundos": 1.5},
+		"enemigos": [
+			{"id": &"guardian", "personaje": &"madara", "nombre": "Guardián de la Arena", "vida": 85.0, "daño": 0.13,
+				"pos": Vector2(0, -12), "jefe": true, "eco": true, "oculto": true},
+			_eco("p1", &"naruto", Vector2(-6, -14), 24.0, 0.12),
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"guardian", "texto": "Rompé los sellos y después al guardián"},
+		"eventos": [
+			[["inicio"], [["decir", &"rick", "Tres cristales, un guardián intocable. Clásico. Te parás al lado y lo rompés. ¿Qué tan difícil puede ser?"]]],
+			[["vida", &"guardian", 0.5], [
+				["sellos", 2],
+				["refuerzos", [_eco("p2", &"madara", Vector2(-7, -14), 24.0, 0.12, false)]],
+				["decir", &"noelle", "¡Volvieron a crecer! ¡Rick, los cristales volvieron!"]]],
+			[["vida", &"guardian", 0.25], [["decir", &"rick", "*burp* Ya casi. Odio cuando las cosas se regeneran."]]],
+		],
+		"intro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["colocar", &"noelle", Vector2(2.5, 1.5), 0.0],
+			["plano", "dos", &"rick", &"noelle"],
+			["decir", &"rick", "Ya lo medí. La Arena se quedó sin rey cuando Sukuna perdió, y no le gusta estar sola. Está armando uno nuevo."],
+			["decir", &"noelle", "¿Un rey nuevo? ¿Otro como Sukuna?"],
+			["decir", &"rick", "Peor. Un dios. Hecho de ecos. Y lo cuida con sellos, como un huevo."],
+			["aparecer", &"guardian", &"madara", Vector2(0, -12), "sombra"],
+			["aparecer", &"p1", &"naruto", Vector2(-6, -14), "sombra"],
+			["plano", "abajo", &"guardian"],
+			["narrar", "Alrededor del guardián se clavan tres cristales violetas. Mientras brillen, nada lo toca."],
+		],
+		"outro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["colocar", &"noelle", Vector2(2.5, 1.0), 20.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Un guardián menos. Pero el huevo sigue ahí, Morty. Y está tibio."],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Me llamo Noelle..."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 85
+	c.append({
+		"titulo": "Flores contra ecos",
+		"personaje": &"noelle",
+		"aliados": [_aliado(&"tanjiro", "Tanjiro", Vector2(2.5, 1.5), 95.0, 0.40)],
+		"enemigos": [
+			# EL ECO RAPIDO: uno solo que persigue a la que junta, pegando poco pero sin parar.
+			_eco("p1", &"sonic", Vector2(0, -14), 30.0, 0.13),
+			_eco("p2", &"luffy", Vector2(-6, -12), 24.0, 0.12),
+		],
+		"objetivo": {"tipo": "recolectar", "objeto": "glicina", "cantidad": 6, "limite": 85.0,
+			"texto": "Juntá glicinas para el veneno de Tanjiro"},
+		"eventos": [
+			[["inicio"], [["decir", &"tanjiro", "Las glicinas les hacen daño. ¡Juntá las que puedas, yo te cubro!"]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p3", &"sonic", Vector2(-7, -14), 30.0, 0.13, false),
+					_eco("p4", &"spiderman", Vector2(7, -14), 24.0, 0.12, false)]],
+				["decir", &"noelle", "¡Otro rápido! ¿Por qué siempre copian al erizo?"]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"tanjiro", Vector2(2.5, 1.5), 0.0],
+			["plano", "dos", &"tanjiro", &"noelle"],
+			["decir", &"tanjiro", "En mi mundo, los cazadores hacen veneno con estas flores. Ni los demonios más fuertes lo aguantan."],
+			["decir", &"noelle", "Yo sé hacer remedios... Mi mamá es enfermera. Si me decís cómo, lo armo."],
+			["decir", &"tanjiro", "¡Entonces somos un buen equipo!"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "...Nadie me dijo eso desde que me perdí acá."],
+			["aparecer", &"p1", &"sonic", Vector2(0, -14), "sombra"],
+			["aparecer", &"p2", &"luffy", Vector2(-6, -12), "sombra"],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"tanjiro", Vector2(2.5, 1.0), 20.0],
+			["plano", "cerca", &"tanjiro"],
+			["decir", &"tanjiro", "Con esto alcanza para cubrir mi espada y la de Kratos."],
+			["aparecer", &"kratos", &"kratos", Vector2(-3, -5), ""],
+			["plano", "abajo", &"kratos"],
+			["decir", &"kratos", "No necesito veneno. Necesito saber dónde está."],
+			["decir", &"kratos", "El rastro sube a la montaña. A un lugar que huele a mi casa."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 86
+	c.append({
+		"titulo": "El invierno de Midgard",
+		"personaje": &"saitama",
+		"enemigos": [
+			_eco("p1", &"thanos", Vector2(-5, -14), 26.0, 0.11),
+			_eco("p2", &"scorpion", Vector2(5, -14), 26.0, 0.11),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -12), "radio": 6.0, "segundos": 22.0,
+			"texto": "Quedate parado en la runa mientras el fuego se cierra"},
+		"eventos": [
+			[["inicio"], [
+				["cerco", 38.0, 19.0, 35.0, 4.0],
+				["decir", &"saitama", "Me dijeron que me quede parado en la piedra. Eso sé hacerlo."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"sukuna", Vector2(-7, -16), 26.0, 0.11, false),
+					_eco("p5", &"goku", Vector2(7, -16), 26.0, 0.11, false)]],
+				["decir", &"saitama", "Hace frío y además hay fuego. Este lugar no se decide."]]],
+		],
+		"intro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "Arriba de la montaña, la Arena copió un pedazo del mundo de Kratos: un templo de piedra, nieve que no para, runas que brillan azul."],
+			["narrar", "En el medio, una runa enorme chupa la energía de cada pelea. Hacia el huevo."],
+			["aparecer", &"rick", &"rick", Vector2(3, 2), "portal"],
+			["plano", "dos", &"rick", &"saitama"],
+			["decir", &"rick", "Pelado. Necesito a alguien parado en esa runa veinticinco segundos, para que se trabe."],
+			["decir", &"saitama", "¿Y por qué yo?"],
+			["decir", &"rick", "Porque sos el único que no se va a morir. Y porque estabas acá sin hacer nada."],
+			["decir", &"saitama", "...Es verdad. Ok."],
+			["aparecer", &"p1", &"thanos", Vector2(-5, -14), "sombra"],
+			["aparecer", &"p2", &"scorpion", Vector2(5, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"saitama", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Listo. La piedra dejó de brillar."],
+			["temblor", 1.0],
+			["narrar", "Pero en el templo algo se movió igual. Algo que ya tenía bastante."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 87
+	c.append({
+		"titulo": "Tenemos que ser mejores",
+		"personaje": &"tanjiro",
+		"aliados": [_aliado(&"kratos", "Kratos", Vector2(2.5, 1.5), 115.0, 0.45)],
+		"enemigos": [
+			_eco("p1", &"madara", Vector2(-5, -12), 30.0, 0.14),
+			_eco("p2", &"dio", Vector2(5, -12), 30.0, 0.14),
+			_eco("p3", &"gojo", Vector2(0, -14), 30.0, 0.14),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Subí al templo con Kratos"},
+		"eventos": [
+			[["inicio"], [["decir", &"kratos", "Quedate cerca, chico. Y no te distraigas."]]],
+			[["quedan", 1], [
+				# EL PRIMER FANTASMA: un eco de Kratos de joven. Kratos se queda callado.
+				["refuerzos", [_eco("fantasma1", &"kratos", Vector2(-6, -14), 34.0, 0.15, false),
+					_eco("p4", &"thanos", Vector2(6, -14), 30.0, 0.14, false)]],
+				["decir", &"tanjiro", "Kratos... ese eco tiene su cara."]]],
+			[["muere", &"fantasma1"], [["decir", &"kratos", "Ese no soy yo. Ya no."]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p5", &"sukuna", Vector2(-6, -14), 30.0, 0.14, false),
+					_eco("p6", &"naruto", Vector2(6, -14), 30.0, 0.14, false)]],
+				["decir", &"kratos", "La puerta del templo. Ahí está."]]],
+		],
+		"intro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["colocar", &"kratos", Vector2(2.5, 1.5), 0.0],
+			["plano", "dos", &"tanjiro", &"kratos"],
+			["decir", &"tanjiro", "Usted dijo que la Arena se llevó la forma de un muerto. ¿De quién?"],
+			["decir", &"kratos", "...De alguien que fui. En otra tierra, hace mucho. Un hombre que mató a sus dioses por venganza."],
+			["decir", &"tanjiro", "Yo perdí a mi familia. Menos a mi hermana. A veces tengo miedo de lo que haría si..."],
+			["plano", "cerca", &"kratos"],
+			["decir", &"kratos", "No lo hagas. Lo que sentís es tuyo. Lo que hacés con eso, también."],
+			["decir", &"kratos", "Tenemos que ser mejores."],
+			["aparecer", &"p1", &"madara", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"dio", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"gojo", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["colocar", &"kratos", Vector2(2.5, 1.0), 20.0],
+			["plano", "cerca", &"kratos"],
+			["decir", &"kratos", "Ese eco tenía las cadenas. Las de las espadas."],
+			["plano", "cerca", &"tanjiro"],
+			["decir", &"tanjiro", "Olía a la misma tristeza que usted. Pero más fuerte. Sin nada que la frene."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 88
+	c.append({
+		"titulo": "Lluvia de fuego",
+		"personaje": &"naruto",
+		"aliados": [
+			{"id": &"rick", "personaje": &"rick", "nombre": "Rick", "vida": 85.0, "daño": 0.3,
+				"pos": Vector2(1.5, 1.5)},
+		],
+		"enemigos": [
+			_eco("p1", &"goku", Vector2(-6, -16), 28.0, 0.13),
+			_eco("p2", &"spiderman", Vector2(6, -18), 28.0, 0.13),
+		],
+		"objetivo": {"tipo": "escoltar", "id": &"rick",
+			"ruta": [Vector2(0, -12), Vector2(10, -22), Vector2(2, -34), Vector2(-8, -42)],
+			"texto": "Llevá a Rick y la bomba de glicina hasta el templo"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "meteoritos", 0.0, 1.6],
+				["decir", &"rick", "Camino yo, peleás vos. Y si me cae una piedra en la cabeza, la bomba explota acá. Sin presión."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p3", &"luffy", Vector2(-6, -30), 28.0, 0.13, false),
+					_eco("p4", &"scorpion", Vector2(6, -32), 28.0, 0.13, false)]],
+				["decir", &"naruto", "¡No van a tocar al viejo, de veras!"]]],
+			[["vida", &"rick", 0.5], [["decir", &"rick", "¡Morty! ¡Digo, Naruto! ¡Cubrime mejor!"]]],
+		],
+		"intro": [
+			["colocar", &"naruto", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(1.5, 1.5), 0.0],
+			["plano", "general"],
+			["narrar", "El cielo de Midgard se rompe: el huevo del templo está tan lleno que le sobra energía, y la tira en piedras de fuego."],
+			["plano", "dos", &"rick", &"naruto"],
+			["decir", &"rick", "Le metí el veneno de glicina de la nena a una bomba. Si la pongo en la puerta del templo, el dios nace débil."],
+			["decir", &"naruto", "¿Y por qué no la tirás desde acá?"],
+			["decir", &"rick", "Porque es una bomba casera, genio. Se pone a mano."],
+			["aparecer", &"p1", &"goku", Vector2(-6, -16), "sombra"],
+			["aparecer", &"p2", &"spiderman", Vector2(6, -18), "sombra"],
+		],
+		"outro": [
+			["colocar", &"naruto", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(1.5, 1.0), 20.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Puesta. Ahora, cuando abra el huevo, va a respirar glicina."],
+			["temblor", 1.4],
+			["plano", "cerca", &"naruto"],
+			["decir", &"naruto", "Eh... ¿y eso que se mueve adentro del templo?"],
+		],
+	})
+
+	# ------------------------------------------------------------------ 89
+	c.append({
+		"titulo": "Los sellos del templo",
+		"personaje": &"sonic",
+		"sellos": {"jefe": &"titan", "cantidad": 4, "segundos": 1.3},
+		"aliados": [_aliado(&"spiderman", "Spider-Man", Vector2(2.5, 1.5), 90.0, 0.40)],
+		"enemigos": [
+			{"id": &"titan", "personaje": &"thanos", "nombre": "Guardián del Templo", "vida": 62.0, "daño": 0.09,
+				"pos": Vector2(0, -12), "jefe": true, "eco": true, "oculto": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"titan", "texto": "Cuatro sellos, piedras cayendo, y el último guardián"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "meteoritos", 0.0, 2.0],
+				["decir", &"sonic", "¿Cuatro cristales en cuatro puntas? ¡Por fin algo a mi velocidad!"]]],
+			[["vida", &"titan", 0.6], [
+				["refuerzos", [_eco("p1", &"mario", Vector2(-7, -14), 22.0, 0.10, false)]],
+				["decir", &"sonic", "¡Uh, se enojó! Eso no estaba en el plan. ¿Había un plan?"]]],
+		],
+		"intro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"spiderman", Vector2(2.5, 1.5), 0.0],
+			["plano", "general"],
+			["narrar", "En la puerta del templo espera el último guardián. Cuatro sellos lo cubren, en cuatro puntas lejanas."],
+			["plano", "dos", &"spiderman", &"sonic"],
+			["decir", &"sonic", "Tanjiro y el grandote ya están adentro. Me toca la puerta. ¡Demasiado fácil!"],
+			["decir", &"spiderman", "Vos rompé los cristales, yo lo entretengo. Soy bueno molestando gente grande."],
+			["aparecer", &"titan", &"thanos", Vector2(0, -12), "sombra"],
+		],
+		"outro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["colocar", &"spiderman", Vector2(2.5, 1.0), 20.0],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "¡Puerta abierta! Tarde, como siempre... ¿Eh? ¿Por qué tiembla todo?"],
+			["decir", &"spiderman", "Mi sentido arácnido dice que eso no es un terremoto."],
+			["temblor", 1.8],
+			["narrar", "Adentro, el huevo se rompió. Y lo que salió tiene la piel blanca, un tatuaje rojo y dos espadas encadenadas."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 90
+	c.append({
+		"titulo": "Danza del Dios del Fuego",
+		"personaje": &"tanjiro",
+		# EL FINAL EN TRES FASES: primero los sellos (no se le puede pegar), despues el
+		# anillo de fuego con Kratos al lado, y al final vuelven los sellos con refuerzos y
+		# baja Saitama.
+		"sellos": {"jefe": &"fantasma", "cantidad": 3, "segundos": 1.3},
+		"aliados": [
+			{"id": &"kratos", "personaje": &"kratos", "nombre": "Kratos", "vida": 120.0, "daño": 0.45,
+				"pos": Vector2(2.5, 1.5), "reserva": true},
+			{"id": &"saitama", "personaje": &"saitama", "nombre": "Saitama", "vida": 110.0, "daño": 0.40,
+				"pos": Vector2(-2.5, 1.5), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"fantasma", "personaje": &"kratos", "nombre": "Fantasma de Esparta", "vida": 135.0, "daño": 0.11,
+				"pos": Vector2(0, -9), "jefe": true, "eco": true, "oculto": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"fantasma", "texto": "Derrotá al Fantasma de Esparta"},
+		"eventos": [
+			[["inicio"], [["decir", &"tanjiro", "Primero los cristales. ¡Respiración del Agua!"]]],
+			[["vida", &"fantasma", 0.75], [
+				["cinematica", [
+					["plano", "abajo", &"fantasma"],
+					["habilidad", &"fantasma", &"hojas_caos"],
+					["aparecer", &"kratos", &"kratos", Vector2(2.5, 1.5), "caida"],
+					["plano", "dos", &"kratos", &"fantasma"],
+					["decir", &"kratos", "Te conozco. Te dejé atrás. No vas a volver."],
+				]],
+				["entrar", &"kratos"],
+				["cerco", 30.0, 13.0, 28.0, 4.0],
+				["potenciar", &"fantasma", 8.0]]],
+			[["vida", &"fantasma", 0.35], [
+				["sellos", 2],
+				["refuerzos", [_eco("p1", &"sukuna", Vector2(-7, -12), 26.0, 0.12, false)]],
+				["cinematica", [
+					["aparecer", &"saitama", &"saitama", Vector2(-2.5, 1.5), "caida"],
+					["plano", "cerca", &"saitama"],
+					["decir", &"saitama", "Perdón, me perdí. Hay muchas escaleras en este templo."],
+				]],
+				["entrar", &"saitama"],
+				["decir", &"tanjiro", "¡Los cristales volvieron! ¡Yo los rompo, ustedes aguántenlo!"]]],
+			[["vida", &"fantasma", 0.15], [["decir", &"tanjiro", "Papá... prestame tu danza una vez más."]]],
+		],
+		"intro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["aparecer", &"fantasma", &"kratos", Vector2(0, -9), "sombra"],
+			["temblor", 1.2],
+			["plano", "abajo", &"fantasma"],
+			["narrar", "El dios de la Arena nació con la forma de lo peor que Kratos fue: el Fantasma de Esparta. Sin culpa, sin freno, sin nadie."],
+			["plano", "cerca", &"tanjiro"],
+			["decir", &"tanjiro", "Kratos quedó atrapado abajo con los ecos. Hasta que llegue, soy yo."],
+			["decir", &"tanjiro", "Soy el hermano mayor. Puedo aguantar."],
+			["plano", "abajo", &"fantasma"],
+			["decir", &"fantasma", "¡DIOSES! ¡TODOS VAN A CAER!"],
+			["narrar", "Tres cristales se clavan alrededor. Igual que el huevo: mientras brillen, nada lo toca."],
+		],
+		"outro": [
+			["colocar", &"tanjiro", Vector2(0, 0), 0.0],
+			["colocar", &"kratos", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"saitama", Vector2(-2.5, 1.0), -20.0],
+			["colocar", &"fantasma", Vector2(0, -6), 180.0],
+			["plano", "abajo", &"fantasma"],
+			["narrar", "El eco se queda arrodillado, con las cadenas sueltas. Ya no grita."],
+			["plano", "dos", &"kratos", &"fantasma"],
+			["decir", &"kratos", "Fuiste necesario. Ya no."],
+			["desaparecer", &"fantasma", "sombra"],
+			["plano", "cerca", &"tanjiro"],
+			["decir", &"tanjiro", "Al final no olía a odio. Olía a alguien que no sabía cómo parar."],
+			["plano", "cerca", &"kratos"],
+			["decir", &"kratos", "Por eso hay que enseñarles. Chico... peleaste bien."],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "¿Ya está? Subí todas esas escaleras para un solo golpe."],
+			["plano", "general"],
+			["narrar", "La Arena se quedó sin dios. Kratos decide quedarse a vigilar que no intente otro, y Tanjiro, hasta que Rick arregle su pistola, cuida el bosque de glicinas."],
+			["fundido", "negro", 1.0],
+			["titulo", "FIN DE LA PARTE 9", "Dos cazadores se quedaron en la Arena"],
 		],
 	})
 

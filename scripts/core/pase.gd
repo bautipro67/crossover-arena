@@ -7,9 +7,9 @@ extends Node
 ## se habia cobrado se cobra solo, y el pase arranca de cero. Ver _cerrar_temporada_vieja().
 ## Goku (premio de la 1), Mob (de la 2) y Gojo (de la 3) quedaron de todos.
 ##
-## LA 4 NO TERMINA EN UN PERSONAJE. Los dos que llegan con ella no son del pase: Saitama es
-## gratis y Sukuna se gana en la historia (parte 8). El ultimo escalon del pro es una skin
-## legendaria de Saitama.
+## LA 4 NO TERMINO EN UN PERSONAJE (Saitama gratis, Sukuna de la historia): al cerrarla no
+## queda nadie de todos. LA 5 (2026-10-08) vuelve a la costumbre: Tanjiro gratis y KRATOS en
+## el ultimo escalon del pro.
 ##
 ## LAS DOS VIAS AVANZAN CON LA MISMA EXPERIENCIA. Comprar el pro no acelera nada: abre la
 ## fila de abajo, incluidas las recompensas de los escalones que ya pasaste. Es lo que
@@ -20,8 +20,10 @@ extends Node
 ## compran mas skins, y la experiencia solo mueve estas mismas barras. Un circuito cerrado
 ## que empieza y termina en lo cosmetico, a proposito.
 
-const TEMPORADA: int = 4
-const NOMBRE: String = "TEMPORADA 4 — HÉROES Y MALDICIONES"
+const TEMPORADA: int = 5
+const NOMBRE: String = "TEMPORADA 5 — CAZADORES"
+## Como se nombra en el aviso de cierre ("empezo la Temporada 5: Cazadores").
+const LEMA: String = "Cazadores"
 const ESCALONES: int = 30
 ## Experiencia por escalon. 250 x 30 = 7500 para el pase entero, que a unos 170 por
 ## partida son unas 45 partidas. Una temporada tiene que durar, pero tiene que terminarse.
@@ -32,7 +34,7 @@ const MONEDAS: StringName = &"monedas"
 const EXP: StringName = &"exp"
 const SKIN: StringName = &"skin"
 ## Un personaje entero: el premio del ultimo escalon del pro. Goku en la 1, Mob en la 2,
-## Gojo en la 3. La 4 no tiene.
+## Gojo en la 3, Kratos en la 5. La 4 no tuvo.
 const PERSONAJE: StringName = &"personaje"
 const NADA: StringName = &"nada"
 
@@ -56,8 +58,8 @@ var _viejas: Dictionary = {}
 
 func _ready() -> void:
 	_viejas = {0: _armar_temporada_0(), 1: _armar_temporada_1(), 2: _armar_temporada_2(),
-		3: _armar_temporada_3()}
-	_tabla = _armar_temporada_4()
+		3: _armar_temporada_3(), 4: _armar_temporada_4()}
+	_tabla = _armar_temporada_5()
 	_cerrar_temporada_vieja()
 
 
@@ -158,6 +160,22 @@ func _armar_temporada_4() -> Dictionary:
 	return t
 
 
+func _armar_temporada_5() -> Dictionary:
+	var t := _base()
+	# Las tres de Tanjiro (el que llega gratis); las de Kratos van a la tienda: el pase no
+	# da skins de un personaje que todavia no se gano.
+	_poner(t, 3, null, [SKIN, "tanjiro_kitsune"])
+	_poner(t, 7, [SKIN, "tanjiro_kimono"], null)
+	_poner(t, 10, null, [MONEDAS, 400])
+	_poner(t, 14, [MONEDAS, 200], [MONEDAS, 500])
+	_poner(t, 18, null, [MONEDAS, 500])
+	_poner(t, 22, [MONEDAS, 250], [MONEDAS, 600])
+	_poner(t, 26, null, [SKIN, "tanjiro_marca"])
+	# EL ULTIMO ESCALON DEL PRO ES KRATOS, como Goku, Mob y Gojo: es lo unico que lo da.
+	_poner(t, 30, [MONEDAS, 500], [PERSONAJE, "kratos"])
+	return t
+
+
 func _poner(t: Dictionary, escalon: int, gratis: Variant, pro: Variant) -> void:
 	var fila: Array = t.get(escalon, [[NADA, 0], [NADA, 0]])
 	if gratis != null:
@@ -193,7 +211,7 @@ func _cerrar_temporada_vieja() -> void:
 	Progreso.temporada = TEMPORADA
 	Progreso.guardar()
 	Progreso.cambio.emit()
-	aviso_cierre = "Terminó la Temporada %d y empezó la Temporada %d: Héroes y Maldiciones." % [vieja, TEMPORADA]
+	aviso_cierre = "Terminó la Temporada %d y empezó la Temporada %d: %s." % [vieja, TEMPORADA, LEMA]
 	# Los premios de las que terminaron quedan para todos (ver CharacterDB: Goku y Mob ya no
 	# piden desbloqueo).
 	if vieja <= 1:

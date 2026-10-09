@@ -3436,6 +3436,28 @@ func play_ability_cosmetic(caster: Node, ability_id: StringName, origin: Vector3
 			Fuga.spawn_cosmetic(caster, origin, dir)
 		&"santuario":
 			SantuarioMalevolo.spawn_cosmetic(caster, origin, dir)
+		&"corte_tanjiro":
+			spawn_slash_arc(caster, origin, dir, CorteTanjiro.AGUA)
+		&"rueda_agua":
+			if caster is Node3D:
+				spawn_rueda_agua(caster as Node3D, Vector3(dir.x, 0.0, dir.z).normalized())
+		&"calma":
+			if caster is Node3D:
+				spawn_calma(caster as Node3D, Calma.RADIO, Calma.DURACION)
+		&"hinokami":
+			if caster is Node3D:
+				spawn_hinokami_remoto(caster as Node3D)
+		&"hacha_leviatan":
+			spawn_slash_arc(caster, origin, dir, HachaLeviatan.HIELO)
+		&"lanzar_hacha":
+			LanzarHacha.spawn_cosmetic(caster, origin, dir)
+		&"hojas_caos":
+			if caster is Node3D:
+				spawn_hojas_caos_remoto(caster as Node3D)
+		&"furia_espartana":
+			if caster is Node3D:
+				spawn_furia_espartana(caster as Node3D, FuriaEspartana.DURACION)
+				spawn_pisoton(caster, (caster as Node3D).global_position, FuriaEspartana.RADIO_PISOTON)
 		_:
 			pass
 
@@ -4081,6 +4103,27 @@ func armar_juntable(context: Node, pos: Vector3, tipo: String) -> Node3D:
 				var a := float(k) * PI * 0.5
 				ojo.position = Vector3(sin(a) * 0.22, 0.0, cos(a) * 0.22)
 				giro.add_child(ojo)
+		"glicina":
+			# UN RACIMO DE GLICINAS: las flores que los demonios no soportan, colgando.
+			color = Color(0.78, 0.55, 1.0)
+			giro.add_child(Art.capsule(0.03, 0.30, Art.toon(Color(0.30, 0.45, 0.22)), Vector3(0.0, 0.32, 0.0)))
+			for k: int in range(9):
+				var flor := Art.sphere(0.075 - 0.004 * float(k), Art.toon(Color(0.72, 0.50, 0.95).lerp(Color(0.95, 0.85, 1.0), float(k) / 9.0)))
+				var a := float(k) * 2.2
+				flor.position = Vector3(sin(a) * 0.08, 0.18 - float(k) * 0.055, cos(a) * 0.08)
+				giro.add_child(flor)
+		"sello":
+			# EL SELLO DEL JEFE: un cristal violeta clavado, con un aro de papeles que gira.
+			color = Color(0.75, 0.45, 1.0)
+			var cristal := Art.sphere(0.32, Art.glow(Color(0.70, 0.40, 1.0), 2.0))
+			cristal.scale = Vector3(0.7, 1.9, 0.7)
+			giro.add_child(cristal)
+			for k: int in range(6):
+				var papel := Art.box(Vector3(0.10, 0.26, 0.015), Art.toon(Color(0.95, 0.92, 0.80)))
+				var a := float(k) * TAU / 6.0
+				papel.position = Vector3(sin(a) * 0.62, 0.0, cos(a) * 0.62)
+				papel.rotation.y = a
+				giro.add_child(papel)
 		_:
 			giro.add_child(Art.sphere(0.2, Art.glow(color, 2.4)))
 	for n: Node in giro.get_children():
@@ -4113,6 +4156,111 @@ func armar_juntable(context: Node, pos: Vector3, tipo: String) -> Node3D:
 	flota.tween_property(giro, "position:y", 0.15, 0.9).set_trans(Tween.TRANS_SINE)
 	flota.tween_property(giro, "position:y", -0.05, 0.9).set_trans(Tween.TRANS_SINE)
 	return cosa
+
+
+## LA MARCA DEL RECORRIDO (y de la escolta): un aro en el piso del tamaño de lo que hay que
+## pisar y una columna de luz que se ve de lejos. Solo hay una a la vez: la que sigue.
+func armar_marca_recorrido(context: Node, pos: Vector3, radio: float, color: Color) -> Node3D:
+	var world := _world_of(context)
+	if world == null:
+		return null
+	var marca := Node3D.new()
+	marca.name = &"MarcaRecorrido"
+	world.add_child(marca)
+	marca.global_position = pos + Vector3.UP * 0.08
+	var borde := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.90
+	toro.outer_radius = 1.0
+	toro.rings = 48
+	borde.mesh = toro
+	borde.material_override = _brillo_que_se_apaga(color, 2.0)
+	borde.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	borde.scale = Vector3(radio, 1.0, radio)
+	marca.add_child(borde)
+	var columna := MeshInstance3D.new()
+	var cil := CylinderMesh.new()
+	cil.top_radius = 0.25
+	cil.bottom_radius = 0.45
+	cil.height = 14.0
+	cil.cap_top = false
+	cil.cap_bottom = false
+	columna.mesh = cil
+	var mat := _brillo_que_se_apaga(color, 1.4)
+	mat.albedo_color.a = 0.25
+	columna.material_override = mat
+	columna.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	columna.position = Vector3(0.0, 7.0, 0.0)
+	marca.add_child(columna)
+	var tw := borde.create_tween().set_loops()
+	tw.tween_property(borde, "scale", Vector3(radio * 1.08, 1.0, radio * 1.08), 0.6).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(borde, "scale", Vector3(radio, 1.0, radio), 0.6).set_trans(Tween.TRANS_SINE)
+	return marca
+
+
+## EL ESCUDO DE LOS SELLOS: una burbuja violeta alrededor del jefe sellado. La saca la
+## mision cuando cae el ultimo sello.
+func armar_escudo_sellos(padre: Node3D) -> Node3D:
+	var escudo := Node3D.new()
+	escudo.name = &"EscudoSellos"
+	padre.add_child(escudo)
+	escudo.position = Vector3(0.0, 1.0, 0.0)
+	var burbuja := MeshInstance3D.new()
+	var esfera := SphereMesh.new()
+	esfera.radius = 1.35
+	esfera.height = 2.7
+	burbuja.mesh = esfera
+	var mat := _brillo_que_se_apaga(Color(0.70, 0.45, 1.0), 0.8)
+	mat.albedo_color.a = 0.15
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	burbuja.material_override = mat
+	burbuja.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	escudo.add_child(burbuja)
+	var tw := burbuja.create_tween().set_loops()
+	tw.tween_property(mat, "albedo_color:a", 0.08, 0.7).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(mat, "albedo_color:a", 0.16, 0.7).set_trans(Tween.TRANS_SINE)
+	return escudo
+
+
+## EL CERCO DE FUEGO: un aro de radio 1 (la mision lo escala al radio que toca) con una
+## pared baja de llamas. Lo de afuera quema.
+func armar_cerco(context: Node) -> Node3D:
+	var world := _world_of(context)
+	if world == null:
+		return null
+	var cerco := Node3D.new()
+	cerco.name = &"Cerco"
+	world.add_child(cerco)
+	var pared := MeshInstance3D.new()
+	var cil := CylinderMesh.new()
+	cil.top_radius = 1.0
+	cil.bottom_radius = 1.0
+	cil.height = 2.6
+	cil.radial_segments = 64
+	cil.cap_top = false
+	cil.cap_bottom = false
+	pared.mesh = cil
+	var mat := _brillo_que_se_apaga(Color(1.0, 0.42, 0.10), 2.2)
+	mat.albedo_color.a = 0.42
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	pared.material_override = mat
+	pared.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	pared.position = Vector3(0.0, 1.3, 0.0)
+	cerco.add_child(pared)
+	var piso := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = 0.97
+	toro.outer_radius = 1.0
+	toro.rings = 64
+	piso.mesh = toro
+	piso.material_override = _brillo_que_se_apaga(Color(1.0, 0.70, 0.20), 3.0)
+	piso.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	piso.position = Vector3(0.0, 0.1, 0.0)
+	cerco.add_child(piso)
+	var tw := pared.create_tween().set_loops()
+	tw.tween_property(mat, "albedo_color:a", 0.25, 0.35)
+	tw.tween_property(mat, "albedo_color:a", 0.45, 0.35)
+	return cerco
 
 
 ## El aviso de un tajo que cae (la lluvia de cortes de la historia): un circulo rojo que se
@@ -4149,3 +4297,262 @@ func spawn_aviso_corte(context: Node, punto: Vector3, radio: float, aviso: float
 	var tw := lleno.create_tween()
 	tw.tween_property(lleno, "scale", Vector3(radio, 1.0, radio), aviso).from(Vector3(0.1, 1.0, 0.1))
 	tw.tween_callback(marca.queue_free)
+
+
+# =================================================================== Temporada 5
+#
+# Tanjiro (el agua y el fuego de su katana) y Kratos (el Hacha Leviatan, las Hojas del Caos
+# y la Furia Espartana).
+
+
+## Un anillo que se abre y se apaga, del color que se pida: la base de casi todo lo de aca.
+func _aro_que_se_abre(world: Node, pos: Vector3, basis_: Basis, radio: float, color: Color,
+		energia: float, dura: float, grueso: float = 0.9) -> void:
+	var aro := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = grueso
+	toro.outer_radius = 1.0
+	toro.rings = 40
+	aro.mesh = toro
+	var mat := _brillo_que_se_apaga(color, energia)
+	aro.material_override = mat
+	aro.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	world.add_child(aro)
+	aro.global_transform = Transform3D(basis_, pos)
+	var tw := aro.create_tween().set_parallel()
+	tw.tween_property(aro, "scale", Vector3(radio, 1.0, radio), dura).from(Vector3(radio * 0.3, 1.0, radio * 0.3)) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mat, "albedo_color:a", 0.0, dura).from(0.8)
+	tw.chain().tween_callback(aro.queue_free)
+
+
+## LA RUEDA DE AGUA: un aro de agua parado que gira en la direccion de la vuelta, y gotas.
+func spawn_rueda_agua(caster: Node3D, rumbo: Vector3) -> void:
+	var world := _world_of(caster)
+	if world == null or rumbo.is_zero_approx():
+		return
+	var base := Basis.looking_at(rumbo, Vector3.UP) * Basis(Vector3.FORWARD, PI * 0.5)
+	for k: int in range(3):
+		var pos := caster.global_position + Vector3.UP * 1.0 + rumbo * (1.5 + float(k) * 2.4)
+		_aro_que_se_abre(world, pos, base, 1.3, Color(0.40, 0.72, 1.0), 1.6, 0.45 + float(k) * 0.08, 0.82)
+	var gotas := CPUParticles3D.new()
+	gotas.emitting = true
+	gotas.one_shot = true
+	gotas.amount = 40
+	gotas.lifetime = 0.6
+	gotas.explosiveness = 0.8
+	gotas.direction = Vector3.UP
+	gotas.spread = 80.0
+	gotas.initial_velocity_min = 2.0
+	gotas.initial_velocity_max = 5.0
+	gotas.gravity = Vector3(0.0, -9.0, 0.0)
+	gotas.scale_amount_min = 0.06
+	gotas.scale_amount_max = 0.14
+	gotas.mesh = _particula_polvo()
+	gotas.color = Color(0.65, 0.85, 1.0, 0.8)
+	world.add_child(gotas)
+	gotas.global_position = caster.global_position + Vector3.UP + rumbo * 3.0
+	_auto_free(gotas, 1.2)
+	Sfx.play_3d(caster, &"agua", caster.global_position, -2.0)
+
+
+## LA CALMA: el agua quieta alrededor, un circulo que tiembla en el borde mientras dura.
+func spawn_calma(caster: Node3D, radio: float, dura: float) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var nodo := Node3D.new()
+	caster.add_child(nodo)
+	var disco := MeshInstance3D.new()
+	var cil := CylinderMesh.new()
+	cil.top_radius = radio
+	cil.bottom_radius = radio
+	cil.height = 0.02
+	cil.radial_segments = 40
+	disco.mesh = cil
+	var mat := _brillo_que_se_apaga(Color(0.55, 0.80, 1.0), 0.8)
+	mat.albedo_color.a = 0.25
+	disco.material_override = mat
+	disco.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	disco.position = Vector3(0.0, 0.06, 0.0)
+	nodo.add_child(disco)
+	var borde := MeshInstance3D.new()
+	var toro := TorusMesh.new()
+	toro.inner_radius = radio * 0.96
+	toro.outer_radius = radio
+	toro.rings = 48
+	borde.mesh = toro
+	borde.material_override = _brillo_que_se_apaga(Color(0.70, 0.90, 1.0), 1.6)
+	borde.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	borde.position = Vector3(0.0, 0.1, 0.0)
+	nodo.add_child(borde)
+	var tw := nodo.create_tween()
+	tw.tween_interval(maxf(0.0, dura - 0.25))
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.25)
+	tw.tween_callback(nodo.queue_free)
+
+
+## LA DANZA DEL DIOS DEL FUEGO: el rastro de fuego de cada embestida, en el piso y en el aire.
+func spawn_estela_fuego(context: Node, desde: Vector3, rumbo: Vector3, largo: float) -> void:
+	var world := _world_of(context)
+	if world == null or rumbo.is_zero_approx():
+		return
+	var llamas := CPUParticles3D.new()
+	llamas.emitting = true
+	llamas.one_shot = true
+	llamas.amount = 36
+	llamas.lifetime = 0.7
+	llamas.explosiveness = 0.6
+	llamas.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	llamas.emission_box_extents = Vector3(0.3, 0.6, maxf(0.3, largo * 0.5))
+	llamas.direction = Vector3.UP
+	llamas.spread = 30.0
+	llamas.initial_velocity_min = 1.0
+	llamas.initial_velocity_max = 3.0
+	llamas.gravity = Vector3(0.0, 2.0, 0.0)
+	llamas.scale_amount_min = 0.15
+	llamas.scale_amount_max = 0.35
+	llamas.mesh = Art.particula_suave()
+	llamas.color_ramp = Art.rampa_que_se_apaga(Color(1.0, 0.50, 0.12, 0.9))
+	world.add_child(llamas)
+	llamas.global_basis = Basis.looking_at(rumbo, Vector3.UP)
+	llamas.global_position = desde + Vector3.UP * 1.0 + rumbo * (largo * 0.5)
+	_auto_free(llamas, 1.4)
+	Sfx.play_3d(context, &"fuego", desde, -4.0)
+
+
+## LA RUEDA SOLAR: el remolino de fuego del final, en dos aros que se abren girados.
+func spawn_rueda_solar(caster: Node3D, radio: float) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var c := caster.global_position + Vector3.UP * 1.0
+	_aro_que_se_abre(world, c, Basis.IDENTITY, radio, Color(1.0, 0.55, 0.12), 2.4, 0.5, 0.8)
+	_aro_que_se_abre(world, c + Vector3.UP * 0.4, Basis(Vector3.RIGHT, 0.5), radio * 0.8, Color(1.0, 0.78, 0.30), 2.0, 0.45, 0.85)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.55, 0.15)
+	luz.light_energy = 6.0
+	luz.omni_range = radio * 2.5
+	world.add_child(luz)
+	luz.global_position = c
+	_fade_light(luz, 0.6)
+	camera_shake(1.0)
+	Sfx.play_3d(caster, &"fuego", c, 2.0)
+
+
+## La danza vista desde otra pantalla: el cuerpo lo mueve la red; aca los rastros y la rueda.
+func spawn_hinokami_remoto(caster: Node3D) -> void:
+	var previa := caster.global_position
+	for k: int in range(HinokamiKagura.SALTOS):
+		await get_tree().create_timer(0.32).timeout
+		if not is_instance_valid(caster):
+			return
+		var hacia := caster.global_position - previa
+		hacia.y = 0.0
+		if hacia.length() > 0.5:
+			spawn_estela_fuego(caster, previa, hacia.normalized(), hacia.length())
+		previa = caster.global_position
+	if is_instance_valid(caster):
+		spawn_rueda_solar(caster, HinokamiKagura.RADIO_FINAL)
+
+
+## EL HACHA LEVIATAN: la hoja ancha de acero con el filo azulado y el mango envuelto en
+## cuero. Devuelve el nodo que gira, para que el hacha voladora lo haga dar vueltas.
+func armar_hacha_leviatan(padre: Node3D) -> Node3D:
+	var giro := Node3D.new()
+	padre.add_child(giro)
+	var acero := Art.metal(Color(0.62, 0.66, 0.72))
+	var filo := Art.glow(Color(0.65, 0.88, 1.0), 1.4)
+	var cuero := Art.toon(Color(0.30, 0.20, 0.14))
+	giro.add_child(Art.cylinder(0.035, 0.80, cuero, Vector3(0.0, 0.0, 0.0)))
+	var hoja := Art.box(Vector3(0.05, 0.36, 0.30), acero, Vector3(0.0, 0.30, 0.13))
+	giro.add_child(hoja)
+	giro.add_child(Art.box(Vector3(0.055, 0.34, 0.04), filo, Vector3(0.0, 0.30, 0.30)))
+	giro.add_child(Art.sphere(0.05, acero, Vector3(0.0, -0.40, 0.0)))
+	for n: Node in giro.get_children():
+		var gi := n as GeometryInstance3D
+		if gi != null:
+			gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var brillo := CPUParticles3D.new()
+	brillo.amount = 16
+	brillo.lifetime = 0.35
+	brillo.local_coords = false
+	brillo.gravity = Vector3.ZERO
+	brillo.scale_amount_min = 0.04
+	brillo.scale_amount_max = 0.09
+	brillo.mesh = Art.particula_suave()
+	brillo.color = Color(0.70, 0.90, 1.0, 0.7)
+	padre.add_child(brillo)
+	return giro
+
+
+## LAS HOJAS DEL CAOS: dos espadas encadenadas que giran prendidas fuego alrededor de Kratos.
+func spawn_hojas_caos(caster: Node3D, radio: float) -> void:
+	var world := _world_of(caster)
+	if world == null:
+		return
+	var c := caster.global_position + Vector3.UP * 1.0
+	_aro_que_se_abre(world, c, Basis.IDENTITY, radio, Color(1.0, 0.40, 0.10), 2.2, 0.3, 0.93)
+	var nodo := Node3D.new()
+	world.add_child(nodo)
+	nodo.global_position = c
+	var hoja_mat := Art.glow(Color(1.0, 0.55, 0.20), 2.0)
+	var cadena := Art.toon(Color(0.25, 0.22, 0.20))
+	for lado: float in [-1.0, 1.0]:
+		var brazo := Node3D.new()
+		nodo.add_child(brazo)
+		brazo.rotation.y = 0.0 if lado > 0 else PI
+		brazo.add_child(Art.box(Vector3(0.05, 0.05, radio - 0.6), cadena, Vector3(0.0, 0.0, (radio - 0.6) * 0.5)))
+		brazo.add_child(Art.box(Vector3(0.10, 0.04, 0.70), hoja_mat, Vector3(0.0, 0.0, radio - 0.3)))
+	var tw := nodo.create_tween()
+	tw.tween_property(nodo, "rotation:y", TAU, 0.26).from(0.0)
+	tw.tween_callback(nodo.queue_free)
+	Sfx.play_3d(caster, &"cadenas", c, -2.0)
+
+
+## Las tres vueltas vistas desde otra pantalla.
+func spawn_hojas_caos_remoto(caster: Node3D) -> void:
+	for i: int in range(HojasDelCaos.VUELTAS):
+		if i > 0:
+			await get_tree().create_timer(HojasDelCaos.CADA).timeout
+		if not is_instance_valid(caster):
+			return
+		spawn_hojas_caos(caster, HojasDelCaos.RADIO)
+
+
+## LA FURIA ESPARTANA: vapor rojo alrededor del cuerpo y una luz roja mientras dura. Se
+## llama AuraSuper, como las otras auras de potencia (las escenas de la historia la buscan
+## por ese nombre para esconderla).
+func spawn_furia_espartana(caster: Node3D, dura: float) -> void:
+	if not is_instance_valid(caster):
+		return
+	var vieja := caster.get_node_or_null(^"AuraSuper")
+	if vieja != null:
+		vieja.queue_free()
+	var aura := Node3D.new()
+	aura.name = &"AuraSuper"
+	caster.add_child(aura)
+	var vapor := CPUParticles3D.new()
+	vapor.amount = 50
+	vapor.lifetime = 0.9
+	vapor.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	vapor.emission_sphere_radius = 0.6
+	vapor.direction = Vector3.UP
+	vapor.spread = 25.0
+	vapor.initial_velocity_min = 0.8
+	vapor.initial_velocity_max = 2.0
+	vapor.gravity = Vector3(0.0, 1.0, 0.0)
+	vapor.scale_amount_min = 0.15
+	vapor.scale_amount_max = 0.35
+	vapor.mesh = _particula_polvo()
+	vapor.color_ramp = Art.rampa_que_se_apaga(Color(0.95, 0.15, 0.10, 0.55))
+	vapor.position = Vector3(0.0, 1.0, 0.0)
+	aura.add_child(vapor)
+	var luz := OmniLight3D.new()
+	luz.light_color = Color(1.0, 0.20, 0.12)
+	luz.light_energy = 1.6
+	luz.omni_range = 4.0
+	luz.position = Vector3(0.0, 1.2, 0.0)
+	aura.add_child(luz)
+	get_tree().create_timer(dura).timeout.connect(aura.queue_free)
+	Sfx.play_3d(caster, &"furia", caster.global_position, 2.0)

@@ -497,6 +497,60 @@ func _register_all() -> void:
 	sukuna.como_se_gana = "terminando la parte 8 de la historia"
 	_add(sukuna)
 
+	# ======================================================== Temporada 5
+	#
+	# DOS CAZADORES. Tanjiro gratis (y jugable en la historia, parte 9); Kratos, el premio
+	# del ultimo escalon del pase pro de la temporada 5, como Goku, Mob y Gojo: no puede ser
+	# el mas fuerte y no se juega en la historia (aparece, pero no se juega).
+
+	# --------------------------------------------------------------- Tanjiro
+	#
+	# De Demon Slayer. Rapido y prolijo: la Rueda de Agua para entrar cortando, la Calma para
+	# aguantar parado lo que venga, y la Danza del Dios del Fuego, cuatro embestidas al mas
+	# cercano y un remolino de fuego.
+	var tanjiro := CharacterData.new()
+	tanjiro.id = &"tanjiro"
+	tanjiro.display_name = "Tanjiro"
+	tanjiro.origin_game = "Demon Slayer"
+	tanjiro.body_color = Color(0.09, 0.10, 0.13)
+	tanjiro.accent_color = Color(0.14, 0.46, 0.34)
+	tanjiro.skin_color = Color(0.96, 0.83, 0.70)
+	tanjiro.trouser_color = Color(0.09, 0.10, 0.13)
+	tanjiro.shoe_color = Color(0.92, 0.91, 0.86)
+	tanjiro.build_scale = Vector3(0.98, 0.95, 0.92)
+	tanjiro.max_health = 100.0
+	tanjiro.max_stamina = 105.0
+	# 7.0 (medido 2026-10-08): con 6.7 no llegaba a los que pelean de lejos (0 de 8 contra
+	# Flowery, Sans y Mob) y quedaba en 41%.
+	tanjiro.move_speed = 7.0
+	tanjiro.silhouette = &"haori"
+	_add(tanjiro)
+
+	# ---------------------------------------------------------------- Kratos
+	#
+	# De God of War, el de Midgard. Lento y pesado, el que mas aguanta despues de Thanos: el
+	# hacha que vuelve, las Hojas del Caos alrededor y la Furia Espartana. PREMIO DEL PASE PRO
+	# DE LA TEMPORADA 5.
+	var kratos := CharacterData.new()
+	kratos.id = &"kratos"
+	kratos.display_name = "Kratos"
+	kratos.origin_game = "God of War"
+	kratos.body_color = Color(0.36, 0.24, 0.16)
+	kratos.accent_color = Color(0.72, 0.12, 0.10)
+	kratos.skin_color = Color(0.86, 0.84, 0.80)
+	kratos.trouser_color = Color(0.30, 0.20, 0.14)
+	kratos.shoe_color = Color(0.22, 0.15, 0.11)
+	kratos.build_scale = Vector3(1.14, 1.10, 1.06)
+	# 104 (medido 2026-10-08): con 110 y el hachazo de 16 ganaba el 57%, y un premio del
+	# pase no puede ser el mas fuerte.
+	kratos.max_health = 104.0
+	kratos.max_stamina = 100.0
+	kratos.move_speed = 6.2
+	kratos.silhouette = &"espartano"
+	kratos.requiere_desbloqueo = true
+	kratos.como_se_gana = "completando el pase pro de la temporada 5"
+	_add(kratos)
+
 
 func _add(data: CharacterData) -> void:
 	_characters[data.id] = data
@@ -624,6 +678,16 @@ func build_abilities_for(id: StringName) -> Array[Ability]:
 			list.append(Desmantelar.new())
 			list.append(Fuga.new())
 			list.append(SantuarioMalevolo.new())
+		&"tanjiro":
+			list.append(CorteTanjiro.new())
+			list.append(RuedaDeAgua.new())
+			list.append(Calma.new())
+			list.append(HinokamiKagura.new())
+		&"kratos":
+			list.append(HachaLeviatan.new())
+			list.append(LanzarHacha.new())
+			list.append(HojasDelCaos.new())
+			list.append(FuriaEspartana.new())
 		_:
 			list.append(NoelleBasicAttack.new())
 	return list

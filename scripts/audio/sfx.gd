@@ -48,6 +48,10 @@ const ALIAS: Dictionary = {
 	&"corte": &"knife",
 	&"golpe_serio": &"explosion_psiquica",
 	&"dominio": &"susanoo",
+	&"agua": &"ice_shock",
+	&"hacha": &"knife",
+	&"cadenas": &"cadena",
+	&"furia": &"explosion_psiquica",
 	# Estos no tienen reemplazo: si no estan grabados, no suenan.
 	# `golpe`: cada golpe que conecta, de cualquiera (FX.spawn_hit_impact).
 	&"golpe": &"",
@@ -378,7 +382,7 @@ func _build_bank() -> void:
 
 
 ## Cuantos sonidos tiene que haber cuando el banco esta completo.
-const TOTAL_SONIDOS: int = 67
+const TOTAL_SONIDOS: int = 72
 
 ## Termino de armarse el banco? Lo usan los arneses, que arrancan una partida en el
 ## primer frame y no pueden asumir que los sonidos largos ya existen.
@@ -440,6 +444,11 @@ func _build_combate() -> void:
 		[&"voz_fuga", _synth_voz_fuga],
 		[&"voz_expansion", _synth_voz_expansion],
 		[&"voz_santuario", _synth_voz_santuario],
+		[&"voz_rueda_agua", _synth_voz_rueda_agua],
+		[&"voz_calma", _synth_voz_calma],
+		[&"voz_hinokami", _synth_voz_hinokami],
+		[&"voz_rueda_solar", _synth_voz_rueda_solar],
+		[&"voz_esparta", _synth_voz_esparta],
 	]
 	# Ordenados de mas corto a mas largo a proposito: los golpes basicos —que son los que
 	# se pueden llegar a necesitar antes— quedan listos en los primeros frames.
@@ -1042,6 +1051,41 @@ func _synth_voz_santuario() -> PackedFloat32Array:
 	return _voz([["a", 0.10, "aire"], ["u", 0.10, "golpe"], ["a", 0.10, ""], ["i", 0.08, "golpe"],
 		["o", 0.12, ""], ["a", 0.10, "nasal"], ["e", 0.09, ""], ["o", 0.10, "aire"],
 		["o", 0.26, ""]], SU_TONO - 4.0, 0.94, 0.18, 0.9, 0.7, 0.25)
+
+
+const TA_TONO: float = 182.0
+const KR_TONO: float = 86.0
+
+
+## "¡Segunda forma: Rueda de Agua!" — Tanjiro grita el nombre entero, con todo.
+func _synth_voz_rueda_agua() -> PackedFloat32Array:
+	return _voz([["e", 0.09, "aire"], ["u", 0.09, "golpe"], ["a", 0.10, ""], ["o", 0.10, "aire"], ["a", 0.09, "nasal"],
+		["u", 0.09, ""], ["e", 0.09, "golpe"], ["a", 0.09, ""], ["a", 0.10, "golpe"], ["u", 0.22, ""]],
+		TA_TONO, 1.0, 0.12, 1.4, 1.2, 0.08)
+
+
+## "Undecima forma: Calma." — mas bajo, concentrado.
+func _synth_voz_calma() -> PackedFloat32Array:
+	return _voz([["u", 0.09, "nasal"], ["e", 0.09, "golpe"], ["i", 0.09, "aire"], ["a", 0.10, ""], ["o", 0.10, "aire"],
+		["a", 0.09, "golpe"], ["a", 0.24, "nasal"]], TA_TONO - 14.0, 1.0, 0.10, 0.6, 1.0, 0.04)
+
+
+## "Danza del Dios del Fuego..." — al cargar, respirando.
+func _synth_voz_hinokami() -> PackedFloat32Array:
+	return _voz([["a", 0.10, "golpe"], ["a", 0.09, "aire"], ["e", 0.08, "golpe"], ["i", 0.09, "golpe"], ["o", 0.09, "aire"],
+		["e", 0.08, "golpe"], ["u", 0.09, "aire"], ["e", 0.09, ""], ["o", 0.24, "golpe"]],
+		TA_TONO - 6.0, 1.0, 0.12, 1.0, 1.1, 0.06)
+
+
+## "¡RUEDA SOLAR!" — al soltar la ultima vuelta.
+func _synth_voz_rueda_solar() -> PackedFloat32Array:
+	return _voz([["u", 0.10, ""], ["e", 0.09, "golpe"], ["a", 0.10, ""], ["o", 0.12, "aire"], ["a", 0.28, ""]],
+		TA_TONO + 10.0, 1.0, 0.14, 1.6, 1.25, 0.12)
+
+
+## El rugido de la Furia Espartana: una vocal larga, grave y rasgada.
+func _synth_voz_esparta() -> PackedFloat32Array:
+	return _voz([["a", 0.70, "golpe"]], KR_TONO, 0.90, 0.22, 1.8, 0.7, 0.45)
 
 
 ## Un hueso: dos golpecitos huecos, como madera.

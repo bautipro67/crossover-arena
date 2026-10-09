@@ -741,6 +741,9 @@ func _on_channel_started(index: int, _duration: float) -> void:
 		_channel_fx_extra = FX.spawn_carga_golpe_serio(cuerpo, ability.channel_time)
 	elif ability.id == &"santuario" and cuerpo != null:
 		_channel_fx_extra = FX.spawn_santuario_alzandose(cuerpo, ability.channel_time)
+	# La katana de Tanjiro se prende fuego mientras respira para la danza.
+	if ability.id == &"hinokami" and cuerpo != null:
+		FX.spawn_esfera_mano(cuerpo, Color(1.0, 0.50, 0.12), ability.channel_time)
 	if EscenaUlti.tiene(ability.id) and cuerpo is Player:
 		EscenaUlti.empezar(cuerpo as Player, ability.id, ability.channel_time)
 

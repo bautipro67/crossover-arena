@@ -277,8 +277,13 @@ static func _color_de(data: CharacterData) -> Color:
 
 
 ## Un boton de la lista de personajes: mas bajo que los demas y estirado a su columna.
+##
+## EL ALTO SALE DE CUANTOS HAY: con 20 personajes (temporada 5) diez filas de 42 ya no
+## entraban en 720 y la lista pedia scroll. Las filas se achican para que entren en el
+## mismo lugar que antes, hasta un minimo que se sigue pudiendo tocar en el celular.
 func _boton_de_lista(boton: Button) -> void:
-	boton.custom_minimum_size = Vector2(0, 42)
+	var filas := ceili(float(CharacterDB.get_all_ids().size()) / float(_character_list.columns))
+	boton.custom_minimum_size = Vector2(0, clampf(floorf(430.0 / float(maxi(1, filas))) - 6.0, 32.0, 42.0))
 	boton.add_theme_font_size_override("font_size", 15)
 	boton.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	boton.clip_text = true

@@ -72,6 +72,7 @@ func _run() -> void:
 	await _test_scorpion(player, arena)
 	await _test_temporada_3(player, arena)
 	await _test_temporada_4(player, arena)
+	await _test_temporada_5(player, arena)
 	_test_lugar_libre(arena)
 	await _test_modos_nuevos(player, arena)
 	await _test_modos_juego(player, arena)
@@ -1963,8 +1964,9 @@ func _test_mob(player: Player, arena: Arena) -> void:
 	_check(data != null and not data.requiere_desbloqueo,
 		"Mob es de todos desde que termino la temporada 2, como Goku con la 1")
 	var gojo := CharacterDB.get_character(&"gojo")
-	_check(gojo != null and not gojo.requiere_desbloqueo and Pase.recompensa(Pase.ESCALONES, true)[0] == Pase.SKIN,
-		"Gojo, el premio de la temporada 3, ya es de todos; el pase de la 4 termina en una skin")
+	_check(gojo != null and not gojo.requiere_desbloqueo and Pase.recompensa(Pase.ESCALONES, true)[0] == Pase.PERSONAJE
+		and String(Pase.recompensa(Pase.ESCALONES, true)[1]) == "kratos",
+		"Gojo, el premio de la temporada 3, ya es de todos; el pase de la 5 termina en Kratos")
 	# ES UN PREMIO Y NO PUEDE SER EL MAS FUERTE. Un personaje que se gana jugando y que
 	# ademas le gana a los otros convertiria el pase en un requisito para competir.
 	var vida_max := 0.0
@@ -2679,6 +2681,111 @@ func _test_temporada_4(player: Player, arena: Arena) -> void:
 	Arena.set_bots_active(true)
 
 
+# ------------------------------------------------------------- Temporada 5
+
+## TANJIRO Y KRATOS: el kit de cada uno, gratis el basico, la definitiva con medidor, y
+## cada habilidad pegando a la distancia que dice. Tanjiro es gratis; Kratos, el premio del
+## ultimo escalon del pase pro.
+func _test_temporada_5(player: Player, arena: Arena) -> void:
+	Arena.set_bots_active(false)
+	player.health.revive_full()
+	player.status.clear_all()
+	await _esperar_quieto(player, 480)
+
+	var kits := {
+		&"tanjiro": [CorteTanjiro, RuedaDeAgua, Calma, HinokamiKagura],
+		&"kratos": [HachaLeviatan, LanzarHacha, HojasDelCaos, FuriaEspartana],
+	}
+	var mal := ""
+	for pj: StringName in kits:
+		var data := CharacterDB.get_character(pj)
+		var kit := CharacterDB.build_abilities_for(pj)
+		var clases: Array = kits[pj]
+		if data == null or data.id != pj or kit.size() != 4:
+			mal += "%s:kit " % pj
+			continue
+		for k: int in range(4):
+			if not is_instance_of(kit[k], clases[k]):
+				mal += "%s:%d " % [pj, k]
+		if not is_zero_approx(kit[0].stamina_cost) or not kit[3].requires_charge or kit[3].stamina_cost != 100.0 \
+				or kit[3].channel_time <= 0.0:
+			mal += "%s:costos " % pj
+		if SkinDB.de_personaje(pj).size() < 3:
+			mal += "%s:skins " % pj
+		if not ModeloPersonaje.existe(pj):
+			mal += "%s:modelo " % pj
+	_check(mal.is_empty(), "Tanjiro y Kratos tienen su kit, basico gratis, definitiva canalizada con medidor, tres skins y modelo %s" % mal)
+	_check(not CharacterDB.get_character(&"tanjiro").requiere_desbloqueo
+		and CharacterDB.get_character(&"kratos").requiere_desbloqueo
+		and CharacterDB.get_character(&"kratos").como_se_gana.contains("temporada 5"),
+		"Tanjiro es gratis y Kratos se gana con el pase pro de la temporada 5")
+
+	var puesto := arena.find_clear_spot(Vector3(-30.0, 0.6, 30.0), 1.5)
+	player.respawn_at(puesto, 0.0)
+	for _i: int in range(6):
+		await get_tree().physics_frame
+	var rumbo := _carril_libre(player, puesto, 24.0)
+
+	# --- TANJIRO ---
+	player.setup_character(CharacterDB.get_character(&"tanjiro"))
+	var r := await _probar_habilidad(player, arena, puesto, rumbo, 0, 2.4, 0.3)
+	_check(r[0] >= CorteTanjiro.DAMAGE * 0.9, "el corte de Tanjiro pega (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 5.0, RuedaDeAgua.DURATION + 0.4)
+	_check(r[0] >= RuedaDeAgua.DAMAGE * 0.9, "la Rueda de Agua corta al que cruza (%.0f)" % r[0])
+	r[1].queue_free()
+	# La Calma: mientras dura no le entra nada, y corta al que esta cerca.
+	var blanco_c := _spawn_dummy(arena, puesto + rumbo * 2.0)
+	blanco_c.health.set_max(3000.0)
+	player.respawn_at(puesto, atan2(-rumbo.x, -rumbo.z))
+	for _i: int in range(12):
+		await get_tree().physics_frame
+	player.stamina.restore_full()
+	player.caster.reset_state()
+	player.health.revive_full()
+	var vida_c := blanco_c.health.current
+	player.caster.request_use(2)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var en_calma := CombatUtils.deal_damage(player, 20.0, -77)
+	await get_tree().create_timer(Calma.DURACION + 0.3).timeout
+	_check(is_zero_approx(en_calma) and vida_c - blanco_c.health.current >= Calma.DAMAGE * 3.0,
+		"en la Calma nada lo toca, y corta al que tiene al lado (%.0f, %.0f)" % [en_calma, vida_c - blanco_c.health.current])
+	blanco_c.queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, 8.0,
+		HinokamiKagura.new().channel_time + 2.6)
+	_check(r[0] >= HinokamiKagura.DAMAGE * 2.0,
+		"la Danza del Dios del Fuego va sola contra el que esta a ocho metros (%.0f)" % r[0])
+	r[1].queue_free()
+
+	# --- KRATOS ---
+	player.setup_character(CharacterDB.get_character(&"kratos"))
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 0, 2.4, 0.3)
+	_check(r[0] >= HachaLeviatan.DAMAGE * 0.9 and (r[1] as Player).status._slow_percent > 0.0,
+		"el hachazo de Kratos pega y enfría (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 1, 10.0, 1.6)
+	_check(r[0] >= LanzarHacha.DAMAGE_IDA + LanzarHacha.DAMAGE_VUELTA * 0.9,
+		"el hacha lanzada pega a la ida y a la vuelta (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 2, 3.0,
+		float(HojasDelCaos.VUELTAS) * HojasDelCaos.CADA + 0.4)
+	_check(r[0] >= HojasDelCaos.DAMAGE * float(HojasDelCaos.VUELTAS) * 0.9,
+		"las Hojas del Caos cortan en cada vuelta (%.0f)" % r[0])
+	r[1].queue_free()
+	r = await _probar_habilidad(player, arena, puesto, rumbo, 3, 2.5, FuriaEspartana.new().channel_time + 0.5)
+	_check(r[0] >= FuriaEspartana.DAMAGE_PISOTON * 0.9 and player.status.es_imparable(),
+		"la Furia Espartana arranca con un pisoton y nada lo frena (%.0f)" % r[0])
+	r[1].queue_free()
+
+	player.aim_override = Vector3.ZERO
+	player.status.clear_all()
+	player.setup_character(CharacterDB.get_character(&"sonic"))
+	player.caster.reset_state()
+	player.health.revive_full()
+	Arena.set_bots_active(true)
+
+
 ## UN LUGAR LIBRE ES LIBRE DE VERDAD: pedido adentro de una cobertura, devuelve un punto
 ## afuera. Con radio 1 la esfera tocaba el piso y devolvia el punto pedido tal cual.
 func _test_lugar_libre(arena: Arena) -> void:
@@ -3123,7 +3230,7 @@ func _test_escena_corta_habilidades(player: Player) -> void:
 		"una JARONA que arranca durante una escena se corta enseguida (%d ms)" % tardo)
 
 
-const CHEQUEOS_MINIMOS: int = 359
+const CHEQUEOS_MINIMOS: int = 369
 
 
 func _finish() -> void:

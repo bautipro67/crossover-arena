@@ -76,6 +76,10 @@ El nombre tiene que ser **exactamente** el de la tabla, con extensión `.ogg`
 | `golpe_serio`        | Saitama    | la onda del Golpe Serio (sin archivo: `explosion_psiquica`) |
 | `corte`              | Sukuna     | los tajos de Desmantelar y del dominio (sin archivo: `knife`) |
 | `dominio`            | Sukuna     | el santuario que sube (sin archivo: `susanoo`)  |
+| `agua`               | Tanjiro    | la Rueda de Agua (sin archivo: `ice_shock`)     |
+| `hacha`              | Kratos     | el Hacha Leviatán lanzada (sin archivo: `knife`) |
+| `cadenas`            | Kratos     | las Hojas del Caos (sin archivo: `cadena`)      |
+| `furia`              | Kratos     | la Furia Espartana (sin archivo: `explosion_psiquica`) |
 
 ## Modos de juego
 
@@ -122,6 +126,11 @@ El nombre tiene que ser **exactamente** el de la tabla, con extensión `.ogg`
 | `voz_fuga`          | Sukuna     | Fuga.                          |
 | `voz_expansion`     | Sukuna     | Expansión de dominio... (al cargar) |
 | `voz_santuario`     | Sukuna     | Santuario Malévolo.            |
+| `voz_rueda_agua`    | Tanjiro    | ¡Segunda forma: Rueda de Agua! |
+| `voz_calma`         | Tanjiro    | Undécima forma: Calma.         |
+| `voz_hinokami`      | Tanjiro    | Danza del Dios del Fuego... (al cargar) |
+| `voz_rueda_solar`   | Tanjiro    | ¡RUEDA SOLAR!                  |
+| `voz_esparta`       | Kratos     | ¡RAAAH! (al cargar la Furia)   |
 
 ## Música
 

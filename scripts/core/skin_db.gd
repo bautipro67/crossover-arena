@@ -120,6 +120,7 @@ func _registrar_todas() -> void:
 	_registrar_temporada_2()
 	_registrar_temporada_3()
 	_registrar_temporada_4()
+	_registrar_temporada_5()
 
 
 # ------------------------------------------------------------- Temporada 1
@@ -485,6 +486,40 @@ func _registrar_temporada_4() -> void:
 	]
 	for sk: SkinData in nuevas:
 		sk.temporada = 4
+		_add(sk)
+
+
+func _registrar_temporada_5() -> void:
+	var nuevas: Array[SkinData] = [
+		# --- El pase: las de Tanjiro, que es el que llega gratis ---
+		_hacer(&"tanjiro_kimono", &"tanjiro", "Tanjiro, Vendedor de Carbón",
+			"El kimono azul de cuando bajaba al pueblo a vender carbón, antes de todo.",
+			Color(0.18, 0.25, 0.50), Color(0.20, 0.42, 0.30),
+			Color(0.96, 0.83, 0.70), Color(0.20, 0.22, 0.30), &"rara", 0),
+		_hacer(&"tanjiro_kitsune", &"tanjiro", "Tanjiro con la Máscara de Zorro",
+			"La máscara que le hizo Sakonji para la Selección Final, corrida al costado.",
+			Color(0.09, 0.10, 0.13), Color(0.14, 0.46, 0.34),
+			Color(0.96, 0.83, 0.70), Color(0.09, 0.10, 0.13), &"epica", 0),
+		_hacer(&"tanjiro_marca", &"tanjiro", "Tanjiro con la Marca",
+			"La Marca del Cazador encendida en la frente, y la hoja de la katana roja.",
+			Color(0.09, 0.10, 0.13), Color(0.14, 0.46, 0.34),
+			Color(0.96, 0.83, 0.70), Color(0.09, 0.10, 0.13), &"legendaria", 0),
+		# --- La tienda: las de Kratos, para el que complete el pase ---
+		_hacer(&"kratos_guerra", &"kratos", "Kratos de Guerra",
+			"El cuero teñido de negro para la guerra que viene.",
+			Color(0.08, 0.08, 0.09), Color(0.72, 0.12, 0.10),
+			Color(0.86, 0.84, 0.80), Color(0.08, 0.08, 0.09), &"rara", 900),
+		_hacer(&"kratos_fimbul", &"kratos", "Kratos del Fimbulwinter",
+			"El manto de piel de oso del invierno que anuncia el Ragnarök.",
+			Color(0.36, 0.24, 0.16), Color(0.72, 0.12, 0.10),
+			Color(0.86, 0.84, 0.80), Color(0.30, 0.20, 0.14), &"epica", 1800),
+		_hacer(&"kratos_griego", &"kratos", "Kratos, Fantasma de Esparta",
+			"El de Grecia: la perilla, la falda roja y las Hojas del Caos en las manos.",
+			Color(0.62, 0.12, 0.10), Color(0.90, 0.70, 0.25),
+			Color(0.88, 0.86, 0.82), Color(0.62, 0.12, 0.10), &"legendaria", 2600),
+	]
+	for sk: SkinData in nuevas:
+		sk.temporada = 5
 		_add(sk)
 
 
@@ -955,6 +990,26 @@ func _detallar() -> void:
 	_det(&"thanos_granjero", {&"camisa": Color(0.88, 0.85, 0.78), &"pantalon": Color(0.32, 0.26, 0.20)},
 		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"camisa", Color(0.85, 0.75, 0.55, 0.75))
 	_extra(&"thanos_granjero", &"granjero", [])
+	# --- Temporada 5 ---
+	_det(&"tanjiro_kimono", {&"uniforme": Color(0.18, 0.25, 0.50), &"haori_a": Color(0.20, 0.42, 0.30),
+		&"pantalon": Color(0.20, 0.22, 0.30)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.40, 0.65, 1.0, 0.7))
+	_det(&"tanjiro_kitsune", {&"mascara_kitsune": Color(0.97, 0.96, 0.92), &"mascara_marcas": Color(0.85, 0.15, 0.15)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"mascara_kitsune", Color(0.40, 0.65, 1.0, 0.75))
+	_extra(&"tanjiro_kitsune", &"kitsune", [])
+	_det(&"tanjiro_marca", {&"marca_llama": Color(0.80, 0.10, 0.10), &"hoja_roja": Color(0.80, 0.10, 0.08)},
+		&"", &"chispas", Color(1.0, 0.45, 0.15), Color(0, 0, 0, 0), &"", Color(1.0, 0.45, 0.15, 0.85))
+	_extra(&"tanjiro_marca", &"marca", [])
+	_det(&"kratos_guerra", {&"falda": Color(0.08, 0.08, 0.09), &"correa": Color(0.10, 0.10, 0.11),
+		&"brazales": Color(0.12, 0.12, 0.13)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"", Color(0.85, 0.20, 0.15, 0.75))
+	_det(&"kratos_fimbul", {&"manto": Color(0.36, 0.28, 0.22), &"falda": Color(0.36, 0.24, 0.16)},
+		&"", &"", Color.WHITE, Color(0, 0, 0, 0), &"manto", Color(0.80, 0.85, 0.95, 0.75))
+	_extra(&"kratos_fimbul", &"fimbul", [])
+	_det(&"kratos_griego", {&"falda": Color(0.62, 0.12, 0.10), &"cinturon": Color(0.85, 0.65, 0.22),
+		&"tatuajes": Color(0.80, 0.08, 0.06)},
+		&"", &"chispas", Color(1.0, 0.45, 0.15), Color(0, 0, 0, 0), &"", Color(1.0, 0.40, 0.12, 0.85))
+	_extra(&"kratos_griego", &"griego", [])
 	# Scorpion
 	_det(&"scorpion_clasico", {&"traje": Color(1.00, 0.84, 0.10), &"mascara": Color(1.00, 0.88, 0.20),
 		&"ropa": Color(0.10, 0.10, 0.10)},

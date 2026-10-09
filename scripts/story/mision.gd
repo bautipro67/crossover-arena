@@ -20,6 +20,9 @@ extends Node
 ##   sobrevivir {segundos}      ganar = seguir en pie esos segundos
 ##   zona {centro, radio, segundos}   ganar = estar adentro ese tiempo, acumulado
 ##   recolectar {objeto, cantidad, puntos?}   ganar = juntar todos (pasando por encima)
+##   escoltar {id, ruta}        ganar = que ese aliado llegue al final de la ruta caminando
+##                              (se frena si tiene enemigos encima); perder = que caiga
+##   recorrido {puntos, radio}  ganar = pisar los circulos en orden (se ve solo el que sigue)
 ## Y en todos: perder si cae el jugador, y si hay "limite", perder al pasarlo.
 ##
 ## REGLAS DEL CAPITULO ("regla"): "un_golpe" = cada golpe DEL JUGADOR mata (Saitama: el
@@ -31,7 +34,13 @@ extends Node
 ## ["curar", id], ["retirar", id], ["entrar", id], ["objetivo", objetivo],
 ## ["cinematica", pasos], ["ganar"], ["perder", texto], ["lluvia", tipo, segundos, cada]
 ## (meteoritos o cortes que caen avisando con una sombra; los bots tambien los esquivan),
-## ["parar_lluvia"]. Cada evento pasa una sola vez.
+## ["parar_lluvia"], ["cerco", radio_inicial, radio_final, segundos, daño_por_segundo] (un
+## anillo de fuego que se cierra sobre el ancla y quema a cualquiera que quede afuera) y
+## ["sellos", cantidad] (vuelven los sellos del jefe). Cada evento pasa una sola vez.
+##
+## LOS SELLOS ("sellos": {jefe, cantidad, segundos} en el capitulo): mientras quede uno en
+## pie, al jefe no le entra nada. Se rompen quedandose al lado `segundos` seguidos, con los
+## enemigos encima. Son la fase de un jefe que no se gana pegandole.
 ##
 ## PARTICIPANTES ("aliados" y "enemigos"): id, personaje, nombre, vida, daño, pos, y
 ## opcionales: eco (copia oscura), jefe (barra arriba), quieto (no pelea: trabaja o
@@ -87,6 +96,25 @@ var _lluvia_prox: float = 0.0
 var _lluvia_n: int = 0
 ## Cuando tiro la definitiva el jugador por ultima vez (paso "jefe_ulti").
 var _ulti_t: float = -99.0
+## LA ESCOLTA: los puntos que camina, por cual va, y la marca del proximo.
+var _escolta_ruta: Array[Vector3] = []
+var _escolta_k: int = 0
+var _escolta_marca: Node3D = null
+## EL RECORRIDO: los circulos, por cual va, y el que se ve.
+var _puntos: Array[Vector3] = []
+var _punto_k: int = 0
+var _punto_marca: Node3D = null
+## LOS SELLOS: cada uno con lo que lleva de roto (0-1).
+var _sellos: Array[Node3D] = []
+var _sellos_rotos: int = 0
+## EL CERCO: radio de arranque y de llegada, cuanto tarda, cuanto quema, y desde cuando.
+var _cerco: Node3D = null
+var _cerco_r0: float = 0.0
+var _cerco_r1: float = 0.0
+var _cerco_dura: float = 1.0
+var _cerco_dps: float = 0.0
+var _cerco_desde: float = 0.0
+var _cerco_tick: float = 0.0
 ## El jefe del paso "jefe_ulti" cayo, y con la definitiva. Se anota al caer: la escena final
 ## revive a los que habla, y para entonces el jefe ya no esta muerto.
 var _jefe_ulti_cayo: bool = false
@@ -311,6 +339,9 @@ func _comenzar() -> void:
 	_en_pelea = true
 	if objetivo.get("tipo", "") == "recolectar":
 		_crear_juntables()
+	_armar_objetivo_nuevo()
+	if datos.has("sellos"):
+		_crear_sellos(int((datos["sellos"] as Dictionary).get("cantidad", 3)))
 	_armar_paso_snowgrave()
 	if is_instance_valid(hud) and hud.has_method("anunciar"):
 		hud.anunciar(String(objetivo.get("texto", "¡A pelear!")).to_upper(), 2.2)
@@ -342,6 +373,10 @@ func _process(delta: float) -> void:
 			mat.albedo_color = mat.albedo_color.lerp(
 				Color(0.45, 1.0, 0.55) if dentro else Color(0.45, 0.85, 1.0), delta * 6.0)
 	_vigilar_juntables()
+	_vigilar_escolta()
+	_vigilar_recorrido()
+	_vigilar_sellos(delta)
+	_vigilar_cerco(delta)
 	_vigilar_lluvia(delta)
 	_vigilar_paso_snowgrave()
 	_revisar_eventos()
@@ -612,6 +647,12 @@ func _revisar_objetivo() -> void:
 		"recolectar":
 			if not _juntables.is_empty() and _juntados >= _juntables.size():
 				_ganar()
+		"escoltar":
+			if not _escolta_ruta.is_empty() and _escolta_k >= _escolta_ruta.size():
+				_ganar()
+		"recorrido":
+			if not _puntos.is_empty() and _punto_k >= _puntos.size():
+				_ganar()
 
 
 func _al_morir(id: StringName, asesino: int = 0) -> void:
@@ -622,7 +663,7 @@ func _al_morir(id: StringName, asesino: int = 0) -> void:
 		_perder("CAÍSTE")
 		return
 	_paso_al_caer(participantes.get(id) as Player, asesino)
-	if objetivo.get("tipo", "") == "proteger" and StringName(objetivo.get("id", "")) == id:
+	if objetivo.get("tipo", "") in ["proteger", "escoltar"] and StringName(objetivo.get("id", "")) == id:
 		_perder("NO PUDISTE PROTEGER A %s" % Historia.nombre_de(_personaje_de(id)).to_upper())
 		return
 	_revisar_eventos()
@@ -708,6 +749,12 @@ func texto_objetivo() -> String:
 			t += "   ·   %d / %d s" % [int(_zona_t), int(objetivo.get("segundos", 30.0))]
 		"recolectar":
 			t += "   ·   %d / %d" % [_juntados, int(objetivo.get("cantidad", 4))]
+		"escoltar":
+			t += "   ·   tramo %d / %d" % [mini(_escolta_k + 1, _escolta_ruta.size()), _escolta_ruta.size()]
+		"recorrido":
+			t += "   ·   %d / %d" % [_punto_k, _puntos.size()]
+	if _sellos_en_pie() > 0:
+		t += "   ·   sellos en pie: %d" % _sellos_en_pie()
 	var limite := float(objetivo.get("limite", 0.0))
 	if limite > 0.0:
 		t += "   ·   ⏱ %d s" % maxi(0, int(ceil(limite - tiempo)))
@@ -797,6 +844,7 @@ func _hacer(acciones: Array) -> void:
 					_crear_zona()
 				if objetivo.get("tipo", "") == "recolectar":
 					_crear_juntables()
+				_armar_objetivo_nuevo()
 				if is_instance_valid(hud) and hud.has_method("anunciar"):
 					hud.anunciar(String(objetivo.get("texto", "")).to_upper(), 2.2)
 			"cinematica":
@@ -810,6 +858,12 @@ func _hacer(acciones: Array) -> void:
 				_lluvia_prox = 0.6
 			"parar_lluvia":
 				_lluvia_tipo = ""
+			"cerco":
+				_empezar_cerco(float(a[1]), float(a[2]), float(a[3]), float(a[4]) if a.size() > 4 else 6.0)
+			"sellos":
+				_crear_sellos(int(a[1]))
+				if is_instance_valid(hud) and hud.has_method("anunciar"):
+					hud.anunciar("¡VOLVIERON LOS SELLOS!", 1.8)
 			"ganar":
 				_ganar()
 			"perder":
@@ -938,6 +992,7 @@ func _ganar() -> void:
 				aura.queue_free()
 	_fuera.clear()
 	_lluvia_tipo = ""
+	_limpiar_nuevos()
 	for cosa: Node3D in _juntables:
 		if is_instance_valid(cosa):
 			cosa.queue_free()
@@ -959,3 +1014,225 @@ func _perder(titulo: String) -> void:
 	_en_pelea = false
 	Arena.set_bots_active(false)
 	Modos.terminar_historia(false, titulo, "El capítulo se puede volver a intentar cuando quieras.")
+
+
+# ------------------------------------------------- Escolta, recorrido, sellos, cerco
+#
+# LAS PELEAS DE LA PARTE 9 (2026-10-08, "que la historia tenga peleas interesantes y no
+# repetitivas"): cada una cambia DONDE tiene que estar el jugador y QUE tiene que mirar,
+# no solo cuantos enemigos hay. La escolta lo obliga a quedarse con alguien que camina; el
+# recorrido, a moverse con los enemigos atras; los sellos, a dejar de pegarle al jefe; y el
+# cerco, a pelear cada vez mas apretado.
+
+func _armar_objetivo_nuevo() -> void:
+	match String(objetivo.get("tipo", "")):
+		"escoltar":
+			_escolta_ruta.clear()
+			for rel: Vector2 in objetivo.get("ruta", []):
+				_escolta_ruta.append(al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 1.2)))
+			_escolta_k = 0
+			var b := participantes.get(StringName(objetivo.get("id", ""))) as Player
+			if b != null:
+				# La lleva la mision, no su cerebro: camina la ruta y no sale a pelear.
+				var cerebro := b.get_node_or_null("BotBrain")
+				if cerebro != null:
+					cerebro.set_process(false)
+					cerebro.set_physics_process(false)
+			_marcar_escolta()
+		"recorrido":
+			_puntos.clear()
+			for rel: Vector2 in objetivo.get("puntos", []):
+				_puntos.append(al_piso(arena, arena.find_clear_spot(ancla + Vector3(rel.x, 0.0, rel.y), 2.0)))
+			_punto_k = 0
+			_marcar_punto()
+
+
+func _marcar_escolta() -> void:
+	if is_instance_valid(_escolta_marca):
+		_escolta_marca.queue_free()
+	_escolta_marca = null
+	if _escolta_k < _escolta_ruta.size():
+		_escolta_marca = FX.armar_marca_recorrido(arena, _escolta_ruta[_escolta_k], 1.6, Color(0.55, 1.0, 0.60))
+
+
+func _marcar_punto() -> void:
+	if is_instance_valid(_punto_marca):
+		_punto_marca.queue_free()
+	_punto_marca = null
+	if _punto_k < _puntos.size():
+		_punto_marca = FX.armar_marca_recorrido(arena, _puntos[_punto_k], float(objetivo.get("radio", 3.0)),
+			Color(1.0, 0.85, 0.35))
+
+
+## La escolta camina al proximo punto; SE FRENA si tiene un enemigo a menos de cinco metros
+## (no va a pasar por el medio de una pelea), y espera al jugador si se alejo mucho.
+func _vigilar_escolta() -> void:
+	if String(objetivo.get("tipo", "")) != "escoltar" or _escolta_k >= _escolta_ruta.size():
+		return
+	var b := participantes.get(StringName(objetivo.get("id", ""))) as Player
+	if b == null or not is_instance_valid(b) or b.health.is_dead:
+		return
+	var destino := _escolta_ruta[_escolta_k]
+	var hacia := destino - b.global_position
+	hacia.y = 0.0
+	if hacia.length() < 1.4:
+		_escolta_k += 1
+		_marcar_escolta()
+		b.bot_move_dir = Vector3.ZERO
+		return
+	var amenazado := false
+	for otro: Node in participantes.values():
+		var e := otro as Player
+		if e != null and is_instance_valid(e) and e.equipo == 1 and not e.health.is_dead and e.visible \
+				and e.global_position.distance_to(b.global_position) < 5.0:
+			amenazado = true
+			break
+	var p := jugador()
+	var lejos := p != null and p.global_position.distance_to(b.global_position) > 14.0
+	b.bot_wants_run = false
+	b.bot_move_dir = Vector3.ZERO if amenazado or lejos else hacia.normalized()
+	if not hacia.is_zero_approx():
+		b.rotation.y = atan2(-hacia.x, -hacia.z)
+		b.bot_look_yaw = b.rotation.y
+
+
+func _vigilar_recorrido() -> void:
+	if String(objetivo.get("tipo", "")) != "recorrido" or _punto_k >= _puntos.size():
+		return
+	var p := jugador()
+	if p == null or p.health.is_dead:
+		return
+	var punto := _puntos[_punto_k]
+	var d := Vector2(p.global_position.x - punto.x, p.global_position.z - punto.z).length()
+	if d <= float(objetivo.get("radio", 3.0)):
+		FX.spawn_impact_burst(arena, punto + Vector3.UP * 0.5, Color(1.0, 0.85, 0.35))
+		Sfx.play_3d(arena, &"gema", punto, -2.0)
+		_punto_k += 1
+		_marcar_punto()
+
+
+func _crear_sellos(cuantos: int) -> void:
+	for s: Node3D in _sellos:
+		if is_instance_valid(s):
+			s.queue_free()
+	_sellos.clear()
+	var jefe_s := participantes.get(StringName((datos.get("sellos", {}) as Dictionary).get("jefe", ""))) as Player
+	var centro := jefe_s.global_position if jefe_s != null else ancla
+	for k: int in range(cuantos):
+		var a := TAU * float(k) / float(maxi(1, cuantos)) + 0.6
+		var rel := Vector3(cos(a), 0.0, sin(a)) * (11.0 + 4.0 * float(k % 2))
+		var punto := centro + rel
+		# CON EL CERCO PRENDIDO, ADENTRO DEL ANILLO: un sello afuera obligaba a romperlo
+		# quemandose, y en el final se moria ahi.
+		if is_instance_valid(_cerco):
+			var desde := Vector3(punto.x - ancla.x, 0.0, punto.z - ancla.z)
+			var tope := maxf(3.0, minf(_cerco_r1, radio_cerco()) - 3.0)
+			if desde.length() > tope:
+				punto = ancla + desde.normalized() * tope
+		var donde := al_piso(arena, arena.find_clear_spot(punto, 2.0))
+		var sello := FX.armar_juntable(arena, donde, "sello")
+		sello.set_meta(&"roto", 0.0)
+		_sellos.append(sello)
+
+
+func _sellos_en_pie() -> int:
+	var n := 0
+	for s: Node3D in _sellos:
+		if is_instance_valid(s) and not s.has_meta(&"tomado"):
+			n += 1
+	return n
+
+
+## Mientras quede un sello, el jefe no recibe nada; el jugador rompe el que tiene al lado
+## quedandose ahi (si se va, lo roto se pierde de a poco).
+func _vigilar_sellos(delta: float) -> void:
+	if _sellos.is_empty():
+		return
+	var conf: Dictionary = datos.get("sellos", {})
+	var jefe_s := participantes.get(StringName(conf.get("jefe", ""))) as Player
+	if jefe_s != null and is_instance_valid(jefe_s):
+		# El escudo se ve: una burbuja violeta mientras quede un sello, y se rompe con el ultimo.
+		var escudo := jefe_s.get_node_or_null(^"EscudoSellos") as Node3D
+		var sellado := not jefe_s.health.is_dead and _sellos_en_pie() > 0
+		if sellado:
+			jefe_s.status.estrella(0.25)
+			if escudo == null:
+				FX.armar_escudo_sellos(jefe_s)
+		elif escudo != null:
+			FX.spawn_impact_burst(jefe_s, jefe_s.global_position + Vector3.UP, Color(0.75, 0.55, 1.0))
+			escudo.queue_free()
+	var p := jugador()
+	if p == null or p.health.is_dead:
+		return
+	var tarda := float(conf.get("segundos", 1.6))
+	for s: Node3D in _sellos:
+		if not is_instance_valid(s) or s.has_meta(&"tomado"):
+			continue
+		var roto := float(s.get_meta(&"roto", 0.0))
+		var cerca := Vector2(p.global_position.x - s.global_position.x, p.global_position.z - s.global_position.z).length() < 2.4
+		roto = clampf(roto + (delta / tarda if cerca else -delta * 0.3), 0.0, 1.0)
+		s.set_meta(&"roto", roto)
+		s.scale = Vector3.ONE * (1.0 - roto * 0.5)
+		if roto >= 1.0:
+			s.set_meta(&"tomado", true)
+			_sellos_rotos += 1
+			FX.spawn_impact_burst(s, s.global_position + Vector3.UP * 0.6, Color(0.75, 0.55, 1.0))
+			Sfx.play_3d(s, &"plasma_blast", s.global_position, -2.0)
+			s.visible = false
+			if _sellos_en_pie() == 0 and is_instance_valid(hud) and hud.has_method("anunciar"):
+				hud.anunciar("¡SIN SELLOS! ¡AHORA!", 1.6)
+
+
+func _empezar_cerco(r0: float, r1: float, segundos: float, dps: float) -> void:
+	if not is_instance_valid(_cerco):
+		_cerco = FX.armar_cerco(arena)
+		_cerco.global_position = ancla
+	_cerco_r0 = r0
+	_cerco_r1 = r1
+	_cerco_dura = maxf(1.0, segundos)
+	_cerco_dps = dps
+	_cerco_desde = tiempo
+	_cerco_tick = 0.0
+	if is_instance_valid(hud) and hud.has_method("anunciar"):
+		hud.anunciar("¡EL CERCO SE CIERRA!", 1.6)
+
+
+func radio_cerco() -> float:
+	var k := clampf((tiempo - _cerco_desde) / _cerco_dura, 0.0, 1.0)
+	return lerpf(_cerco_r0, _cerco_r1, k)
+
+
+## El cerco: el anillo se achica, y cada medio segundo quema a todo el que este afuera
+## (sin dueño, como los meteoritos: no cuenta como baja de nadie).
+func _vigilar_cerco(delta: float) -> void:
+	if not is_instance_valid(_cerco):
+		return
+	var r := radio_cerco()
+	_cerco.scale = Vector3(r, 1.0, r)
+	_cerco_tick -= delta
+	if _cerco_tick > 0.0:
+		return
+	_cerco_tick = 0.5
+	for node: Node in get_tree().get_nodes_in_group("players"):
+		var b := node as Player
+		if b == null or b.health.is_dead or not b.visible:
+			continue
+		var d := Vector2(b.global_position.x - ancla.x, b.global_position.z - ancla.z).length()
+		if d > r:
+			CombatUtils.deal_damage(b, _cerco_dps * 0.5 * GameConfig.VIDA, 0, false)
+			FX.spawn_impact_burst(b, b.global_position + Vector3.UP, Color(1.0, 0.45, 0.10, 0.9))
+
+
+func _limpiar_nuevos() -> void:
+	for n: Node3D in [_escolta_marca, _punto_marca, _cerco]:
+		if is_instance_valid(n):
+			n.queue_free()
+	var jefe_s := participantes.get(StringName((datos.get("sellos", {}) as Dictionary).get("jefe", ""))) as Player
+	if jefe_s != null and is_instance_valid(jefe_s):
+		var escudo := jefe_s.get_node_or_null(^"EscudoSellos")
+		if escudo != null:
+			escudo.queue_free()
+	for s: Node3D in _sellos:
+		if is_instance_valid(s):
+			s.queue_free()
+	_sellos.clear()

@@ -287,19 +287,45 @@ func _pelea_mision(c: int, cap: Dictionary, heroe: StringName) -> Array:
 			h.set_meta(&"correa", float(cap["objetivo"].get("radio", 6.0)) * 0.7)
 		# JUNTAR: el heroe va a buscar lo que falta, el mas cercano, como haria una persona
 		# (un bot solo pelea, y sin esto el capitulo nunca se termina).
+		# Y LOS SELLOS, igual: se va al mas cercano y se queda ahi hasta romperlo.
 		var falta: Node3D = null
-		for cosa: Node3D in m._juntables:
+		for cosa: Node3D in m._juntables + m._sellos:
 			if is_instance_valid(cosa) and not cosa.has_meta(&"tomado") and (falta == null
 					or cosa.global_position.distance_to(h.global_position) < falta.global_position.distance_to(h.global_position)):
 				falta = cosa
-		if falta != null:
-			h.set_meta(&"ir_a", falta.global_position)
+		var destino: Variant = falta.global_position if falta != null else null
+		# EL RECORRIDO: al circulo que sigue.
+		if m._punto_k < m._puntos.size():
+			destino = m._puntos[m._punto_k]
+		# LA ESCOLTA: atado al que camina, peleando alrededor (como el que cuida a alguien).
+		var escoltado := m.participantes.get(StringName(cap["objetivo"].get("id", ""))) as Player \
+			if String(cap["objetivo"].get("tipo", "")) == "escoltar" else null
+		if escoltado != null and is_instance_valid(escoltado) and cerebro != null:
+			cerebro.home = escoltado.global_position
+			h.set_meta(&"correa", 6.0)
+		# EL CERCO: si quedo afuera (o casi), primero volver adentro.
+		if is_instance_valid(m._cerco):
+			var al_centro := Vector2(h.global_position.x - m.ancla.x, h.global_position.z - m.ancla.z).length()
+			if al_centro > m.radio_cerco() - 2.0:
+				destino = m.ancla
+		if destino != null:
+			h.set_meta(&"ir_a", destino)
 		elif h.has_meta(&"ir_a"):
 			h.remove_meta(&"ir_a")
+		# Con sellos en pie, al sello sin frenarse: pegarle al jefe no sirve de nada.
+		if m._sellos_en_pie() > 0:
+			h.set_meta(&"ir_a_ya", true)
+		elif h.has_meta(&"ir_a_ya"):
+			h.remove_meta(&"ir_a_ya")
 	Modos.termino.disconnect(al_terminar)
 	if diag:
 		print("  diag cap %d: el heroe recibe %.0f y usa %s; el jefe usa %s, distancia media %.1f m" % [c + 1,
 			recibido[0], str(usos_heroe), str(usos_jefe), dist_jefe[0] / maxf(1.0, float(dist_jefe[1]))])
+		var j_fin := m.jefe()
+		print("  diag cap %d: al terminar, sellos en pie %d (rotos %d), jefe al %.0f%%, cerco %s" % [c + 1,
+			m._sellos_en_pie(), m._sellos_rotos,
+			100.0 * j_fin.health.current / maxf(1.0, j_fin.health.max_health) if j_fin != null else -1.0,
+			"%.0f m" % m.radio_cerco() if is_instance_valid(m._cerco) else "no"])
 	m.queue_free()
 	return [fin[0] == true, t, h.health.current / maxf(1.0, h.health.max_health)]
 

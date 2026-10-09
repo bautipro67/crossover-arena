@@ -213,7 +213,9 @@ func _process(delta: float) -> void:
 
 func _ir_a(punto: Vector3) -> void:
 	var cerca := _pick_target()
-	if cerca != null and cerca.global_position.distance_to(_body.global_position) < 6.0:
+	# "ir_a_ya": no se frena a pelear con el que tiene encima (un jefe sellado no se puede
+	# lastimar: lo unico que sirve es llegar al sello). Tambien lo pone solo el simulador.
+	if cerca != null and cerca.global_position.distance_to(_body.global_position) < 6.0 			and not _body.has_meta(&"ir_a_ya"):
 		return
 	_body.bot_wants_run = true
 	_body.bot_move_dir = _rumbo_navegado(punto)
@@ -645,6 +647,23 @@ func _good_distance(ability: Ability, dist: float) -> bool:
 			# El dominio mide doce metros: abrirlo con el rival bien adentro, que no le
 			# alcance con dar dos pasos para salir.
 			return dist < 7.5
+		&"rueda_agua":
+			# Una vuelta de unos siete metros cortando lo que cruza.
+			return dist > 2.0 and dist < 7.5
+		&"calma":
+			# Para aguantar lo que viene de cerca.
+			return dist < 4.0
+		&"hinokami":
+			# Las embestidas buscan solas al mas cercano, hasta catorce metros.
+			return dist < 11.0
+		&"lanzar_hacha":
+			# Va diecisiete metros y vuelve: de media distancia, con la linea libre.
+			return dist > 3.0 and dist < 16.0 and _a_la_vista
+		&"hojas_caos":
+			return dist < 4.2
+		&"furia_espartana":
+			# El pisoton es corto; la furia, para pelear de cerca.
+			return dist < 6.0
 		_:
 			return dist <= MELEE_RANGE + 0.6
 

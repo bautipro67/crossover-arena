@@ -65,6 +65,10 @@ const LINEAS: Dictionary = {
 	# --- SUKUNA ---
 	&"fuga": [["■ FUGA ■", 0.0, &"voz_fuga"]],
 	&"santuario": [["SANTUARIO MALÉVOLO.", 0.0, &"voz_santuario"]],
+	# --- TANJIRO: nombra cada forma, como en la serie ---
+	&"rueda_agua": [["¡Segunda forma: Rueda de Agua!", 0.0, &"voz_rueda_agua"]],
+	&"calma": [["Undécima forma: Calma.", 0.0, &"voz_calma"]],
+	&"hinokami": [["¡RUEDA SOLAR!", 0.0, &"voz_rueda_solar"]],
 }
 
 ## Frases que salen AL EMPEZAR a canalizar, no al soltar.
@@ -95,6 +99,10 @@ const LINEAS_CARGA: Dictionary = {
 	&"golpe_serio": [["Serie seria...", 0.0, &"voz_serie_seria"]],
 	# Sukuna, con las manos en el sello de Enma.
 	&"santuario": [["Expansión de dominio...", 0.0, &"voz_expansion"]],
+	# Tanjiro respira antes de la danza de su padre.
+	&"hinokami": [["Danza del Dios del Fuego...", 0.0, &"voz_hinokami"]],
+	# Kratos no anuncia: ruge.
+	&"furia_espartana": [["¡RAAAH!", 0.0, &"voz_esparta"]],
 }
 
 ## El color de la burbuja segun quien hable. Sale del acento del personaje, que es el

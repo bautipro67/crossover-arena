@@ -147,25 +147,38 @@ gente.
    enorme— atraviesa todo lo que tiene adelante.
    Golpe · Azul · Rojo · PÚRPURA
 
-👊 SAITAMA — One Punch Man  (NUEVO, gratis)
+👊 SAITAMA — One Punch Man  (gratis)
    Un héroe por diversión. Golpes normales —muchos, uno atrás del otro—, saltos laterales
    tan rápidos que nada lo toca mientras salta, y el GOLPE SERIO: echa el puño atrás y
    suelta una onda que barre toda la línea y manda a volar a los que agarra.
    Golpe Normal · Golpes Normales Consecutivos · Saltos Laterales Serios · GOLPE SERIO
 
-👹 SUKUNA — Jujutsu Kaisen  (NUEVO, se gana terminando la parte 8 de la historia)
+👹 SUKUNA — Jujutsu Kaisen  (se gana terminando la parte 8 de la historia)
    El Rey de las Maldiciones. Zarpazos de cerca, Desmantelar —tres cortes que vuelan y
    atraviesan—, la flecha de fuego de Fuga, y la EXPANSIÓN DE DOMINIO: detrás de él sube
    su santuario, y todo lo que quede adentro del círculo recibe cortes sin parar.
    Partir · Desmantelar · Fuga · SANTUARIO MALÉVOLO
 
-LAS DEFINITIVAS CON ESCENA (NUEVO): cuando Saitama carga el Golpe Serio o Sukuna abre su
+🌊 TANJIRO — Demon Slayer  (NUEVO, gratis)
+   El cazador de demonios de haori a cuadros. Cortes rápidos, la Rueda de Agua —una vuelta
+   hacia adelante que corta lo que cruza—, la Calma —un momento en que nada lo toca y corta
+   todo lo que tiene al lado— y la DANZA DEL DIOS DEL FUEGO: cuatro embestidas de fuego que
+   buscan solas al más cercano y un remolino final.
+   Corte · Rueda de Agua · Calma · DANZA DEL DIOS DEL FUEGO
+
+🪓 KRATOS — God of War  (NUEVO, último escalón del pase pro de la Temporada 5)
+   El de Midgard. Hachazos que enfrían, el Hacha Leviatán que se lanza y VUELVE a la mano
+   pegando a la ida y a la vuelta, las Hojas del Caos girando alrededor, y la FURIA
+   ESPARTANA: un pisotón y unos segundos en los que pega más, aguanta más y nada lo frena.
+   Hacha Leviatán · Lanzar el Hacha · Hojas del Caos · FURIA ESPARTANA
+
+LAS DEFINITIVAS CON ESCENA: cuando Saitama carga el Golpe Serio o Sukuna abre su
 dominio, el que la tira ve una escena propia —la cámara se va a su cara, aparecen las
 barras de cine y el nombre de la técnica, y al soltar se ve el golpe desde lejos—. Los
 demás no pierden su cámara: ven lo mismo desde donde están parados, el viento alrededor
 del puño y el templo que sube del piso.
 
-═══ MODO HISTORIA — OCHO PARTES, OCHENTA CAPÍTULOS (Y CUATRO RUTAS SECRETAS) ═══
+═══ MODO HISTORIA — NUEVE PARTES, NOVENTA CAPÍTULOS (Y CUATRO RUTAS SECRETAS) ═══
 
 PARTE 1: LA GRIETA. Un experimento de Rick rompe la pared entre los mundos, y todo lo que
 cae por la grieta termina en la Arena: un coliseo entre mundos que vive de las peleas.
@@ -207,12 +220,12 @@ de la Arena lo esperan Noelle, Rick y Mob. Tres capítulos se juegan con DIO... 
 seguís su diario al pie de la letra, se abre otra ruta secreta. Se abre al terminar la
 parte 5.
 
-PARTE 7: EL HÉROE POR DIVERSIÓN (NUEVA). Saitama vuelve del supermercado y la grieta se
+PARTE 7: EL HÉROE POR DIVERSIÓN. Saitama vuelve del supermercado y la grieta se
 lo traga: la Arena le copió la Ciudad Z entera. Por la misma grieta entran los dedos del
 Rey de las Maldiciones, y Gojo los reconoce. Los ecos se los comen... y uno se vuelve su
 recipiente. Se abre al terminar la parte 6.
 
-PARTE 8: EL REY DE LAS MALDICIONES (NUEVA). Sukuna convierte la Arena entera en su
+PARTE 8: EL REY DE LAS MALDICIONES. Sukuna convierte la Arena entera en su
 santuario: el cielo rojo y los tajos cayendo del aire. Gojo lo enfrenta. Saitama llega
 caminando, con las manos en los bolsillos. Terminala y SUKUNA SE QUEDA EN LA ARENA: es la
 única forma de ganarlo.
@@ -220,7 +233,17 @@ caminando, con las manos en los bolsillos. Terminala y SUKUNA SE QUEDA EN LA ARE
 Y EN LAS DOS HAY OTRA RUTA SECRETA: una se juega con Saitama, la otra con Gojo. Lo que
 hay que hacer no lo dice nadie; el final de cada capítulo te avisa si cuenta.
 
-PELEAS DISTINTAS (NUEVO). Juntar las bolsas del supermercado o los dedos malditos con
+PARTE 9: EL CAZADOR DE DIOSES (NUEVA). En una punta de la Arena creció un bosque de
+glicinas, y ahí cae Tanjiro oliendo demonios: los ecos ahora tienen hambre. Por un portal
+roto llega Kratos persiguiendo a lo mismo, y la Arena, sin rey, se arma un dios propio con
+la forma de lo peor que Kratos fue. Diez capítulos donde ninguna pelea se repite: seguir un
+rastro por el bosque contra reloj, escoltar a alguien que camina y se frena si le aparece
+un enemigo, un duelo adentro de un anillo de fuego que se cierra, jefes con sellos que hay
+que romper parándose al lado (mientras brillen, nada los toca), juntar flores con un eco
+rapidísimo atrás, aguantar en una runa con el fuego encima, y un final en tres fases.
+Kratos pelea con vos y contra vos, pero no se juega: se gana con el pase.
+
+PELEAS DISTINTAS. Juntar las bolsas del supermercado o los dedos malditos con
 ecos encima; capítulos donde cada golpe de Saitama mata pero los ecos no paran de llegar
 y corre el reloj; lluvias de meteoritos y de tajos que avisan con una sombra o un círculo
 rojo; cuidar a alguien que se quedó dormido; aguantar en la fila del supermercado; jefes
@@ -274,38 +297,43 @@ el servidor los va rotando):
   · El Inframundo — obsidiana, grietas de lava, volcanes y cadenas.
   · El Vacío Infinito — lo que se abre en el centro de la Arena: negro y lleno de estrellas.
   · El Núcleo — el cristal del corazón de la Arena, con las islas colgando dadas vuelta.
-  · Ciudad Z (NUEVO) — las calles vacías donde vive Saitama, un día de sol, con los
+  · Ciudad Z — las calles vacías donde vive Saitama, un día de sol, con los
     edificios y los carteles.
-  · El Santuario Malévolo (NUEVO) — el dominio de Sukuna: cielo rojo, montañas de
+  · El Santuario Malévolo — el dominio de Sukuna: cielo rojo, montañas de
     cráneos, torii negros y el templo gigante al fondo.
+  · El Bosque de Glicinas (NUEVO) — la montaña de noche: árboles de glicinas, flores que
+    caen, faroles de papel, un torii viejo y la luna llena.
+  · Midgard (NUEVO) — un templo nórdico en la nieve, con piedras rúnicas, braseros, pinos
+    y el invierno del fin del mundo encima.
   · Y cuatro más que se abren con las rutas secretas.
 
 El trazado es el mismo en todos —es el que está medido para que ningún personaje gane
 por el mapa—; lo que cambia es todo lo que se ve.
 
-═══ TEMPORADA 4: HÉROES Y MALDICIONES (NUEVA) ═══
+═══ TEMPORADA 5: CAZADORES (NUEVA) ═══
 
 Jugar da experiencia y monedas: subís de nivel (del 1 al 60) y avanzás los 30 escalones
 del pase, con skins, monedas y experiencia de premio. El pase pro se desbloquea con
 monedas que se ganan peleando, fuera de la sala de práctica.
 
-Terminó la Temporada 3, y GOJO, que era su premio, ahora es de todos (como Goku con la 1
-y Mob con la 2). Lo pendiente de las temporadas anteriores se cobra solo al entrar.
+Terminó la Temporada 4 (Héroes y Maldiciones). Lo pendiente de las temporadas anteriores
+se cobra solo al entrar. Goku, Mob y Gojo, los premios de la 1, la 2 y la 3, son de todos;
+Saitama sigue gratis y Sukuna se sigue ganando en la parte 8 de la historia.
 
-Esta temporada llegan dos: SAITAMA, gratis desde el primer día, y SUKUNA, que no se vende
-ni está en el pase: se gana terminando la parte 8 de la historia. El pase trae las skins
-de Saitama —el jersey de entrenar, el oficinista con pelo y traje, y en el último escalón
-del pro, Saitama con el traje roto después de pelear con Boros—, y la tienda las de
-Sukuna: el uniforme carmesí, el kimono de Shinjuku en el cuerpo de Megumi y su verdadera
-forma de la era Heian, con cuatro brazos y dos caras. Los escalones también se compran, a
-200 monedas cada uno: lo que se gana en el tiempo que tarda subirlo jugando.
+Esta temporada llegan dos cazadores: TANJIRO, gratis desde el primer día, y KRATOS, en el
+último escalón del pase pro. El pase trae las skins de Tanjiro —el kimono azul de cuando
+vendía carbón, la máscara de zorro de la Selección Final y, en el escalón 26 del pro,
+Tanjiro con la Marca encendida y la hoja roja—, y la tienda las de Kratos: el de guerra,
+el del Fimbulwinter con el manto de piel de oso, y el Fantasma de Esparta, con la perilla,
+la falda roja y las Hojas del Caos en las manos. Los escalones también se compran, a 200
+monedas cada uno: lo que se gana en el tiempo que tarda subirlo jugando.
 
 Y en la tienda, skins nuevas para los que hacía más tiempo que no estrenaban nada: Goku
 Super Saiyajin 4 (con la cola y el pelaje rojo) y Kaioken, Rick Policía de la Ciudadela,
 Excalibur Sonic con la armadura y la espada, Mario Constructor de Super Mario Maker 2,
 Madara Anciano, Thanos Granjero, Flowery Disco y Mob del Club de Mejora Corporal.
 
-90 skins entre el pase y la tienda. Cada una cambia el
+96 skins entre el pase y la tienda. Cada una cambia el
 modelo con cosas que son del original: el Ultra Instinto sin el gi, Pickle Rick con la
 armadura de ratas, el Madara del Diez Colas con sus esferas y el Rinne Sharingan, los
 Gaster Blasters de Sans, el manto Hokage, el abrigo de capitán de Luffy, el Iron Spider con
@@ -362,7 +390,7 @@ en pantalla y reintenta solo. A partir de ahí entra al instante.
 
 ═══ HECHO POR CÓDIGO ═══
 
-Los 18 personajes están modelados uno por uno en Blender, también por código: cada uno
+Los 20 personajes están modelados uno por uno en Blender, también por código: cada uno
 es un script que esculpe el cuerpo, la ropa, el pelo y los detalles —la telaraña de
 Spider-Man, las placas de la armadura de Madara, la trama del sombrero de Luffy— y lo
 exporta con su esqueleto. La arena, los efectos, las caras y la música se generan al
@@ -382,6 +410,8 @@ Sonic es de Sonic the Hedgehog, de SEGA.
 Goku es de Dragon Ball, creación de Akira Toriyama (Bird Studio / Shueisha, Toei Animation).
 Saitama es de One Punch Man, creación de ONE y Yusuke Murata (Shueisha).
 Gojo y Sukuna son de Jujutsu Kaisen, creación de Gege Akutami (Shueisha).
+Tanjiro Kamado es de Demon Slayer (Kimetsu no Yaiba), creación de Koyoharu Gotouge (Shueisha).
+Kratos es de God of War, de Santa Monica Studio (Sony Interactive Entertainment).
 Los clips de voz y sonido pertenecen a sus respectivos dueños.
 
 Este juego no se vende, no acepta donaciones y no tiene publicidad. Si alguno de los

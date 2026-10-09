@@ -125,6 +125,8 @@ static func vestir(arena: Node3D, tema: Dictionary, bloques: Array, pilares: Arr
 		"ciudad": _ciudad(lejos, tema, rng)
 		"luna": _luna(lejos, tema, rng)
 		"santuario": _santuario(lejos, tema, rng)
+		"glicinas": _bosque_glicinas(lejos, tema, rng)
+		"nordico": _nordico(lejos, tema, rng)
 	cerca.cerrar(arena, true)
 	lejos.cerrar(arena, false)
 	_particulas(arena, tema)
@@ -194,6 +196,16 @@ static func _piso(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator) -> v
 					var d := Vector3(cos(ang), 0.0, sin(ang)) * largo
 					lote.caja(p + d * 0.5, Vector3(0.22, 0.03, largo), luz(marca, 2.2), Vector3(0.0, rad_to_deg(-ang) + 90.0, 0.0))
 					p += d
+		"pasto":
+			# Pasto oscuro de noche, con manchones, y las flores caidas de las glicinas.
+			lote.plano(Vector3(0.0, 0.006, 0.0), Vector2(MITAD * 2.0, MITAD * 2.0), a)
+			for k: int in range(70):
+				var c := Vector3(rng.randf_range(-MITAD, MITAD), 0.0, rng.randf_range(-MITAD, MITAD))
+				lote.esfera(c, rng.randf_range(1.5, 4.0), b, Vector3(1.0, 0.04, 1.0), 10)
+			for k: int in range(260):
+				var c := Vector3(rng.randf_range(-MITAD, MITAD), 0.03, rng.randf_range(-MITAD, MITAD))
+				var r := rng.randf_range(0.06, 0.16)
+				lote.plano(c, Vector2(r, r), toon(marca.lerp(Color.WHITE, rng.randf_range(0.0, 0.4))), rng.randf_range(0.0, 90.0))
 		"estrellas":
 			lote.plano(Vector3(0.0, 0.006, 0.0), Vector2(MITAD * 2.0, MITAD * 2.0), a)
 			for k: int in range(420):
@@ -395,6 +407,20 @@ static func _pilar(lote: Lote, tema: Dictionary, base: Vector3, r: float, alto: 
 				var radio := r * (3.6 - k * 0.7)
 				lote.cilindro(base + Vector3(0.0, y + 1.1, 0.0), radio, 0.0, 2.6, toon(verde.lightened(0.04 * k)), 12)
 				lote.cilindro(base + Vector3(0.0, y + 1.6, 0.0), radio * 0.7, 0.0, 1.6, toon(Color(0.93, 0.96, 1.0)), 12)
+		"glicina":
+			# Un arbol de glicinas: tronco torcido y la copa de racimos que cuelgan.
+			lote.cilindro(base + Vector3(0.0, alto * 0.35, 0.0), r * 0.55, r * 0.40, alto * 0.7, det, 10, Vector3(0.0, 0.0, 6.0))
+			var flor: Color = pil.get("color", Color.MEDIUM_PURPLE)
+			for k: int in range(5):
+				var a := TAU * k / 5.0 + rng.randf_range(-0.3, 0.3)
+				lote.esfera(base + Vector3(cos(a) * r * 1.6, alto * 0.78, sin(a) * r * 1.6), r * 1.9, toon(Color(0.20, 0.30, 0.18)),
+					Vector3(1.0, 0.45, 1.0), 10)
+			for k: int in range(16):
+				var a := rng.randf_range(0.0, TAU)
+				var d := rng.randf_range(0.5, 1.0) * r * 2.6
+				var largo := rng.randf_range(1.0, 2.2)
+				lote.cilindro(base + Vector3(cos(a) * d, alto * 0.68 - largo * 0.5, sin(a) * d), r * 0.32, 0.0, largo,
+					toon(flor.lerp(Color.WHITE, rng.randf_range(0.0, 0.3))), 6, Vector3(180, 0, 0))
 		"estandarte":
 			lote.cilindro(c, r * 0.35, r * 0.30, alto, toon(Color(0.80, 0.70, 0.40)), 10)
 			lote.cilindro(base + Vector3(0.0, 0.4, 0.0), r * 1.1, r * 0.9, 0.8, col, 12)
@@ -541,6 +567,38 @@ static func _paredes(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator) -
 						lote.caja(poste + Vector3(0.0, 6.0, 0.0) + adentro * 0.6, _rot_tam(Vector3(0.3, 0.12, 1.4), lado),
 							toon(Color(0.30, 0.31, 0.34)))
 						lote.esfera(poste + Vector3(0.0, 5.9, 0.0) + adentro * 1.2, 0.2, luz(trim, 2.4), Vector3(1.4, 0.6, 1.4), 8)
+				"glicinas":
+					# Una cerca de bambu con faroles de papel, y cortinas de glicinas colgando
+					# de arriba.
+					for t: int in range(8):
+						var cana := _sobre_pared(lado, u - 5.25 + t * 1.5, 0.0) + adentro * 0.7
+						lote.cilindro(cana + Vector3(0.0, 1.3, 0.0), 0.09, 0.09, 2.6, toon(Color(0.42, 0.50, 0.26)), 6)
+					lote.caja(pos + Vector3(0.0, 2.0, 0.0) + adentro * 0.7, _rot_tam(Vector3(12.0, 0.10, 0.12), lado), toon(color))
+					lote.caja(pos + Vector3(0.0, 0.9, 0.0) + adentro * 0.7, _rot_tam(Vector3(12.0, 0.10, 0.12), lado), toon(color))
+					for t: int in range(9):
+						var cuelga := _sobre_pared(lado, u + rng.randf_range(-6.0, 6.0), 0.0) + adentro * 0.6
+						var largo := rng.randf_range(1.5, 4.0)
+						lote.cilindro(cuelga + Vector3(0.0, h - largo * 0.5, 0.0), 0.35, 0.0, largo,
+							toon(Color(0.74, 0.54, 1.0).lerp(Color.WHITE, rng.randf_range(0.0, 0.3))), 6, Vector3(180, 0, 0))
+					if k % 2 == 0:
+						var farol := pos + adentro * 1.6
+						lote.cilindro(farol + Vector3(0.0, 1.6, 0.0), 0.07, 0.07, 3.2, toon(color), 6)
+						lote.esfera(farol + Vector3(0.0, 3.4, 0.0), 0.32, luz(trim, 2.6), Vector3(1.0, 1.3, 1.0), 10)
+				"nordico":
+					# Piedras rúnicas paradas contra la pared y braseros entre una y otra.
+					var piedra := pos + adentro * 1.1
+					lote.caja(piedra + Vector3(0.0, 1.8, 0.0), _rot_tam(Vector3(1.8, 3.6, 0.7), lado), toon(color),
+						Vector3(0.0, 0.0, rng.randf_range(-4.0, 4.0)))
+					for t: int in range(4):
+						lote.caja(piedra + Vector3(0.0, 0.9 + t * 0.7, 0.0) + adentro * 0.36, _rot_tam(Vector3(rng.randf_range(0.4, 1.2), 0.10, 0.04), lado),
+							luz(trim, 1.6))
+					lote.caja(pos + Vector3(0.0, 0.4, 0.0) + adentro * 0.62, _rot_tam(Vector3(12.0, 0.8, 0.6), lado), toon(color.darkened(0.2)))
+					lote.esfera(pos + Vector3(0.0, 0.85, 0.0) + adentro * 0.62, 1.0, toon(Color(0.95, 0.97, 1.0)), Vector3(6.2, 0.18, 0.5), 10)
+					if k % 2 == 1:
+						var brasero := pos + adentro * 2.2
+						lote.cilindro(brasero + Vector3(0.0, 0.7, 0.0), 0.12, 0.30, 1.4, toon(Color(0.20, 0.18, 0.18)), 8)
+						lote.cilindro(brasero + Vector3(0.0, 1.5, 0.0), 0.55, 0.40, 0.3, toon(Color(0.22, 0.20, 0.20)), 10)
+						lote.esfera(brasero + Vector3(0.0, 1.8, 0.0), 0.36, luz(Color(1.0, 0.60, 0.25), 3.0), Vector3(1.0, 1.4, 1.0), 8)
 				"nubes":
 					# Una balaustrada de marmol con el pasamanos dorado.
 					for t: int in range(12):
@@ -928,6 +986,26 @@ static func _particulas(arena: Node3D, tema: Dictionary) -> void:
 			p.scale_amount_max = 0.700
 			p.lifetime = 12.0
 			p.preprocess = 12.0
+		"petalos":
+			# Las flores de glicina que caen despacio, de costado.
+			p.amount = 260
+			p.gravity = Vector3(0.25, -0.35, 0.1)
+			p.lifetime = 14.0
+			p.preprocess = 14.0
+			p.scale_amount_min = 0.022
+			p.scale_amount_max = 0.042
+		"nieve_cae":
+			# El Fimbulwinter: nieve que cae tranquila (la ventisca es la de la ruta Snowgrave).
+			p.amount = 420
+			p.position = Vector3(0.0, 14.0, 0.0)
+			p.emission_box_extents = Vector3(MITAD, 2.0, MITAD)
+			p.gravity = Vector3(0.3, -1.1, 0.1)
+			p.direction = Vector3.DOWN
+			p.spread = 15.0
+			p.lifetime = 12.0
+			p.preprocess = 12.0
+			p.scale_amount_min = 0.018
+			p.scale_amount_max = 0.034
 		"chispas_doradas":
 			p.amount = 150
 			p.gravity = Vector3(0.0, -0.05, 0.0)
@@ -1078,3 +1156,73 @@ static func _santuario(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator)
 			lote.caja(p + Vector3(0.0, 8.2, 0.0), _rot_tam(Vector3(8.0, 0.4, 0.5), lado), rojo)
 	# La luna roja.
 	lote.esfera(Vector3(90.0, 110.0, -160.0), 18.0, luz(Color(0.95, 0.18, 0.15), 1.6), Vector3.ONE, 20)
+
+
+## EL BOSQUE DE GLICINAS: la montaña de noche, cerros oscuros con arboles de glicinas
+## hasta donde se ve, un torii viejo al fondo y la luna llena.
+static func _bosque_glicinas(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator) -> void:
+	_montanas(lote, toon(Color(0.07, 0.08, 0.12)), toon(Color(0.12, 0.10, 0.20)), rng, 190.0, 70.0)
+	var tronco := toon(Color(0.22, 0.15, 0.11))
+	var hojas := toon(Color(0.12, 0.18, 0.12))
+	for lado: int in range(4):
+		for k: int in range(14):
+			var u := -MITAD + 4.0 + k * 9.0 + rng.randf_range(-2.0, 2.0)
+			var p := _afuera(lado, u, rng.randf_range(4.0, 24.0))
+			var alto := rng.randf_range(7.0, 12.0)
+			lote.cilindro(p + Vector3(0.0, alto * 0.4, 0.0), 0.45, 0.30, alto * 0.8, tronco, 8)
+			lote.esfera(p + Vector3(0.0, alto * 0.85, 0.0), rng.randf_range(3.0, 4.5), hojas, Vector3(1.0, 0.5, 1.0), 10)
+			for t: int in range(7):
+				var a := rng.randf_range(0.0, TAU)
+				var d := rng.randf_range(1.0, 3.6)
+				var largo := rng.randf_range(1.6, 3.4)
+				lote.cilindro(p + Vector3(cos(a) * d, alto * 0.72 - largo * 0.5, sin(a) * d), 0.45, 0.0, largo,
+					toon(Color(0.74, 0.54, 1.0).lerp(Color.WHITE, rng.randf_range(0.0, 0.35))), 6, Vector3(180, 0, 0))
+	# El torii, viejo y gastado, sobre la escalera de piedra al fondo.
+	var base := Vector3(0.0, 0.0, -MITAD - 18.0)
+	var rojo := toon(Color(0.62, 0.14, 0.10))
+	for x: float in [-4.0, 4.0]:
+		lote.cilindro(base + Vector3(x, 5.0, 0.0), 0.45, 0.45, 10.0, rojo, 10)
+	lote.caja(base + Vector3(0.0, 10.2, 0.0), Vector3(11.5, 0.7, 0.9), toon(Color(0.10, 0.08, 0.08)))
+	lote.caja(base + Vector3(0.0, 8.6, 0.0), Vector3(9.4, 0.45, 0.55), rojo)
+	for k: int in range(6):
+		lote.caja(base + Vector3(0.0, 0.2 + k * 0.4, -2.0 - k * 1.2), Vector3(6.0, 0.4, 1.2), toon(Color(0.35, 0.35, 0.38)))
+	# La luna llena.
+	lote.esfera(Vector3(-70.0, 95.0, -170.0), 14.0, luz(Color(1.0, 0.97, 0.88), 1.8), Vector3.ONE, 20)
+
+
+## MIDGARD: montañas nevadas, bosque de pinos y, al fondo, el templo de piedra con la arcada
+## de runas que brillan. Arriba, el invierno que no termina.
+static func _nordico(lote: Lote, tema: Dictionary, rng: RandomNumberGenerator) -> void:
+	_montanas(lote, toon(Color(0.42, 0.46, 0.52)), toon(Color(0.96, 0.98, 1.0)), rng, 170.0, 95.0)
+	var tronco := toon(Color(0.30, 0.22, 0.16))
+	var pino := toon(Color(0.14, 0.26, 0.20))
+	var nieve := toon(Color(0.95, 0.97, 1.0))
+	for lado: int in range(4):
+		for k: int in range(14):
+			var u := -MITAD + 4.0 + k * 9.0 + rng.randf_range(-2.0, 2.0)
+			var p := _afuera(lado, u, rng.randf_range(4.0, 28.0))
+			var alto := rng.randf_range(9.0, 16.0)
+			lote.cilindro(p + Vector3(0.0, 1.2, 0.0), 0.4, 0.35, 2.4, tronco, 8)
+			for t: int in range(3):
+				var y := 2.0 + t * alto * 0.24
+				var radio := 3.2 - t * 0.8
+				lote.cilindro(p + Vector3(0.0, y + alto * 0.16, 0.0), radio, 0.0, alto * 0.34, pino, 10)
+				lote.cilindro(p + Vector3(0.0, y + alto * 0.22, 0.0), radio * 0.6, 0.0, alto * 0.2, nieve, 10)
+	# El templo: la arcada de piedra con las runas, dos estatuas de guerreros y las escaleras.
+	var base := Vector3(0.0, 0.0, -MITAD - 30.0)
+	var piedra := toon(Color(0.40, 0.40, 0.44))
+	var runa := luz(Color(0.55, 0.80, 1.0), 2.0)
+	lote.caja(base + Vector3(0.0, 1.5, 0.0), Vector3(40.0, 3.0, 16.0), piedra)
+	for x: float in [-10.0, 10.0]:
+		lote.caja(base + Vector3(x, 12.0, 0.0), Vector3(4.0, 18.0, 4.0), piedra)
+		for t: int in range(6):
+			lote.caja(base + Vector3(x, 5.0 + t * 2.4, 2.05), Vector3(rng.randf_range(1.0, 2.8), 0.22, 0.05), runa)
+		# El guerrero de piedra arriba del pilar.
+		lote.cilindro(base + Vector3(x, 23.5, 0.0), 1.4, 1.0, 5.0, piedra, 10)
+		lote.esfera(base + Vector3(x, 27.0, 0.0), 1.0, piedra, Vector3.ONE, 10)
+		lote.cilindro(base + Vector3(x + signf(x) * 1.6, 24.0, 0.0), 0.2, 0.2, 9.0, piedra, 6)
+	lote.caja(base + Vector3(0.0, 21.8, 0.0), Vector3(26.0, 2.4, 5.0), piedra)
+	lote.caja(base + Vector3(0.0, 21.8, 2.6), Vector3(18.0, 0.3, 0.05), runa)
+	lote.esfera(base + Vector3(0.0, 23.2, 0.0), 1.0, nieve, Vector3(13.0, 0.4, 2.6), 12)
+	for k: int in range(8):
+		lote.caja(base + Vector3(0.0, 0.2 + k * 0.38, 9.0 + k * -1.0), Vector3(14.0, 0.4, 1.0), piedra)

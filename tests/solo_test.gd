@@ -476,23 +476,23 @@ func _test_progresion() -> void:
 	_check(not Pase.comprar_escalon() and Progreso.monedas == Progreso.PRECIO_ESCALON,
 		"con el pase completo no se puede comprar mas, ni se cobra")
 
-	# --- LA TEMPORADA 4: el pase termina en una skin, no en un personaje ---
+	# --- LA TEMPORADA 5: Tanjiro gratis y Kratos en el ultimo escalon del pro ---
 	#
-	# Goku, Mob y Gojo, los premios de las tres primeras, ya son de todos, y Saitama llega
-	# gratis. Sukuna NO esta en el pase, ni el ni sus skins: se gana en la historia, al
-	# terminar la parte 8. Ni la via gratuita, ni el pro completo, ni la tienda lo dan.
+	# Goku, Mob y Gojo, los premios de las tres primeras, ya son de todos; Saitama y Tanjiro
+	# llegan gratis. Sukuna sigue sin estar en el pase, ni el ni sus skins: se gana en la
+	# historia, al terminar la parte 8.
 	Progreso.borrar_todo()
-	_check(Pase.TEMPORADA == 4, "estamos en la temporada 4")
+	_check(Pase.TEMPORADA == 5, "estamos en la temporada 5")
 	_check(Progreso.puede_usar_personaje(&"goku") and Progreso.puede_usar_personaje(&"mob")
-		and Progreso.puede_usar_personaje(&"gojo") and Progreso.puede_usar_personaje(&"saitama"),
-		"Goku, Mob y Gojo ya son de todos, y Saitama viene gratis")
+		and Progreso.puede_usar_personaje(&"gojo") and Progreso.puede_usar_personaje(&"saitama")
+		and Progreso.puede_usar_personaje(&"tanjiro"),
+		"Goku, Mob y Gojo ya son de todos, y Saitama y Tanjiro vienen gratis")
 	var final_pro := Pase.recompensa(Pase.ESCALONES, true)
-	var final_skin: SkinData = SkinDB.get_skin(StringName(final_pro[1])) if final_pro[0] == Pase.SKIN else null
-	_check(final_skin != null and final_skin.rareza == &"legendaria" and final_skin.character_id == &"saitama",
-		"el ultimo escalon del pase pro es una skin legendaria de Saitama")
+	_check(final_pro[0] == Pase.PERSONAJE and StringName(final_pro[1]) == &"kratos",
+		"el ultimo escalon del pase pro es Kratos")
 	var pase_existe := true
-	var personaje_en_pase := false
 	var de_sukuna := false
+	var de_kratos := false
 	for i: int in range(1, Pase.ESCALONES + 1):
 		for pro: bool in [false, true]:
 			var r := Pase.recompensa(i, pro)
@@ -502,16 +502,19 @@ func _test_progresion() -> void:
 					pase_existe = false
 				elif sk.character_id == &"sukuna":
 					de_sukuna = true
-			if r[0] == Pase.PERSONAJE:
-				personaje_en_pase = true
-	_check(pase_existe, "todas las skins del pase de la temporada 4 existen")
-	_check(not personaje_en_pase and not de_sukuna, "y no da personajes: ni Sukuna ni sus skins estan en el pase")
-	_check(not Progreso.puede_usar_personaje(&"sukuna"), "de entrada Sukuna esta bloqueado")
+				elif sk.character_id == &"kratos":
+					de_kratos = true
+	_check(pase_existe, "todas las skins del pase de la temporada 5 existen")
+	_check(not de_sukuna and not de_kratos,
+		"ni Sukuna ni sus skins estan en el pase, y tampoco skins de Kratos antes de ganarlo")
+	_check(not Progreso.puede_usar_personaje(&"sukuna") and not Progreso.puede_usar_personaje(&"kratos"),
+		"de entrada Sukuna y Kratos estan bloqueados")
 	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
 	Progreso.pase_pro = true
 	Pase.reclamar_todo()
-	_check(not Progreso.puede_usar_personaje(&"sukuna") and Progreso.tiene_skin(final_skin.id if final_skin != null else &""),
-		"con el pase pro completo y cobrado, Sukuna sigue bloqueado: se gana en la historia")
+	_check(not Progreso.puede_usar_personaje(&"sukuna") and Progreso.puede_usar_personaje(&"kratos")
+		and Progreso.tiene_skin(&"tanjiro_marca"),
+		"con el pase pro completo y cobrado llega Kratos; Sukuna sigue bloqueado: se gana en la historia")
 	var cap_sukuna := -1
 	for i: int in range(Historia.cantidad()):
 		if StringName(Historia.capitulo(i).get("desbloquea", "")) == &"sukuna":
@@ -589,8 +592,26 @@ func _test_progresion() -> void:
 		"al cerrar la temporada 3 se cobran solas sus skins, y no las de la 4")
 	var aviso3 := Pase.tomar_aviso()
 	_check(aviso3.contains("Temporada 3") and aviso3.contains("Gojo") and not aviso3.contains("Mob")
-		and aviso3.contains("Héroes y Maldiciones") and Progreso.temporada == 4,
-		"y avisa que termino la 3, que empezo la 4 y que Gojo es de todos: %s" % aviso3)
+		and Progreso.temporada == Pase.TEMPORADA,
+		"y avisa que termino la 3 y que Gojo es de todos: %s" % aviso3)
+
+	# --- El cierre de la temporada 4 ---
+	#
+	# Un archivo de la 4 con el pro y el pase entero: se cobra sola la skin de Saitama del
+	# ultimo escalon, y el aviso dice que empezo la 5 (Cazadores). No hay personaje que pase
+	# a ser de todos: la 4 no tuvo.
+	Progreso.borrar_todo()
+	Progreso.temporada = 4
+	Progreso.pase_pro = true
+	Progreso.pase_exp = Pase.EXP_POR_ESCALON * Pase.ESCALONES
+	Pase._cerrar_temporada_vieja()
+	_check(Progreso.tiene_skin(&"saitama_boros") and not Progreso.tiene_skin(&"tanjiro_marca")
+		and not Progreso.puede_usar_personaje(&"kratos"),
+		"al cerrar la temporada 4 se cobran solas sus skins, y no las de la 5 ni Kratos")
+	var aviso4 := Pase.tomar_aviso()
+	_check(aviso4.contains("Temporada 4") and aviso4.contains("Temporada 5") and aviso4.contains("Cazadores")
+		and Progreso.temporada == 5,
+		"y avisa que termino la 4 y que empezo la 5: %s" % aviso4)
 	Progreso.borrar_todo()
 
 	# --- Modos ---
@@ -893,7 +914,7 @@ func _test_historia(main: Node) -> void:
 	Progreso.rutas = {}
 
 	# --- Los datos: que todo lo que nombra la historia exista ---
-	_check(Historia.cantidad() == 92 and Historia.PARTES.size() == 12 and Historia.parte_de(10) == 1
+	_check(Historia.cantidad() == 102 and Historia.PARTES.size() == 13 and Historia.parte_de(10) == 1
 		and Historia.parte_de(20) == 2 and Historia.parte_de(30) == 3 and Historia.parte_de(40) == 4
 		and Historia.titulo_capitulo(40) == "PARTE 5 · CAPÍTULO 1"
 		and Historia.titulo_capitulo(53) == "PARTE 6 · CAPÍTULO 1"
@@ -901,8 +922,32 @@ func _test_historia(main: Node) -> void:
 		and Historia.titulo_capitulo(66) == "PARTE 7 · CAPÍTULO 1" and Historia.requisito(66) == 62
 		and Historia.titulo_capitulo(79) == "PARTE 8 · CAPÍTULO 1" and Historia.requisito(79) == 75
 		and Historia.titulo_capitulo(76) == "RUTA DEL HÉROE · CAPÍTULO 1"
+		and Historia.titulo_capitulo(92) == "PARTE 9 · CAPÍTULO 1" and Historia.requisito(92) == 88
 		and Historia.titulo_capitulo(10) == "PARTE 2 · CAPÍTULO 1",
-		"la historia tiene ocho partes y cuatro rutas secretas, y cada parte pide la anterior y no la ruta (%d)" % Historia.cantidad())
+		"la historia tiene nueve partes y cuatro rutas secretas, y cada parte pide la anterior y no la ruta (%d)" % Historia.cantidad())
+	# LA PARTE 9 NO SE REPITE: cada capitulo con su forma de pelear, y Kratos (el premio del
+	# pase pro) aparece pero nunca se juega.
+	var formas_9: Dictionary = {}
+	var kratos_juega := false
+	var kratos_aparece := false
+	for i: int in range(92, 102):
+		var cap_9 := Historia.capitulo(i)
+		var forma := String((cap_9["objetivo"] as Dictionary)["tipo"])
+		if cap_9.has("sellos"):
+			forma += "+sellos"
+		for ev: Array in cap_9.get("eventos", []):
+			for acc: Array in ev[1]:
+				if String(acc[0]) in ["cerco", "lluvia"]:
+					forma += "+" + String(acc[0])
+		formas_9[forma] = true
+		kratos_juega = kratos_juega or StringName(cap_9["personaje"]) == &"kratos"
+		for lado: String in ["aliados", "enemigos"]:
+			for d: Dictionary in cap_9.get(lado, []):
+				kratos_aparece = kratos_aparece or StringName(d["personaje"]) == &"kratos"
+	_check(formas_9.size() >= 9 and formas_9.has("escoltar") and formas_9.has("recorrido")
+		and not kratos_juega and kratos_aparece,
+		"la parte 9 tiene %d formas de pelear distintas en diez capitulos, y Kratos pelea pero no se juega (%s)" % [
+			formas_9.size(), ", ".join(formas_9.keys())])
 
 	# --- NUNCA MAS DE TRES ENEMIGOS A LA VEZ ---
 	#
@@ -1261,6 +1306,70 @@ func _test_historia(main: Node) -> void:
 			_check(mision._juntados == 1, "y se junta una al pasar por encima (%d)" % mision._juntados)
 		if i == 69:
 			_check(mision._lluvia_tipo == "meteoritos", "en el capitulo 70 llueven meteoritos")
+		# LAS PELEAS DE LA PARTE 9: el recorrido, la escolta, los sellos y el cerco.
+		if i == 92:
+			_check(mision._puntos.size() == 5 and is_instance_valid(mision._punto_marca)
+				and mision.texto_objetivo().contains("0 / 5"),
+				"en el recorrido hay cinco circulos y se ve solo el primero")
+			if not mision._puntos.is_empty():
+				p.global_position = mision._puntos[0] + Vector3.UP * 0.2
+				for _f: int in range(6):
+					await get_tree().physics_frame
+			_check(mision._punto_k == 1 and is_instance_valid(mision._punto_marca)
+				and mision._punto_marca.global_position.distance_to(mision._puntos[1]) < 0.5,
+				"y al pisarlo se marca el que sigue (%d)" % mision._punto_k)
+		if i == 93:
+			var noelle := mision.participantes.get(&"noelle") as Player
+			var cerebro_n := noelle.get_node_or_null("BotBrain") if noelle != null else null
+			_check(noelle != null and mision._escolta_ruta.size() == 4
+				and (cerebro_n == null or not cerebro_n.is_physics_processing()),
+				"en la escolta, a Noelle la lleva la mision y no su cerebro")
+			for _f: int in range(10):
+				await get_tree().physics_frame
+			_check(noelle != null and noelle.bot_move_dir.length() > 0.5,
+				"y camina sola hacia el primer punto")
+			if noelle != null and not mision._escolta_ruta.is_empty():
+				noelle.global_position = mision._escolta_ruta[0] + Vector3.UP * 0.2
+				for _f: int in range(6):
+					await get_tree().physics_frame
+			_check(mision._escolta_k == 1, "y al llegar sigue con el tramo siguiente (%d)" % mision._escolta_k)
+			var cerca_n: Player = null
+			for id: StringName in mision.participantes:
+				var e := mision.participantes[id] as Player
+				if e != null and e.equipo == 1 and not e.health.is_dead and e.visible:
+					cerca_n = e
+			if cerca_n != null and noelle != null:
+				cerca_n.global_position = noelle.global_position + Vector3(2.0, 0.2, 0.0)
+				for _f: int in range(4):
+					await get_tree().physics_frame
+				_check(noelle.bot_move_dir.is_zero_approx(), "con un enemigo encima, se frena")
+		if i == 95:
+			var guardian := mision.participantes.get(&"guardian") as Player
+			await get_tree().physics_frame
+			_check(mision._sellos.size() == 3 and guardian != null and guardian.status.es_invencible()
+				and guardian.get_node_or_null(^"EscudoSellos") != null,
+				"con los sellos en pie, al guardian no le entra nada y se le ve el escudo")
+			for s: Node3D in mision._sellos:
+				s.set_meta(&"roto", 0.98)
+			for s: Node3D in mision._sellos:
+				p.global_position = s.global_position
+				for _f: int in range(8):
+					await get_tree().physics_frame
+			await get_tree().create_timer(0.4).timeout
+			_check(mision._sellos_en_pie() == 0 and guardian != null and not guardian.status.es_invencible()
+				and guardian.get_node_or_null(^"EscudoSellos") == null,
+				"y parado al lado de cada sello se rompen, y con el ultimo se le puede pegar (%d en pie)" % mision._sellos_en_pie())
+		if i == 97:
+			_check(is_instance_valid(mision._cerco) and mision.radio_cerco() <= 38.0,
+				"en el capitulo de la runa el cerco de fuego arranca solo")
+			mision._cerco_r0 = 1.0
+			mision._cerco_r1 = 1.0
+			p.global_position = mision.ancla + Vector3(6.0, 0.5, 0.0)
+			var antes_c := p.health.current
+			await get_tree().create_timer(0.7).timeout
+			_check(p.health.current < antes_c, "y quema al que queda afuera (%.0f -> %.0f)" % [antes_c, p.health.current])
+			p.health.current = p.health.max_health
+			mision._cerco_dps = 0.0
 		if i == 2:
 			var rick := mision.participantes.get(&"rick") as Player
 			var antes := rick.health.current if rick != null else 0.0
@@ -2395,7 +2504,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 366
+const CHEQUEOS_MINIMOS: int = 379
 
 
 func _finish() -> void:
