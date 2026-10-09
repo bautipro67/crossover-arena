@@ -178,7 +178,7 @@ barras de cine y el nombre de la técnica, y al soltar se ve el golpe desde lejo
 demás no pierden su cámara: ven lo mismo desde donde están parados, el viento alrededor
 del puño y el templo que sube del piso.
 
-═══ MODO HISTORIA — NUEVE PARTES, NOVENTA CAPÍTULOS (Y CUATRO RUTAS SECRETAS) ═══
+═══ MODO HISTORIA — DIEZ PARTES, CIEN CAPÍTULOS (Y CUATRO RUTAS SECRETAS) ═══
 
 PARTE 1: LA GRIETA. Un experimento de Rick rompe la pared entre los mundos, y todo lo que
 cae por la grieta termina en la Arena: un coliseo entre mundos que vive de las peleas.
@@ -233,7 +233,7 @@ caminando, con las manos en los bolsillos. Terminala y SUKUNA SE QUEDA EN LA ARE
 Y EN LAS DOS HAY OTRA RUTA SECRETA: una se juega con Saitama, la otra con Gojo. Lo que
 hay que hacer no lo dice nadie; el final de cada capítulo te avisa si cuenta.
 
-PARTE 9: EL CAZADOR DE DIOSES (NUEVA). En una punta de la Arena creció un bosque de
+PARTE 9: EL CAZADOR DE DIOSES. En una punta de la Arena creció un bosque de
 glicinas, y ahí cae Tanjiro oliendo demonios: los ecos ahora tienen hambre. Por un portal
 roto llega Kratos persiguiendo a lo mismo, y la Arena, sin rey, se arma un dios propio con
 la forma de lo peor que Kratos fue. Diez capítulos donde ninguna pelea se repite: seguir un
@@ -242,6 +242,17 @@ un enemigo, un duelo adentro de un anillo de fuego que se cierra, jefes con sell
 que romper parándose al lado (mientras brillen, nada los toca), juntar flores con un eco
 rapidísimo atrás, aguantar en una runa con el fuego encima, y un final en tres fases.
 Kratos pelea con vos y contra vos, pero no se juega: se gana con el pase.
+
+PARTE 10: EL ÚLTIMO TORNEO (NUEVA). Sin rey y sin dios, la Arena se apaga. Rick termina
+la pistola de portales, pero la Arena está cosida a todos los mundos: si muere con las
+puertas abiertas, se lleva un pedazo de cada uno. Mob la escucha y entiende lo que quiere:
+un último torneo, la mejor pelea en mil años. Cada capítulo lo juega otro y cada ronda
+tiene su regla: juntar energía mientras el anillo de fuego se cierra, Goku contra Saitama
+bajo una lluvia de meteoritos, una carrera de Sonic entre los tajos de Sukuna, el rey de
+la colina con Luffy, rondas de Mortal Kombat de a un rival con Scorpion, Mario con la
+Superestrella juntando monedas, una escolta frenada por un guardián sellado, todos contra
+todos con el anillo achicándose... y una final de Noelle contra el Campeón de la Arena,
+que cambia de forma tres veces.
 
 PELEAS DISTINTAS. Juntar las bolsas del supermercado o los dedos malditos con
 ecos encima; capítulos donde cada golpe de Saitama mata pero los ecos no paran de llegar

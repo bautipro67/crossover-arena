@@ -4112,6 +4112,21 @@ func armar_juntable(context: Node, pos: Vector3, tipo: String) -> Node3D:
 				var a := float(k) * 2.2
 				flor.position = Vector3(sin(a) * 0.08, 0.18 - float(k) * 0.055, cos(a) * 0.08)
 				giro.add_child(flor)
+		"moneda":
+			# Una moneda de oro de canto, como las de Mario.
+			color = Color(1.0, 0.82, 0.20)
+			var moneda := Art.cylinder(0.26, 0.06, Art.toon(Color(1.0, 0.80, 0.18)))
+			moneda.rotation.x = PI * 0.5
+			giro.add_child(moneda)
+			var raya := Art.box(Vector3(0.07, 0.26, 0.08), Art.toon(Color(0.85, 0.60, 0.10)))
+			giro.add_child(raya)
+		"energia":
+			# Un pedazo de lo que quedo del dios de la Arena: una astilla de cristal dorado.
+			color = Color(1.0, 0.70, 0.35)
+			var astilla := Art.sphere(0.22, Art.glow(Color(1.0, 0.72, 0.35), 2.2))
+			astilla.scale = Vector3(0.6, 1.6, 0.6)
+			astilla.rotation.z = 0.35
+			giro.add_child(astilla)
 		"sello":
 			# EL SELLO DEL JEFE: un cristal violeta clavado, con un aro de papeles que gira.
 			color = Color(0.75, 0.45, 1.0)

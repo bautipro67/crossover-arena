@@ -40,7 +40,8 @@ extends Node
 ##
 ## LOS SELLOS ("sellos": {jefe, cantidad, segundos} en el capitulo): mientras quede uno en
 ## pie, al jefe no le entra nada. Se rompen quedandose al lado `segundos` seguidos, con los
-## enemigos encima. Son la fase de un jefe que no se gana pegandole.
+## enemigos encima. Son la fase de un jefe que no se gana pegandole. Con "al_inicio": false
+## no aparecen al empezar: los pone la accion ["sellos", n] (un jefe que llega a mitad).
 ##
 ## PARTICIPANTES ("aliados" y "enemigos"): id, personaje, nombre, vida, daño, pos, y
 ## opcionales: eco (copia oscura), jefe (barra arriba), quieto (no pelea: trabaja o
@@ -340,7 +341,7 @@ func _comenzar() -> void:
 	if objetivo.get("tipo", "") == "recolectar":
 		_crear_juntables()
 	_armar_objetivo_nuevo()
-	if datos.has("sellos"):
+	if datos.has("sellos") and bool((datos["sellos"] as Dictionary).get("al_inicio", true)):
 		_crear_sellos(int((datos["sellos"] as Dictionary).get("cantidad", 3)))
 	_armar_paso_snowgrave()
 	if is_instance_valid(hud) and hud.has_method("anunciar"):

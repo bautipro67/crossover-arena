@@ -914,7 +914,7 @@ func _test_historia(main: Node) -> void:
 	Progreso.rutas = {}
 
 	# --- Los datos: que todo lo que nombra la historia exista ---
-	_check(Historia.cantidad() == 102 and Historia.PARTES.size() == 13 and Historia.parte_de(10) == 1
+	_check(Historia.cantidad() == 112 and Historia.PARTES.size() == 14 and Historia.parte_de(10) == 1
 		and Historia.parte_de(20) == 2 and Historia.parte_de(30) == 3 and Historia.parte_de(40) == 4
 		and Historia.titulo_capitulo(40) == "PARTE 5 · CAPÍTULO 1"
 		and Historia.titulo_capitulo(53) == "PARTE 6 · CAPÍTULO 1"
@@ -923,8 +923,29 @@ func _test_historia(main: Node) -> void:
 		and Historia.titulo_capitulo(79) == "PARTE 8 · CAPÍTULO 1" and Historia.requisito(79) == 75
 		and Historia.titulo_capitulo(76) == "RUTA DEL HÉROE · CAPÍTULO 1"
 		and Historia.titulo_capitulo(92) == "PARTE 9 · CAPÍTULO 1" and Historia.requisito(92) == 88
+		and Historia.titulo_capitulo(102) == "PARTE 10 · CAPÍTULO 1" and Historia.requisito(102) == 101
 		and Historia.titulo_capitulo(10) == "PARTE 2 · CAPÍTULO 1",
-		"la historia tiene nueve partes y cuatro rutas secretas, y cada parte pide la anterior y no la ruta (%d)" % Historia.cantidad())
+		"la historia tiene diez partes y cuatro rutas secretas, y cada parte pide la anterior y no la ruta (%d)" % Historia.cantidad())
+	# LA PARTE 10: cada capitulo lo juega otro, y cada ronda tiene su regla.
+	var formas_10: Dictionary = {}
+	var quienes_10: Dictionary = {}
+	for i: int in range(102, 112):
+		var cap_10 := Historia.capitulo(i)
+		var forma_10 := String((cap_10["objetivo"] as Dictionary)["tipo"]) + "+" + String(cap_10.get("regla", ""))
+		if cap_10.has("sellos"):
+			forma_10 += "+sellos"
+		for ev: Array in cap_10.get("eventos", []):
+			if String((ev[0] as Array)[0]) == "muere":
+				forma_10 += "+muere"
+			for acc: Array in ev[1]:
+				if String(acc[0]) in ["cerco", "lluvia"]:
+					forma_10 += "+" + String(acc[0]) + (String(acc[1]) if String(acc[0]) == "lluvia" else "")
+		formas_10[forma_10] = true
+		quienes_10[StringName(cap_10["personaje"])] = true
+	_check(formas_10.size() == 10 and quienes_10.size() == 10 and Mapas.de_capitulo(104) == &"torre"
+		and Mapas.de_capitulo(111) == &"coliseo",
+		"la parte 10 tiene diez rondas distintas y diez protagonistas distintos (%d formas, %d personajes)" % [
+			formas_10.size(), quienes_10.size()])
 	# LA PARTE 9 NO SE REPITE: cada capitulo con su forma de pelear, y Kratos (el premio del
 	# pase pro) aparece pero nunca se juega.
 	var formas_9: Dictionary = {}
@@ -1359,6 +1380,47 @@ func _test_historia(main: Node) -> void:
 			_check(mision._sellos_en_pie() == 0 and guardian != null and not guardian.status.es_invencible()
 				and guardian.get_node_or_null(^"EscudoSellos") == null,
 				"y parado al lado de cada sello se rompen, y con el ultimo se le puede pegar (%d en pie)" % mision._sellos_en_pie())
+		# LAS RONDAS DE LA PARTE 10.
+		if i == 102:
+			_check(is_instance_valid(mision._cerco) and mision._juntables.size() == 5
+				and String(mision._juntables[0].name) == "Juntable_energia",
+				"en el capitulo de la pistola hay cinco pedazos de energia y el anillo se cierra")
+		if i == 107:
+			var r1 := mision.participantes.get(&"r1") as Player
+			_check(r1 != null and not mision.participantes.has(&"r2"),
+				"en Mortal Kombat se pelea con un rival por vez")
+			if r1 != null:
+				r1.health.apply_damage(r1.health.current + 10.0, p.peer_id)
+			for _f: int in range(6):
+				await get_tree().physics_frame
+			var r2 := mision.participantes.get(&"r2") as Player
+			_check(r2 != null and not r2.health.is_dead and not mision.terminada,
+				"y al caer uno entra el siguiente, sin dar la ronda por ganada")
+		if i == 108:
+			_check(Modos.un_golpe_del_heroe(p.peer_id) and mision._juntables.size() == 8
+				and String(mision._juntables[0].name) == "Juntable_moneda",
+				"con la Superestrella cada golpe de Mario mata, y hay ocho monedas")
+		if i == 109:
+			var guardian_10 := mision.participantes.get(&"guardian") as Player
+			await get_tree().physics_frame
+			_check(guardian_10 != null and guardian_10.status.es_invencible() and mision._sellos.size() == 3
+				and mision._escolta_ruta.size() == 4,
+				"en la escolta del corazon, el guardian esta sellado")
+		if i == 111:
+			_check(mision._sellos.is_empty(), "en la final los sellos no estan de entrada")
+			var c1 := mision.participantes.get(&"campeon1") as Player
+			if c1 != null:
+				c1.health.apply_damage(c1.health.current + 10.0, p.peer_id)
+			var t_c := 0.0
+			await get_tree().create_timer(0.3).timeout
+			while (Cinematica.activa or not mision._en_pelea) and t_c < 20.0 and not mision.terminada:
+				await get_tree().create_timer(0.1).timeout
+				t_c += 0.1
+			await get_tree().physics_frame
+			var c2 := mision.participantes.get(&"campeon2") as Player
+			_check(c2 != null and not c2.health.is_dead and mision._sellos.size() == 3 and c2.status.es_invencible()
+				and mision.participantes.has(&"sans") and not mision.terminada,
+				"al caer el primer campeon entra el segundo, sellado, y llega Sans")
 		if i == 97:
 			_check(is_instance_valid(mision._cerco) and mision.radio_cerco() <= 38.0,
 				"en el capitulo de la runa el cerco de fuego arranca solo")
@@ -2504,7 +2566,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 379
+const CHEQUEOS_MINIMOS: int = 387
 
 
 func _finish() -> void:

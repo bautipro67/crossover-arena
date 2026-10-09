@@ -102,6 +102,10 @@ extends RefCounted
 ## roto llega Kratos. Sin rey, la Arena arma un dios propio con la forma del Fantasma de
 ## Esparta. Sin ruta secreta: lo nuevo son las peleas (escolta, recorrido, sellos, cerco).
 ##
+## LA PARTE 10. Sin rey y sin dios, la Arena se apaga, y esta cosida a todos los mundos:
+## si muere con las puertas abiertas se lleva un pedazo de cada uno. Pide un ultimo torneo.
+## Cada capitulo lo juega otro, y la final es Noelle contra el Campeon de la Arena.
+##
 ## TODO LO QUE SE DICE ES ORIGINAL. De las obras salen los personajes y las frases que son
 ## su marca, nada mas.
 ##
@@ -126,6 +130,7 @@ const PARTES: Array[Dictionary] = [
 	{"titulo": "PARTE 8: EL REY DE LAS MALDICIONES", "capitulos": 10},
 	{"titulo": "✧ RUTA DEL MÁS FUERTE", "capitulos": 3, "secreta": true, "ruta": "fuerte"},
 	{"titulo": "PARTE 9: EL CAZADOR DE DIOSES", "capitulos": 10},
+	{"titulo": "PARTE 10: EL ÚLTIMO TORNEO", "capitulos": 10},
 ]
 
 ## LAS RUTAS SECRETAS: quien las juega, cuantos pasos piden y lo que dicen los carteles.
@@ -365,6 +370,8 @@ const ALIVIO: Dictionary = {
 	50: 0.80,  # Segui (ruta Snowgrave)
 	52: 0.90,  # Snowgrave
 	101: 0.90,  # Danza del Dios del Fuego (el final de la parte 9: 3 de 6 sin esto)
+	110: 0.85,  # Todos contra todos (parte 10: 3 de 6 sin esto)
+	111: 0.92,  # El campeon de la Arena (la final de la parte 10: 4 de 6 sin esto)
 }
 
 
@@ -5661,6 +5668,516 @@ static func _armar() -> Array[Dictionary]:
 			["narrar", "La Arena se quedó sin dios. Kratos decide quedarse a vigilar que no intente otro, y Tanjiro, hasta que Rick arregle su pistola, cuida el bosque de glicinas."],
 			["fundido", "negro", 1.0],
 			["titulo", "FIN DE LA PARTE 9", "Dos cazadores se quedaron en la Arena"],
+		],
+	})
+
+	# =============================================================== PARTE 10
+	#
+	# EL ULTIMO TORNEO. Sin rey y sin dios, la Arena se apaga. Rick termina la pistola de
+	# portales y todos podrian volver a casa, pero la Arena esta cosida a cada mundo por la
+	# grieta: si muere con las puertas abiertas, se lleva un pedazo de cada uno. Mob la
+	# escucha: no esta enojada, tiene miedo. Pide una sola cosa, un ultimo torneo, la mejor
+	# pelea en mil años. Despues los deja ir.
+	#
+	# CADA CAPITULO LO JUEGA OTRO (2026-10-09) y cada ronda tiene su regla: juntar contra el
+	# anillo de fuego, cuidar a Mob con el fuego cerrandose, una exhibicion entre Goku y
+	# Saitama bajo meteoritos, una carrera entre tajos, el rey de la colina, rondas de Mortal
+	# Kombat de a uno, monedas con la Superestrella, una escolta frenada por un guardian
+	# sellado, todos contra todos con el anillo achicandose, y una final contra tres campeones
+	# seguidos. Las combinaciones no se habian usado antes.
+
+	# ------------------------------------------------------------------ 91
+	c.append({
+		"titulo": "La pistola de portales",
+		"personaje": &"rick",
+		"aliados": [_aliado(&"noelle", "Noelle", Vector2(2.5, 1.5), 90.0, 0.40)],
+		"enemigos": [
+			_eco("p1", &"dio", Vector2(-5, -12), 22.0, 0.11),
+			_eco("p2", &"rick", Vector2(5, -12), 22.0, 0.11),
+		],
+		"objetivo": {"tipo": "recolectar", "objeto": "energia", "cantidad": 5,
+			"puntos": [Vector2(0, -22), Vector2(-20, -8), Vector2(18, -14), Vector2(-6, -16), Vector2(12, 8)],
+			"texto": "Juntá la energía antes de que el fuego llegue"},
+		"eventos": [
+			[["inicio"], [
+				["cerco", 34.0, 15.0, 55.0, 5.0],
+				["decir", &"rick", "La Arena se achica y el borde se prende fuego. Las de afuera primero, genio."]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p3", &"rick", Vector2(-7, -14), 22.0, 0.11, false),
+					_eco("p4", &"madara", Vector2(7, -14), 22.0, 0.11, false)]],
+				["decir", &"noelle", "¡Hay más! Pero se ven... transparentes. Como si se estuvieran apagando."]]],
+		],
+		"intro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["colocar", &"noelle", Vector2(2.5, 1.5), 0.0],
+			["plano", "general"],
+			["narrar", "Sin rey y sin dios, la Arena se quedó callada. Las gradas están vacías. Los ecos se ven cada vez más transparentes."],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Terminé la pistola. Bueno, casi. Me faltan cinco pedazos de lo que quedó del dios ese."],
+			["decir", &"noelle", "¿Entonces... podemos volver a casa? ¿De verdad?"],
+			["decir", &"rick", "*burp* Si juntamos los pedazos antes de que esto se termine de encoger, sí."],
+			["aparecer", &"p1", &"dio", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"rick", Vector2(5, -12), "sombra"],
+		],
+		"outro": [
+			["colocar", &"rick", Vector2(0, 0), 0.0],
+			["colocar", &"noelle", Vector2(2.5, 1.0), 20.0],
+			["habilidad", &"rick", &"portal_gun"],
+			["plano", "dos", &"rick", &"noelle"],
+			["narrar", "Del otro lado del portal hay nieve que cae hacia arriba y un árbol de Navidad con luces."],
+			["decir", &"noelle", "Es Hometown... ¡Es mi casa!"],
+			["temblor", 1.4],
+			["narrar", "Y la Arena entera tira para adentro. La nieve, las luces, un pedazo de calle: todo empieza a cruzar."],
+			["decir", &"rick", "¡No, no, no! ¡Cerralo! ¡CERRALO!"],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Está cosida a todos los mundos, Morty. Si se muere con la puerta abierta, se lleva un pedazo de cada uno."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 92
+	c.append({
+		"titulo": "Lo que siente la Arena",
+		"personaje": &"spiderman",
+		"aliados": [
+			{"id": &"mob", "personaje": &"mob", "nombre": "Mob", "vida": 90.0, "daño": 0.4,
+				"pos": Vector2(0, 3), "quieto": true, "pose": &"channel_up"},
+		],
+		"enemigos": [
+			_eco("p1", &"naruto", Vector2(-5, -12), 24.0, 0.12),
+			_eco("p2", &"goku", Vector2(5, -12), 24.0, 0.12),
+			_eco("p3", &"scorpion", Vector2(0, -14), 24.0, 0.12),
+		],
+		"objetivo": {"tipo": "proteger", "id": &"mob", "segundos": 40.0, "texto": "Cuidá a Mob mientras escucha a la Arena"},
+		"eventos": [
+			[["inicio"], [
+				["cerco", 34.0, 11.0, 40.0, 5.0],
+				["decir", &"mob", "El fuego se cierra sobre mí. Es la Arena. Se está abrazando."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"luffy", Vector2(-7, -14), 24.0, 0.12, false),
+					_eco("p5", &"sans", Vector2(7, -14), 24.0, 0.12, false)]],
+				["decir", &"spiderman", "¡Okey, el sentido arácnido dice que vienen más! ¡Y que hace calor!"]]],
+		],
+		"intro": [
+			["colocar", &"spiderman", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, 3), 0.0],
+			["plano", "dos", &"spiderman", &"mob"],
+			["decir", &"mob", "Puedo escucharla. Como a un espíritu. Pero no es malo... Está asustada."],
+			["decir", &"spiderman", "¿La Arena tiene miedo? ¿De qué? Es una arena gigante."],
+			["decir", &"mob", "De quedarse sola. Necesito un rato para entender qué quiere. Por favor, que nadie me toque."],
+			["decir", &"spiderman", "Tu amigable vecino se encarga. Vos escuchá tranquilo."],
+			["aparecer", &"p1", &"naruto", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"goku", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"scorpion", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"spiderman", Vector2(0, 0), 0.0],
+			["colocar", &"mob", Vector2(0, 3), 0.0],
+			["plano", "cerca", &"mob"],
+			["decir", &"mob", "Ya entendí. Vive de las peleas desde hace mil años. No sabe hacer otra cosa."],
+			["decir", &"mob", "Pide una sola cosa: un último torneo. La mejor pelea que haya visto. Después nos deja ir, y se apaga tranquila."],
+			["plano", "cerca", &"spiderman"],
+			["decir", &"spiderman", "¿Un torneo? Eso lo vendo fácil. Tengo un amigo saiyajin que va a llorar de la emoción."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 93
+	c.append({
+		"titulo": "La pelea que todos querían ver",
+		"personaje": &"goku",
+		"enemigos": [
+			{"id": &"saitama", "personaje": &"saitama", "nombre": "Saitama", "vida": 125.0, "daño": 0.15,
+				"pos": Vector2(0, -9), "jefe": true},
+		],
+		"objetivo": {"tipo": "derrotar", "id": &"saitama", "hasta": 0.5, "texto": "Primera ronda: Goku contra Saitama"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "meteoritos", 0.0, 1.8],
+				["decir", &"goku", "¡Y encima caen piedras! ¡Esta Arena sabe armar un torneo!"]]],
+			[["vida", &"saitama", 0.75], [["decir", &"saitama", "Ok. Esto está bueno."]]],
+			[["vida", &"saitama", 0.6], [["decir", &"goku", "¡Sigo sin sentir tu ki! ¡¿Cómo pegás tan fuerte?!"]]],
+		],
+		"intro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["aparecer", &"saitama", &"saitama", Vector2(0, -9), ""],
+			["plano", "general"],
+			["narrar", "Al pie de la torre, la Arena levanta tribunas y estandartes como hace mil años. La primera ronda la elige ella."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡Un torneo de verdad! ¡Como el Tenkaichi Budokai! ¡Qué emoción!"],
+			["plano", "cerca", &"saitama"],
+			["decir", &"saitama", "Me anotaron sin preguntarme. Yo venía a comprar."],
+			["plano", "cerca", &"goku"],
+			["pose", &"goku", &"desafio", 1.0],
+			["decir", &"goku", "¡No me importa! ¡Siento que sos el más fuerte de todos, y quiero ver hasta dónde llegás!"],
+		],
+		"outro": [
+			["colocar", &"goku", Vector2(0, 0), 0.0],
+			["colocar", &"saitama", Vector2(0, -6), 180.0],
+			["plano", "dos", &"goku", &"saitama"],
+			["decir", &"saitama", "Estuvo bien. Casi me divierto."],
+			["decir", &"goku", "¡¿Casi?! ¡La próxima peleamos en serio, eh! ¡Prometémelo!"],
+			["decir", &"saitama", "Mañana hay ofertas. Otro día."],
+			["plano", "general"],
+			["narrar", "Las tribunas vacías tiemblan. Por primera vez en mucho tiempo, la Arena parece contenta."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 94
+	c.append({
+		"titulo": "Demasiado lento",
+		"personaje": &"sonic",
+		"enemigos": [
+			_eco("p1", &"sonic", Vector2(-5, -12), 22.0, 0.11),
+			_eco("p2", &"spiderman", Vector2(5, -12), 22.0, 0.11),
+		],
+		"objetivo": {"tipo": "recorrido", "radio": 3.0, "limite": 60.0,
+			"puntos": [Vector2(0, -14), Vector2(14, -22), Vector2(22, -6), Vector2(10, 10), Vector2(-10, 12),
+				Vector2(-22, -4), Vector2(-8, -24)],
+			"texto": "Segunda ronda: la carrera, entre los tajos"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "cortes", 0.0, 1.6],
+				["decir", &"sonic", "¿Siete puntos y cuchillos cayendo del cielo? ¡Por fin algo que no es aburrido!"]]],
+			[["tiempo", 30.0], [["decir", &"sonic", "¡Vamos, vamos! ¡Demasiado lento, Sonic!"]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p3", &"sonic", Vector2(-7, -14), 22.0, 0.11, false),
+					_eco("p4", &"naruto", Vector2(7, -14), 22.0, 0.11, false)]],
+				["decir", &"sonic", "¡Otro con mi cara! ¡Seguro que esto es culpa de Eggman!"]]],
+		],
+		"intro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["aparecer", &"sukuna", &"sukuna", Vector2(0, -10), ""],
+			["plano", "abajo", &"sukuna"],
+			["narrar", "En las gradas, sentado sobre una pila de huesos, el Rey de las Maldiciones mira el torneo."],
+			["decir", &"sukuna", "La Arena quiere un espectáculo. Yo pongo los tajos. Corré, erizo."],
+			["plano", "cerca", &"sonic"],
+			["decir", &"sonic", "¿Tajos? ¡Ja! No me alcanzan ni a ver."],
+			["desaparecer", &"sukuna", ""],
+			["aparecer", &"p1", &"sonic", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"spiderman", Vector2(5, -12), "sombra"],
+		],
+		"outro": [
+			["colocar", &"sonic", Vector2(0, 0), 0.0],
+			["aparecer", &"sukuna", &"sukuna", Vector2(0, -8), ""],
+			["plano", "dos", &"sonic", &"sukuna"],
+			["decir", &"sukuna", "Rápido. Pero correr no es pelear."],
+			["decir", &"sonic", "Lo dice el que estuvo sentado todo el rato."],
+			["plano", "abajo", &"sukuna"],
+			["decir", &"sukuna", "Je. Me caés bien, erizo. Casi."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 95
+	c.append({
+		"titulo": "El rey de la colina",
+		"personaje": &"luffy",
+		"enemigos": [
+			_eco("p1", &"goku", Vector2(-5, -14), 24.0, 0.10),
+			_eco("p2", &"luffy", Vector2(5, -14), 24.0, 0.10),
+		],
+		"objetivo": {"tipo": "zona", "centro": Vector2(0, -12), "radio": 6.0, "segundos": 24.0,
+			"texto": "Tercera ronda: quedate arriba de la piedra, entre los meteoritos"},
+		"eventos": [
+			[["inicio"], [
+				["lluvia", "meteoritos", 0.0, 2.2],
+				["decir", &"luffy", "¡El que se queda arriba gana! ¡Fácil!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"thanos", Vector2(-7, -16), 24.0, 0.10, false),
+					_eco("p5", &"mario", Vector2(7, -16), 24.0, 0.10, false)]],
+				["decir", &"luffy", "¡Shishishi! ¡Vengan todos, la piedra es mía!"]]],
+		],
+		"intro": [
+			["colocar", &"luffy", Vector2(0, 0), 0.0],
+			["aparecer", &"rick", &"rick", Vector2(3, 2), "portal"],
+			["plano", "general"],
+			["narrar", "La tercera ronda es vieja como la Arena: una piedra en el medio, y el que la aguante es el rey."],
+			["plano", "dos", &"rick", &"luffy"],
+			["decir", &"luffy", "¿El rey? ¡Entonces es mía! ¡Voy a ser el Rey de los Piratas!"],
+			["decir", &"rick", "Es el rey de la colina, no de los piratas, Morty."],
+			["decir", &"luffy", "¡Es lo mismo! ¡Y no me llamo Morty! ¡Shishishi!"],
+			["aparecer", &"p1", &"goku", Vector2(-5, -14), "sombra"],
+			["aparecer", &"p2", &"luffy", Vector2(5, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"luffy", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"luffy"],
+			["pose", &"luffy", &"victoria", 1.2],
+			["decir", &"luffy", "¡Gané! ¡Soy el rey! ¿Hay carne de premio?"],
+			["narrar", "No hay carne. Pero la Arena hace sonar sus tribunas vacías como si estuvieran llenas."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 96
+	c.append({
+		"titulo": "Mortal Kombat",
+		"personaje": &"scorpion",
+		# DE A UNO, COMO EN SU TORNEO: cada rival entra cuando cae el anterior, y la vida no
+		# se recupera entre ronda y ronda. El ultimo es un eco con su cara.
+		"enemigos": [
+			_eco("r1", &"madara", Vector2(0, -10), 26.0, 0.13),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Cuarta ronda: cuatro rivales, de a uno, sin descanso"},
+		"eventos": [
+			[["inicio"], [["decir", &"scorpion", "Primer rival."]]],
+			[["muere", &"r1"], [
+				["refuerzos", [_eco("r2", &"dio", Vector2(0, -12), 26.0, 0.13, false)]],
+				["decir", &"scorpion", "Siguiente."]]],
+			[["muere", &"r2"], [
+				["refuerzos", [_eco("r3", &"thanos", Vector2(0, -12), 28.0, 0.13, false)]],
+				["decir", &"scorpion", "Mi clan peleó así durante siglos. Siguiente."]]],
+			[["muere", &"r3"], [
+				["refuerzos", [_eco("r4", &"scorpion", Vector2(0, -12), 34.0, 0.15, false)]],
+				["decir", &"scorpion", "Un eco con mi cara. Que pelee con honor, entonces."]]],
+		],
+		"intro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["aparecer", &"kratos", &"kratos", Vector2(-4, 2), ""],
+			["plano", "general"],
+			["narrar", "La cuarta ronda tiene reglas que Scorpion conoce bien: un rival por vez, y el que cae no se levanta."],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "Esto es Mortal Kombat. Un torneo donde el que pierde, pierde todo."],
+			["plano", "cerca", &"kratos"],
+			["decir", &"kratos", "Pelea con honor, espectro. Es lo único que te llevás de un torneo."],
+			["plano", "cerca", &"scorpion"],
+			["decir", &"scorpion", "El Shirai Ryu no conoce otra forma."],
+			["aparecer", &"r1", &"madara", Vector2(0, -10), "sombra"],
+		],
+		"outro": [
+			["colocar", &"scorpion", Vector2(0, 0), 0.0],
+			["aparecer", &"kratos", &"kratos", Vector2(-4, 1), ""],
+			["plano", "dos", &"kratos", &"scorpion"],
+			["decir", &"kratos", "Bien peleado."],
+			["decir", &"scorpion", "Mi clan habría estado orgulloso. Mi hijo también."],
+			["decir", &"kratos", "...Lo habría estado."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 97
+	c.append({
+		"titulo": "Superestrella",
+		"personaje": &"mario",
+		# LA ESTRELLA: cada golpe de Mario mata (la regla "un_golpe"), pero las monedas estan
+		# repartidas por toda la Arena y el reloj corre.
+		"regla": "un_golpe",
+		"enemigos": [
+			_eco("p1", &"mario", Vector2(-5, -12), 26.0, 0.12),
+			_eco("p2", &"sonic", Vector2(5, -12), 26.0, 0.12),
+			_eco("p3", &"goku", Vector2(0, -14), 26.0, 0.12),
+		],
+		"objetivo": {"tipo": "recolectar", "objeto": "moneda", "cantidad": 8, "limite": 70.0,
+			"texto": "Quinta ronda: ocho monedas, y con la estrella cada golpe gana"},
+		"eventos": [
+			[["inicio"], [["decir", &"mario", "¡Mamma mia! ¡Una Superestrella! ¡Let's-a go!"]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"luffy", Vector2(-7, -14), 26.0, 0.12, false),
+					_eco("p5", &"dio", Vector2(7, -14), 26.0, 0.12, false)]],
+				["decir", &"mario", "¡Wahoo! ¡Vengan de a uno o de a muchos!"]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p6", &"madara", Vector2(-7, -14), 26.0, 0.12, false),
+					_eco("p7", &"naruto", Vector2(7, -14), 26.0, 0.12, false),
+					_eco("p8", &"thanos", Vector2(0, -16), 26.0, 0.12, false)]],
+				["decir", &"mario", "¡Okey-dokey! ¡Más monedas, más ecos!"]]],
+		],
+		"intro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["plano", "general"],
+			["narrar", "La quinta ronda brilla: monedas de oro por toda la Arena, y en el medio, una estrella que salta sola."],
+			["plano", "cerca", &"mario"],
+			["decir", &"mario", "¡Una estrella! ¡Con esto nada me toca!"],
+			["narrar", "Casi nada. La estrella hace que cada golpe gane, no que el reloj se pare."],
+			["aparecer", &"p1", &"mario", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"sonic", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"goku", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"mario", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"mario"],
+			["pose", &"mario", &"victoria", 1.2],
+			["decir", &"mario", "¡Wahoo! ¡Ocho monedas! ¡Para el pastel de la princesa!"],
+			["narrar", "Quedan dos rondas. Y la Arena guarda lo más difícil para el final."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 98
+	c.append({
+		"titulo": "El corazón de la Arena",
+		"personaje": &"thanos",
+		# UNA ESCOLTA CON UN GUARDIAN SELLADO: Rick se frena si tiene un enemigo encima, y al
+		# guardian no se lo puede lastimar hasta romper sus sellos. O se lo aleja, o se lo
+		# rompe.
+		"sellos": {"jefe": &"guardian", "cantidad": 3, "segundos": 1.5},
+		"aliados": [
+			{"id": &"rick", "personaje": &"rick", "nombre": "Rick", "vida": 85.0, "daño": 0.3,
+				"pos": Vector2(1.5, 1.5)},
+		],
+		"enemigos": [
+			{"id": &"guardian", "personaje": &"gojo", "nombre": "Guardián del Corazón", "vida": 70.0, "daño": 0.11,
+				"pos": Vector2(0, -14), "jefe": true, "eco": true, "oculto": true},
+			_eco("p1", &"madara", Vector2(-6, -16), 24.0, 0.11),
+		],
+		"objetivo": {"tipo": "escoltar", "id": &"rick",
+			"ruta": [Vector2(0, -10), Vector2(-10, -20), Vector2(-2, -32), Vector2(8, -40)],
+			"texto": "Sexta ronda: llevá a Rick hasta el corazón de la Arena"},
+		"eventos": [
+			[["inicio"], [["decir", &"rick", "Si ese guardián se me pone adelante, me quedo quieto. No soy tonto."]]],
+			[["vida", &"guardian", 0.5], [
+				["refuerzos", [_eco("p2", &"sukuna", Vector2(7, -30), 24.0, 0.11, false)]],
+				["decir", &"thanos", "Ninguna puerta queda cerrada para siempre."]]],
+			[["vida", &"rick", 0.5], [["decir", &"rick", "¡Cubrime, titán! ¡Para algo sos tan grande!"]]],
+		],
+		"intro": [
+			["colocar", &"thanos", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(1.5, 1.5), 0.0],
+			["plano", "dos", &"thanos", &"rick"],
+			["decir", &"rick", "La pistola va en el corazón de la Arena. Ahí las puertas quedan firmes aunque ella se apague."],
+			["decir", &"thanos", "Yo te llevo."],
+			["decir", &"rick", "Nadie me lleva. Yo camino. Vos cuidás."],
+			["decir", &"thanos", "Como quieras. Vas a llegar igual. Es inevitable."],
+			["aparecer", &"guardian", &"gojo", Vector2(0, -14), "sombra"],
+			["aparecer", &"p1", &"madara", Vector2(-6, -16), "sombra"],
+			["plano", "abajo", &"guardian"],
+			["narrar", "Al corazón lo cuida un eco con venda en los ojos, y tres cristales que no lo dejan tocar. La Arena todavía no está lista."],
+		],
+		"outro": [
+			["colocar", &"thanos", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(1.5, 1.0), 20.0],
+			["plano", "cerca", &"rick"],
+			["decir", &"rick", "Puesta. Las puertas no se mueven más. Cuando esto se apague, nadie pierde nada."],
+			["plano", "cerca", &"thanos"],
+			["decir", &"thanos", "Un precio pagado a tiempo. Eso es el equilibrio."],
+		],
+	})
+
+	# ------------------------------------------------------------------ 99
+	c.append({
+		"titulo": "Todos contra todos",
+		"personaje": &"gojo",
+		"enemigos": [
+			_eco("p1", &"sukuna", Vector2(-5, -12), 24.0, 0.11),
+			_eco("p2", &"goku", Vector2(5, -12), 24.0, 0.11),
+			_eco("p3", &"madara", Vector2(0, -14), 24.0, 0.11),
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "Semifinal: que no quede nadie en pie adentro del anillo"},
+		"eventos": [
+			[["inicio"], [
+				["cerco", 38.0, 15.0, 55.0, 3.0],
+				["decir", &"gojo", "Un anillo que se achica y todos contra mí. Por fin una ronda a mi altura."]]],
+			[["quedan", 1], [
+				["refuerzos", [_eco("p4", &"thanos", Vector2(-7, -14), 24.0, 0.11, false),
+					_eco("p5", &"kratos", Vector2(7, -14), 24.0, 0.11, false)]],
+				["decir", &"gojo", "¿Más? Bien. Hoy estoy de buen humor."]]],
+			[["quedan", 0], [
+				["refuerzos", [_eco("p7", &"saitama", Vector2(0, -14), 26.0, 0.11, false)]],
+				["decir", &"gojo", "¿Uno con la cara del pelado? Eso sí que es valiente."]]],
+		],
+		"intro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["aparecer", &"saitama", &"saitama", Vector2(4, 3), ""],
+			["plano", "general"],
+			["narrar", "La semifinal no tiene reglas: todos los ecos que quedan, y un anillo de fuego que se cierra hasta que haya uno solo."],
+			["plano", "dos", &"saitama", &"gojo"],
+			["decir", &"saitama", "Te dejo esta. Yo ya peleé con el de pelo parado."],
+			["decir", &"gojo", "Qué generoso. Mirá y aprendé, pelado."],
+			["aparecer", &"p1", &"sukuna", Vector2(-5, -12), "sombra"],
+			["aparecer", &"p2", &"goku", Vector2(5, -12), "sombra"],
+			["aparecer", &"p3", &"madara", Vector2(0, -14), "sombra"],
+		],
+		"outro": [
+			["colocar", &"gojo", Vector2(0, 0), 0.0],
+			["plano", "cerca", &"gojo"],
+			["decir", &"gojo", "En el cielo y en la tierra... Bueno, ya saben. ¿Contra quién es la final?"],
+			["temblor", 1.6],
+			["plano", "general"],
+			["narrar", "Los ecos caídos no se apagan. Se juntan, todos, en el centro del Coliseo. Y la Arena elige a su rival: la primera que trajo."],
+		],
+	})
+
+	# ----------------------------------------------------------------- 100
+	c.append({
+		"titulo": "El campeón de la Arena",
+		"personaje": &"noelle",
+		# LA FINAL, TRES CAMPEONES SEGUIDOS: la Arena toma la forma de los mas fuertes que
+		# recuerda. El primero se pelea normal; el segundo llega con sellos; el tercero, con
+		# el anillo de fuego. Los aliados se suman de a uno.
+		"sellos": {"jefe": &"campeon2", "cantidad": 3, "segundos": 1.4, "al_inicio": false},
+		"aliados": [
+			_aliado(&"rick", "Rick", Vector2(2.5, 1.5), 85.0, 0.35),
+			{"id": &"sans", "personaje": &"sans", "nombre": "Sans", "vida": 80.0, "daño": 0.40,
+				"pos": Vector2(-2.5, 1.5), "reserva": true},
+			{"id": &"goku", "personaje": &"goku", "nombre": "Goku", "vida": 110.0, "daño": 0.45,
+				"pos": Vector2(0, 3), "reserva": true},
+		],
+		"enemigos": [
+			{"id": &"campeon1", "personaje": &"goku", "nombre": "Campeón de la Arena", "vida": 80.0, "daño": 0.12,
+				"pos": Vector2(0, -9), "jefe": true, "eco": true, "oculto": true},
+		],
+		"objetivo": {"tipo": "derrotar_todos", "texto": "La final: derrotá al Campeón de la Arena, en todas sus formas"},
+		"eventos": [
+			[["inicio"], [["decir", &"noelle", "Yo puedo. Yo puedo. Por todos los que conocí acá."]]],
+			[["muere", &"campeon1"], [
+				["refuerzos", [{"id": &"campeon2", "personaje": &"gojo", "nombre": "Campeón de la Arena", "vida": 80.0,
+					"daño": 0.12, "pos": Vector2(0, -10), "jefe": true, "eco": true}]],
+				["sellos", 3],
+				["cinematica", [
+					["plano", "general"],
+					["narrar", "El eco se deshace y vuelve a armarse, con venda en los ojos. Tres cristales se clavan alrededor."],
+					["aparecer", &"sans", &"sans", Vector2(-2.5, 1.5), "teletransporte"],
+					["plano", "cerca", &"sans"],
+					["decir", &"sans", "ey, noelle. vengo a ver la final. de cerca. ¿te molesta?"],
+				]],
+				["entrar", &"sans"]]],
+			[["muere", &"campeon2"], [
+				["refuerzos", [{"id": &"campeon3", "personaje": &"sukuna", "nombre": "Campeón de la Arena", "vida": 90.0,
+					"daño": 0.13, "pos": Vector2(0, -10), "jefe": true, "eco": true},
+					_eco("p1", &"madara", Vector2(-7, -12), 22.0, 0.11, false)]],
+				["cerco", 30.0, 13.0, 30.0, 4.0],
+				["cinematica", [
+					["plano", "general"],
+					["narrar", "Otra vez se deshace. Ahora tiene cuatro ojos, y el borde de la Arena se prende fuego."],
+					["aparecer", &"goku", &"goku", Vector2(0, 3), "teletransporte"],
+					["plano", "cerca", &"goku"],
+					["decir", &"goku", "¡Perdón! ¡Estaba mirando desde la tribuna y no me aguanté!"],
+				]],
+				["entrar", &"goku"]]],
+			[["vida", &"campeon3", 0.25], [["decir", &"noelle", "¡Esta es por Susie! ¡Y por Kris! ¡Y por mi papá!"]]],
+		],
+		"intro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(2.5, 1.5), 0.0],
+			["plano", "general"],
+			["narrar", "El Coliseo, donde empezó todo. En el centro, los ecos de mil peleas se juntan en uno solo."],
+			["aparecer", &"campeon1", &"goku", Vector2(0, -9), "sombra"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "¿Yo...? ¿Por qué yo? Hay gente mucho más fuerte."],
+			["plano", "dos", &"rick", &"noelle"],
+			["decir", &"rick", "Porque fuiste la primera que se tragó. Y la que más miedo tenía. Y seguís acá."],
+			["decir", &"rick", "*burp* No le digas a nadie que dije algo lindo."],
+			["plano", "cerca", &"noelle"],
+			["pose", &"noelle", &"desafio", 1.0],
+			["decir", &"noelle", "...Está bien. Perdón por adelantado, señor Campeón."],
+		],
+		"outro": [
+			["colocar", &"noelle", Vector2(0, 0), 0.0],
+			["colocar", &"rick", Vector2(2.5, 1.0), 20.0],
+			["colocar", &"sans", Vector2(-2.5, 1.0), -20.0],
+			["colocar", &"goku", Vector2(5.0, 0.5), 30.0],
+			["colocar", &"campeon3", Vector2(0, -6), 180.0],
+			["plano", "abajo", &"campeon3"],
+			["narrar", "El campeón se arrodilla. Y por primera vez, la Arena no arma otro eco: se queda mirando."],
+			["desaparecer", &"campeon3", "sombra"],
+			["plano", "cerca", &"sans"],
+			["decir", &"sans", "vi muchas rutas de este lugar. casi todas terminaban mal. esta no."],
+			["plano", "dos", &"rick", &"noelle"],
+			["decir", &"rick", "La pistola está en el corazón. Las puertas quedan firmes. Y la Arena no se apaga."],
+			["decir", &"noelle", "¿No se apaga?"],
+			["decir", &"rick", "Tuvo su mejor pelea en mil años. Y le prometimos volver. Una vez por semana. Los jueves."],
+			["plano", "cerca", &"goku"],
+			["decir", &"goku", "¡¿Todos los jueves hay torneo?! ¡Qué emoción!"],
+			["plano", "cerca", &"noelle"],
+			["decir", &"noelle", "Entonces me voy a casa a ver a mi papá... Pero vuelvo, ¿eh? El jueves."],
+			["plano", "general"],
+			["narrar", "Las puertas se abren, una por mundo. Unos vuelven a casa. Otros, como Sukuna y Kratos, se quedan a cuidar la Arena hasta el próximo jueves."],
+			["fundido", "negro", 1.0],
+			["titulo", "FIN DE LA PARTE 10", "La Arena siguió viva, con las puertas abiertas"],
 		],
 	})
 

@@ -337,6 +337,11 @@ static func de_capitulo(i: int) -> StringName:
 		return &"santuario" if i >= Historia.primero_de(parte) + 8 else &"ciudad_z"
 	if titulo.begins_with("PARTE 8"):
 		return &"santuario"
+	if titulo.begins_with("PARTE 10"):
+		# El ultimo torneo: empieza en la Arena que se apaga, las rondas son al pie de la
+		# torre (la del torneo de la parte 2), y la final vuelve al Coliseo, donde empezo todo.
+		var n := i - Historia.primero_de(parte)
+		return &"torre" if n >= 2 and n <= 8 else &"coliseo"
 	if titulo.begins_with("PARTE 9"):
 		# Tanjiro llega al bosque de glicinas de la Arena; desde que Kratos se suma (el
 		# capitulo 6 de la parte), la pelea sube a su templo en la nieve.
