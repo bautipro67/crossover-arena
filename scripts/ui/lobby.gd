@@ -16,6 +16,11 @@ var _start_button: Button = null
 var _status_label: Label = null
 ## EL MAPA: el nombre y, al host (o jugando offline), las flechas para cambiarlo.
 var _mapa_label: Label = null
+var _modo_caja: VBoxContainer = null
+var _modo_label: Label = null
+var _modo_desc: Label = null
+var _modo_ant: Button = null
+var _modo_sig: Button = null
 var _mapa_ant: Button = null
 var _mapa_sig: Button = null
 
@@ -68,6 +73,31 @@ func _ready() -> void:
 	players_box.add_theme_constant_override("separation", 6)
 	players_panel.add_child(players_box)
 	players_box.add_child(UITheme.make_heading("JUGADORES"))
+	# EL MODO EN LINEA (2026-10-10): lo elige el que hostea, con flechas como el mapa, y los
+	# que se unen lo ven. En la practica y los modos de un jugador no aparece.
+	_modo_caja = VBoxContainer.new()
+	_modo_caja.add_theme_constant_override("separation", 2)
+	players_box.add_child(_modo_caja)
+	var modo_fila := HBoxContainer.new()
+	modo_fila.add_theme_constant_override("separation", 6)
+	_modo_caja.add_child(modo_fila)
+	_modo_ant = UITheme.make_button("<")
+	_modo_ant.custom_minimum_size = Vector2(40, 38)
+	_modo_ant.pressed.connect(func() -> void: _cambiar_modo(-1))
+	modo_fila.add_child(_modo_ant)
+	_modo_label = UITheme.make_label("", 15, UITheme.GOLD)
+	_modo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_modo_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_modo_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	modo_fila.add_child(_modo_label)
+	_modo_sig = UITheme.make_button(">")
+	_modo_sig.custom_minimum_size = Vector2(40, 38)
+	_modo_sig.pressed.connect(func() -> void: _cambiar_modo(1))
+	modo_fila.add_child(_modo_sig)
+	_modo_desc = UITheme.make_label("", 12, UITheme.TEXT_DIM)
+	_modo_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_modo_caja.add_child(_modo_desc)
+	Net.modo_cambiado.connect(_refresh_modo)
 	_player_list = VBoxContainer.new()
 	_player_list.add_theme_constant_override("separation", 4)
 	players_box.add_child(_player_list)
@@ -169,6 +199,7 @@ func _ready() -> void:
 	_build_character_list()
 	_refresh()
 	_refresh_mapa()
+	_refresh_modo()
 
 
 ## La vitrina del personaje elegido, con su skin puesta.
@@ -190,6 +221,26 @@ func _exit_tree() -> void:
 		Net.player_list_changed.disconnect(_refresh)
 	if Net.mapa_cambiado.is_connected(_refresh_mapa):
 		Net.mapa_cambiado.disconnect(_refresh_mapa)
+	if Net.modo_cambiado.is_connected(_refresh_modo):
+		Net.modo_cambiado.disconnect(_refresh_modo)
+
+
+func _cambiar_modo(paso: int) -> void:
+	if not Net.is_server():
+		return
+	Net.elegir_modo_online(Net.siguiente_modo(Net.modo_online, paso))
+
+
+func _refresh_modo() -> void:
+	if _modo_caja == null:
+		return
+	# Solo en una sala con red de verdad: hosteando o unido a alguien.
+	_modo_caja.visible = not Net.solo_mode and Modos.actual == Modos.ONLINE
+	_modo_label.text = "MODO: %s" % Net.nombre_modo_online(Net.modo_online)
+	_modo_desc.text = Net.descripcion_modo_online(Net.modo_online)
+	var puede := Net.is_server()
+	_modo_ant.visible = puede
+	_modo_sig.visible = puede
 
 
 func _cambiar_mapa(paso: int) -> void:

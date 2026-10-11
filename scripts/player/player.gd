@@ -77,6 +77,8 @@ var bot_wants_run: bool = false
 ## saldrian para cualquier lado.
 var aim_override: Vector3 = Vector3.ZERO
 var character_id: StringName = &"noelle"
+## La skin con la que se lo dibuja (&"" = la de fabrica). La pone setup_character.
+var skin_id: StringName = &""
 ## De que lado pelea. -1 = de ninguno: todos contra todos, que es como se juega en linea.
 ##
 ## Solo lo usa el modo historia, donde hay ALIADOS: con equipo, los golpes, los
@@ -105,6 +107,10 @@ var _dash_dir: Vector3 = Vector3.ZERO
 ## Velocidad de dash que pisa a la normal mientras dura una carga. 0 = usar dash_speed.
 var dash_speed_override: float = 0.0
 var _knock_t: float = 0.0
+## El salto con margen: cuanto falta para que se olvide el boton apretado, y hace cuanto
+## que dejo el piso.
+var _salto_guardado: float = 0.0
+var _en_el_aire: float = 0.0
 var _net_accum: float = 0.0
 var _target_pos: Vector3 = Vector3.ZERO
 var _target_yaw: float = 0.0
@@ -146,6 +152,7 @@ func setup_character(data: CharacterData) -> void:
 	if data == null:
 		return
 	character_id = data.id
+	skin_id = data.skin_id
 	walk_speed = data.move_speed
 	health.set_max(data.max_health * GameConfig.VIDA)
 	stamina.set_max(data.max_stamina)
@@ -229,8 +236,18 @@ func get_aim_direction() -> Vector3:
 		return camera_pivot.get_aim_direction()
 	dir = dir.normalized()
 	if Settings.asistencia_apuntado and is_local_player():
-		dir = _asistir(get_aim_origin(), dir, ASISTENCIA_ALCANCE, ASISTENCIA_ANGULO)
+		dir = _asistir(get_aim_origin(), dir, ASISTENCIA_ALCANCE, angulo_asistencia())
 	return dir
+
+
+## CUANTO AYUDA, SEGUN CON QUE SE JUEGA (2026-10-10). Con el mouse se apunta fino y seis
+## grados alcanzan; con el stick cuesta mas, y con el dedo —que ademas tapa lo que apunta—
+## mucho mas: ahi la ayuda tiene que ser la que hace que la bola le llegue al que se ve.
+func angulo_asistencia() -> float:
+	match Controles.dispositivo:
+		&"tactil": return ASISTENCIA_TACTIL
+		&"mando": return ASISTENCIA_MANDO
+	return ASISTENCIA_ANGULO
 
 
 ## ASISTENCIA DE APUNTADO (Settings.asistencia_apuntado). Si hay un rival casi en la mira
@@ -246,6 +263,17 @@ const ASISTENCIA_ALCANCE: float = 40.0
 ## la camara suele quedar mirando por arriba de su hombro.
 const GOLPE_ANGULO: float = 75.0
 const GOLPE_ALCANCE: float = 4.5
+const ASISTENCIA_MANDO: float = 10.0
+const ASISTENCIA_TACTIL: float = 16.0
+## Con el dedo el golpe basico busca al de al lado en casi media vuelta: la camara del
+## celular casi nunca queda justo sobre el rival.
+const GOLPE_ANGULO_TACTIL: float = 110.0
+const GOLPE_ALCANCE_TACTIL: float = 5.5
+## SALTAR CON MARGEN: el salto sale aunque se apriete un poco antes de tocar el piso (se
+## guarda) o un poco despues de bajarse de un borde. Sin esto, apretar justo al caer no
+## hacia nada y se sentia como un boton roto.
+const SALTO_GUARDADO: float = 0.14
+const SALTO_TARDIO: float = 0.12
 
 
 func _asistir(origen: Vector3, dir: Vector3, alcance: float, angulo: float) -> Vector3:
@@ -270,6 +298,8 @@ func _asistir(origen: Vector3, dir: Vector3, alcance: float, angulo: float) -> V
 func asistir_golpe(origen: Vector3, dir: Vector3) -> Vector3:
 	if not Settings.asistencia_apuntado or not is_local_player() or not aim_override.is_zero_approx():
 		return dir
+	if Controles.dispositivo == &"tactil":
+		return _asistir(origen, dir, GOLPE_ALCANCE_TACTIL, GOLPE_ANGULO_TACTIL)
 	return _asistir(origen, dir, GOLPE_ALCANCE, GOLPE_ANGULO)
 
 
@@ -471,9 +501,20 @@ func _handle_local_movement(delta: float) -> void:
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 
-	var puede_saltar := is_on_floor() and not frozen and not channeling and not en_menu
-	if Input.is_action_just_pressed("jump") and puede_saltar:
+	if is_on_floor():
+		_en_el_aire = 0.0
+	else:
+		_en_el_aire += delta
+	_salto_guardado = maxf(0.0, _salto_guardado - delta)
+	if Input.is_action_just_pressed("jump"):
+		_salto_guardado = SALTO_GUARDADO
+	var en_piso := is_on_floor() or _en_el_aire < SALTO_TARDIO
+	var puede_saltar := en_piso and not frozen and not channeling and not en_menu and velocity.y <= 0.5
+	if _salto_guardado > 0.0 and puede_saltar:
 		velocity.y = jump_velocity
+		_salto_guardado = 0.0
+		# Ya salto: el margen de "recien se bajo del borde" no le da un segundo salto.
+		_en_el_aire = SALTO_TARDIO
 
 	# El cuerpo mira hacia donde apunta la camara.
 	var look := camera_pivot.get_yaw()
@@ -740,8 +781,15 @@ func _on_shield_absorbed(amount: float, _remaining: float) -> void:
 	FX.spawn_shield_hit(self, amount)
 
 
-func _on_health_changed(_current: float, _max_value: float) -> void:
-	pass
+var _vida_antes: float = -1.0
+
+
+func _on_health_changed(current: float, _max_value: float) -> void:
+	# Un toque de vibracion al recibir un golpe, jugando con el dedo (Settings.vibrar). Solo
+	# el jugador de esta pantalla, y solo si de verdad bajo: curarse no vibra.
+	if is_local_player() and _vida_antes >= 0.0 and current < _vida_antes - 0.5:
+		Settings.vibrar(30)
+	_vida_antes = current
 
 
 ## SOLO SERVIDOR. Avisa a todos que una embestida acaba de conectar.

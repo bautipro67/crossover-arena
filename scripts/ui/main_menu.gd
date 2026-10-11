@@ -137,7 +137,7 @@ func _armar_izquierda() -> Control:
 
 	if not GameConfig.OFFICIAL_SERVER_URL.is_empty():
 		var online := UITheme.make_big_button("JUGAR ONLINE", Color(0.55, 0.95, 0.65),
-			"Contra otros jugadores, en el servidor público")
+			"Cinco modos que rotan: equipos, colina, caos y más")
 		online.pressed.connect(func() -> void:
 			join_requested.emit(_name_field.text, GameConfig.OFFICIAL_SERVER_URL, GameConfig.DEFAULT_PORT))
 		col.add_child(online)

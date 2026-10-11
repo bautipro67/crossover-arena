@@ -12,6 +12,7 @@ son los campos que, mal puestos, hacen que el juego no arranque en el navegador.
 | **Kind of project** | `HTML` | Si queda en "Downloadable", nadie lo juega en el navegador. |
 | **Uploads** → `CrossoverArena-web.zip` | Marcar ✅ **This file will be played in the browser** | Es el zip que tiene `index.html` en la raíz, que es lo que itch busca. |
 | **Uploads** → `CrossoverArena-windows.zip` | **NO** marcar esa casilla. Marcar plataforma 🪟 Windows | Es la descarga opcional. Si la marcás como jugable, itch se confunde sobre cuál servir. |
+| **Uploads** → `CrossoverArena.apk` | **NO** marcar la casilla del navegador. Marcar plataforma 🤖 Android | La versión del celular. butler la sube al canal `android`. Al instalarla, Android pide permitir "orígenes desconocidos": es normal en un APK que no viene de Google Play. |
 | **Viewport dimensions** | `1280` × `720` | Es la resolución de diseño del juego. Con otra, la interfaz queda cortada o diminuta. |
 | **Fullscreen button** | ✅ Activado | Es un juego en tercera persona; a 1280×720 embebido se juega incómodo. |
 | **SharedArrayBuffer support** | ❌ **DEJAR DESMARCADO** | Ver abajo. Es el que más problemas da. |
@@ -269,7 +270,15 @@ que la anterior, y los jefes un escalón por encima de todo lo demás.
 ═══ MODOS ═══
 
 ▸ ONLINE — Servidor público, entrás directo desde el menú. Sin cuenta, sin descargar
-  nada.
+  nada. CINCO MODOS (NUEVO) que el servidor va rotando con el mapa en cada partida, y
+  que el que hostea elige en la sala:
+  · Todos contra todos — cada uno por su lado, primero a 15 bajas.
+  · Por equipos — rojo contra azul, sin fuego amigo, primero a 25 bajas del equipo. La
+    vida de tus compañeros se ve siempre, al costado de la tuya.
+  · Rey de la colina — el que está solo adentro del círculo del centro suma un punto por
+    segundo; si entra otro, queda disputada y no suma nadie. Primero a 60.
+  · Modo caos — recargas cortísimas, sin stamina y el ultimate en un rato. Primero a 20.
+  · Un toque — cualquier golpe mata. Primero a 10.
 
 ▸ SIN CONEXIÓN — contra bots que pelean de verdad: te rodean, esquivan con dash, te
   corren a cortarte el canalizado y usan su ultimate.
@@ -366,7 +375,7 @@ F o rueda .... fijar al enemigo más cercano
 
 Se pueden cambiar todos en Opciones → Controles.
 
-FIJAR (NUEVO): la cámara gira sola hacia el enemigo más cercano y lo sigue todo el tiempo,
+FIJAR: la cámara gira sola hacia el enemigo más cercano y lo sigue todo el tiempo,
 con una marca roja encima que se ve hasta detrás de las paredes; todas tus habilidades
 salen hacia él. Si cae, pasa solo al siguiente. Y en Opciones: asistencia de apuntado
 (tus tiros se corren apenas hacia el rival que casi tenés en la mira) y mantener
@@ -376,9 +385,23 @@ CON MANDO: stick izquierdo moverse, stick derecho cámara, RT golpe, LT habilida
 RB habilidad 2, Y ultimate, A saltar, B dash, R3 fijar, Start pausa. Los menús también se usan
 con el mando.
 
-EN EL CELULAR: stick a la izquierda (aparece donde apoyás el pulgar), botones a la
-derecha, y arrastrando el dedo por la pantalla girás la cámara. FIJAR, arriba a la
-derecha, sigue al rival solo.
+CÁMARA MÁS CÓMODA (NUEVO): sigue al personaje con suavidad (los escalones y los saltos ya
+no sacuden la pantalla), cuando una pared la acerca vuelve despacio en vez de saltar, y en
+Opciones se elige el campo de visión, la distancia y si el eje vertical va invertido.
+Saltar tiene margen: el salto sale aunque lo aprietes un instante antes de tocar el piso.
+
+EN EL CELULAR (MEJORADO): stick a la izquierda (aparece donde apoyás el pulgar y lo sigue
+si te pasás), botones a la derecha con el nombre y el color de cada habilidad, la carga
+de la definitiva como un anillo dorado que late cuando está lista, FIJAR sobre los
+botones y SIG para pasar al siguiente rival. La cámara se acomoda sola detrás tuyo
+cuando caminás para el costado, la asistencia de apuntado ayuda más que con el mouse, y
+vibra al apretar y al recibir un golpe. En Opciones → Pantalla táctil: sensibilidad,
+cámara automática, tamaño y opacidad de los botones, y vibración.
+
+VERSIÓN PARA CELULAR DESCARGABLE (NUEVO): un APK para Android que se instala y se juega
+en pantalla completa, a lo ancho de todo el celular, sin el navegador.
+
+SKINS EN LÍNEA (ARREGLADO): en el online cada uno se ve con la skin que tiene puesta.
 
 ═══ SALA DE PRÁCTICA CONFIGURABLE ═══
 

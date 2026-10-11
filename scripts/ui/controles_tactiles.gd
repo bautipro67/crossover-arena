@@ -21,20 +21,33 @@ extends CanvasLayer
 ## LOS BOTONES NO LLAMAN AL JUGADOR: aprietan la accion, como una tecla. Asi el jugador no
 ## sabe ni le importa si el dash vino de Shift, de B o de un dedo, y todo lo que ya andaba
 ## con teclado —cooldowns, stamina, congelado— anda igual con el dedo sin tocar nada.
+##
+## LA VERSION 2 (2026-10-10, "mejora mucho la jugabilidad y camara de la version de celular y
+## sus botones"): mas grandes, con el tamaño y la opacidad que elija cada uno (Settings), el
+## nombre y el color de cada habilidad adentro del boton, la carga de la definitiva como un
+## anillo que se llena y late cuando esta lista, el fijado que se ve prendido, un boton para
+## pasar al siguiente rival, una vibracion corta al apretar, y todo corrido adentro de la
+## parte de la pantalla que no tapa la camara de fotos (el "notch").
 
-const RADIO_STICK: float = 90.0
-const RADIO_PERILLA: float = 38.0
+const RADIO_STICK: float = 100.0
+const RADIO_PERILLA: float = 42.0
 ## Por debajo de esto el stick no mueve: un pulgar apoyado nunca esta quieto del todo.
-const ZONA_MUERTA: float = 0.15
+const ZONA_MUERTA: float = 0.12
 ## Hasta donde llega la zona del stick, como parte del ancho de la pantalla.
 const ZONA_STICK: float = 0.40
 ## Un toque cuenta como boton hasta un poco afuera del circulo. Con el borde exacto, un
 ## pulgar que cae apenas al costado gira la camara en vez de pegar.
-const MARGEN_TOQUE: float = 1.15
+const MARGEN_TOQUE: float = 1.2
+## Cada cuanto se vuelve a preguntar por el notch: puede cambiar al girar el celular.
+const CADA_MARGENES: float = 1.0
+## Los toques de vibracion, en milisegundos.
+const VIBRA_BOTON: int = 12
+const VIBRA_DEFINITIVA: int = 40
 
 ## Los botones. "pos" se mide desde la esquina de abajo a la derecha, o desde la de
 ## arriba a la derecha si "arriba" es true. "habilidad" es el lugar en el kit (-1 si no es
-## una habilidad) y "gira" si arrastrar desde el tambien mueve la camara.
+## una habilidad) y "gira" si arrastrar desde el tambien mueve la camara. "solo_fijado":
+## se muestra solo con alguien fijado.
 var _botones: Array[Dictionary] = []
 
 var _jugador: Player = null
@@ -48,6 +61,11 @@ var _stick_centro: Vector2 = Vector2.ZERO
 var _stick_vector: Vector2 = Vector2.ZERO
 ## Botones apretados ahora: indice -> true.
 var _apretados: Dictionary = {}
+## Lo que no tapa el notch, como margenes en pixeles de la pantalla del juego:
+## (izquierda, arriba, derecha, abajo).
+var _margenes: Vector4 = Vector4.ZERO
+var _margenes_t: float = 0.0
+var _tiempo: float = 0.0
 
 
 func _ready() -> void:
@@ -77,36 +95,42 @@ func bind_player(jugador: Player) -> void:
 
 
 func _armar_botones() -> void:
-	# El arco: centro en el golpe, radio 150, de 55 a 195 grados. Los que mas se usan
+	# El arco: centro en el golpe, radio 170, de 55 a 195 grados. Los que mas se usan
 	# (dash, H1) quedan abajo a la izquierda del golpe, donde el pulgar llega sin estirarse;
 	# los de una vez por pelea (definitiva, salto) arriba.
-	var golpe := Vector2(-140.0, -135.0)
-	_boton(&"attack_basic", golpe, 66.0, 0, true)
+	var golpe := Vector2(-150.0, -145.0)
+	_boton(&"attack_basic", golpe, 74.0, 0, true)
 	var arco: Array = [
-		[&"jump", 55.0, -1, false],
-		[&"ability_ultimate", 90.0, 3, true],
-		[&"ability_2", 125.0, 2, true],
-		[&"ability_1", 160.0, 1, true],
-		[&"dash", 195.0, -1, false],
+		[&"jump", 55.0, -1, false, 42.0],
+		[&"ability_ultimate", 90.0, 3, true, 52.0],
+		[&"ability_2", 125.0, 2, true, 48.0],
+		[&"ability_1", 160.0, 1, true, 48.0],
+		[&"dash", 195.0, -1, false, 44.0],
 	]
 	for fila: Array in arco:
 		var a := deg_to_rad(float(fila[1]))
-		_boton(fila[0], golpe + Vector2(cos(a), -sin(a)) * 150.0, 40.0, int(fila[2]), bool(fila[3]))
+		_boton(fila[0], golpe + Vector2(cos(a), -sin(a)) * 170.0, float(fila[4]), int(fila[2]), bool(fila[3]))
 	# Arriba a la derecha, lo que no es de combate. La pausa en la esquina, que es donde
 	# se la busca.
-	_boton(&"pausa", Vector2(-44.0, 40.0), 28.0, -1, false, true, "II")
-	_boton(&"scoreboard", Vector2(-110.0, 40.0), 28.0, -1, false, true)
-	_boton(&"practice_panel", Vector2(-176.0, 40.0), 28.0, -1, false, true)
-	# Fijar, a la izquierda del resto: con el dedo se aprieta una vez y la camara hace sola
-	# lo que en el celular mas cuesta, que es seguir a alguien arrastrando.
-	_boton(&"fijar_objetivo", Vector2(-242.0, 40.0), 28.0, -1, false, true)
+	_boton(&"pausa", Vector2(-46.0, 44.0), 30.0, -1, false, true, "II")
+	_boton(&"scoreboard", Vector2(-116.0, 44.0), 30.0, -1, false, true)
+	_boton(&"practice_panel", Vector2(-186.0, 44.0), 30.0, -1, false, true)
+	# FIJAR, sobre el arco de combate, donde el pulgar llega sin soltar el stick de la
+	# camara: con el dedo se aprieta una vez y la camara hace sola lo que en el celular mas
+	# cuesta, que es seguir a alguien arrastrando. Y al lado, con alguien fijado, PASAR AL
+	# SIGUIENTE.
+	#
+	# Medidos para no pisarse con el salto y la definitiva, ni con los de arriba con los
+	# botones al maximo (Settings.BOTONES_MAX): lo vigila solo_test.
+	_boton(&"fijar_objetivo", Vector2(-55.0, -380.0), 34.0, -1, false)
+	_boton(&"cambiar_objetivo", Vector2(-135.0, -405.0), 28.0, -1, false, false, "SIG", true)
 
 
 func _boton(accion: StringName, pos: Vector2, radio: float, habilidad: int, gira: bool,
-		arriba: bool = false, texto: String = "") -> void:
+		arriba: bool = false, texto: String = "", solo_fijado: bool = false) -> void:
 	_botones.append({
 		"accion": accion, "pos": pos, "radio": radio, "habilidad": habilidad,
-		"gira": gira, "arriba": arriba,
+		"gira": gira, "arriba": arriba, "solo_fijado": solo_fijado,
 		"texto": texto if not texto.is_empty() else Controles.ETIQUETA_TACTIL.get(accion, "?"),
 	})
 
@@ -115,17 +139,42 @@ func _tam() -> Vector2:
 	return _lienzo.size if _lienzo.size.x > 0.0 else get_viewport().get_visible_rect().size
 
 
-## Donde esta un boton en la pantalla.
+## Cuanto se agrandan los botones: lo que elija el jugador (Settings.tamano_botones).
+func escala() -> float:
+	return Settings.tamano_botones if Settings != null else 1.0
+
+
+func _opacidad() -> float:
+	return Settings.opacidad_botones if Settings != null else 1.0
+
+
+func radio(i: int) -> float:
+	return float(_botones[i]["radio"]) * escala()
+
+
+## Donde esta un boton en la pantalla: su esquina, corrida adentro del notch, mas su lugar
+## escalado con el tamaño de los botones.
 func centro(i: int) -> Vector2:
 	var b: Dictionary = _botones[i]
 	var t := _tam()
-	var esquina := Vector2(t.x, 0.0) if b["arriba"] else t
-	return esquina + (b["pos"] as Vector2)
+	var esquina := Vector2(t.x - _margenes.z, _margenes.y) if b["arriba"] \
+		else Vector2(t.x - _margenes.z, t.y - _margenes.w)
+	return esquina + (b["pos"] as Vector2) * escala()
 
 
 func _visible(i: int) -> bool:
+	var accion: StringName = _botones[i]["accion"]
 	# El panel de practica solo existe en la practica.
-	return _botones[i]["accion"] != &"practice_panel" or Practica.disponible()
+	if accion == &"practice_panel" and not Practica.disponible():
+		return false
+	if bool(_botones[i]["solo_fijado"]):
+		return _hay_fijado()
+	return true
+
+
+func _hay_fijado() -> bool:
+	return is_instance_valid(_jugador) and is_instance_valid(_jugador.camera_pivot) \
+		and _jugador.camera_pivot.esta_fijado()
 
 
 ## El indice de un boton por su accion. Para los chequeos.
@@ -138,7 +187,27 @@ func indice_de(accion: StringName) -> int:
 
 func centro_del_stick_en_reposo() -> Vector2:
 	var t := _tam()
-	return Vector2(170.0, t.y - 170.0)
+	var r := RADIO_STICK * escala()
+	return Vector2(_margenes.x + r + 70.0, t.y - _margenes.w - r - 70.0)
+
+
+# ------------------------------------------------------------------- El notch
+
+## LO QUE TAPA LA CAMARA DE FOTOS, en pixeles del juego. Solo en la aplicacion del celular:
+## en el navegador la "zona segura" que da el sistema es la de la ventana del navegador, y
+## correria los botones sin motivo.
+func _medir_margenes() -> void:
+	_margenes = Vector4.ZERO
+	if not (OS.has_feature("android") or OS.has_feature("ios")):
+		return
+	var pantalla := DisplayServer.screen_get_size()
+	var seguro := DisplayServer.get_display_safe_area()
+	if pantalla.x <= 0 or pantalla.y <= 0 or seguro.size.x <= 0:
+		return
+	var t := _tam()
+	var k := Vector2(t.x / float(pantalla.x), t.y / float(pantalla.y))
+	_margenes = Vector4(seguro.position.x * k.x, seguro.position.y * k.y,
+		(pantalla.x - seguro.end.x) * k.x, (pantalla.y - seguro.end.y) * k.y)
 
 
 # ------------------------------------------------------------------- Activo
@@ -158,13 +227,21 @@ func _actualizar_activo() -> void:
 	# dejaria al personaje caminando solo para siempre.
 	if not _activo:
 		_soltar_todo()
+	else:
+		_medir_margenes()
 	_lienzo.visible = _activo
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_actualizar_activo()
-	if _activo:
-		_lienzo.queue_redraw()
+	if not _activo:
+		return
+	_tiempo += delta
+	_margenes_t -= delta
+	if _margenes_t <= 0.0:
+		_margenes_t = CADA_MARGENES
+		_medir_margenes()
+	_lienzo.queue_redraw()
 
 
 # ------------------------------------------------------------------- Toques
@@ -197,7 +274,7 @@ func _apoyar(dedo: int, pos: Vector2) -> bool:
 		if not _visible(i):
 			continue
 		var dist := pos.distance_to(centro(i))
-		if dist <= float(_botones[i]["radio"]) * MARGEN_TOQUE and dist < mejor:
+		if dist <= radio(i) * MARGEN_TOQUE and dist < mejor:
 			elegido = i
 			mejor = dist
 	if elegido >= 0:
@@ -206,12 +283,13 @@ func _apoyar(dedo: int, pos: Vector2) -> bool:
 		return true
 
 	var t := _tam()
+	var r := RADIO_STICK * escala()
 	if _stick_dedo < 0 and pos.x < t.x * ZONA_STICK:
 		_stick_dedo = dedo
-		# El stick aparece bajo el pulgar, pero entero adentro de la pantalla.
+		# El stick aparece bajo el pulgar, pero entero adentro de la pantalla (y del notch).
 		_stick_centro = Vector2(
-			clampf(pos.x, RADIO_STICK + 8.0, t.x * ZONA_STICK),
-			clampf(pos.y, RADIO_STICK + 8.0, t.y - RADIO_STICK - 8.0))
+			clampf(pos.x, _margenes.x + r + 8.0, maxf(_margenes.x + r + 8.0, t.x * ZONA_STICK)),
+			clampf(pos.y, _margenes.y + r + 8.0, t.y - _margenes.w - r - 8.0))
 		_stick_vector = Vector2.ZERO
 		_dedos[dedo] = {"tipo": &"stick"}
 		_mover(pos)
@@ -252,17 +330,28 @@ func _levantar(dedo: int) -> bool:
 
 
 func _mover(pos: Vector2) -> void:
-	var v := (pos - _stick_centro) / RADIO_STICK
+	var r := RADIO_STICK * escala()
+	var v := (pos - _stick_centro) / r
 	if v.length() > 1.0:
 		v = v.normalized()
+		# EL STICK SIGUE AL PULGAR: si el dedo se va mas alla del borde, el centro lo sigue
+		# hasta quedar a un radio. Asi volver para el otro lado responde en el acto, en vez
+		# de tener que recorrer de nuevo todo el camino que el pulgar se paso.
+		_stick_centro = pos - v * r
 	_stick_vector = v
 	_aplicar_movimiento()
 
 
 ## El stick aprieta las cuatro acciones de caminar con la fuerza que corresponde, igual
 ## que un stick de mando. El jugador lee Input.get_vector y no sabe de donde vino.
+##
+## LA ZONA MUERTA SE DESCUENTA, no se corta: pasado el borde, la fuerza arranca de cero y
+## llega a uno en el borde del stick. Cortada, el personaje arrancaba ya al 15% de golpe.
 func _aplicar_movimiento() -> void:
-	var v := _stick_vector if _stick_vector.length() >= ZONA_MUERTA else Vector2.ZERO
+	var largo := _stick_vector.length()
+	var v := Vector2.ZERO
+	if largo >= ZONA_MUERTA:
+		v = _stick_vector / largo * inverse_lerp(ZONA_MUERTA, 1.0, minf(largo, 1.0))
 	_fuerza(&"move_right", maxf(v.x, 0.0))
 	_fuerza(&"move_left", maxf(-v.x, 0.0))
 	_fuerza(&"move_back", maxf(v.y, 0.0))
@@ -285,15 +374,22 @@ func _girar(relativo: Vector2) -> void:
 ## las habilidades se disparan en _unhandled_input, y ahi solo llegan eventos. Un
 ## Input.action_press dejaria la accion apretada sin que nadie se entere.
 func _apretar(i: int, si: bool) -> void:
+	var accion: StringName = _botones[i]["accion"]
+	if si:
+		_apretados[i] = true
+		Settings.vibrar(VIBRA_DEFINITIVA if accion == &"ability_ultimate" else VIBRA_BOTON)
+	else:
+		_apretados.erase(i)
+	# PASAR AL SIGUIENTE no es una tecla: va derecho a la camara.
+	if accion == &"cambiar_objetivo":
+		if si and is_instance_valid(_jugador) and is_instance_valid(_jugador.camera_pivot):
+			_jugador.camera_pivot.siguiente_objetivo()
+		return
 	var ev := InputEventAction.new()
-	ev.action = _botones[i]["accion"]
+	ev.action = accion
 	ev.pressed = si
 	ev.strength = 1.0 if si else 0.0
 	Input.parse_input_event(ev)
-	if si:
-		_apretados[i] = true
-	else:
-		_apretados.erase(i)
 
 
 func _soltar_todo() -> void:
@@ -310,34 +406,49 @@ func _soltar_todo() -> void:
 
 func _dibujar() -> void:
 	var fuente := ThemeDB.fallback_font
+	var op := _opacidad()
 
 	# --- El stick ---
 	var en_uso := _stick_dedo >= 0
+	var r := RADIO_STICK * escala()
 	var c := _stick_centro if en_uso else centro_del_stick_en_reposo()
-	_lienzo.draw_circle(c, RADIO_STICK, Color(0.02, 0.03, 0.06, 0.28 if en_uso else 0.18))
-	_lienzo.draw_arc(c, RADIO_STICK, 0.0, TAU, 48, Color(1, 1, 1, 0.45 if en_uso else 0.25), 3.0, true)
-	_lienzo.draw_circle(c + _stick_vector * RADIO_STICK, RADIO_PERILLA,
-		Color(1, 1, 1, 0.45 if en_uso else 0.22))
+	_lienzo.draw_circle(c, r, Color(0.02, 0.03, 0.06, (0.30 if en_uso else 0.18) * op))
+	_lienzo.draw_arc(c, r, 0.0, TAU, 56, Color(1, 1, 1, (0.5 if en_uso else 0.28) * op), 3.0, true)
+	var perilla := c + _stick_vector * r
+	_lienzo.draw_circle(perilla, RADIO_PERILLA * escala(), Color(1, 1, 1, (0.5 if en_uso else 0.24) * op))
+	if en_uso and _stick_vector.length() > ZONA_MUERTA:
+		# Una flechita hacia donde camina: con el pulgar encima, la perilla no se ve.
+		var dir := _stick_vector.normalized()
+		var punta := c + dir * (r + 14.0 * escala())
+		var lado := dir.orthogonal() * 9.0 * escala()
+		_lienzo.draw_colored_polygon(PackedVector2Array([punta, punta - dir * 14.0 * escala() + lado,
+			punta - dir * 14.0 * escala() - lado]), Color(1, 1, 1, 0.55 * op))
 
 	# --- Los botones ---
 	for i: int in range(_botones.size()):
 		if not _visible(i):
 			continue
-		_dibujar_boton(i, fuente)
+		_dibujar_boton(i, fuente, op)
 
 
-func _dibujar_boton(i: int, fuente: Font) -> void:
+func _dibujar_boton(i: int, fuente: Font, op: float) -> void:
 	var b: Dictionary = _botones[i]
 	var c := centro(i)
-	var r: float = b["radio"]
+	var r := radio(i)
 	var apretado := _apretados.has(i)
+	if apretado:
+		# Se hunde un poco al apretarlo: la respuesta que el dedo no siente.
+		r *= 0.93
 
 	# Si se puede usar ahora. Un boton que no alcanza —sin stamina, sin carga— se apaga,
 	# como las cartas del HUD que reemplaza.
 	var usable := true
 	var espera := 0.0
 	var total := 0.0
-	var extra := ""
+	var nombre := ""
+	var color_hab := Color.WHITE
+	var carga := -1.0
+	var lista := false
 	var h: int = b["habilidad"]
 	if is_instance_valid(_jugador):
 		if h >= 0:
@@ -346,38 +457,78 @@ func _dibujar_boton(i: int, fuente: Font) -> void:
 				espera = _jugador.caster.get_cooldown_remaining(h)
 				total = hab.cooldown
 				usable = hab.stamina_cost <= 0.0 or _jugador.stamina.current >= hab.stamina_cost
-				# La definitiva pide ademas la carga llena. Si falta, dice cuanto tiene: sin
-				# eso se ve apagado y no se sabe por que.
-				if h == 3 and not _jugador.ultimate.is_ready():
-					usable = false
-					extra = "%d%%" % int(floor(_jugador.ultimate.get_ratio() * 100.0))
+				nombre = _nombre_corto(hab.display_name)
+				color_hab = hab.icon_color
+				# La definitiva pide ademas la carga llena: se ve como un anillo que se llena.
+				if h == 3:
+					carga = _jugador.ultimate.get_ratio()
+					lista = _jugador.ultimate.is_ready() and usable and espera <= 0.0
+					if not _jugador.ultimate.is_ready():
+						usable = false
 		elif b["accion"] == &"dash":
 			var ratio := _jugador.get_dash_cooldown_ratio()
 			if ratio > 0.0:
 				espera = ratio * _jugador.dash_cooldown
 				total = _jugador.dash_cooldown
 
-	var fondo := Color(0.05, 0.07, 0.12, 0.42)
+	var fondo := Color(0.05, 0.07, 0.12, 0.48)
+	if h >= 0:
+		fondo = Color(color_hab.darkened(0.72), 0.55)
 	if apretado:
-		fondo = Color(UITheme.ACCENT, 0.55)
+		fondo = Color(UITheme.ACCENT, 0.6)
+	if b["accion"] == &"fijar_objetivo" and _hay_fijado():
+		fondo = Color(0.85, 0.15, 0.18, 0.62)
+	fondo.a *= op
 	_lienzo.draw_circle(c, r, fondo)
 	if espera > 0.0 and total > 0.0:
-		_torta(c, r, clampf(espera / total, 0.0, 1.0), Color(0, 0, 0, 0.55))
-	var borde := Color(1, 1, 1, 0.6 if usable else 0.25)
+		_torta(c, r, clampf(espera / total, 0.0, 1.0), Color(0, 0, 0, 0.6 * op))
+
+	var borde := Color(1, 1, 1, (0.65 if usable else 0.28) * op)
+	if h >= 0 and usable:
+		borde = Color(color_hab.lightened(0.25), 0.85 * op)
 	if h == 0:
-		borde = Color(UITheme.ACCENT, 0.8)
-	_lienzo.draw_arc(c, r, 0.0, TAU, 48, borde, 3.0, true)
+		borde = Color(UITheme.ACCENT, 0.85 * op)
+	_lienzo.draw_arc(c, r, 0.0, TAU, 56, borde, 3.0, true)
+
+	# La carga de la definitiva: un anillo dorado que se llena, y que late cuando esta lista.
+	if carga >= 0.0:
+		if carga > 0.0:
+			_lienzo.draw_arc(c, r + 6.0, -PI * 0.5, -PI * 0.5 + TAU * clampf(carga, 0.0, 1.0), 56,
+				Color(UITheme.GOLD, 0.9 * op), 5.0, true)
+		if lista:
+			var latido := 0.5 + 0.5 * sin(_tiempo * 7.0)
+			_lienzo.draw_arc(c, r + 11.0 + latido * 5.0, 0.0, TAU, 56,
+				Color(UITheme.GOLD, (0.35 + 0.45 * latido) * op), 3.0, true)
 
 	var texto: String = b["texto"]
 	if espera > 0.0:
 		texto = "%.1f" % espera
-	var tam_fuente := 20 if r > 50.0 else (15 if r > 30.0 else 13)
-	var color_texto := Color(1, 1, 1, 0.92 if usable else 0.45)
-	_lienzo.draw_string(fuente, c + Vector2(-r, tam_fuente * 0.36), texto,
+	var tam_fuente := 21 if r > 55.0 else (16 if r > 34.0 else 14)
+	var color_texto := Color(1, 1, 1, (0.95 if usable else 0.5) * op)
+	var y_texto := tam_fuente * 0.36
+	if not nombre.is_empty() and espera <= 0.0:
+		# Con el nombre de la habilidad abajo, la etiqueta sube un poco.
+		y_texto -= 7.0
+	_lienzo.draw_string(fuente, c + Vector2(-r, y_texto), texto,
 		HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, tam_fuente, color_texto)
-	if not extra.is_empty():
-		_lienzo.draw_string(fuente, c + Vector2(-r, tam_fuente * 0.36 + 16.0), extra,
-			HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, 11, Color(UITheme.GOLD, 0.9))
+	if not nombre.is_empty() and espera <= 0.0:
+		_lienzo.draw_string(fuente, c + Vector2(-r * 0.92, y_texto + 15.0), nombre,
+			HORIZONTAL_ALIGNMENT_CENTER, r * 1.84, 11, Color(1, 1, 1, (0.85 if usable else 0.45) * op))
+	if carga >= 0.0 and carga < 1.0 and espera <= 0.0:
+		_lienzo.draw_string(fuente, c + Vector2(-r, y_texto + 29.0), "%d%%" % int(floor(carga * 100.0)),
+			HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, 11, Color(UITheme.GOLD, 0.9 * op))
+
+
+## El nombre de la habilidad, corto para que entre en el boton: la primera palabra que
+## diga algo ("Rueda de Agua" -> "Rueda"), hasta diez letras.
+static func _nombre_corto(nombre: String) -> String:
+	var palabras := nombre.split(" ", false)
+	if palabras.is_empty():
+		return ""
+	var corto := palabras[0]
+	if corto.length() <= 3 and palabras.size() > 1:
+		corto += " " + palabras[1]
+	return corto.substr(0, 10)
 
 
 ## Un sector de circulo que arranca arriba y gira en sentido horario, como un reloj: lo

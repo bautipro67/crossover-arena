@@ -321,9 +321,19 @@ func sin_daño() -> bool:
 	return actual == BOMBA
 
 
-## Cualquier golpe mata? Solo en un toque.
+## Cualquier golpe mata? En un toque, offline o en linea.
 func un_toque() -> bool:
-	return actual == TOQUE
+	return actual == TOQUE or _online_es(Net.MODO_TOQUE)
+
+
+## Se esta jugando en linea en ese modo? (Net.modo_online lo decide el servidor.)
+func _online_es(modo: StringName) -> bool:
+	return actual == ONLINE and Net.modo_online == modo
+
+
+## El caos, offline o en linea: recargas cortas, stamina libre y la definitiva rapida.
+func es_caos() -> bool:
+	return actual == CAOS or _online_es(Net.MODO_CAOS)
 
 
 ## UN GOLPE (regla de capitulo, "regla": "un_golpe"): cada golpe DEL JUGADOR mata, como
@@ -420,17 +430,17 @@ func esfera_tomada() -> void:
 ## ES PARA TODOS, bots incluidos: un caos en el que solo vos tiras el doble no es caos, es
 ## ventaja. Fuera de los modos offline siempre da 1, asi que el online no cambia.
 func ritmo_recarga() -> float:
-	return RECARGA_CAOS if actual == CAOS else 1.0
+	return RECARGA_CAOS if es_caos() else 1.0
 
 
 ## Nadie gasta stamina? Solo en el modo caos.
 func stamina_libre() -> bool:
-	return actual == CAOS
+	return es_caos()
 
 
 ## Por cuanto se multiplica lo que carga el ultimate pegando.
 func ritmo_carga() -> float:
-	return CARGA_CAOS if actual == CAOS else 1.0
+	return CARGA_CAOS if es_caos() else 1.0
 
 
 ## Cada cuanto cae un meteorito en la lluvia, segun cuanto va de partida: cada vez mas seguido.
@@ -454,7 +464,7 @@ func nombre() -> String:
 		TOQUE: return "Un toque"
 		ESFERAS: return "Caza de esferas"
 		HISTORIA: return "Historia"
-	return "En línea"
+	return "En línea — %s" % Net.nombre_modo_online(Net.modo_online)
 
 
 func descripcion() -> String:
@@ -490,7 +500,7 @@ func descripcion() -> String:
 				META_ESFERAS, BOTS_ESFERAS, MUERTES_ESFERAS]
 		HISTORIA:
 			return String(Historia.capitulo(capitulo).get("titulo", ""))
-	return "Contra otros jugadores."
+	return Net.descripcion_modo_online(Net.modo_online)
 
 
 ## Cuantos bots pone la arena al empezar.
@@ -717,6 +727,9 @@ func reloj() -> String:
 
 ## Lo que el HUD muestra arriba mientras jugas. "" = este modo no muestra nada.
 func marcador() -> String:
+	# En linea lo cuenta Net: cada modo tiene su meta.
+	if actual == ONLINE:
+		return Net.marcador_online()
 	if not activo:
 		return ""
 	match actual:

@@ -13,9 +13,15 @@ cada jugador escribe la direccion a mano):
     python tools/publicar.py --sin-servidor
 
 Godot se busca solo en los lugares habituales; si no aparece, pasalo con --godot.
+
+LA VERSION DEL CELULAR (build/android/CrossoverArena.apk) sale tambien, si el Android SDK
+esta instalado (la ruta la toma de la configuracion del editor de Godot). Se firma con la
+clave de depuracion de Godot de esta maquina: alcanza para instalarla a mano, y como es
+siempre la misma, una version nueva se instala encima de la vieja sin perder el progreso.
 """
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -101,6 +107,80 @@ def exportar(godot, preset, salida):
     print("   ok -> %s" % salida.relative_to(RAIZ))
 
 
+# ------------------------------------------------------------------ Android
+
+AJUSTES_EDITOR = Path(os.environ.get("APPDATA", "")) / "Godot" / "editor_settings-4.6.tres"
+APK = BUILD / "android" / "CrossoverArena.apk"
+PRESETS = RAIZ / "export_presets.cfg"
+
+
+def ajuste_editor(clave):
+    """Un valor de la configuracion del editor de Godot (o "" si no esta)."""
+    if not AJUSTES_EDITOR.exists():
+        return ""
+    for linea in AJUSTES_EDITOR.read_text(encoding="utf-8", errors="replace").splitlines():
+        if linea.startswith(clave + " = "):
+            return linea.split(" = ", 1)[1].strip().strip('"').replace("\\\\", "\\")
+    return ""
+
+
+def sdk_android():
+    """La carpeta del Android SDK, si esta y tiene lo que Godot necesita para firmar."""
+    ruta = Path(os.environ.get("ANDROID_HOME") or ajuste_editor("export/android/android_sdk_path") or "x")
+    adb = ruta / "platform-tools" / ("adb.exe" if os.name == "nt" else "adb")
+    herramientas = ruta / "build-tools"
+    if adb.exists() and herramientas.is_dir() and any(herramientas.iterdir()):
+        return ruta
+    return None
+
+
+def version_android():
+    """El numero de version del APK: la cantidad de commits. Tiene que subir siempre, o el
+    celular no deja instalar la nueva encima de la vieja."""
+    try:
+        n = int(subprocess.run(["git", "rev-list", "--count", "HEAD"], cwd=RAIZ,
+                               capture_output=True, text=True).stdout.strip())
+    except ValueError:
+        n = 1
+    return n
+
+
+def exportar_android(godot):
+    sdk = sdk_android()
+    if sdk is None:
+        print("\n(sin Android SDK: no se arma la version del celular)")
+        return None
+    clave = ajuste_editor("export/android/debug_keystore")
+    if not clave or not Path(clave).exists():
+        print("\n(sin la clave de depuracion de Godot: no se arma la version del celular)")
+        return None
+    # El numero de version va en el preset solo durante el export, y se devuelve como estaba.
+    original = PRESETS.read_text(encoding="utf-8")
+    n = version_android()
+    con_version = re.sub(r"^version/code=\d+$", "version/code=%d" % n, original, flags=re.MULTILINE)
+    con_version = re.sub(r'^version/name=".*"$', 'version/name="1.%d"' % n, con_version, flags=re.MULTILINE)
+    PRESETS.write_text(con_version, encoding="utf-8", newline="\n")
+    entorno = dict(os.environ)
+    entorno["GODOT_ANDROID_KEYSTORE_RELEASE_PATH"] = clave
+    entorno["GODOT_ANDROID_KEYSTORE_RELEASE_USER"] = ajuste_editor("export/android/debug_keystore_user") or "androiddebugkey"
+    entorno["GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD"] = ajuste_editor("export/android/debug_keystore_pass") or "android"
+    try:
+        APK.parent.mkdir(parents=True, exist_ok=True)
+        if APK.exists():
+            APK.unlink()
+        print("\nexportando Android (version 1.%d) ..." % n)
+        r = subprocess.run([godot, "--headless", "--path", str(RAIZ), "--export-release", "Android", str(APK)],
+                           capture_output=True, text=True, env=entorno)
+    finally:
+        PRESETS.write_text(original, encoding="utf-8", newline="\n")
+    if not APK.exists():
+        print(r.stdout[-2000:])
+        print(r.stderr[-2000:])
+        sys.exit("fallo el export de Android")
+    print("   ok -> %s (%.1f MB)" % (APK.relative_to(RAIZ), APK.stat().st_size / 1048576))
+    return APK
+
+
 def comprimir(carpeta, nombre):
     destino = BUILD / nombre
     if destino.exists():
@@ -139,10 +219,13 @@ def main():
     for preset, salida, carpeta, nombre in EXPORTS:
         exportar(godot, preset, salida)
         comprimir(carpeta, nombre)
+    apk = exportar_android(godot)
 
     print("\nlisto. Subi a itch.io:")
     print("   build/CrossoverArena-web.zip       (HTML, sin marcar nada mas)")
     print("   build/CrossoverArena-windows.zip   (descarga opcional)")
+    if apk:
+        print("   build/android/CrossoverArena.apk   (version del celular, plataforma Android)")
     if url:
         print("\nel menu ya muestra JUGAR ONLINE apuntando a %s" % url)
 

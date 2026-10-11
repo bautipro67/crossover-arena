@@ -48,6 +48,10 @@ var _charge_label: Label = null
 var _ability_row: HBoxContainer = null
 ## Las barras de vida, stamina y ultimate. Guardadas para moverlas con el dedo.
 var _barras: Control = null
+## La nota de abajo de las barras, que con el dedo se esconde.
+var _nota_barras: Label = null
+## Que tan chicas quedan las barras arriba a la izquierda, con el dedo.
+const ESCALA_BARRAS_TACTIL: float = 0.78
 
 # --- Lo del modo historia ---
 var _anuncio: Label = null
@@ -61,6 +65,7 @@ var _charla_cola: Array = []
 var _charla_t: float = 0.0
 var _aliados_caja: VBoxContainer = null
 var _aliados_barras: Dictionary = {}
+const ANCHO_ALIADOS: float = 240.0
 var _jefe_caja: VBoxContainer = null
 var _jefe_nombre: Label = null
 var _jefe_barra: Panel = null
@@ -84,6 +89,7 @@ var _modo_panel: PanelContainer = null
 var _modo_label: Label = null
 var _scoreboard: Control = null
 var _scoreboard_rows: VBoxContainer = null
+var _scoreboard_titulo: Label = null
 
 var _flash_time: float = 0.0
 var _respawn_left: float = 0.0
@@ -191,14 +197,17 @@ func _build_historia(root: Control) -> void:
 	_charla_texto.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(_charla_texto)
 
+	# LA VIDA DE LOS COMPAÑEROS (2026-10-10, "haz que se vea bien la vida de los compañeros
+	# que actualmente estan tapadas por otra UI"). Era una caja de alto fijo encima del lugar
+	# donde ESTABAN las barras propias, pero la placa de las barras es mas alta que su lugar
+	# y crece para arriba: con dos o tres aliados, la placa les tapaba la mitad. Y con el
+	# dedo la caja quedaba justo donde aparece el stick. Ahora su lugar se calcula cada
+	# cuadro contra la placa de verdad (_acomodar_izquierda), sobre un fondo propio.
 	_aliados_caja = VBoxContainer.new()
-	_aliados_caja.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_aliados_caja.offset_left = 28.0
-	_aliados_caja.offset_right = 260.0
-	_aliados_caja.offset_top = -300.0
-	_aliados_caja.offset_bottom = -182.0
-	_aliados_caja.alignment = BoxContainer.ALIGNMENT_END
-	_aliados_caja.add_theme_constant_override("separation", 3)
+	_aliados_caja.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_aliados_caja.size = Vector2(ANCHO_ALIADOS, 0.0)
+	_aliados_caja.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_aliados_caja.add_theme_constant_override("separation", 4)
 	_aliados_caja.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_aliados_caja)
 
@@ -276,42 +285,106 @@ func _actualizar_historia(delta: float) -> void:
 		_charla_t -= delta
 		if _charla_t <= 0.0:
 			_siguiente_charla()
+	_actualizar_aliados()
 	var mision := Modos.mision if Modos.actual == Modos.HISTORIA else null
 	if not is_instance_valid(mision):
 		if is_instance_valid(_jefe_caja):
 			_jefe_caja.visible = false
-		for n: Node in _aliados_caja.get_children():
-			n.queue_free()
-		_aliados_barras.clear()
 		return
-	# --- Los aliados: nombre y vida, chiquito ---
-	var vivos: Array = mision.aliados()
-	for b: Player in vivos:
-		if not _aliados_barras.has(b):
-			var fila := VBoxContainer.new()
-			fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var nom := UITheme.make_label(b.player_name, 11, Color(0.6, 1.0, 0.65))
-			nom.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			fila.add_child(nom)
-			var partes := UITheme.make_bar(UITheme.HEALTH, UITheme.HEALTH_TRACK, 7)
-			fila.add_child(partes[0])
-			_aliados_caja.add_child(fila)
-			_aliados_barras[b] = [fila, partes[1]]
-	for b: Variant in _aliados_barras.keys():
-		var par: Array = _aliados_barras[b]
-		if not is_instance_valid(b) or not vivos.has(b):
-			if is_instance_valid(par[0]):
-				par[0].queue_free()
-			_aliados_barras.erase(b)
-			continue
-		var bot := b as Player
-		(par[1] as Panel).anchor_right = clampf(bot.health.current / maxf(1.0, bot.health.max_health), 0.0, 1.0)
 	# --- El jefe ---
 	var jefe: Player = mision.jefe()
 	_jefe_caja.visible = jefe != null
 	if jefe != null:
 		_jefe_nombre.text = jefe.player_name
 		_jefe_barra.anchor_right = clampf(jefe.health.current / maxf(1.0, jefe.health.max_health), 0.0, 1.0)
+
+
+## Los compañeros de los que se muestra la vida: los aliados de un capitulo de la historia,
+## o en linea, por equipos, los de tu equipo (incluidos los caidos, que esperan reaparecer).
+func _lista_aliados() -> Array:
+	var mision := Modos.mision if Modos.actual == Modos.HISTORIA else null
+	if is_instance_valid(mision):
+		return mision.aliados()
+	var lista: Array = []
+	if Modos.actual != Modos.ONLINE or not Net.es_equipos() or not is_instance_valid(_player):
+		return lista
+	var mio := Net.equipo_de(Net.local_id())
+	var arena := _player.get_parent() as Arena
+	if mio < 0 or arena == null:
+		return lista
+	for id: int in Net.players.keys():
+		if id != Net.local_id() and Net.equipo_de(id) == mio:
+			var p := arena.get_player(id)
+			if p != null:
+				lista.append(p)
+	return lista
+
+
+## Una fila por compañero: el nombre (con el color de su lado) y su vida, que se ve gris si
+## esta caido. Las filas se arman una vez y despues solo se mueve la barra.
+func _actualizar_aliados() -> void:
+	var lista := _lista_aliados()
+	var color_nombre := Color(0.6, 1.0, 0.65)
+	if Modos.actual == Modos.ONLINE and Net.es_equipos():
+		var mio := Net.equipo_de(Net.local_id())
+		if mio >= 0 and mio <= 1:
+			color_nombre = Net.EQUIPO_COLORES[mio]
+	for b: Player in lista:
+		if not _aliados_barras.has(b):
+			var fila := VBoxContainer.new()
+			fila.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			fila.add_theme_constant_override("separation", 1)
+			var nom := UITheme.make_label(b.player_name, 12, color_nombre)
+			nom.add_theme_constant_override("outline_size", 4)
+			nom.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+			nom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			fila.add_child(nom)
+			var partes := UITheme.make_bar(UITheme.HEALTH, UITheme.HEALTH_TRACK, 9)
+			fila.add_child(partes[0])
+			_aliados_caja.add_child(fila)
+			_aliados_barras[b] = [fila, partes[1], nom]
+	for b: Variant in _aliados_barras.keys():
+		var par: Array = _aliados_barras[b]
+		if not is_instance_valid(b) or not lista.has(b):
+			if is_instance_valid(par[0]):
+				par[0].queue_free()
+			_aliados_barras.erase(b)
+			continue
+		var bot := b as Player
+		var caido := bot.health.is_dead
+		(par[1] as Panel).anchor_right = 0.0 if caido else clampf(bot.health.current / maxf(1.0, bot.health.max_health), 0.0, 1.0)
+		(par[2] as Label).text = bot.player_name + ("  (caído)" if caido else "")
+		(par[0] as Control).modulate.a = 0.55 if caido else 1.0
+	_aliados_caja.visible = not _aliados_barras.is_empty()
+
+
+## LA COLUMNA DE LA IZQUIERDA SE APILA SOLA, midiendo lo que de verdad ocupa cada cosa:
+## con teclado, los compañeros van justo encima de la placa de las barras (abajo); con el
+## dedo, la placa va arriba y debajo van los compañeros, la linea del que habla y lo que se
+## mato. Nada se pisa, tengan los aliados que tengan.
+func _acomodar_izquierda() -> void:
+	if not is_instance_valid(_barras) or not is_instance_valid(_aliados_caja):
+		return
+	var tactil := Controles.dispositivo == &"tactil"
+	var placa := _barras.get_global_rect()
+	var alto := _aliados_caja.get_combined_minimum_size().y if _aliados_caja.visible else 0.0
+	_aliados_caja.size = Vector2(ANCHO_ALIADOS, alto)
+	var abajo_de_todo := placa.end.y
+	if tactil:
+		_aliados_caja.position = Vector2(placa.position.x + 4.0, placa.end.y + 8.0)
+		if _aliados_caja.visible:
+			abajo_de_todo = _aliados_caja.position.y + alto
+	else:
+		_aliados_caja.position = Vector2(placa.position.x + 2.0, placa.position.y - 10.0 - alto)
+	if is_instance_valid(_charla):
+		var arriba := abajo_de_todo + 8.0 if tactil else 236.0
+		_charla.offset_top = arriba
+		_charla.offset_bottom = arriba + 110.0
+		if tactil and _charla.modulate.a > 0.05:
+			abajo_de_todo = arriba + 110.0
+	if is_instance_valid(_kill_feed) and tactil:
+		_kill_feed.offset_top = maxf(150.0, abajo_de_todo + 8.0)
+		_kill_feed.offset_bottom = _kill_feed.offset_top + 178.0
 
 
 func _exit_tree() -> void:
@@ -511,6 +584,7 @@ func _build_bars(root: Control) -> void:
 
 	var note := UITheme.make_label("Correr, golpear y dashear no gastan stamina", 11, UITheme.TEXT_DIM)
 	holder.add_child(note)
+	_nota_barras = note
 
 
 func _build_abilities(root: Control) -> void:
@@ -628,7 +702,8 @@ func _build_scoreboard(root: Control) -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	panel.add_child(box)
-	box.add_child(UITheme.make_label("MARCADOR  (primero a %d)" % GameConfig.SCORE_TO_WIN, 20, UITheme.ACCENT))
+	_scoreboard_titulo = UITheme.make_label("MARCADOR", 20, UITheme.ACCENT)
+	box.add_child(_scoreboard_titulo)
 	box.add_child(HSeparator.new())
 
 	_scoreboard_rows = VBoxContainer.new()
@@ -869,9 +944,13 @@ func _on_dispositivo_cambio() -> void:
 ## Con el dedo, el HUD le deja lugar a los botones de la pantalla.
 ##
 ## LAS CARTAS DE HABILIDADES Y EL DASH SE ESCONDEN: quedaban exactamente debajo de los
-## botones táctiles, y cada boton ya muestra su propio cooldown. Las barras se mudan al
-## centro de abajo, que es lo unico libre entre el stick y los botones: abajo a la
-## izquierda, donde estaban, es donde se apoya el pulgar para caminar.
+## botones táctiles, y cada boton ya muestra su propio cooldown.
+##
+## LAS BARRAS SUBEN ARRIBA A LA IZQUIERDA, MAS CHICAS (2026-10-10). Abajo al centro, donde
+## estaban, quedaban entre los dos pulgares y tapaban justo el piso delante del personaje,
+## que es lo que se mira para esquivar. Arriba a la izquierda es donde las pone cualquier
+## juego de celular, y la nota de "no gastan stamina" se va: ahi ocupaba lugar de mas. Lo
+## que se mataba (arriba a la izquierda) baja un poco para no quedar debajo.
 func _aplicar_dispositivo() -> void:
 	var tactil := Controles.dispositivo == &"tactil"
 	if is_instance_valid(_ability_row):
@@ -880,16 +959,32 @@ func _aplicar_dispositivo() -> void:
 		_dash_panel.visible = not tactil
 	if not is_instance_valid(_barras):
 		return
+	if is_instance_valid(_nota_barras):
+		_nota_barras.visible = not tactil
 	if tactil:
-		_barras.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-		_barras.offset_left = -180
-		_barras.offset_right = 180
+		_barras.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_barras.grow_vertical = Control.GROW_DIRECTION_END
+		_barras.scale = Vector2.ONE * ESCALA_BARRAS_TACTIL
+		_barras.offset_left = 16
+		_barras.offset_right = 376
+		_barras.offset_top = 10
+		_barras.offset_bottom = 140
 	else:
 		_barras.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		_barras.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		_barras.scale = Vector2.ONE
 		_barras.offset_left = 28
 		_barras.offset_right = 388
-	_barras.offset_top = -172
-	_barras.offset_bottom = -28
+		_barras.offset_top = -172
+		_barras.offset_bottom = -28
+	if is_instance_valid(_kill_feed):
+		_kill_feed.offset_top = 150 if tactil else 22
+		_kill_feed.offset_bottom = _kill_feed.offset_top + 178
+	# El cartel de a quien tenes fijado, con el dedo, abajo de los botones de arriba (que
+	# crecen con Settings.tamano_botones): si no, queda debajo de TABLA y PAUSA.
+	if is_instance_valid(_fijar_label):
+		_fijar_label.offset_top = 112.0 if tactil else 74.0
+		_fijar_label.offset_bottom = _fijar_label.offset_top + 20.0
 
 
 func _actualizar_modo() -> void:
@@ -903,6 +998,7 @@ func _actualizar_modo() -> void:
 func _process(delta: float) -> void:
 	_actualizar_modo()
 	_actualizar_historia(delta)
+	_acomodar_izquierda()
 	_update_chip(delta)
 	_update_stamina_pulse(delta)
 
@@ -1090,24 +1186,50 @@ func _update_target_info() -> void:
 		_target_label.add_theme_color_override("font_color", UITheme.ACCENT)
 
 
+## EL MARCADOR SEGUN EL MODO: por equipos, cada equipo con su total y sus jugadores; en la
+## colina, los puntos primero (son los que ganan) y las bajas al lado.
 func _refresh_scoreboard() -> void:
 	for child: Node in _scoreboard_rows.get_children():
 		child.queue_free()
+	var colina := Modos.actual == Modos.ONLINE and Net.modo_online == Net.MODO_COLINA
+	var equipos := Modos.actual == Modos.ONLINE and Net.es_equipos()
+	if is_instance_valid(_scoreboard_titulo):
+		_scoreboard_titulo.text = "MARCADOR — %s  (primero a %d%s)" % [
+			Net.nombre_modo_online(Net.modo_online) if Modos.actual == Modos.ONLINE else "Partida",
+			Net.meta_online() if Modos.actual == Modos.ONLINE else GameConfig.SCORE_TO_WIN,
+			" puntos" if colina else ""]
+	var campo := "puntos" if colina else "kills"
 	var ids := Net.players.keys()
 	ids.sort_custom(func(a: int, b: int) -> bool:
-		return int(Net.players[a].get("kills", 0)) > int(Net.players[b].get("kills", 0))
-	)
-	for id: int in ids:
-		var info: Dictionary = Net.players[id]
-		var data := CharacterDB.get_character(StringName(String(info.get("character_id", "noelle"))))
-		var text := "%-16s  %-18s  %d kills   %d muertes" % [
-			String(info.get("name", "???")),
-			data.display_name if data != null else "?",
-			int(info.get("kills", 0)),
-			int(info.get("deaths", 0)),
-		]
-		var color := UITheme.ACCENT if id == Net.local_id() else UITheme.TEXT
-		_scoreboard_rows.add_child(UITheme.make_label(text, 15, color))
+		return int(Net.players[a].get(campo, 0)) > int(Net.players[b].get(campo, 0)))
+	var grupos: Array = [[-1, ids]]
+	if equipos:
+		grupos = []
+		for e: int in [0, 1]:
+			var del_equipo: Array = []
+			for id: int in ids:
+				if Net.equipo_de(id) == e:
+					del_equipo.append(id)
+			grupos.append([e, del_equipo])
+	for grupo: Array in grupos:
+		var e: int = grupo[0]
+		if e >= 0:
+			_scoreboard_rows.add_child(UITheme.make_label("EQUIPO %s — %d bajas" % [
+				Net.EQUIPO_NOMBRES[e], Net.puntos_equipo(e)], 16, Net.EQUIPO_COLORES[e]))
+		for id: int in grupo[1]:
+			var info: Dictionary = Net.players[id]
+			var data := CharacterDB.get_character(StringName(String(info.get("character_id", "noelle"))))
+			var text := "%-16s  %-18s  %d kills   %d muertes" % [
+				String(info.get("name", "???")),
+				data.display_name if data != null else "?",
+				int(info.get("kills", 0)),
+				int(info.get("deaths", 0)),
+			]
+			if colina:
+				text = "%-16s  %-18s  %d puntos   %d kills" % [String(info.get("name", "???")),
+					data.display_name if data != null else "?", int(info.get("puntos", 0)), int(info.get("kills", 0))]
+			var color := UITheme.ACCENT if id == Net.local_id() else UITheme.TEXT
+			_scoreboard_rows.add_child(UITheme.make_label(("    " if e >= 0 else "") + text, 15, color))
 
 
 # ----------------------------------------------------------------------- Señales

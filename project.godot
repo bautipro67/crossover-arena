@@ -33,6 +33,7 @@ Mando="*res://scripts/core/mando.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
+window/handheld/orientation=4
 
 [layer_names]
 
@@ -47,4 +48,7 @@ window/stretch/mode="canvas_items"
 [rendering]
 
 anti_aliasing/quality/msaa_3d=2
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+lights_and_shadows/directional_shadow/size.mobile=2048
 environment/defaults/default_clear_color=Color(0.06, 0.08, 0.13, 1)

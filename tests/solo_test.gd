@@ -64,7 +64,67 @@ func _run() -> void:
 	await _test_dummies(arena, player)
 	await _test_mando_y_tactil(main, player)
 	await _test_fijar_y_asistencia(arena, player)
+	await _test_modos_online(arena, player)
 	_finish()
+
+
+# ------------------------------------------------------- Los modos en linea
+
+## LOS MODOS EN LINEA (2026-10-10), del lado del servidor: las reglas que cambian, la colina
+## que suma solo al que esta solo adentro, los equipos y el marcador. La red de verdad (que
+## el modo y los equipos lleguen al cliente) la mira net_test.
+func _test_modos_online(arena: Arena, player: Player) -> void:
+	Arena.set_bots_active(false)
+	var modo_antes := Modos.actual
+	var online_antes := Net.modo_online
+	Modos.actual = Modos.ONLINE
+	var reglas := ""
+	for fila: Array in [[Net.MODO_CAOS, true, false], [Net.MODO_TOQUE, false, true], [Net.MODO_TODOS, false, false]]:
+		Net.modo_online = fila[0]
+		if (Modos.stamina_libre() != bool(fila[1])) or (is_equal_approx(Modos.ritmo_recarga(), Modos.RECARGA_CAOS) != bool(fila[1])) \
+				or Modos.un_toque() != bool(fila[2]):
+			reglas += "%s " % fila[0]
+	_check(reglas.is_empty(), "en linea, el caos acorta recargas y libera la stamina, y en un toque cualquier golpe mata %s" % reglas)
+
+	# --- La colina: suma el que esta solo adentro, y disputada no suma nadie ---
+	Net.modo_online = Net.MODO_COLINA
+	var yo := Net.local_id()
+	var otros: Array[Player] = []
+	for id: int in arena._players.keys():
+		var b: Player = arena._players[id]
+		if id != yo and is_instance_valid(b) and not b.health.is_dead:
+			otros.append(b)
+			b.global_position = Vector3(30.0, 0.6, 30.0)
+	player.health.revive_full()
+	player.global_position = Vector3(1.0, 0.6, 1.0)
+	await get_tree().physics_frame
+	Net.players[yo]["puntos"] = 0
+	arena._colina_online(1.05)
+	var solo := int(Net.players[yo].get("puntos", 0))
+	var disputada := -1
+	if not otros.is_empty():
+		otros[0].global_position = Vector3(-1.0, 0.6, -1.0)
+		await get_tree().physics_frame
+		arena._colina_online(2.0)
+		disputada = int(Net.players[yo].get("puntos", 0)) - solo
+	_check(solo == 1 and disputada <= 0 and Net.marcador_online().contains("COLINA"),
+		"la colina en linea suma un punto por segundo al que esta solo adentro, y disputada no suma (%d, %d)" % [solo, disputada])
+	Net.players[yo]["puntos"] = 0
+
+	# --- Por equipos: el equipo de la entrada llega al jugador y al marcador ---
+	Net.modo_online = Net.MODO_EQUIPOS
+	Net.players[yo]["equipo"] = 1
+	arena._pintar_equipo(player, yo)
+	var texto := Net.marcador_online()
+	_check(player.equipo == 1 and texto.contains("ROJO") and texto.contains("AZUL") and texto.contains("SOS DEL AZUL")
+		and Net.equipo_del_ganador(Net.id_de_equipo(1)) == 1,
+		"por equipos, cada jugador lleva el equipo de su entrada y el marcador cuenta rojo y azul: %s" % texto)
+	Net.players[yo]["equipo"] = -1
+	Net.modo_online = online_antes
+	Modos.actual = modo_antes
+	arena._pintar_equipo(player, yo)
+	_check(player.equipo == -1, "y fuera de los equipos, nadie tiene equipo")
+	Arena.set_bots_active(true)
 
 
 # ------------------------------------------------------- Fijar y asistencias
@@ -1440,6 +1500,19 @@ func _test_historia(main: Node) -> void:
 			_check(rick != null and CombatUtils.son_aliados(p, rick) and is_equal_approx(rick.health.current, antes)
 				and not CombatUtils._living_targets(p).has(rick),
 				"un aliado no es blanco: los golpes del jugador no lo tocan")
+			# LA VIDA DE LOS COMPAÑEROS SE VE ENTERA: ni con teclado ni con el dedo la tapa la
+			# placa de las barras propias.
+			var hud_h: HUD = main._hud
+			var tapadas := ""
+			for disp: StringName in [&"teclado", &"tactil"]:
+				Controles.usar(disp)
+				for _f: int in range(4):
+					await get_tree().process_frame
+				var caja := hud_h._aliados_caja.get_global_rect()
+				if not hud_h._aliados_caja.visible or caja.size.y < 10.0 or caja.intersects(hud_h._barras.get_global_rect()):
+					tapadas += "%s " % disp
+			Controles.usar(&"teclado")
+			_check(tapadas.is_empty(), "la vida de los aliados se ve, sin que la tape la placa de las barras %s" % tapadas)
 		# Los eventos de vida: se lleva a cada uno a su umbral para que corra su escena.
 		for ev: Array in Historia.capitulo(i).get("eventos", []):
 			var cond: Array = ev[0]
@@ -1904,6 +1977,8 @@ func _test_mando_y_tactil(main: Node, player: Player) -> void:
 	_toque(tactil, 2, libre, true)
 	_arrastre(tactil, 2, libre + Vector2(120.0, 0.0), Vector2(120.0, 0.0))
 	_toque(tactil, 2, libre + Vector2(120.0, 0.0), false)
+	# El arrastre se reparte en unos cuadros (PlayerCamera.TOQUE_SUAVE).
+	await get_tree().create_timer(0.2).timeout
 	_check(antes - camara.get_yaw() > 0.2,
 		"arrastrar el dedo por la pantalla gira la camara (%.2f rad)" % (antes - camara.get_yaw()))
 
@@ -1933,11 +2008,91 @@ func _test_mando_y_tactil(main: Node, player: Player) -> void:
 	pausa.close()
 	await get_tree().process_frame
 
+	# --- LA VERSION 2 DE LOS BOTONES (2026-10-10) ---
+	#
+	# Con el tamaño que sea, ningun boton pisa a otro: medidos en el chico y en el grande.
+	var pisados := ""
+	var antes_tam := Settings.tamano_botones
+	for tam_b: float in [Settings.BOTONES_MIN, 1.0, Settings.BOTONES_MAX]:
+		Settings.tamano_botones = tam_b
+		for a: int in range(tactil._botones.size()):
+			for b: int in range(a + 1, tactil._botones.size()):
+				var sep := tactil.centro(a).distance_to(tactil.centro(b))
+				if sep < tactil.radio(a) + tactil.radio(b) - 1.0:
+					pisados += "%s/%s@%.2f " % [tactil._botones[a]["accion"], tactil._botones[b]["accion"], tam_b]
+	Settings.tamano_botones = 1.25
+	var golpe_i := tactil.indice_de(&"attack_basic")
+	var r_grande := tactil.radio(golpe_i)
+	Settings.tamano_botones = antes_tam
+	_check(pisados.is_empty() and r_grande > tactil.radio(golpe_i) + 1.0,
+		"los botones crecen con la opcion de tamaño y nunca se pisan %s" % pisados)
+	_check(hud._barras.anchor_top == 0.0 and hud._barras.anchor_left == 0.0 and not hud._nota_barras.visible,
+		"con el dedo, las barras de vida suben arriba a la izquierda, sin la nota")
+	_check(is_equal_approx(player.angulo_asistencia(), Player.ASISTENCIA_TACTIL),
+		"con el dedo la asistencia de apuntado es mas generosa (%.0f grados)" % player.angulo_asistencia())
+	# PASAR AL SIGUIENTE: solo se ve con alguien fijado, y cambia de rival.
+	var sig := tactil.indice_de(&"cambiar_objetivo")
+	camara.soltar()
+	_check(not tactil._visible(sig), "sin nadie fijado, el boton SIG no esta")
+	Arena.set_bots_active(false)
+	camara.fijar_o_soltar()
+	var primero := camara.objetivo
+	_check(primero != null and tactil._visible(sig), "con alguien fijado aparece SIG")
+	_toque(tactil, 3, tactil.centro(sig), true)
+	_toque(tactil, 3, tactil.centro(sig), false)
+	_check(camara.objetivo != null and camara.objetivo != primero,
+		"y apretarlo pasa al siguiente rival")
+	camara.soltar()
+
 	# --- De vuelta al teclado ---
 	Controles.usar(&"teclado")
 	await get_tree().process_frame
 	_check(not tactil.esta_activo() and hud._ability_row.visible,
 		"con el teclado se van los botones y vuelven las cartas")
+	_check(is_equal_approx(player.angulo_asistencia(), Player.ASISTENCIA_ANGULO),
+		"y con el mouse la asistencia vuelve a ser la chica")
+
+	# --- LA CAMARA COMODA (2026-10-10) ---
+	var fov_antes := Settings.fov
+	var dist_antes := Settings.distancia_camara
+	Settings.fov = 90.0
+	Settings.distancia_camara = 1.3
+	await get_tree().create_timer(1.2).timeout
+	_check(is_equal_approx(camara.camera.fov, 90.0)
+		and camara.spring_length > camara.arm_length * 1.1,
+		"la camara toma el campo de vision y la distancia de las opciones (fov %.0f, brazo %.2f)" % [
+			camara.camera.fov, camara.spring_length])
+	Settings.fov = fov_antes
+	Settings.distancia_camara = dist_antes
+	var pitch_antes: float = camara._pitch
+	Settings.invertir_y = true
+	camara._girar(0.0, 0.05)
+	var invertido: float = camara._pitch - pitch_antes
+	Settings.invertir_y = false
+	camara._girar(0.0, 0.05)
+	_check(invertido > 0.0 and camara._pitch < pitch_antes + invertido,
+		"con el eje invertido, mover hacia abajo mira hacia arriba")
+	# EL SALTO GUARDADO: apretado un poco antes de tocar el piso, sale igual al caer.
+	player.health.revive_full()
+	player.status.clear_all()
+	await get_tree().create_timer(0.4).timeout
+	player.global_position += Vector3.UP * 0.1
+	player.velocity = Vector3.ZERO
+	await get_tree().physics_frame
+	var salto := InputEventAction.new()
+	salto.action = &"jump"
+	salto.pressed = true
+	Input.parse_input_event(salto)
+	await get_tree().physics_frame
+	salto.pressed = false
+	Input.parse_input_event(salto)
+	var subio := false
+	for _f: int in range(30):
+		await get_tree().physics_frame
+		if player.velocity.y > 2.0:
+			subio = true
+			break
+	_check(subio, "apretar saltar justo antes de caer guarda el salto y sale al tocar el piso")
 	Arena.set_bots_active(true)
 
 
@@ -2566,7 +2721,7 @@ func _check(condition: bool, description: String) -> void:
 ## pruebas sin correr, y eso no se nota nunca: el resumen dice "TODO OK". Paso de verdad
 ## al poner la primera voz grabada. Subir este numero al agregar chequeos es el precio de
 ## que el verde signifique algo.
-const CHEQUEOS_MINIMOS: int = 387
+const CHEQUEOS_MINIMOS: int = 402
 
 
 func _finish() -> void:

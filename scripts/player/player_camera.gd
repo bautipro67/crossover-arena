@@ -41,6 +41,36 @@ const GIRO_FIJADO: float = 12.0
 var objetivo: Node3D = null
 var _marca: Node3D = null
 
+# --- La comodidad (2026-10-10, "mejora la camara para que sea mas comoda") ---
+## LA CAMARA SIGUE AL CUERPO CON UN RESORTE CORTO, no pegada. Pegada, cada escalon que el
+## cuerpo sube de golpe (medio metro en un cuadro) y cada tirón de la red se veian como un
+## salto de toda la pantalla. De costado alcanza casi en el acto; de alto, un poco mas
+## despacio, que es donde estaban los saltos.
+const SEGUIR_PLANO: float = 40.0
+const SEGUIR_ALTO: float = 14.0
+## Mas lejos que esto es un teletransporte o una reaparicion: la camara salta, no viaja.
+const SALTO_CAMARA: float = 3.0
+## UNA PARED ACERCA LA CAMARA DE GOLPE (si no, la atravesaria), PERO SE VA DESPACIO. El
+## brazo de Godot hace las dos cosas de golpe, y al pasar al lado de una columna la camara
+## entraba y salia de un cuadro a otro.
+const VUELTA_BRAZO: float = 5.0
+## ARRASTRAR EL DEDO, SUAVIZADO: los toques llegan a los saltos (y mas de a uno por cuadro
+## en algunos celulares). Se reparte en unos cuadros, sin que se note el retraso.
+const TOQUE_SUAVE: float = 32.0
+## LA CAMARA AUTOMATICA DEL CELULAR (Settings.camara_automatica): sin tocarla un rato, al
+## caminar de costado se va acomodando detras tuyo, y vuelve sola a la altura de siempre.
+const AUTO_ESPERA: float = 0.8
+const AUTO_GIRO: float = 1.6
+const AUTO_ALTURA: float = -0.18
+const AUTO_ALTURA_VEL: float = 0.6
+
+var _seguido: Vector3 = Vector3.ZERO
+var _seguido_listo: bool = false
+var _largo: float = 0.0
+var _toque_pendiente: Vector2 = Vector2.ZERO
+## Segundos desde que el jugador giro la camara a mano (mouse, stick o dedo).
+var _desde_giro_manual: float = 99.0
+
 var _yaw: float = 0.0
 var _pitch: float = -0.15
 var _active: bool = false
@@ -58,6 +88,7 @@ func _ready() -> void:
 	# aplicado al brazo entero, abajo en _process().
 	camera.position = Vector3.ZERO
 	camera.current = false
+	_largo = arm_length
 	if _owner_body != null:
 		_yaw = _owner_body.rotation.y
 
@@ -77,16 +108,48 @@ func set_active(active: bool) -> void:
 func _process(delta: float) -> void:
 	if not _active or not is_instance_valid(_owner_body):
 		return
+	_desde_giro_manual += delta
+	_aplicar_toque(delta)
 	_girar_con_stick(delta)
+	_camara_automatica(delta)
 	_seguir_fijado(delta)
+	if Settings != null:
+		camera.fov = Settings.fov
 	# El brazo sigue al jugador manualmente porque es top_level.
 	# El corrimiento lateral va aca: deja el cuerpo del jugador a un costado en vez de
 	# tapar el centro de la pantalla justo donde esta la mira.
 	var yaw_basis := Basis(Vector3.UP, _yaw)
-	global_position = (_owner_body.global_position
-		+ Vector3.UP * eye_height
-		+ yaw_basis.x * shoulder_offset)
+	var cuerpo := _owner_body.global_position + Vector3.UP * eye_height
+	if not _seguido_listo or _seguido.distance_to(cuerpo) > SALTO_CAMARA:
+		_seguido = cuerpo
+		_seguido_listo = true
+	else:
+		var kp := 1.0 - exp(-SEGUIR_PLANO * delta)
+		var ka := 1.0 - exp(-SEGUIR_ALTO * delta)
+		_seguido = Vector3(lerpf(_seguido.x, cuerpo.x, kp), lerpf(_seguido.y, cuerpo.y, ka),
+			lerpf(_seguido.z, cuerpo.z, kp))
+	global_position = _seguido + yaw_basis.x * shoulder_offset
 	global_rotation = Vector3(_pitch, _yaw, 0.0)
+	_ajustar_brazo(delta)
+
+
+## El largo del brazo: hasta la pared en el acto, y de vuelta a su largo de a poco. La
+## distancia de fabrica la escala Settings.distancia_camara.
+func _ajustar_brazo(delta: float) -> void:
+	var objetivo_largo := arm_length * (Settings.distancia_camara if Settings != null else 1.0)
+	var tope := get_hit_length()
+	if _largo > tope + 0.05:
+		_largo = tope
+	else:
+		_largo = lerpf(_largo, objetivo_largo, 1.0 - exp(-VUELTA_BRAZO * delta))
+	spring_length = maxf(0.4, _largo)
+
+
+## La camara salta al cuerpo en el proximo cuadro, sin viajar: al reaparecer, al empezar
+## una escena, al teletransportarse.
+func saltar_al_cuerpo() -> void:
+	_seguido_listo = false
+	_largo = arm_length * (Settings.distancia_camara if Settings != null else 1.0)
 
 
 func _input(event: InputEvent) -> void:
@@ -104,6 +167,7 @@ func _input(event: InputEvent) -> void:
 		return
 	# La sensibilidad sale de las opciones del jugador, no del export.
 	var sens := Settings.mouse_sensitivity if Settings != null else mouse_sensitivity
+	_desde_giro_manual = 0.0
 	_girar(motion.relative.x * sens, motion.relative.y * sens)
 
 
@@ -112,7 +176,8 @@ func _girar(dx: float, dy: float) -> void:
 	if is_instance_valid(objetivo):
 		return
 	_yaw -= dx
-	_pitch -= dy
+	# Invertido: mover hacia abajo mira hacia arriba.
+	_pitch -= dy * (-1.0 if Settings != null and Settings.invertir_y else 1.0)
 	_pitch = clampf(_pitch, deg_to_rad(min_pitch_deg), deg_to_rad(max_pitch_deg))
 
 
@@ -135,13 +200,65 @@ func _girar_con_stick(delta: float) -> void:
 	if v.is_zero_approx() or Mando.hay_menu_abierto() or Cinematica.activa:
 		return
 	var giro := v * v.length() * GIRO_MANDO * _factor_sensibilidad() * delta
+	_desde_giro_manual = 0.0
 	_girar(giro.x, giro.y)
 
 
-## Un dedo arrastrando sobre la pantalla. Lo llama ControlesTactiles.
+## Un dedo arrastrando sobre la pantalla. Lo llama ControlesTactiles. Se anota y se aplica
+## repartido en los cuadros que siguen (ver TOQUE_SUAVE).
 func girar_por_toque(relativo: Vector2) -> void:
-	var k := GIRO_TACTIL * _factor_sensibilidad()
-	_girar(relativo.x * k, relativo.y * k)
+	_toque_pendiente += relativo
+	_desde_giro_manual = 0.0
+
+
+func _aplicar_toque(delta: float) -> void:
+	if _toque_pendiente.is_zero_approx():
+		return
+	var parte := _toque_pendiente * (1.0 - exp(-TOQUE_SUAVE * delta))
+	# Lo que queda chiquito va entero: si no, la camara seguiria moviendose un pelo para
+	# siempre despues de levantar el dedo.
+	if _toque_pendiente.length() < 1.0:
+		parte = _toque_pendiente
+	_toque_pendiente -= parte
+	# Con el dedo, su propia sensibilidad: la del mouse no sirve en una pantalla.
+	var k := GIRO_TACTIL * (Settings.sensibilidad_tactil if Settings != null else 1.0)
+	_girar(parte.x * k, parte.y * k)
+
+
+## La camara automatica del dedo: ver AUTO_ESPERA. Caminando de costado gira hacia ese
+## lado (como en los juegos de accion de celular: el que solo usa el pulgar izquierdo
+## igual termina mirando hacia donde va), y caminando hacia atras no, que seria dar media
+## vuelta. Con alguien fijado la camara es del fijado.
+func _camara_automatica(delta: float) -> void:
+	if Settings == null or not Settings.camara_automatica or Controles.dispositivo != &"tactil":
+		return
+	if is_instance_valid(objetivo) or Cinematica.activa or Mando.hay_menu_abierto():
+		return
+	if _desde_giro_manual < AUTO_ESPERA:
+		return
+	var v := Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back")
+	if v.length() < 0.25 or v.y > 0.55:
+		return
+	_yaw -= v.x * AUTO_GIRO * delta
+	_pitch = move_toward(_pitch, AUTO_ALTURA, AUTO_ALTURA_VEL * delta)
+
+
+## PASAR AL SIGUIENTE: con alguien fijado, el que sigue en distancia (y despues del mas
+## lejano, de nuevo el mas cercano). Sin nadie fijado, fija al mas cercano.
+func siguiente_objetivo() -> void:
+	if not is_instance_valid(_owner_body) or not _owner_body.is_inside_tree():
+		return
+	var candidatos: Array[Node3D] = []
+	for t: Node3D in CombatUtils._living_targets(_owner_body):
+		if t.visible and _owner_body.global_position.distance_to(t.global_position) <= ALCANCE_FIJADO:
+			candidatos.append(t)
+	if candidatos.is_empty():
+		return
+	var desde := _owner_body.global_position
+	candidatos.sort_custom(func(a: Node3D, b: Node3D) -> bool:
+		return a.global_position.distance_to(desde) < b.global_position.distance_to(desde))
+	var i := candidatos.find(objetivo)
+	_fijar(candidatos[(i + 1) % candidatos.size()])
 
 
 func get_yaw() -> float:

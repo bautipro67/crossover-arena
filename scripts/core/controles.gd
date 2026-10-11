@@ -86,9 +86,18 @@ func _ready() -> void:
 
 
 ## Un celular o una tablet. En el navegador, Godot lo sabe por el sistema operativo.
+##
+## "--celular" en la linea de comandos hace de cuenta que lo es: para sacar fotos y probar
+## la version del celular desde la computadora.
 static func es_celular() -> bool:
 	return OS.has_feature("web_android") or OS.has_feature("web_ios") \
-		or OS.has_feature("android") or OS.has_feature("ios")
+		or OS.has_feature("android") or OS.has_feature("ios") \
+		or OS.get_cmdline_user_args().has("--celular")
+
+
+## La aplicacion instalada del celular (no el navegador del celular).
+static func es_app_movil() -> bool:
+	return OS.has_feature("android") or OS.has_feature("ios")
 
 
 ## Cambia el dispositivo y avisa, solo si de verdad cambio.

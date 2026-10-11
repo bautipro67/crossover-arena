@@ -29,6 +29,31 @@ signal connection_retrying(attempt: int, elapsed: float)
 signal kill_registered(killer_id: int, victim_id: int)
 ## Cambio el mapa elegido para la proxima partida (la sala lo muestra).
 signal mapa_cambiado()
+signal modo_cambiado()
+
+# --------------------------------------------------------------- Los modos en linea
+#
+# MAS MODOS EN LINEA (2026-10-10, "haz mas modos multijugador online"). Hasta aca habia uno
+# solo, todos contra todos a quince bajas. Ahora son cinco, y los decide el servidor: el
+# publico los va rotando con el mapa en cada partida, y el que hostea lo elige en la sala.
+# Las reglas que cambian el combate (caos, un toque) las leen Modos y CombatUtils; el daño
+# lo decide siempre el servidor, asi que un cliente desactualizado no puede saltearlas.
+const MODO_TODOS: StringName = &"todos"
+const MODO_EQUIPOS: StringName = &"equipos"
+const MODO_COLINA: StringName = &"colina"
+const MODO_CAOS: StringName = &"caos"
+const MODO_TOQUE: StringName = &"toque"
+const MODOS_ONLINE: Array[StringName] = [MODO_TODOS, MODO_EQUIPOS, MODO_COLINA, MODO_CAOS, MODO_TOQUE]
+## Lo que hay que juntar para ganar en cada uno: bajas propias, bajas del equipo o puntos.
+const META_ONLINE: Dictionary = {
+	MODO_TODOS: 15, MODO_EQUIPOS: 25, MODO_COLINA: 60, MODO_CAOS: 20, MODO_TOQUE: 10,
+}
+## La colina en linea: el circulo del centro, y cada cuanto suma un punto el que esta solo.
+const RADIO_COLINA_ONLINE: float = 8.0
+const EQUIPO_NOMBRES: Array[String] = ["ROJO", "AZUL"]
+const EQUIPO_COLORES: Array[Color] = [Color(1.0, 0.42, 0.42), Color(0.45, 0.70, 1.0)]
+
+var modo_online: StringName = MODO_TODOS
 
 ## peer_id -> {name: String, character_id: String, kills: int, deaths: int}
 var players: Dictionary = {}
@@ -353,6 +378,10 @@ func set_local_character(id: String) -> void:
 			player_list_changed.emit()
 	else:
 		_srv_set_character.rpc_id(1, id)
+		# Y LA SKIN DE ESE PERSONAJE, atras: el servidor no sabe que tiene puesta cada uno
+		# (vive en el disco de cada maquina). Sin esto, al cambiar de personaje en la sala
+		# se veia la de fabrica.
+		_srv_set_skin.rpc_id(1, String(Progreso.skin_de(StringName(id))))
 
 
 ## Avisa que cambio la skin equipada. Mismo camino que el personaje.
@@ -381,9 +410,140 @@ func _srv_set_skin(skin_id: String) -> void:
 	# resto del juego tiene que aguantar un id inventado en cada lugar que lo lea.
 	if not skin_id.is_empty() and not SkinDB.existe(StringName(skin_id)):
 		return
+	# Y QUE SEA DEL PERSONAJE QUE TIENE ELEGIDO: una skin de Goku puesta sobre Noelle no se
+	# dibuja (SkinDB.aplicar la ignora), pero ensuciaria la tabla de todos.
+	var skin := SkinDB.get_skin(StringName(skin_id))
+	if skin != null and String(skin.character_id) != String(players[sender].get("character_id", "")):
+		return
 	players[sender]["skin_id"] = skin_id
 	_broadcast_players()
 	player_list_changed.emit()
+
+
+## SOLO SERVIDOR. Cambia el modo en linea y se lo avisa a todos (como el mapa).
+func elegir_modo_online(id: StringName) -> void:
+	if not MODOS_ONLINE.has(id):
+		return
+	modo_online = id
+	if is_server() and _has_peer():
+		_net_modo.rpc(String(id))
+	modo_cambiado.emit()
+
+
+@rpc("authority", "call_remote", "reliable")
+func _net_modo(id: String) -> void:
+	if MODOS_ONLINE.has(StringName(id)):
+		modo_online = StringName(id)
+	modo_cambiado.emit()
+
+
+## El que sigue en la rotacion del servidor publico.
+static func siguiente_modo(desde: StringName, paso: int = 1) -> StringName:
+	var i := MODOS_ONLINE.find(desde)
+	if i < 0:
+		return MODOS_ONLINE[0]
+	return MODOS_ONLINE[(i + paso + MODOS_ONLINE.size()) % MODOS_ONLINE.size()]
+
+
+func es_equipos() -> bool:
+	return modo_online == MODO_EQUIPOS
+
+
+func meta_online() -> int:
+	return int(META_ONLINE.get(modo_online, GameConfig.SCORE_TO_WIN))
+
+
+func equipo_de(id: int) -> int:
+	return int(get_player_info(id).get("equipo", -1)) if players.has(id) else -1
+
+
+## Las bajas de un equipo: las de todos sus jugadores.
+func puntos_equipo(e: int) -> int:
+	var total := 0
+	for id: int in players.keys():
+		if int(players[id].get("equipo", -1)) == e:
+			total += int(players[id].get("kills", 0))
+	return total
+
+
+## EL GANADOR DE UN EQUIPO VIAJA COMO UN NUMERO NEGATIVO: -1 el rojo, -2 el azul. Asi el
+## aviso de fin de partida sigue siendo el mismo para todos los modos.
+static func id_de_equipo(e: int) -> int:
+	return -1 - e
+
+
+static func equipo_del_ganador(winner_id: int) -> int:
+	return -1 - winner_id if winner_id < 0 else -1
+
+
+func _equipo_mas_chico(salvo: int) -> int:
+	var cuantos := [0, 0]
+	for id: int in players.keys():
+		var e := int(players[id].get("equipo", -1))
+		if id != salvo and e >= 0 and e <= 1:
+			cuantos[e] += 1
+	return 0 if cuantos[0] <= cuantos[1] else 1
+
+
+## SOLO SERVIDOR. La colina en linea suma puntos (los cuenta la arena) y gana el que llega.
+func sumar_punto_colina(id: int) -> void:
+	if not is_server() or not players.has(id) or not in_match:
+		return
+	players[id]["puntos"] = int(players[id].get("puntos", 0)) + 1
+	_broadcast_players()
+	player_list_changed.emit()
+	if int(players[id]["puntos"]) >= meta_online():
+		end_match(id)
+
+
+static func nombre_modo_online(id: StringName) -> String:
+	match id:
+		MODO_EQUIPOS: return "Por equipos"
+		MODO_COLINA: return "Rey de la colina"
+		MODO_CAOS: return "Modo caos"
+		MODO_TOQUE: return "Un toque"
+	return "Todos contra todos"
+
+
+static func descripcion_modo_online(id: StringName) -> String:
+	match id:
+		MODO_EQUIPOS:
+			return "Rojo contra azul, sin fuego amigo. El primer equipo en llegar a %d bajas gana." % int(META_ONLINE[MODO_EQUIPOS])
+		MODO_COLINA:
+			return "El que está solo adentro del círculo del centro suma un punto por segundo. Primero a %d." % int(META_ONLINE[MODO_COLINA])
+		MODO_CAOS:
+			return "Recargas cortísimas, sin stamina y el ultimate en un rato. Primero a %d bajas." % int(META_ONLINE[MODO_CAOS])
+		MODO_TOQUE:
+			return "Cualquier golpe mata. Primero a %d bajas." % int(META_ONLINE[MODO_TOQUE])
+	return "Cada uno por su lado. Primero a %d bajas." % int(META_ONLINE[MODO_TODOS])
+
+
+## La linea de arriba en una partida en linea: como va, segun el modo.
+func marcador_online() -> String:
+	if not in_match:
+		return ""
+	var yo := get_player_info(local_id())
+	var meta := meta_online()
+	match modo_online:
+		MODO_EQUIPOS:
+			var mio := int(yo.get("equipo", -1))
+			var texto := "ROJO %d  —  AZUL %d    (a %d)" % [puntos_equipo(0), puntos_equipo(1), meta]
+			if mio >= 0 and players.has(local_id()):
+				texto += "    SOS DEL %s" % EQUIPO_NOMBRES[mio]
+			return texto
+		MODO_COLINA:
+			var lider := -1
+			var lider_puntos := -1
+			for id: int in players.keys():
+				var p := int(players[id].get("puntos", 0))
+				if p > lider_puntos:
+					lider = id
+					lider_puntos = p
+			var texto := "COLINA    VOS %d / %d" % [int(yo.get("puntos", 0)), meta]
+			if lider >= 0 and lider != local_id() and lider_puntos > 0:
+				texto += "    PUNTERO: %s %d" % [get_player_name(lider), lider_puntos]
+			return texto
+	return "%s    VOS %d / %d BAJAS" % [nombre_modo_online(modo_online).to_upper(), int(yo.get("kills", 0)), meta]
 
 
 func get_skin_id(id: int) -> StringName:
@@ -406,9 +566,16 @@ func add_kill(killer_id: int, victim_id: int) -> void:
 		_net_kill.rpc(killer_id, victim_id)
 	kill_registered.emit(killer_id, victim_id)
 
+	# GANAR DEPENDE DEL MODO: bajas propias, bajas del equipo, o (en la colina) los puntos,
+	# que cuenta la arena y no las bajas.
 	if killer_id != 0 and players.has(killer_id):
-		if int(players[killer_id].get("kills", 0)) >= GameConfig.SCORE_TO_WIN:
-			end_match(killer_id)
+		if es_equipos():
+			var e := equipo_de(killer_id)
+			if e >= 0 and puntos_equipo(e) >= meta_online():
+				end_match(id_de_equipo(e))
+		elif modo_online != MODO_COLINA:
+			if int(players[killer_id].get("kills", 0)) >= meta_online():
+				end_match(killer_id)
 
 
 ## SOLO SERVIDOR.
@@ -418,6 +585,15 @@ func start_match() -> void:
 	for id: int in players.keys():
 		players[id]["kills"] = 0
 		players[id]["deaths"] = 0
+		players[id]["puntos"] = 0
+		players[id]["equipo"] = -1
+	# Los equipos se arman al empezar, parejos: de a uno a cada lado, en el orden en que
+	# entraron (el host primero).
+	if es_equipos():
+		var ids := players.keys()
+		ids.sort()
+		for k: int in range(ids.size()):
+			players[ids[k]]["equipo"] = k % 2
 	_broadcast_players()
 	in_match = true
 	if _has_peer():
@@ -455,6 +631,12 @@ func _on_connected_to_server() -> void:
 	_joining = false
 	# Ya estamos adentro: nos presentamos al servidor.
 	_srv_register.rpc_id(1, local_name, local_character_id)
+	# LA SKIN, ENSEGUIDA DESPUES (2026-10-10, "haz que las skins se vean en el online"). El
+	# servidor arma la entrada del que llega con SU guardado, y el servidor dedicado no tiene
+	# ninguna: todos se veian con la de fabrica. Va en otro mensaje, y no como un parametro
+	# mas de _srv_register, para que un cliente nuevo siga entrando a un servidor viejo. Los
+	# dos van por el mismo canal confiable, asi que llega antes de que se cree su jugador.
+	_srv_set_skin.rpc_id(1, String(Progreso.skin_de(StringName(local_character_id))))
 
 
 func _on_connection_failed() -> void:
@@ -490,6 +672,12 @@ func _srv_register(player_name: String, character_id: String) -> void:
 		return
 	var safe_char := character_id if CharacterDB.has_character(StringName(character_id)) else "noelle"
 	players[sender] = _make_entry(_clean_name(player_name), safe_char)
+	# La skin de la entrada sale del guardado de ESTE proceso, que no es el del que llega:
+	# arranca en la de fabrica y la manda el cliente con _srv_set_skin.
+	players[sender]["skin_id"] = ""
+	# El que llega a una partida por equipos va al equipo mas chico.
+	if es_equipos():
+		players[sender]["equipo"] = _equipo_mas_chico(sender)
 
 	# OJO EL ORDEN: hay que mirar in_match ANTES de emitir.
 	#
@@ -501,8 +689,10 @@ func _srv_register(player_name: String, character_id: String) -> void:
 	var was_in_match := in_match
 
 	_broadcast_players()
-	# El mapa elegido, para que su sala lo muestre (y su arena sea la del servidor).
+	# El mapa elegido, para que su sala lo muestre (y su arena sea la del servidor). Y el
+	# modo, antes de que se arme su partida: las reglas tienen que estar puestas al spawnear.
 	_net_mapa.rpc_id(sender, String(Mapas.elegido))
+	_net_modo.rpc_id(sender, String(modo_online))
 	player_list_changed.emit()
 
 	# Solo si la partida YA estaba en curso antes de que entrara.
@@ -520,6 +710,8 @@ func _srv_set_character(character_id: String) -> void:
 	if not CharacterDB.has_character(StringName(character_id)):
 		return
 	players[sender]["character_id"] = character_id
+	# La skin era del personaje anterior. La nueva la manda el cliente atras de esto.
+	players[sender]["skin_id"] = ""
 	_broadcast_players()
 	player_list_changed.emit()
 
@@ -572,6 +764,9 @@ func _make_entry(player_name: String, character_id: String) -> Dictionary:
 		"skin_id": Progreso.skin_de(StringName(character_id)),
 		"kills": 0,
 		"deaths": 0,
+		# Por equipos: 0 rojo, 1 azul (-1 en los demas modos). En la colina, los puntos.
+		"equipo": -1,
+		"puntos": 0,
 	}
 
 

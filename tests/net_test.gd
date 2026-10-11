@@ -16,6 +16,8 @@ const PORT: int = 27099
 ## procesos a mano deja un desfase que se come el presupuesto. Con 18 el host se
 ## quedaba sin tiempo justo mientras esperaba al segundo jugador.
 const TIMEOUT: float = 34.0
+## La skin que se pone el cliente para ver si el host la recibe.
+const SKIN_CLIENTE: StringName = &"noelle_fiesta"
 
 var _role: String = "host"
 var _main: Node = null
@@ -53,6 +55,8 @@ func _run() -> void:
 func _run_host() -> void:
 	var err := Net.host_game(PORT, "Host")
 	_check(err == OK, "el servidor abrio el puerto %d" % PORT)
+	# POR EQUIPOS, para ver que el modo y los equipos lleguen al cliente.
+	Net.elegir_modo_online(Net.MODO_EQUIPOS)
 	if err != OK:
 		_finish()
 		return
@@ -82,6 +86,16 @@ func _run_host() -> void:
 		_check(local != null, "[host] el jugador local existe")
 		if local != null:
 			_check(local.caster.abilities.size() == 4, "[host] el jugador local tiene su kit cargado")
+		# LAS SKINS EN LINEA: el host ve al cliente con la skin que el cliente tiene puesta,
+		# aunque el host no la tenga ni la haya comprado.
+		var otro: Player = null
+		for id: int in Net.players.keys():
+			if id != Net.local_id():
+				otro = arena.get_player(id)
+		_check(otro != null and otro.skin_id == SKIN_CLIENTE,
+			"[host] ve al cliente con su skin puesta (%s)" % (String(otro.skin_id) if otro != null else "?"))
+		_check(local != null and otro != null and local.equipo >= 0 and otro.equipo >= 0 and local.equipo != otro.equipo,
+			"[host] por equipos, cada uno quedo en un equipo distinto")
 
 	# Le damos tiempo al cliente a terminar sus chequeos antes de cortar.
 	await _wait(3.0)
@@ -89,6 +103,11 @@ func _run_host() -> void:
 
 
 func _run_client() -> void:
+	# CON UNA SKIN PUESTA, sin tocar el guardado de verdad: el host tiene que verla.
+	Progreso.guardado_activo = false
+	Progreso.skins[String(SKIN_CLIENTE)] = true
+	Progreso.equipadas["noelle"] = String(SKIN_CLIENTE)
+	Net.local_character_id = "noelle"
 	# Le damos al host tiempo de levantar el servidor.
 	await _wait(1.5)
 	var err := Net.join_game("127.0.0.1", PORT, "Cliente")
@@ -118,6 +137,11 @@ func _run_client() -> void:
 		if local != null:
 			_check(local.peer_id == Net.local_id(), "[cliente] su jugador tiene el peer id correcto")
 			_check(local.caster.abilities.size() == 4, "[cliente] tiene su kit cargado")
+			_check(local.skin_id == SKIN_CLIENTE,
+				"[cliente] su jugador tiene puesta su skin (%s)" % String(local.skin_id))
+			_check(Net.modo_online == Net.MODO_EQUIPOS and local.equipo >= 0
+				and local.equipo == Net.equipo_de(Net.local_id()),
+				"[cliente] le llego el modo por equipos y su equipo (%s, %d)" % [Net.modo_online, local.equipo])
 
 	# Y EL CLIENTE TAMBIEN ESPERA ANTES DE CORTAR. La espera del host ya estaba; esta
 	# faltaba, y su ausencia hacia fallar al host de una forma que no se parecia en nada

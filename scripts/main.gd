@@ -26,6 +26,13 @@ func _ready() -> void:
 		_run_dedicated_server()
 		return
 
+	# EN EL CELULAR, LA IMAGEN SE ESTIRA AL ANCHO DE LA PANTALLA (2026-10-10). Los celulares
+	# son mucho mas anchos que 16:9 (20:9 es lo comun) y con el aspecto fijo quedaban dos
+	# franjas negras a los costados; ahora el alto queda en 720 y el ancho crece. La interfaz
+	# esta anclada a los bordes, y los botones del dedo se miden desde las esquinas.
+	if Controles.es_celular():
+		get_tree().root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+
 	Music.play_menu()
 	show_main_menu()
 
@@ -361,17 +368,23 @@ func _on_modo_termino(gano: bool, titulo: String, detalle: String) -> void:
 
 
 func _on_match_ended(winner_id: int) -> void:
+	# POR EQUIPOS gana un equipo: viene como numero negativo (ver Net.id_de_equipo).
+	var equipo_ganador := Net.equipo_del_ganador(winner_id)
+	var gane := winner_id == Net.local_id()
+	if equipo_ganador >= 0:
+		gane = Net.equipo_de(Net.local_id()) == equipo_ganador
 	# La partida en linea tambien paga: ganar da el plus, y las bajas ya se cobraron una
 	# por una mientras se jugaba.
 	if not Net.dedicated:
-		Progreso.registrar_partida(winner_id == Net.local_id(), Modos.da_recompensas())
+		Progreso.registrar_partida(gane, Modos.da_recompensas())
+	var titulo := "GANÓ EL EQUIPO %s" % Net.EQUIPO_NOMBRES[equipo_ganador] if equipo_ganador >= 0 \
+		else "GANO %s" % Net.get_player_name(winner_id).to_upper()
 	if Net.dedicated:
-		print("[servidor] termino la partida, gano %s" % Net.get_player_name(winner_id))
+		print("[servidor] termino la partida (%s): %s" % [Net.nombre_modo_online(Net.modo_online), titulo])
 		_restart_dedicated_match()
 		return
-	var winner_name := Net.get_player_name(winner_id)
 	if is_instance_valid(_hud):
-		_hud.show_match_result("GANO %s" % winner_name.to_upper())
+		_hud.show_match_result(titulo)
 	# Unos segundos para ver el resultado y despues todos vuelven a la sala de espera,
 	# donde el host puede arrancar otra sin tener que reconectar a nadie.
 	_return_to_lobby_after(6.0)
@@ -384,9 +397,12 @@ func _restart_dedicated_match() -> void:
 		return
 	_clear_match()
 	if Net.players.size() > 0:
-		# LOS MAPAS VAN ROTANDO: cada partida del servidor publico en el siguiente lugar.
+		# LOS MAPAS VAN ROTANDO: cada partida del servidor publico en el siguiente lugar. Y
+		# LOS MODOS TAMBIEN: todos contra todos, por equipos, la colina, caos, un toque.
 		Net.elegir_mapa(Mapas.siguiente(Mapas.elegido))
-		print("[servidor] arrancando partida nueva en %s" % Mapas.nombre(Mapas.elegido))
+		Net.elegir_modo_online(Net.siguiente_modo(Net.modo_online))
+		print("[servidor] arrancando partida nueva: %s en %s" % [
+			Net.nombre_modo_online(Net.modo_online), Mapas.nombre(Mapas.elegido)])
 		Net.start_match()
 
 

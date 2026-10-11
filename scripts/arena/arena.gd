@@ -80,6 +80,8 @@ var _dummy_spawns: Dictionary = {}
 ## Numerador de los bloques de cobertura. Ver _bloque().
 var _cover_index: int = 0
 var _colina: MeshInstance3D = null
+## LA COLINA EN LINEA: lo que lleva cada uno adentro hacia su proximo punto (solo servidor).
+var _colina_acumulado: Dictionary = {}
 ## La lluvia de meteoritos: cuanto falta para el proximo y cuantos cayeron. Arranca con un
 ## margen para que el primero no caiga mientras todavia se esta mirando el mapa.
 var _lluvia_espera: float = 2.5
@@ -163,6 +165,12 @@ func _ready() -> void:
 	else:
 		# Avisamos al servidor que ya tenemos la arena armada y podemos recibir spawns.
 		_srv_client_ready.rpc_id(1)
+	# LA COLINA EN LINEA SE VE EN TODAS LAS PANTALLAS (los puntos los cuenta el servidor).
+	if es_colina_online() and not Net.dedicated:
+		_construir_colina(Net.RADIO_COLINA_ONLINE)
+	# Los equipos se pintan cada vez que cambia la lista (alguien entra a mitad de partida).
+	if not Net.player_list_changed.is_connected(_actualizar_equipos):
+		Net.player_list_changed.connect(_actualizar_equipos)
 
 
 # ------------------------------------------------------------ Construccion del mapa
@@ -895,6 +903,7 @@ func _create_player(id: int, character_id: String, spawn_position: Vector3, yaw:
 	player.setup_character(data)
 
 	_players[id] = player
+	_pintar_equipo(player, id)
 
 	if Net.is_server():
 		player.died.connect(_on_player_died.bind(id))
@@ -1040,16 +1049,83 @@ static func set_bots_active(active: bool) -> void:
 	BotBrain.globally_enabled = active
 
 
+# ------------------------------------------------------------ Los modos en linea
+
+func es_colina_online() -> bool:
+	return Modos.actual == Modos.ONLINE and Net.modo_online == Net.MODO_COLINA
+
+
+## Quienes estan vivos adentro del circulo de la colina en linea.
+func adentro_de_la_colina() -> Array[int]:
+	var dentro: Array[int] = []
+	for id: int in _players.keys():
+		var p: Player = _players[id]
+		if is_instance_valid(p) and not p.health.is_dead and p.visible \
+				and Vector2(p.global_position.x, p.global_position.z).length() <= Net.RADIO_COLINA_ONLINE:
+			dentro.append(id)
+	return dentro
+
+
+## SOLO SERVIDOR. El que esta SOLO adentro suma un punto por cada segundo que pasa ahi; con
+## dos o mas adentro esta disputada y no suma nadie. Si se va, lo que llevaba se guarda.
+func _colina_online(delta: float) -> void:
+	if not Net.in_match:
+		return
+	var dentro := adentro_de_la_colina()
+	if dentro.size() != 1:
+		return
+	var id := dentro[0]
+	_colina_acumulado[id] = float(_colina_acumulado.get(id, 0.0)) + delta
+	while float(_colina_acumulado[id]) >= 1.0:
+		_colina_acumulado[id] = float(_colina_acumulado[id]) - 1.0
+		Net.sumar_punto_colina(id)
+
+
+## El anillo de la colina en linea dice como esta, en cada pantalla: verde si estas solo
+## adentro (sumas), rojo si esta disputada, blanco si la tiene otro, dorado si esta libre.
+func _process(delta: float) -> void:
+	if not es_colina_online() or not is_instance_valid(_colina):
+		return
+	var dentro := adentro_de_la_colina()
+	var quiero := Color(1.0, 0.82, 0.30)
+	if dentro.size() > 1:
+		quiero = Color(1.0, 0.30, 0.30)
+	elif dentro.size() == 1:
+		quiero = Color(0.45, 1.0, 0.55) if dentro[0] == Net.local_id() else Color(0.95, 0.95, 1.0)
+	var mat := _colina.material_override as StandardMaterial3D
+	if mat != null:
+		mat.albedo_color = mat.albedo_color.lerp(quiero, delta * 6.0)
+		mat.emission = mat.albedo_color
+
+
+## POR EQUIPOS: cada jugador lleva el equipo de su entrada en Net (asi CombatUtils.son_aliados
+## no deja que se peguen entre compañeros) y el nombre de arriba sale del color del equipo.
+func _actualizar_equipos() -> void:
+	if Modos.actual != Modos.ONLINE:
+		return
+	for id: int in _players.keys():
+		_pintar_equipo(_players[id], id)
+
+
+func _pintar_equipo(player: Player, id: int) -> void:
+	if not is_instance_valid(player) or Modos.actual != Modos.ONLINE:
+		return
+	var e := Net.equipo_de(id) if Net.es_equipos() else -1
+	player.equipo = e
+	if is_instance_valid(player.name_label):
+		player.name_label.modulate = Net.EQUIPO_COLORES[e] if e >= 0 and e <= 1 else Color.WHITE
+
+
 ## La zona de Rey de la Colina, y el reloj que corre solo cuando el jugador esta adentro.
 ##
 ## Va en la arena y no en Modos porque hay que DIBUJARLA y hay que medir una distancia
 ## contra un jugador: las dos cosas son de acá. Modos solo recibe "esta adentro, si o no".
-func _construir_colina() -> void:
+func _construir_colina(radio: float = Modos.RADIO_COLINA) -> void:
 	var anillo := MeshInstance3D.new()
 	anillo.name = "ZonaColina"
 	var toro := TorusMesh.new()
-	toro.inner_radius = Modos.RADIO_COLINA - 0.35
-	toro.outer_radius = Modos.RADIO_COLINA
+	toro.inner_radius = radio - 0.35
+	toro.outer_radius = radio
 	anillo.mesh = toro
 	# Sin sombra y sin profundidad: es una marca en el piso, no un objeto con el que se
 	# choca. Si proyectara sombra se leeria como una pared baja.
@@ -1061,7 +1137,7 @@ func _construir_colina() -> void:
 	var luz := OmniLight3D.new()
 	luz.light_color = Color(1.0, 0.82, 0.35)
 	luz.light_energy = 2.2
-	luz.omni_range = Modos.RADIO_COLINA * 2.2
+	luz.omni_range = radio * 2.2
 	luz.shadow_enabled = false
 	add_child(luz)
 	luz.position = Vector3(0.0, 3.0, 0.0)
@@ -1070,6 +1146,9 @@ func _construir_colina() -> void:
 
 func _physics_process(delta: float) -> void:
 	if not Net.is_server():
+		return
+	if es_colina_online():
+		_colina_online(delta)
 		return
 	_descontar_peligros(delta)
 	if Modos.actual == Modos.BOMBA:

@@ -158,6 +158,34 @@ func _ready() -> void:
 
 	box.add_child(UITheme.make_spacer(6))
 
+	# --- La camara ---
+	box.add_child(UITheme.make_spacer(4))
+	box.add_child(UITheme.make_label("CÁMARA", 15, UITheme.ACCENT))
+	_deslizador(box, "Campo de visión", &"fov", Settings.FOV_MIN, Settings.FOV_MAX, 1.0, Settings.fov,
+		func(v: float) -> String: return "%d°" % int(round(v)))
+	_deslizador(box, "Distancia de la cámara", &"distancia_camara", Settings.DISTANCIA_MIN,
+		Settings.DISTANCIA_MAX, 0.05, Settings.distancia_camara,
+		func(v: float) -> String: return "%d%%" % int(round(v * 100.0)))
+	_casilla(box, "Invertir el eje vertical", &"invertir_y", Settings.invertir_y,
+		"Mover el mouse, el stick o el dedo hacia abajo mira hacia arriba.")
+
+	# --- La pantalla tactil ---
+	box.add_child(UITheme.make_spacer(4))
+	box.add_child(UITheme.make_label("PANTALLA TÁCTIL", 15, UITheme.ACCENT))
+	_deslizador(box, "Sensibilidad al arrastrar", &"sensibilidad_tactil", 0.3, 2.5, 0.05,
+		Settings.sensibilidad_tactil, func(v: float) -> String: return "%d%%" % int(round(v * 100.0)))
+	_casilla(box, "Cámara automática", &"camara_automatica", Settings.camara_automatica,
+		"Si no tocás la cámara, se acomoda sola detrás tuyo al caminar para el costado.")
+	_deslizador(box, "Tamaño de los botones", &"tamano_botones", Settings.BOTONES_MIN,
+		Settings.BOTONES_MAX, 0.05, Settings.tamano_botones,
+		func(v: float) -> String: return "%d%%" % int(round(v * 100.0)))
+	_deslizador(box, "Opacidad de los botones", &"opacidad_botones", 0.3, 1.0, 0.05,
+		Settings.opacidad_botones, func(v: float) -> String: return "%d%%" % int(round(v * 100.0)))
+	_casilla(box, "Vibración", &"vibracion", Settings.vibracion,
+		"Un toque corto al apretar un botón y al recibir un golpe.")
+
+	box.add_child(UITheme.make_spacer(6))
+
 	# --- Pantalla completa ---
 	var fs := CheckButton.new()
 	fs.text = "Pantalla completa"
@@ -189,6 +217,37 @@ func _ready() -> void:
 	Mando.anotar(self, close)
 
 	_refresh_labels()
+
+
+## Un deslizador de las opciones nuevas: el nombre con su valor arriba, y la barra.
+func _deslizador(box: VBoxContainer, titulo: String, opcion: StringName, minimo: float, maximo: float,
+		paso: float, valor: float, formato: Callable) -> HSlider:
+	var etiqueta := UITheme.make_label("%s: %s" % [titulo, formato.call(valor)], 14, UITheme.TEXT_DIM)
+	box.add_child(etiqueta)
+	var barra := HSlider.new()
+	barra.min_value = minimo
+	barra.max_value = maximo
+	barra.step = paso
+	barra.value = valor
+	barra.custom_minimum_size = Vector2(0, 24)
+	barra.value_changed.connect(func(v: float) -> void:
+		Settings.set_opcion(opcion, v)
+		etiqueta.text = "%s: %s" % [titulo, formato.call(v)])
+	box.add_child(barra)
+	return barra
+
+
+func _casilla(box: VBoxContainer, titulo: String, opcion: StringName, valor: bool, ayuda: String) -> CheckButton:
+	var casilla := CheckButton.new()
+	casilla.text = titulo
+	casilla.button_pressed = valor
+	casilla.add_theme_font_size_override("font_size", 16)
+	casilla.toggled.connect(func(si: bool) -> void: Settings.set_opcion(opcion, si))
+	box.add_child(casilla)
+	var texto := UITheme.make_label(ayuda, 11, UITheme.TEXT_DIM)
+	texto.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(texto)
+	return casilla
 
 
 func _on_sens_changed(value: float) -> void:
